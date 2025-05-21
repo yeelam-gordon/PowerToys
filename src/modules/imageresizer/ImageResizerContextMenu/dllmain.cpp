@@ -6,6 +6,7 @@
 #include <Shlwapi.h>
 #include <shobjidl_core.h>
 #include <string>
+#include <wincodec.h> // For WIC operations
 
 #include <common/telemetry/EtwTrace/EtwTrace.h>
 #include <common/utils/elevation.h>
@@ -19,6 +20,64 @@
 #include "Generated Files/resource.h"
 
 using namespace Microsoft::WRL;
+
+// Define GUID for HEIF/HEIC format if not already defined
+#ifndef GUID_ContainerFormatHeif
+// {E1E62521-6787-405B-A339-500715D41F7E}
+DEFINE_GUID(GUID_ContainerFormatHeif, 0xE1E62521, 0x6787, 0x405B, 0xA3, 0x39, 0x50, 0x07, 0x15, 0xD4, 0x1F, 0x7E);
+#endif
+
+// Helper function to check if WIC codec for HEIC/HEIF is installed
+bool IsHEICCodecInstalled()
+{
+    IWICImagingFactory* pFactory = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pFactory));
+    if (FAILED(hr))
+    {
+        return false;
+    }
+
+    IEnumUnknown* pEnum = nullptr;
+    hr = pFactory->CreateComponentEnumerator(WICDecoder, WICComponentEnumerateDefault, &pEnum);
+    if (FAILED(hr))
+    {
+        pFactory->Release();
+        return false;
+    }
+
+    IUnknown* pElement = nullptr;
+    ULONG fetched = 0;
+    bool heicCodecFound = false;
+
+    while (pEnum->Next(1, &pElement, &fetched) == S_OK && fetched > 0)
+    {
+        IWICBitmapCodecInfo* pCodecInfo = nullptr;
+        if (SUCCEEDED(pElement->QueryInterface(IID_PPV_ARGS(&pCodecInfo))))
+        {
+            GUID guidContainerFormat = {};
+            if (SUCCEEDED(pCodecInfo->GetContainerFormat(&guidContainerFormat)))
+            {
+                // Check for HEIC container format GUID
+                // {E1E62521-6787-405B-A339-500715D41F7E} is the GUID for HEIC
+                if (guidContainerFormat == GUID_ContainerFormatHeif) // HEIF/HEIC format
+                {
+                    heicCodecFound = true;
+                }
+            }
+            pCodecInfo->Release();
+        }
+        pElement->Release();
+        
+        if (heicCodecFound)
+        {
+            break;
+        }
+    }
+
+    pEnum->Release();
+    pFactory->Release();
+    return heicCodecFound;
+}
 
 HINSTANCE g_hInst = 0;
 Shared::Trace::ETWTrace trace(L"ImageResizerContextMenu");
@@ -120,7 +179,25 @@ public:
             return E_FAIL;
         }
 
-        // TODO: Instead, detect whether there's a WIC codec installed that can handle this file
+        // Check for HEIC/HEIF files explicitly since they might not be registered with the system
+        if (_wcsicmp(pszExt, L".heic") == 0 || _wcsicmp(pszExt, L".heif") == 0)
+        {
+            // HEIC/HEIF file detected - check if codec is installed
+            if (IsHEICCodecInstalled())
+            {
+                *cmdState = ECS_ENABLED;
+            }
+            else
+            {
+                *cmdState = ECS_HIDDEN;
+                // TODO: Consider adding a notification to install HEIC codec
+            }
+            
+            CoTaskMemFree(pszPath);
+            return S_OK;
+        }
+        
+        // For other image types, check the perceived type
         AssocGetPerceivedType(pszExt, &type, &flag, NULL);
 
         CoTaskMemFree(pszPath);

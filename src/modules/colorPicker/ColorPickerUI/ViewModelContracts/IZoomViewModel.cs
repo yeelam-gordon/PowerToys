@@ -19,5 +19,7 @@ namespace ColorPicker.ViewModelContracts
         double Width { get; set; }
 
         double Height { get; set; }
+        
+        string ColorName { get; set; }
     }
 }

@@ -52,8 +52,9 @@ float4 main(float2 uv
 
     if (distanceFromMouse <= radius)
     {
-        // draw grid
-        if (pixelPositionX % squareSize == 0 || pixelPositionY % squareSize == 0)
+        // Draw dot grid pattern
+        if ((pixelPositionX % squareSize == 0 && pixelPositionY % squareSize == 0) || 
+            (pixelPositionX % squareSize == squareSize / 2 && pixelPositionY % squareSize == squareSize / 2))
         {
             if (gridColor == 1.0f)
             {
@@ -70,6 +71,7 @@ float4 main(float2 uv
         }
     }
 
+    // Make the selection rectangle more prominent
     if (((pixelPositionX >= topLeftRectangle.x && pixelPositionX <= topLeftRectangle.x + squareSize + 2) && (pixelPositionY == topLeftRectangle.y || pixelPositionY == topLeftRectangle.y + squareSize + 2)) ||
         ((pixelPositionY >= topLeftRectangle.y && pixelPositionY <= topLeftRectangle.y + squareSize + 2) && (pixelPositionX == topLeftRectangle.x || pixelPositionX == topLeftRectangle.x + squareSize + 2)))
     {

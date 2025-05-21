@@ -19,6 +19,7 @@ namespace ColorPicker.ViewModels
         private double _desiredHeight;
         private double _width;
         private double _height;
+        private string _colorName;
 
         [ImportingConstructor]
         public ZoomViewModel()
@@ -105,6 +106,20 @@ namespace ColorPicker.ViewModels
             set
             {
                 _height = value;
+                OnPropertyChanged();
+            }
+        }
+        
+        public string ColorName
+        {
+            get
+            {
+                return _colorName;
+            }
+
+            set
+            {
+                _colorName = value;
                 OnPropertyChanged();
             }
         }

@@ -73,11 +73,28 @@ public sealed partial class AllAppsPage : ListPage
 
     internal List<AppItem> GetPrograms()
     {
-        var uwpResults = AppCache.Instance.Value.UWPs
+        // Make sure initialization was started
+        var appCache = AppCache.Instance.Value;
+        
+        // Wait for initialization to complete if needed, using Task.Run to avoid deadlocks
+        // by ensuring we're not blocking the UI thread with a synchronous wait
+        // Note: Since appCache.InitializeAsync() is idempotent (due to _isInitialized check),
+        // calling it again here is safe
+        try
+        {
+            Task.Run(async () => await appCache.InitializeAsync()).Wait();
+        }
+        catch (AggregateException ex)
+        {
+            // Log the inner exception but continue with whatever data we have
+            Logger.LogError($"Error initializing AppCache: {ex.InnerException?.Message ?? ex.Message}");
+        }
+
+        var uwpResults = appCache.UWPs
             .Where((application) => application.Enabled)
             .Select(UwpToAppItem);
 
-        var win32Results = AppCache.Instance.Value.Win32s
+        var win32Results = appCache.Win32s
             .Where((application) => application.Enabled && application.Valid)
             .Select(app =>
             {

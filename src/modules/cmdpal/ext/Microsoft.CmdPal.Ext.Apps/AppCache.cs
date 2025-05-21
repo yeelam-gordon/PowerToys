@@ -27,6 +27,9 @@ public sealed partial class AppCache : IDisposable
     public IList<UWPApplication> UWPs => _packageRepository.Items;
 
     public static readonly Lazy<AppCache> Instance = new(() => new());
+    
+    private bool _isInitialized = false;
+    private readonly object _initLock = new object();
 
     public AppCache()
     {
@@ -34,19 +37,40 @@ public sealed partial class AppCache : IDisposable
         _win32ProgramRepository = new Win32ProgramRepository(_win32ProgramRepositoryHelper.FileSystemWatchers.Cast<IFileSystemWatcherWrapper>().ToList(), AllAppsSettings.Instance, _win32ProgramRepositoryHelper.PathsToWatch);
 
         _packageRepository = new PackageRepository(new PackageCatalogWrapper());
-
-        var a = Task.Run(() =>
+        
+        // Start initialization in background to maintain compatibility with existing code
+        // that expects constructor to initialize everything
+        Task.Run(async () => await InitializeAsync());
+    }
+    
+    public async Task InitializeAsync()
+    {
+        // Only allow initialization to happen once
+        if (_isInitialized)
         {
-            _win32ProgramRepository.IndexPrograms();
-        });
+            return;
+        }
+        
+        lock (_initLock)
+        {
+            if (_isInitialized)
+            {
+                return;
+            }
+            
+            // Mark as initialized early to prevent concurrent initialization attempts
+            _isInitialized = true;
+        }
 
-        var b = Task.Run(() =>
+        var indexWin32Task = Task.Run(() => _win32ProgramRepository.IndexPrograms());
+        var indexPackagesTask = Task.Run(() => 
         {
             _packageRepository.IndexPrograms();
             UpdateUWPIconPath(ThemeHelper.GetCurrentTheme());
         });
 
-        Task.WaitAll(a, b);
+        // Use WhenAll instead of WaitAll to properly await both tasks
+        await Task.WhenAll(indexWin32Task, indexPackagesTask);
 
         AllAppsSettings.Instance.LastIndexTime = DateTime.Today;
     }

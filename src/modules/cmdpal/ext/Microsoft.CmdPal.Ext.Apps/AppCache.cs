@@ -57,22 +57,34 @@ public sealed partial class AppCache : IDisposable
             {
                 return;
             }
-            
-            // Mark as initialized early to prevent concurrent initialization attempts
-            _isInitialized = true;
         }
 
-        var indexWin32Task = Task.Run(() => _win32ProgramRepository.IndexPrograms());
-        var indexPackagesTask = Task.Run(() => 
+        try 
         {
-            _packageRepository.IndexPrograms();
-            UpdateUWPIconPath(ThemeHelper.GetCurrentTheme());
-        });
+            var indexWin32Task = Task.Run(() => _win32ProgramRepository.IndexPrograms());
+            var indexPackagesTask = Task.Run(() => 
+            {
+                _packageRepository.IndexPrograms();
+                UpdateUWPIconPath(ThemeHelper.GetCurrentTheme());
+            });
 
-        // Use WhenAll instead of WaitAll to properly await both tasks
-        await Task.WhenAll(indexWin32Task, indexPackagesTask);
+            // Use WhenAll instead of WaitAll to properly await both tasks
+            await Task.WhenAll(indexWin32Task, indexPackagesTask);
 
-        AllAppsSettings.Instance.LastIndexTime = DateTime.Today;
+            AllAppsSettings.Instance.LastIndexTime = DateTime.Today;
+            
+            // Only mark as initialized if we successfully completed initialization
+            lock (_initLock)
+            {
+                _isInitialized = true;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            // Log error but don't mark as initialized so we can try again
+            ManagedCommon.Logger.LogError($"Error in AppCache initialization: {ex.Message}");
+            throw; // Re-throw to let caller handle
+        }
     }
 
     private void UpdateUWPIconPath(Theme theme)

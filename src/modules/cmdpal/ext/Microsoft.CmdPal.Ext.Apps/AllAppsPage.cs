@@ -76,18 +76,23 @@ public sealed partial class AllAppsPage : ListPage
         // Make sure initialization was started
         var appCache = AppCache.Instance.Value;
         
-        // Wait for initialization to complete if needed, using Task.Run to avoid deadlocks
-        // by ensuring we're not blocking the UI thread with a synchronous wait
-        // Note: Since appCache.InitializeAsync() is idempotent (due to _isInitialized check),
-        // calling it again here is safe
         try
         {
-            Task.Run(async () => await appCache.InitializeAsync()).Wait();
+            // Use ContinueWith to avoid potential deadlocks that can occur with Wait()
+            // This pattern is safer when being called from UI threads
+            var initTask = Task.Run(async () => await appCache.InitializeAsync());
+            initTask.ConfigureAwait(false).GetAwaiter().GetResult();
         }
         catch (AggregateException ex)
         {
-            // Log the inner exception but continue with whatever data we have
-            Logger.LogError($"Error initializing AppCache: {ex.InnerException?.Message ?? ex.Message}");
+            // Log the detailed inner exception but continue with whatever data we have
+            var innerMsg = ex.InnerExceptions.FirstOrDefault()?.Message ?? ex.Message;
+            Logger.LogError($"Error initializing AppCache: {innerMsg}");
+        }
+        catch (Exception ex)
+        {
+            // Log other exceptions
+            Logger.LogError($"Error initializing AppCache: {ex.Message}");
         }
 
         var uwpResults = appCache.UWPs

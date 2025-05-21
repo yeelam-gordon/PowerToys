@@ -69,5 +69,17 @@ namespace Peek.FilePreviewer.Controls
             // Prevent the keyboard accelerator to be called twice
             args.Handled = true;
         }
+
+        /// <summary>
+        /// Explicitly cleanup media player resources to prevent them from persisting as media players in the system
+        /// </summary>
+        public void CleanupMediaPlayer()
+        {
+            if (PlayerElement?.MediaPlayer != null)
+            {
+                PlayerElement.MediaPlayer.Pause();
+                PlayerElement.MediaPlayer.Source = null;
+            }
+        }
     }
 }

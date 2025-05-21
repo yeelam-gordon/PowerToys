@@ -200,10 +200,23 @@ namespace Peek.UI
             this.Restore();
             this.Hide();
 
+            // Clean up media players to prevent them from persisting in the system
+            CleanupMediaPlayers();
+
             ViewModel.Uninitialize();
             ViewModel.ScalingFactor = 1;
 
             this.Content.KeyUp -= Content_KeyUp;
+        }
+
+        /// <summary>
+        /// Cleanup media player resources to prevent them from persisting in the system's volume mixer
+        /// </summary>
+        private void CleanupMediaPlayers()
+        {
+            // Find FilePreviewer control and call its cleanup method
+            var filePreviewer = this.FindDescendant<Peek.FilePreviewer.FilePreview>();
+            filePreviewer?.CleanupMediaPlayers();
         }
 
         /// <summary>

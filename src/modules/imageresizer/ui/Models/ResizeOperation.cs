@@ -317,7 +317,15 @@ namespace ImageResizer.Models
 
             var supportedExtensions = encoder.CodecInfo.FileExtensions.Split(',');
             var extension = _fileSystem.Path.GetExtension(_file);
-            if (!supportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+            
+            // Special handling for HEIC/HEIF files
+            if (extension.Equals(".heic", StringComparison.OrdinalIgnoreCase) || 
+                extension.Equals(".heif", StringComparison.OrdinalIgnoreCase))
+            {
+                // Convert HEIC to a supported format (typically JPEG)
+                extension = supportedExtensions.FirstOrDefault();
+            }
+            else if (!supportedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
             {
                 extension = supportedExtensions.FirstOrDefault();
             }

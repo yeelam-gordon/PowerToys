@@ -29,6 +29,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         public List<PowerAccentLanguageModel> Languages { get; } = [
             new PowerAccentLanguageModel("SPECIAL", "QuickAccent_SelectedLanguage_Special", SpecialGroup),
             new PowerAccentLanguageModel("BG", "QuickAccent_SelectedLanguage_Bulgarian", LanguageGroup),
+            new PowerAccentLanguageModel("BY", "QuickAccent_SelectedLanguage_Belarusian", LanguageGroup),
             new PowerAccentLanguageModel("CA", "QuickAccent_SelectedLanguage_Catalan", LanguageGroup),
             new PowerAccentLanguageModel("CRH", "QuickAccent_SelectedLanguage_Crimean", LanguageGroup),
             new PowerAccentLanguageModel("CUR", "QuickAccent_SelectedLanguage_Currency", SpecialGroup),

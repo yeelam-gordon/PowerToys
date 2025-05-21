@@ -12,6 +12,7 @@ namespace PowerAccent.Core
     {
         SPECIAL,
         BG,
+        BY,
         CA,
         CRH,
         CUR,
@@ -74,6 +75,7 @@ namespace PowerAccent.Core
                 {
                     Language.SPECIAL => GetDefaultLetterKeySPECIAL(letter), // Special Characters
                     Language.BG => GetDefaultLetterKeyBG(letter), // Bulgarian
+                    Language.BY => GetDefaultLetterKeyBY(letter), // Belarusian
                     Language.CA => GetDefaultLetterKeyCA(letter), // Catalan
                     Language.CRH => GetDefaultLetterKeyCRH(letter), // Crimean Tatar
                     Language.CUR => GetDefaultLetterKeyCUR(letter), // Currency
@@ -129,6 +131,7 @@ namespace PowerAccent.Core
             if (!_allLanguagesCache.TryGetValue(letter, out string[] cachedValue))
             {
                 cachedValue = GetDefaultLetterKeyBG(letter)
+                .Union(GetDefaultLetterKeyBY(letter))
                 .Union(GetDefaultLetterKeyCA(letter))
                 .Union(GetDefaultLetterKeyCRH(letter))
                 .Union(GetDefaultLetterKeyCUR(letter))
@@ -236,6 +239,21 @@ namespace PowerAccent.Core
             return letter switch
             {
                 LetterKey.VK_I => new[] { "й" },
+                _ => Array.Empty<string>(),
+            };
+        }
+
+        // Belarusian
+        private static string[] GetDefaultLetterKeyBY(LetterKey letter)
+        {
+            return letter switch
+            {
+                LetterKey.VK_C => new[] { "ć", "č" },
+                LetterKey.VK_L => new[] { "ł" },
+                LetterKey.VK_N => new[] { "ń" },
+                LetterKey.VK_S => new[] { "ś", "š" },
+                LetterKey.VK_U => new[] { "ŭ", "ў" },
+                LetterKey.VK_Z => new[] { "ź", "ž" },
                 _ => Array.Empty<string>(),
             };
         }

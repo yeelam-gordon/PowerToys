@@ -100,37 +100,58 @@ public sealed partial class AllAppsPage : ListPage
             Logger.LogError($"Error waiting for AppCache initialization: {ex.Message}");
         }
 
-        var uwpResults = appCache.UWPs
-            .Where((application) => application.Enabled)
-            .Select(UwpToAppItem);
+        var resultList = new List<AppItem>();
 
-        var win32Results = appCache.Win32s
-            .Where((application) => application.Enabled && application.Valid)
-            .Select(app =>
-            {
-                var icoPath = string.IsNullOrEmpty(app.IcoPath) ?
-                    (app.AppType == Win32Program.ApplicationType.InternetShortcutApplication ?
-                        app.IcoPath :
-                        app.FullPath) :
-                    app.IcoPath;
+        // Add UWP apps if that component was initialized
+        if (appCache.IsUWPInitialized)
+        {
+            var uwpResults = appCache.UWPs
+                .Where((application) => application.Enabled)
+                .Select(UwpToAppItem);
+            resultList.AddRange(uwpResults);
+        }
+        else
+        {
+            Logger.LogWarning("UWP applications were not initialized - showing only Win32 apps");
+        }
 
-                // icoPath = icoPath.EndsWith(".lnk", System.StringComparison.InvariantCultureIgnoreCase) ? (icoPath + ",0") : icoPath;
-                icoPath = icoPath.EndsWith(".lnk", System.StringComparison.InvariantCultureIgnoreCase) ?
-                    app.FullPath :
-                    icoPath;
-                return new AppItem()
+        // Add Win32 apps if that component was initialized
+        if (appCache.IsWin32Initialized)
+        {
+            var win32Results = appCache.Win32s
+                .Where((application) => application.Enabled && application.Valid)
+                .Select(app =>
                 {
-                    Name = app.Name,
-                    Subtitle = app.Description,
-                    Type = app.Type(),
-                    IcoPath = icoPath,
-                    ExePath = !string.IsNullOrEmpty(app.LnkFilePath) ? app.LnkFilePath : app.FullPath,
-                    DirPath = app.Location,
-                    Commands = app.GetCommands(),
-                };
-            });
+                    var icoPath = string.IsNullOrEmpty(app.IcoPath) ?
+                        (app.AppType == Win32Program.ApplicationType.InternetShortcutApplication ?
+                            app.IcoPath :
+                            app.FullPath) :
+                        app.IcoPath;
 
-        return uwpResults.Concat(win32Results).OrderBy(app => app.Name).ToList();
+                    // icoPath = icoPath.EndsWith(".lnk", System.StringComparison.InvariantCultureIgnoreCase) ? (icoPath + ",0") : icoPath;
+                    icoPath = icoPath.EndsWith(".lnk", System.StringComparison.InvariantCultureIgnoreCase) ?
+                        app.FullPath :
+                        icoPath;
+                    return new AppItem()
+                    {
+                        Name = app.Name,
+                        Subtitle = app.Description,
+                        Type = app.Type(),
+                        IcoPath = icoPath,
+                        ExePath = !string.IsNullOrEmpty(app.LnkFilePath) ? app.LnkFilePath : app.FullPath,
+                        DirPath = app.Location,
+                        Commands = app.GetCommands(),
+                    };
+                });
+            resultList.AddRange(win32Results);
+        }
+        else
+        {
+            Logger.LogWarning("Win32 applications were not initialized - showing only UWP apps");
+        }
+
+        // If we have any results, sort them by name
+        return resultList.OrderBy(app => app.Name).ToList();
     }
 
     private AppItem UwpToAppItem(UWPApplication app)

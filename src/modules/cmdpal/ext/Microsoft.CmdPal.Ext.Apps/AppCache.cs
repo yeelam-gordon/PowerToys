@@ -29,11 +29,15 @@ public sealed partial class AppCache : IDisposable
     public static readonly Lazy<AppCache> Instance = new(() => new());
     
     private bool _isInitialized = false;
+    private bool _win32Initialized = false;
+    private bool _uwpInitialized = false;
     private readonly object _initLock = new object();
     private Task _initializationTask; // Track the initialization task
 
-    // Public property to check initialization state
+    // Public properties to check initialization state
     public bool IsInitialized => _isInitialized;
+    public bool IsWin32Initialized => _win32Initialized;
+    public bool IsUWPInitialized => _uwpInitialized;
 
     public AppCache()
     {
@@ -63,47 +67,86 @@ public sealed partial class AppCache : IDisposable
     
     public async Task InitializeAsync()
     {
-        // Only allow initialization to happen once
-        if (_isInitialized)
+        // Only allow full initialization to happen once
+        if (_isInitialized && _win32Initialized && _uwpInitialized)
         {
             return;
         }
         
         lock (_initLock)
         {
-            if (_isInitialized)
+            if (_isInitialized && _win32Initialized && _uwpInitialized)
             {
                 return;
             }
             
-            // Set initialization flag before proceeding to prevent duplicate initialization
+            // We continue with initialization for any components not yet initialized
         }
 
-        try 
+        bool anySucceeded = false;
+
+        // Initialize Win32 programs if not already initialized
+        if (!_win32Initialized)
         {
-            var indexWin32Task = Task.Run(() => _win32ProgramRepository.IndexPrograms());
-            var indexPackagesTask = Task.Run(() => 
+            try 
             {
-                _packageRepository.IndexPrograms();
-                UpdateUWPIconPath(ThemeHelper.GetCurrentTheme());
-            });
+                await Task.Run(() => _win32ProgramRepository.IndexPrograms());
+                
+                lock (_initLock)
+                {
+                    _win32Initialized = true;
+                    anySucceeded = true;
+                }
+                ManagedCommon.Logger.LogTrace("Win32 programs initialized successfully");
+            }
+            catch (System.Exception ex)
+            {
+                // Log error but continue with UWP initialization
+                ManagedCommon.Logger.LogError($"Error in Win32 programs initialization: {ex.Message}");
+                ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+        }
 
-            // Use WhenAll instead of WaitAll to properly await both tasks
-            await Task.WhenAll(indexWin32Task, indexPackagesTask);
+        // Initialize UWP apps if not already initialized
+        if (!_uwpInitialized)
+        {
+            try 
+            {
+                await Task.Run(() => 
+                {
+                    _packageRepository.IndexPrograms();
+                    UpdateUWPIconPath(ThemeHelper.GetCurrentTheme());
+                });
+                
+                lock (_initLock)
+                {
+                    _uwpInitialized = true;
+                    anySucceeded = true;
+                }
+                ManagedCommon.Logger.LogTrace("UWP applications initialized successfully");
+            }
+            catch (System.Exception ex)
+            {
+                // Log error but don't fail completely
+                ManagedCommon.Logger.LogError($"Error in UWP applications initialization: {ex.Message}");
+                ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+        }
 
+        // Consider initialization complete if at least one repository initialized successfully
+        if (anySucceeded)
+        {
             AllAppsSettings.Instance.LastIndexTime = DateTime.Today;
             
-            // Only mark as initialized if we successfully completed initialization
             lock (_initLock)
             {
                 _isInitialized = true;
             }
         }
-        catch (System.Exception ex)
+        else
         {
-            // Log error but don't mark as initialized so we can try again
-            ManagedCommon.Logger.LogError($"Error in AppCache initialization: {ex.Message}");
-            throw; // Re-throw to let caller handle
+            ManagedCommon.Logger.LogError("All AppCache initialization attempts failed");
+            throw new System.Exception("Failed to initialize AppCache - all program repositories failed to initialize");
         }
     }
 

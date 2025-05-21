@@ -51,6 +51,7 @@ public partial class PowerAccent : IDisposable
         _keyboardListener.InitHook();
         _settingService = new SettingsService(_keyboardListener);
         _usageInfo = new CharactersUsageInfo();
+        _usageInfo.LoadUsageData();
 
         SetEvents();
     }
@@ -123,6 +124,7 @@ public partial class PowerAccent : IDisposable
         else if (!_usageInfo.Empty())
         {
             _usageInfo.Clear();
+            _usageInfo.SaveUsageData();
         }
 
         if (WindowsFunctions.IsCapsLockState() || WindowsFunctions.IsShiftState())
@@ -340,6 +342,13 @@ public partial class PowerAccent : IDisposable
     public void Dispose()
     {
         _keyboardListener.UnInitHook();
+        
+        // Make sure to save usage data if it exists and frequency sorting is enabled
+        if (_settingService.SortByUsageFrequency && !_usageInfo.Empty())
+        {
+            _usageInfo.SaveUsageData();
+        }
+        
         GC.SuppressFinalize(this);
     }
 

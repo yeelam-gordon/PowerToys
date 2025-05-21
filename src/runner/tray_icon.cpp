@@ -261,6 +261,39 @@ LRESULT __stdcall tray_icon_window_proc(HWND window, UINT message, WPARAM wparam
 
 void start_tray_icon(bool isProcessElevated)
 {
+    // Check if the tray icon is disabled in settings
+    auto general_settings = get_general_settings();
+    if (!general_settings.showSystemTrayIcon)
+    {
+        // Don't start the tray icon, but still set up the HWND for messages
+        auto h_instance = reinterpret_cast<HINSTANCE>(&__ImageBase);
+        auto icon = LoadIcon(h_instance, MAKEINTRESOURCE(APPICON));
+        WNDCLASS wc = {};
+        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wc.hInstance = h_instance;
+        wc.lpszClassName = pt_tray_icon_window_class;
+        wc.style = CS_HREDRAW | CS_VREDRAW;
+        wc.lpfnWndProc = tray_icon_window_proc;
+        wc.hIcon = icon;
+        RegisterClass(&wc);
+        auto hwnd = CreateWindowW(wc.lpszClassName,
+                                pt_tray_icon_window_class,
+                                WS_OVERLAPPEDWINDOW | WS_POPUP,
+                                CW_USEDEFAULT,
+                                CW_USEDEFAULT,
+                                CW_USEDEFAULT,
+                                CW_USEDEFAULT,
+                                nullptr,
+                                nullptr,
+                                wc.hInstance,
+                                nullptr);
+        WINRT_VERIFY(hwnd);
+        CentralizedHotkeys::RegisterWindow(hwnd);
+        CentralizedKeyboardHook::RegisterWindow(hwnd);
+        tray_icon_hwnd = hwnd;
+        return;
+    }
+
     auto h_instance = reinterpret_cast<HINSTANCE>(&__ImageBase);
     auto icon = LoadIcon(h_instance, MAKEINTRESOURCE(APPICON));
     if (icon)

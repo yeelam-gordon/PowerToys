@@ -263,6 +263,10 @@
                         </ComboBox>
                     </tkcontrols:SettingsCard>
 
+                    <tkcontrols:SettingsCard x:Uid="GeneralPage_ShowSystemTrayIcon">
+                        <ToggleSwitch x:Uid="ToggleSwitch" IsOn="{x:Bind ViewModel.ShowSystemTrayIcon, Mode=TwoWay}" />
+                    </tkcontrols:SettingsCard>
+
                     <tkcontrols:SettingsCard x:Uid="GeneralPage_RunAtStartUp" IsEnabled="{x:Bind ViewModel.IsRunAtStartupGPOManaged, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}">
                         <ToggleSwitch x:Uid="ToggleSwitch" IsOn="{x:Bind ViewModel.Startup, Mode=TwoWay}" />
                     </tkcontrols:SettingsCard>
@@ -436,6 +440,11 @@
                                     x:Uid="GeneralPage_ViewDiagnosticDataViewer"
                                     ActionIcon="{ui:FontIcon Glyph=&#xE8A7;}"
                                     Click="ViewDiagnosticData_Click"
+                                    IsClickEnabled="True" />
+                                <tkcontrols:SettingsCard
+                                    x:Uid="General_GenerateBugReport"
+                                    ActionIcon="{ui:FontIcon Glyph=&#xE8A7;}"
+                                    Click="GenerateBugReport_Click"
                                     IsClickEnabled="True" />
                             </tkcontrols:SettingsExpander.Items>
                         </tkcontrols:SettingsExpander>

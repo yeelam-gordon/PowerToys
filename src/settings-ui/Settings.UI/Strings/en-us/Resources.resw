@@ -3732,6 +3732,18 @@ Activate by holding the key for the character you want to add an accent to, then
     <value>Shell integration</value>
     <comment>This refers to directly integrating in with Windows</comment>
   </data>
+  <data name="GeneralPage_ShowSystemTrayIcon.Header" xml:space="preserve">
+    <value>Show system tray icon</value>
+  </data>
+  <data name="GeneralPage_ShowSystemTrayIcon.Description" xml:space="preserve">
+    <value>This settings page is accessible by running the PowerToys executable again</value>
+  </data>
+  <data name="General_GenerateBugReport.Header" xml:space="preserve">
+    <value>Generate bug report package</value>
+  </data>
+  <data name="General_GenerateBugReport.Description" xml:space="preserve">
+    <value>Create zip folder with logs on the Desktop</value>
+  </data>
   <data name="GPO_SettingIsManaged.Title" xml:space="preserve">
     <value>This setting is managed by your organization.</value>
   </data>

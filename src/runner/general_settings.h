@@ -15,6 +15,7 @@ struct GeneralSettings
     bool downloadUpdatesAutomatically;
     bool showWhatsNewAfterUpdates;
     bool enableExperimentation;
+    bool showSystemTrayIcon;
     std::wstring theme;
     std::wstring systemTheme;
     std::wstring powerToysVersion;

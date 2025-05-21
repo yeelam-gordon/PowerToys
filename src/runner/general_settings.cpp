@@ -20,6 +20,7 @@ static bool download_updates_automatically = true;
 static bool show_whats_new_after_updates = true;
 static bool enable_experimentation = true;
 static bool enable_warnings_elevated_apps = true;
+static bool show_system_tray_icon = true;
 
 json::JsonObject GeneralSettings::to_json()
 {
@@ -46,6 +47,7 @@ json::JsonObject GeneralSettings::to_json()
     result.SetNamedValue(L"enable_experimentation", json::value(enableExperimentation));
     result.SetNamedValue(L"is_admin", json::value(isAdmin));
     result.SetNamedValue(L"enable_warnings_elevated_apps", json::value(enableWarningsElevatedApps));
+    result.SetNamedValue(L"show_system_tray_icon", json::value(showSystemTrayIcon));
     result.SetNamedValue(L"theme", json::value(theme));
     result.SetNamedValue(L"system_theme", json::value(systemTheme));
     result.SetNamedValue(L"powertoys_version", json::value(powerToysVersion));
@@ -67,6 +69,7 @@ json::JsonObject load_general_settings()
     show_whats_new_after_updates = loaded.GetNamedBoolean(L"show_whats_new_after_updates", true);
     enable_experimentation = loaded.GetNamedBoolean(L"enable_experimentation", true);
     enable_warnings_elevated_apps = loaded.GetNamedBoolean(L"enable_warnings_elevated_apps", true);
+    show_system_tray_icon = loaded.GetNamedBoolean(L"show_system_tray_icon", true);
 
     return loaded;
 }
@@ -83,6 +86,7 @@ GeneralSettings get_general_settings()
         .downloadUpdatesAutomatically = download_updates_automatically && is_user_admin,
         .showWhatsNewAfterUpdates = show_whats_new_after_updates,
         .enableExperimentation = enable_experimentation,
+        .showSystemTrayIcon = show_system_tray_icon,
         .theme = settings_theme,
         .systemTheme = WindowsColors::is_dark_mode() ? L"dark" : L"light",
         .powerToysVersion = get_product_version()
@@ -111,6 +115,8 @@ void apply_general_settings(const json::JsonObject& general_configs, bool save)
     show_whats_new_after_updates = general_configs.GetNamedBoolean(L"show_whats_new_after_updates", true);
 
     enable_experimentation = general_configs.GetNamedBoolean(L"enable_experimentation", true);
+    
+    show_system_tray_icon = general_configs.GetNamedBoolean(L"show_system_tray_icon", true);
 
     // apply_general_settings is called by the runner's WinMain, so we can just force the run at startup gpo rule here.
     auto gpo_run_as_startup = powertoys_gpo::getConfiguredRunAtStartupValue();

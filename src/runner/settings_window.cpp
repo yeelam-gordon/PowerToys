@@ -132,6 +132,18 @@ std::optional<std::wstring> dispatch_json_action_to_module(const json::JsonObjec
 
                     result.emplace(json.Stringify());
                 }
+                else if (action == L"report_bug")
+                {
+                    launch_bug_report();
+                }
+                else if (action == L"exit_app")
+                {
+                    const auto pt_main_window = FindWindowW(pt_tray_icon_window_class, nullptr);
+                    if (pt_main_window != nullptr)
+                    {
+                        SendMessageW(pt_main_window, WM_CLOSE, 0, 0);
+                    }
+                }
             }
             catch (...)
             {

@@ -150,6 +150,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             _autoDownloadUpdates = GeneralSettingsConfig.AutoDownloadUpdates;
             _showWhatsNewAfterUpdates = GeneralSettingsConfig.ShowWhatsNewAfterUpdates;
             _enableExperimentation = GeneralSettingsConfig.EnableExperimentation;
+            _showSystemTrayIcon = GeneralSettingsConfig.ShowSystemTrayIcon;
 
             _isElevated = isElevated;
             _runElevated = GeneralSettingsConfig.RunElevated;
@@ -249,6 +250,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         private bool _enableViewDataDiagnostics;
         private bool _enableViewDataDiagnosticsOnLoad;
         private bool _viewDiagnosticDataViewerChanged;
+        private bool _showSystemTrayIcon;
 
         private UpdatingSettings.UpdatingState _updatingState = UpdatingSettings.UpdatingState.UpToDate;
         private string _newAvailableVersion = string.Empty;
@@ -550,6 +552,24 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 {
                     _enableExperimentation = value;
                     GeneralSettingsConfig.EnableExperimentation = value;
+                    NotifyPropertyChanged();
+                }
+            }
+        }
+
+        public bool ShowSystemTrayIcon
+        {
+            get
+            {
+                return _showSystemTrayIcon;
+            }
+
+            set
+            {
+                if (_showSystemTrayIcon != value)
+                {
+                    _showSystemTrayIcon = value;
+                    GeneralSettingsConfig.ShowSystemTrayIcon = value;
                     NotifyPropertyChanged();
                 }
             }

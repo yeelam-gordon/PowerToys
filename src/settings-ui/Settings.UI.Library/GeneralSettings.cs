@@ -71,6 +71,10 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
         [JsonPropertyName("enable_experimentation")]
         public bool EnableExperimentation { get; set; }
+        
+        // Gets or sets a value indicating whether the system tray icon is shown.
+        [JsonPropertyName("show_system_tray_icon")]
+        public bool ShowSystemTrayIcon { get; set; }
 
         public GeneralSettings()
         {
@@ -81,6 +85,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             ShowNewUpdatesToastNotification = true;
             AutoDownloadUpdates = false;
             EnableExperimentation = true;
+            ShowSystemTrayIcon = true;
             Theme = "system";
             SystemTheme = "light";
             try

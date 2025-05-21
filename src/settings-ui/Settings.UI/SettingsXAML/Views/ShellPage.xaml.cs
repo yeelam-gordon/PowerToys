@@ -457,5 +457,10 @@ namespace Microsoft.PowerToys.Settings.UI.Views
         {
             navigationView.IsPaneOpen = !navigationView.IsPaneOpen;
         }
+
+        private void ExitButton_Click(object sender, RoutedEventArgs e)
+        {
+            SendDefaultIPCMessage("{\"general\":{\"action\":{\"exit_app\":true}}}");
+        }
     }
 }

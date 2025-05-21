@@ -30,6 +30,10 @@ public sealed partial class AppCache : IDisposable
     
     private bool _isInitialized = false;
     private readonly object _initLock = new object();
+    private Task _initializationTask; // Track the initialization task
+
+    // Public property to check initialization state
+    public bool IsInitialized => _isInitialized;
 
     public AppCache()
     {
@@ -40,7 +44,21 @@ public sealed partial class AppCache : IDisposable
         
         // Start initialization in background to maintain compatibility with existing code
         // that expects constructor to initialize everything
-        Task.Run(async () => await InitializeAsync());
+        _initializationTask = InitializeAsync();
+    }
+    
+    // Wait for initialization to complete without starting a new initialization
+    public async Task WaitForInitializationAsync()
+    {
+        if (_isInitialized)
+        {
+            return;
+        }
+        
+        if (_initializationTask != null)
+        {
+            await _initializationTask;
+        }
     }
     
     public async Task InitializeAsync()
@@ -57,6 +75,8 @@ public sealed partial class AppCache : IDisposable
             {
                 return;
             }
+            
+            // Set initialization flag before proceeding to prevent duplicate initialization
         }
 
         try 

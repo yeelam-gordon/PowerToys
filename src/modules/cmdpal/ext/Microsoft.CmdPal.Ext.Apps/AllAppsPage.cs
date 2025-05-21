@@ -2,6 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -73,26 +74,30 @@ public sealed partial class AllAppsPage : ListPage
 
     internal List<AppItem> GetPrograms()
     {
-        // Make sure initialization was started
+        // Use the cached instance
         var appCache = AppCache.Instance.Value;
         
         try
         {
-            // Use ContinueWith to avoid potential deadlocks that can occur with Wait()
-            // This pattern is safer when being called from UI threads
-            var initTask = Task.Run(async () => await appCache.InitializeAsync());
-            initTask.ConfigureAwait(false).GetAwaiter().GetResult();
+            // Don't re-initialize, just wait for the ongoing initialization to complete
+            // if it hasn't completed yet
+            if (!appCache.IsInitialized)
+            {
+                // Use ConfigureAwait(false) to avoid potential deadlocks when being called from UI threads
+                Task.Run(async () => await appCache.WaitForInitializationAsync())
+                    .ConfigureAwait(false).GetAwaiter().GetResult();
+            }
         }
         catch (AggregateException ex)
         {
             // Log the detailed inner exception but continue with whatever data we have
             var innerMsg = ex.InnerExceptions.FirstOrDefault()?.Message ?? ex.Message;
-            Logger.LogError($"Error initializing AppCache: {innerMsg}");
+            Logger.LogError($"Error waiting for AppCache initialization: {innerMsg}");
         }
         catch (Exception ex)
         {
             // Log other exceptions
-            Logger.LogError($"Error initializing AppCache: {ex.Message}");
+            Logger.LogError($"Error waiting for AppCache initialization: {ex.Message}");
         }
 
         var uwpResults = appCache.UWPs

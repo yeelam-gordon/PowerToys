@@ -84,8 +84,12 @@ namespace ColorPicker.Keyboard
 
             if (virtualCode == KeyInterop.VirtualKeyFromKey(Key.Back) && e.KeyboardState == GlobalKeyboardHook.KeyboardState.KeyDown)
             {
-                e.Handled = _appStateHandler.HandleEscPressed();
-                return;
+                // Only handle backspace when Color Picker has focus
+                if (_appStateHandler.IsColorPickerVisible() && _appStateHandler.IsColorPickerActive())
+                {
+                    e.Handled = _appStateHandler.HandleEscPressed();
+                    return;
+                }
             }
 
             if (CheckMoveNeeded(virtualCode, Key.Up, e, 0, -1))

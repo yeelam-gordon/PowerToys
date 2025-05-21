@@ -8,6 +8,7 @@ using System;
 using System.Globalization;
 using System.Text;
 using System.Windows;
+using System.IO;
 
 using ImageResizer.Models;
 using ImageResizer.Properties;
@@ -53,6 +54,12 @@ namespace ImageResizer
             }
 
             var batch = ResizeBatch.FromCommandLine(Console.In, e?.Args);
+            
+            // Check settings and if we haven't prompted for HEIC codec yet
+            if (!Settings.Default.PromptedForHEICCodec)
+            {
+                CheckForHeicFiles();
+            }
 
             // TODO: Add command-line parameters that can be used in lieu of the input page (issue #14)
             var mainWindow = new MainWindow(new MainViewModel(batch, Settings.Default));
@@ -60,6 +67,36 @@ namespace ImageResizer
 
             // Temporary workaround for issue #1273
             WindowHelpers.BringToForeground(new System.Windows.Interop.WindowInteropHelper(mainWindow).Handle);
+        }
+
+        // Check for HEIC files in common locations
+        private void CheckForHeicFiles()
+        {
+            try
+            {
+                // Check if HEIC codec is already installed
+                if (HEICHelper.IsHEICCodecInstalled())
+                {
+                    return;
+                }
+                
+                // Get common paths for pictures
+                string[] commonPictureDirs = new string[]
+                {
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyPictures),
+                    Environment.GetFolderPath(Environment.SpecialFolder.CommonPictures),
+                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
+                };
+                
+                if (HEICHelper.HasHEICFiles(commonPictureDirs))
+                {
+                    HEICHelper.PromptToInstallHEICCodec();
+                }
+            }
+            catch (Exception)
+            {
+                // Silently ignore any errors in this optional feature
+            }
         }
 
         public void Dispose()

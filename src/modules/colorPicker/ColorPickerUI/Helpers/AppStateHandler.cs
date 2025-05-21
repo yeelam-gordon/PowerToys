@@ -195,6 +195,12 @@ namespace ColorPicker.Helpers
             return _colorPickerShown;
         }
 
+        public bool IsColorPickerActive()
+        {
+            // Check if the Color Picker's window is active (has focus)
+            return Application.Current.MainWindow != null && Application.Current.MainWindow.IsActive;
+        }
+
         private void MainWindow_Closed(object sender, EventArgs e)
         {
             AppClosed?.Invoke(this, EventArgs.Empty);

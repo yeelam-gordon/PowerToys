@@ -269,8 +269,48 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
 
     public void IndexPrograms()
     {
-        var applications = Programs.Win32Program.All(_settings);
-
-        SetList(applications);
+        try
+        {
+            // Break down the sources to allow partial success if some sources fail
+            var applications = new List<Win32Program>();
+            bool anySourceSucceeded = false;
+            
+            // Get apps from custom program sources
+            try 
+            {
+                var customSources = Programs.Win32Program.All(_settings);
+                applications.AddRange(customSources);
+                anySourceSucceeded = true;
+                ManagedCommon.Logger.LogTrace("Win32ProgramRepository: Successfully loaded applications from custom sources");
+            }
+            catch (Exception ex)
+            {
+                // Log the error but continue with other sources
+                ManagedCommon.Logger.LogError($"Win32ProgramRepository: Error loading applications from custom sources: {ex.Message}");
+                ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+            
+            // Set the list with whatever applications we managed to collect
+            if (anySourceSucceeded)
+            {
+                SetList(applications);
+                ManagedCommon.Logger.LogTrace($"Win32ProgramRepository: Indexed {applications.Count} Win32 applications");
+            }
+            else
+            {
+                // If all sources failed, log the error but keep any existing items
+                ManagedCommon.Logger.LogError("Win32ProgramRepository: All Win32 program sources failed to load");
+                if (Items.Count > 0)
+                {
+                    ManagedCommon.Logger.LogTrace($"Win32ProgramRepository: Keeping {Items.Count} existing Win32 applications");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log the error but don't throw it further
+            ManagedCommon.Logger.LogError($"Win32ProgramRepository: Critical error in IndexPrograms: {ex.Message}");
+            ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
+        }
     }
 }

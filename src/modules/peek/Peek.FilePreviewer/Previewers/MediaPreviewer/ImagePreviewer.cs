@@ -63,7 +63,7 @@ namespace Peek.FilePreviewer.Previewers
         private static readonly HashSet<string> _supportedFileTypes =
             BitmapDecoder.GetDecoderInformationEnumerator()
                 .SelectMany(di => di.FileExtensions)
-                .Union([".svg", ".qoi"])
+                .Union([".svg", ".qoi", ".psd", ".psb", ".ai"])
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         public static bool IsItemSupported(IFileSystemItem item)

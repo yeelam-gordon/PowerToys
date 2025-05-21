@@ -57,10 +57,14 @@ namespace Microsoft.CmdPal.UI.ViewModels.Helpers
             // Hiragana: 3040-309F
             // Katakana: 30A0-30FF
             // Katakana Phonetic Extensions: 31F0-31FF
+            // Note: Kanji (Chinese characters used in Japanese) are covered by the same ranges
+            // as Chinese characters, so we also need to check those ranges
             return text.Any(c =>
                 (c >= 0x3040 && c <= 0x309F) ||
                 (c >= 0x30A0 && c <= 0x30FF) ||
-                (c >= 0x31F0 && c <= 0x31FF));
+                (c >= 0x31F0 && c <= 0x31FF) ||
+                // Also include Kanji ranges, which overlap with Chinese character ranges
+                (c >= 0x4E00 && c <= 0x9FFF));
         }
 
         /// <summary>

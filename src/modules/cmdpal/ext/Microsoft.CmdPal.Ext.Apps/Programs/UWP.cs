@@ -121,35 +121,72 @@ public partial class UWP
 
     public static UWPApplication[] All()
     {
-        var windows10 = new Version(10, 0);
-        var support = Environment.OSVersion.Version.Major >= windows10.Major;
-        if (support)
+        try
         {
-            var applications = CurrentUserPackages().AsParallel().SelectMany(p =>
+            var windows10 = new Version(10, 0);
+            var support = Environment.OSVersion.Version.Major >= windows10.Major;
+            if (!support)
             {
-                UWP u;
-                try
+                Logger.LogTrace("UWP: UWP apps not supported on this OS version");
+                return Array.Empty<UWPApplication>();
+            }
+            
+            // Get all UWP applications from system packages
+            var applications = new List<UWPApplication>();
+            bool anyPackageProcessed = false;
+            
+            try
+            {
+                // Get list of packages for current user
+                var packages = CurrentUserPackages().ToList();
+                Logger.LogTrace($"UWP: Found {packages.Count} packages for current user");
+                
+                // Process each package individually to allow partial success
+                foreach (var p in packages)
                 {
-                    u = new UWP(p);
-                    u.InitializeAppInfo(p.InstalledLocation);
+                    try
+                    {
+                        var u = new UWP(p);
+                        u.InitializeAppInfo(p.InstalledLocation);
+                        
+                        if (u.Apps.Count > 0)
+                        {
+                            applications.AddRange(u.Apps);
+                            anyPackageProcessed = true;
+                            Logger.LogTrace($"UWP: Successfully processed package {u.FamilyName} with {u.Apps.Count} apps");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        // Log error for this package but continue with others
+                        Logger.LogError($"UWP: Error processing package {p.FamilyName}: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
-                {
-                    Logger.LogError(ex.Message);
-                    return Array.Empty<UWPApplication>();
-                }
-
-                return u.Apps;
-            });
-
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"UWP: Error getting packages: {ex.Message}");
+                Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+            
+            if (!anyPackageProcessed)
+            {
+                Logger.LogError("UWP: Failed to process any UWP packages");
+                return Array.Empty<UWPApplication>();
+            }
+            
+            // Filter out disabled apps
             var updatedListWithoutDisabledApps = applications
-            .Where(t1 => AllAppsSettings.Instance.DisabledProgramSources.All(x => x.UniqueIdentifier != t1.UniqueIdentifier))
-            .Select(x => x);
-
-            return updatedListWithoutDisabledApps.ToArray();
+                .Where(t1 => AllAppsSettings.Instance.DisabledProgramSources.All(x => x.UniqueIdentifier != t1.UniqueIdentifier))
+                .ToArray();
+                
+            Logger.LogTrace($"UWP: Successfully loaded {updatedListWithoutDisabledApps.Length} UWP applications in total");
+            return updatedListWithoutDisabledApps;
         }
-        else
+        catch (Exception ex)
         {
+            Logger.LogError($"UWP: Critical error in All method: {ex.Message}");
+            Logger.LogError($"Stack trace: {ex.StackTrace}");
             return Array.Empty<UWPApplication>();
         }
     }

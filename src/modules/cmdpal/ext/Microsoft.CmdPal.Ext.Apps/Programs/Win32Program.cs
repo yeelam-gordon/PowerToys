@@ -822,43 +822,147 @@ public class Win32Program : IProgram
             // Multiple paths could have the same programPaths and we don't want to resolve / lookup them multiple times
             var paths = new HashSet<string>(defaultHashsetSize);
             var runCommandPaths = new HashSet<string>(defaultHashsetSize);
+            bool anySourceSucceeded = false;
 
             // Parallelize multiple sources, and priority based on paths which most likely contain .lnks which are formatted
-            var sources = new (bool IsEnabled, Func<IEnumerable<string>> GetPaths)[]
+            var sources = new (bool IsEnabled, Func<IEnumerable<string>> GetPaths, string SourceName)[]
             {
-                (true, () => CustomProgramPaths(settings.ProgramSources, settings.ProgramSuffixes)),
-                (settings.EnableStartMenuSource, () => StartMenuProgramPaths(settings.ProgramSuffixes)),
-                (settings.EnableDesktopSource, () => DesktopProgramPaths(settings.ProgramSuffixes)),
-                (settings.EnableRegistrySource, () => RegistryAppProgramPaths(settings.ProgramSuffixes)),
+                (true, () => CustomProgramPaths(settings.ProgramSources, settings.ProgramSuffixes), "Custom Program Sources"),
+                (settings.EnableStartMenuSource, () => StartMenuProgramPaths(settings.ProgramSuffixes), "Start Menu"),
+                (settings.EnableDesktopSource, () => DesktopProgramPaths(settings.ProgramSuffixes), "Desktop"),
+                (settings.EnableRegistrySource, () => RegistryAppProgramPaths(settings.ProgramSuffixes), "Registry"),
             };
 
             // Run commands are always set as AppType "RunCommand"
-            var runCommandSources = new (bool IsEnabled, Func<IEnumerable<string>> GetPaths)[]
+            var runCommandSources = new (bool IsEnabled, Func<IEnumerable<string>> GetPaths, string SourceName)[]
             {
-                (settings.EnablePathEnvironmentVariableSource, () => PathEnvironmentProgramPaths(settings.RunCommandSuffixes)),
+                (settings.EnablePathEnvironmentVariableSource, () => PathEnvironmentProgramPaths(settings.RunCommandSuffixes), "PATH Environment"),
             };
 
             var disabledProgramsList = settings.DisabledProgramSources;
 
-            // Get all paths but exclude all normal .Executables
-            paths.UnionWith(sources
-                .AsParallel()
-                .SelectMany(source => source.IsEnabled ? source.GetPaths() : Enumerable.Empty<string>())
-                .Where(programPath => disabledProgramsList.All(x => x.UniqueIdentifier != programPath))
-                .Where(path => !ExecutableApplicationExtensions.Contains(Extension(path))));
-            runCommandPaths.UnionWith(runCommandSources
-                .AsParallel()
-                .SelectMany(source => source.IsEnabled ? source.GetPaths() : Enumerable.Empty<string>())
-                .Where(programPath => disabledProgramsList.All(x => x.UniqueIdentifier != programPath)));
+            // Process each source individually to allow partial success
+            foreach (var source in sources)
+            {
+                if (!source.IsEnabled)
+                {
+                    continue;
+                }
 
-            var programs = paths.AsParallel().Select(source => GetProgramFromPath(source));
-            var runCommandPrograms = runCommandPaths.AsParallel().Select(source => GetRunCommandProgramFromPath(source));
+                try
+                {
+                    var sourcePaths = source.GetPaths()
+                        .Where(programPath => disabledProgramsList.All(x => x.UniqueIdentifier != programPath))
+                        .Where(path => !ExecutableApplicationExtensions.Contains(Extension(path)))
+                        .ToList();
+                    
+                    paths.UnionWith(sourcePaths);
+                    
+                    Logger.LogTrace($"Win32Program: Successfully loaded {sourcePaths.Count} paths from {source.SourceName}");
+                    anySourceSucceeded = true;
+                }
+                catch (Exception ex)
+                {
+                    // Log error but continue with other sources
+                    Logger.LogError($"Win32Program: Error loading paths from {source.SourceName}: {ex.Message}");
+                    Logger.LogError($"Stack trace: {ex.StackTrace}");
+                }
+            }
+            
+            // Process run command sources
+            foreach (var source in runCommandSources)
+            {
+                if (!source.IsEnabled)
+                {
+                    continue;
+                }
 
-            return DeduplicatePrograms(programs.Concat(runCommandPrograms).Where(program => program?.Valid == true));
+                try
+                {
+                    var sourcePaths = source.GetPaths()
+                        .Where(programPath => disabledProgramsList.All(x => x.UniqueIdentifier != programPath))
+                        .ToList();
+                    
+                    runCommandPaths.UnionWith(sourcePaths);
+                    
+                    Logger.LogTrace($"Win32Program: Successfully loaded {sourcePaths.Count} paths from {source.SourceName}");
+                    anySourceSucceeded = true;
+                }
+                catch (Exception ex)
+                {
+                    // Log error but continue with other sources
+                    Logger.LogError($"Win32Program: Error loading paths from {source.SourceName}: {ex.Message}");
+                    Logger.LogError($"Stack trace: {ex.StackTrace}");
+                }
+            }
+
+            if (!anySourceSucceeded)
+            {
+                Logger.LogError("Win32Program: All program sources failed to load");
+                return Array.Empty<Win32Program>();
+            }
+
+            List<Win32Program> programs = new List<Win32Program>();
+            List<Win32Program> runCommandPrograms = new List<Win32Program>();
+
+            // Process regular programs
+            try
+            {
+                programs = paths.AsParallel()
+                    .Select(source => {
+                        try 
+                        {
+                            return GetProgramFromPath(source);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"Win32Program: Error processing path {source}: {ex.Message}");
+                            return null;
+                        }
+                    })
+                    .Where(program => program?.Valid == true)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Win32Program: Error processing program paths: {ex.Message}");
+                Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+
+            // Process run command programs
+            try
+            {
+                runCommandPrograms = runCommandPaths.AsParallel()
+                    .Select(source => {
+                        try
+                        {
+                            return GetRunCommandProgramFromPath(source);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.LogError($"Win32Program: Error processing run command path {source}: {ex.Message}");
+                            return null;
+                        }
+                    })
+                    .Where(program => program?.Valid == true)
+                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Win32Program: Error processing run command paths: {ex.Message}");
+                Logger.LogError($"Stack trace: {ex.StackTrace}");
+            }
+
+            var allPrograms = programs.Concat(runCommandPrograms).Where(p => p != null);
+            var result = DeduplicatePrograms(allPrograms);
+            
+            Logger.LogTrace($"Win32Program: Successfully loaded {result.Count} Win32 programs in total");
+            return result;
         }
         catch (Exception e)
         {
-            Logger.LogError(e.Message);
+            Logger.LogError($"Win32Program: Critical error in All method: {e.Message}");
+            Logger.LogError($"Stack trace: {e.StackTrace}");
             return Array.Empty<Win32Program>();
         }
     }

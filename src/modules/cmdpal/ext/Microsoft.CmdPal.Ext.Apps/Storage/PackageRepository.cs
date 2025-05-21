@@ -115,89 +115,11 @@ internal sealed partial class PackageRepository : ListRepository<UWPApplication>
 
     public void IndexPrograms()
     {
-        try
-        {
-            var windows10 = new Version(10, 0);
-            var support = Environment.OSVersion.Version.Major >= windows10.Major;
+        var windows10 = new Version(10, 0);
+        var support = Environment.OSVersion.Version.Major >= windows10.Major;
 
-            if (!support)
-            {
-                ManagedCommon.Logger.LogTrace("PackageRepository: UWP apps not supported on this OS version");
-                SetList(Array.Empty<UWPApplication>());
-                return;
-            }
+        var applications = support ? Programs.UWP.All() : Array.Empty<UWPApplication>();
 
-            try
-            {
-                // Get all UWP applications from system packages
-                var applications = new List<UWPApplication>();
-                bool anyPackageProcessed = false;
-
-                // Process packages for current user
-                try
-                {
-                    var packages = CurrentUserPackages().ToList();
-                    ManagedCommon.Logger.LogTrace($"PackageRepository: Found {packages.Count} packages for current user");
-                    
-                    // Process each package individually to allow partial success
-                    foreach (var package in packages)
-                    {
-                        try
-                        {
-                            var uwp = new UWP(package);
-                            uwp.InitializeAppInfo(package.InstalledLocation);
-                            
-                            // Filter out disabled apps
-                            var validApps = uwp.Apps
-                                .Where(app => AllAppsSettings.Instance.DisabledProgramSources
-                                    .All(x => x.UniqueIdentifier != app.UniqueIdentifier))
-                                .ToList();
-                            
-                            applications.AddRange(validApps);
-                            anyPackageProcessed = true;
-                            
-                            ManagedCommon.Logger.LogTrace($"PackageRepository: Successfully processed package {uwp.FamilyName} with {validApps.Count} apps");
-                        }
-                        catch (Exception ex)
-                        {
-                            // Log error for this package but continue with others
-                            ManagedCommon.Logger.LogError($"PackageRepository: Error processing package {package.FamilyName}: {ex.Message}");
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ManagedCommon.Logger.LogError($"PackageRepository: Error getting packages: {ex.Message}");
-                    ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
-                }
-                
-                // Set the list with whatever applications we managed to collect
-                if (anyPackageProcessed)
-                {
-                    SetList(applications);
-                    ManagedCommon.Logger.LogTrace($"PackageRepository: Indexed {applications.Count} UWP applications");
-                }
-                else
-                {
-                    // If no package was processed successfully, log the error but keep any existing items
-                    ManagedCommon.Logger.LogError("PackageRepository: Failed to process any UWP packages");
-                    if (Items.Count > 0)
-                    {
-                        ManagedCommon.Logger.LogTrace($"PackageRepository: Keeping {Items.Count} existing UWP applications");
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                ManagedCommon.Logger.LogError($"PackageRepository: Error in UWP initialization: {ex.Message}");
-                ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
-            }
-        }
-        catch (Exception ex)
-        {
-            // Log the error but don't throw it further
-            ManagedCommon.Logger.LogError($"PackageRepository: Critical error in IndexPrograms: {ex.Message}");
-            ManagedCommon.Logger.LogError($"Stack trace: {ex.StackTrace}");
-        }
+        SetList(applications);
     }
 }

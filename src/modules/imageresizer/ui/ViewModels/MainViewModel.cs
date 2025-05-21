@@ -5,8 +5,9 @@
 #pragma warning restore IDE0073
 
 using System.Collections.Generic;
+using System.IO;
 using System.Windows.Input;
-
+using System.Linq;
 using ImageResizer.Helpers;
 using ImageResizer.Models;
 using ImageResizer.Properties;
@@ -48,6 +49,17 @@ namespace ImageResizer.ViewModels
             if (_batch.Files.Count == 0)
             {
                 _batch.Files.AddRange(view.OpenPictureFiles());
+            }
+
+            // Check if any input files are HEIC/HEIF
+            bool hasHeicFiles = _batch.Files.Any(file => 
+                Path.GetExtension(file).Equals(".heic", System.StringComparison.OrdinalIgnoreCase) ||
+                Path.GetExtension(file).Equals(".heif", System.StringComparison.OrdinalIgnoreCase));
+
+            // If there are HEIC files and we haven't prompted yet, check if the codec is installed
+            if (hasHeicFiles && !HEICHelper.IsHEICCodecInstalled() && !_settings.PromptedForHEICCodec)
+            {
+                HEICHelper.PromptToInstallHEICCodec();
             }
 
             CurrentPage = new InputViewModel(_settings, this, view, _batch);

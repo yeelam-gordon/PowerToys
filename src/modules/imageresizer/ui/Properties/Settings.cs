@@ -50,6 +50,7 @@ namespace ImageResizer.Properties
         private bool _keepDateModified;
         private System.Guid _fallbackEncoder;
         private CustomSize _customSize;
+        private bool _promptedForHEICCodec;
 
         public Settings()
         {
@@ -73,6 +74,7 @@ namespace ImageResizer.Properties
             FallbackEncoder = new System.Guid("19e4a5aa-5662-4fc5-a0c0-1758028e1057");
             CustomSize = new CustomSize(ResizeFit.Fit, 1024, 640, ResizeUnit.Pixel);
             AllSizes = new AllSizesCollection(this);
+            PromptedForHEICCodec = false;
         }
 
         [JsonIgnore]
@@ -410,6 +412,18 @@ namespace ImageResizer.Properties
             }
         }
 
+        [JsonConverter(typeof(WrappedJsonValueConverter))]
+        [JsonPropertyName("imageresizer_promptedForHEICCodec")]
+        public bool PromptedForHEICCodec
+        {
+            get => _promptedForHEICCodec;
+            set
+            {
+                _promptedForHEICCodec = value;
+                NotifyPropertyChanged();
+            }
+        }
+
         public static string SettingsPath { get => _settingsPath; set => _settingsPath = value; }
 
         public event PropertyChangedEventHandler PropertyChanged;
@@ -476,6 +490,7 @@ namespace ImageResizer.Properties
                 FallbackEncoder = jsonSettings.FallbackEncoder;
                 CustomSize = jsonSettings.CustomSize;
                 SelectedSizeIndex = jsonSettings.SelectedSizeIndex;
+                PromptedForHEICCodec = jsonSettings.PromptedForHEICCodec;
 
                 if (jsonSettings.Sizes.Count > 0)
                 {

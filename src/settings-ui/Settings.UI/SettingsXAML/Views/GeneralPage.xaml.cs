@@ -165,5 +165,10 @@ namespace Microsoft.PowerToys.Settings.UI.Views
         {
             await Task.Run(ViewModel.ViewDiagnosticData);
         }
+
+        private void GenerateBugReport_Click(object sender, RoutedEventArgs e)
+        {
+            ShellPage.SendDefaultIPCMessage("{\"general\":{\"action\":{\"report_bug\":true}}}");
+        }
     }
 }

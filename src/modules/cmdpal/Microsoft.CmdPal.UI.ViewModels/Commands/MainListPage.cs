@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.Messaging;
 using Microsoft.CmdPal.Ext.Apps;
+using Microsoft.CmdPal.UI.ViewModels.Helpers;
 using Microsoft.CmdPal.UI.ViewModels.Messages;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
@@ -232,8 +233,13 @@ public partial class MainListPage : DynamicListPage,
         // above "git" from "whatever"
         max = max + extensionTitleMatch;
 
-        // ... but downweight them
-        var matchSomething = (max / (isFallback ? 3 : 1))
+        // Determine if query contains non-space-joining language characters (like Chinese/Japanese)
+        bool containsNonSpaceJoiningChars = LanguageHelpers.ContainsNonSpaceJoiningLanguageCharacters(query);
+
+        // ... but downweight the fallback items
+        // If query contains non-space-joining language characters, apply more aggressive downweighting to fallback items
+        var fallbackDivisor = isFallback ? (containsNonSpaceJoiningChars ? 10 : 3) : 1;
+        var matchSomething = (max / fallbackDivisor)
             + (isAliasMatch ? 9001 : (isAliasSubstringMatch ? 1 : 0));
 
         // If we matched title, subtitle, or alias (something real), then
@@ -246,6 +252,12 @@ public partial class MainListPage : DynamicListPage,
             var history = _serviceProvider.GetService<AppStateModel>()!.RecentCommands;
             var recentWeightBoost = history.GetCommandHistoryWeight(id);
             finalScore += recentWeightBoost;
+        }
+
+        // For non-fallback items with non-space-joining language characters, boost their score
+        if (!isFallback && containsNonSpaceJoiningChars && nameMatch > 0)
+        {
+            finalScore += 30; // Add a significant boost to app matches when using Chinese/Japanese characters
         }
 
         return (int)finalScore;

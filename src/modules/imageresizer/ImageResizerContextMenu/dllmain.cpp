@@ -89,6 +89,18 @@ public:
             *cmdState = ECS_HIDDEN;
             return S_OK;
         }
+
+        // Check if the MSI context menu handler is registered and hide this one if it is
+        // This prevents duplicate entries in the context menu
+        HKEY hKey;
+        if (RegOpenKeyEx(HKEY_CLASSES_ROOT, L"CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}\\InprocServer32", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+        {
+            RegCloseKey(hKey);
+            // MSI version is installed, hide this one
+            *cmdState = ECS_HIDDEN;
+            return S_OK;
+        }
+
         // Hide if the file is not an image
         *cmdState = ECS_HIDDEN;
         // Suppressing C26812 warning as the issue is in the shtypes.h library

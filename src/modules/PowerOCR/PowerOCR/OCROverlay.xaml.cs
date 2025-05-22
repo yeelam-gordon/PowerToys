@@ -54,11 +54,19 @@ public partial class OCROverlay : Window
 
     public OCROverlay(System.Drawing.Rectangle screenRectangleParam, DpiScale dpiScaleParam)
     {
+        // Store the original screen rectangle and DPI scale
+        // These will be used for initial positioning and for reference
+        // during text extraction operations
         screenRectangle = screenRectangleParam;
         dpiScale = dpiScaleParam;
 
+        // Set window position and size, applying DPI scaling properly
+        // This positions the overlay window on the correct monitor
         Left = screenRectangle.Left;
         Top = screenRectangle.Top;
+        
+        // Apply DPI scaling to the window dimensions
+        // This ensures the window appears at the correct size on the monitor
         Width = screenRectangle.Width / dpiScale.DpiScaleX;
         Height = screenRectangle.Height / dpiScale.DpiScaleY;
 
@@ -136,8 +144,15 @@ public partial class OCROverlay : Window
 
         // The first move puts it on the correct monitor, which triggers WM_DPICHANGED
         // The +1/-1 coerces WPF to update Window.Top/Left/Width/Height in the second move
-        MoveWindow(hwnd, (int)(screenRectangle.Left + 1), (int)screenRectangle.Top, (int)(screenRectangle.Width - 1), (int)screenRectangle.Height, false);
-        MoveWindow(hwnd, (int)screenRectangle.Left, (int)screenRectangle.Top, (int)screenRectangle.Width, (int)screenRectangle.Height, true);
+        // For secondary monitors, ensure we're using the correct screen coordinates
+        // by using exact integer values from the screenRectangle
+        int left = screenRectangle.Left;
+        int top = screenRectangle.Top;
+        int width = screenRectangle.Width;
+        int height = screenRectangle.Height;
+        
+        MoveWindow(hwnd, left + 1, top, width - 1, height, false);
+        MoveWindow(hwnd, left, top, width, height, true);
     }
 
     private void Window_Unloaded(object sender, RoutedEventArgs e)

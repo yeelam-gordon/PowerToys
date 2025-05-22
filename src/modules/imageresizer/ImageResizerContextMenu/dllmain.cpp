@@ -92,11 +92,13 @@ public:
 
         // Check if the MSI context menu handler is registered and hide this one if it is
         // This prevents duplicate entries in the context menu
+        // The MSI handler has GUID: {51B4D7E5-7568-4234-B4BB-47FB3C016A69}
+        // This MSIX handler has GUID: {8F491918-259F-451A-950F-8C3EBF4864AF}
         HKEY hKey;
         if (RegOpenKeyEx(HKEY_CLASSES_ROOT, L"CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}\\InprocServer32", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
         {
             RegCloseKey(hKey);
-            // MSI version is installed, hide this one
+            // MSI version is installed, hide this one to avoid duplicate entries
             *cmdState = ECS_HIDDEN;
             return S_OK;
         }

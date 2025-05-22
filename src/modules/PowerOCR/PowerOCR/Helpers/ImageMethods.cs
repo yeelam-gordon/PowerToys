@@ -102,8 +102,20 @@ internal sealed class ImageMethods
 
     internal static async Task<string> GetClickedWord(OCROverlay passedWindow, System.Windows.Point clickedPoint, Language? preferredLanguage)
     {
+        // Get the original screen rectangle from the window construction
         Rectangle screenRectangle = passedWindow.GetScreenRectangle();
-        Bitmap bmp = new((int)screenRectangle.Width, (int)passedWindow.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+        
+        // Check if the clicked point is within the original screen rectangle
+        // This handles the case where the user clicks on a different monitor than the one
+        // where the OCROverlay was initially constructed
+        bool isWithinOriginalScreen = 
+            clickedPoint.X >= 0 && 
+            clickedPoint.X < screenRectangle.Width && 
+            clickedPoint.Y >= 0 && 
+            clickedPoint.Y < screenRectangle.Height;
+
+        // Create a bitmap for the screen capture
+        Bitmap bmp = new((int)screenRectangle.Width, (int)screenRectangle.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         Graphics g = Graphics.FromImage(bmp);
 
         // Get the absolute position of the window in screen coordinates
@@ -112,8 +124,11 @@ internal sealed class ImageMethods
         // Copy from the actual screen position to ensure correct capture on any monitor
         g.CopyFromScreen((int)absPosPoint.X, (int)absPosPoint.Y, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
 
-        // Use the clicked point directly for text extraction
-        System.Windows.Point adjustedPoint = new(clickedPoint.X, clickedPoint.Y);
+        // For multi-monitor setups, ensure the clicked point is treated correctly
+        // by keeping it within the bitmap bounds
+        System.Windows.Point adjustedPoint = new(
+            Math.Min(Math.Max(clickedPoint.X, 0), screenRectangle.Width - 1),
+            Math.Min(Math.Max(clickedPoint.Y, 0), screenRectangle.Height - 1));
 
         string resultText = await ExtractText(bmp, preferredLanguage, adjustedPoint);
         return resultText.Trim();

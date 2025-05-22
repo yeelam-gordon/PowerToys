@@ -54,12 +54,19 @@ public partial class OCROverlay : Window
 
     public OCROverlay(System.Drawing.Rectangle screenRectangleParam, DpiScale dpiScaleParam)
     {
+        // Store the original screen rectangle and DPI scale
+        // These will be used for initial positioning and for reference
+        // during text extraction operations
         screenRectangle = screenRectangleParam;
         dpiScale = dpiScaleParam;
 
         // Set window position and size, applying DPI scaling properly
+        // This positions the overlay window on the correct monitor
         Left = screenRectangle.Left;
         Top = screenRectangle.Top;
+        
+        // Apply DPI scaling to the window dimensions
+        // This ensures the window appears at the correct size on the monitor
         Width = screenRectangle.Width / dpiScale.DpiScaleX;
         Height = screenRectangle.Height / dpiScale.DpiScaleY;
 

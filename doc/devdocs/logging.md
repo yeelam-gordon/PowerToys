@@ -11,6 +11,15 @@ Logs are normally in a subfolder with the module name as title.
 
 The [BugReportTool](/tools/BugReportTool) will take logs from both locations when executed.
 
+### Log Retention Policy
+
+PowerToys implements a log retention policy that automatically cleans up log files older than 30 days. This helps prevent excessive disk space usage from accumulated logs. The cleanup process runs:
+
+1. When PowerToys updates itself
+2. When log files are accessed (through the spdlog library's rotation mechanism)
+
+Log files from previous versions are also automatically cleaned up when a new version of PowerToys is installed.
+
 ## Using a logger in a project
 
 ### Spdlog

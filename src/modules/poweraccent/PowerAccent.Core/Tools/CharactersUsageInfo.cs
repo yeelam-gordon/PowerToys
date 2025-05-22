@@ -22,6 +22,8 @@ namespace PowerAccent.Core.Tools
 
         private const string PowerAccentModuleName = "QuickAccent";
         private const string UsageDataFileName = "usage_data.json";
+        private int _changeCounter = 0;
+        private const int SaveFrequency = 10;
 
         public bool Empty()
         {
@@ -61,8 +63,15 @@ namespace PowerAccent.Core.Tools
 
             _characterUsageTimestamp[character] = DateTimeOffset.Now.ToUnixTimeSeconds();
             
-            // Save the updated usage data
-            SaveUsageData();
+            // Increment change counter
+            _changeCounter++;
+            
+            // Only save after certain number of changes
+            if (_changeCounter >= SaveFrequency)
+            {
+                SaveUsageData();
+                _changeCounter = 0;
+            }
         }
 
         public void LoadUsageData()
@@ -83,15 +92,20 @@ namespace PowerAccent.Core.Tools
                     var loadedData = JsonSerializer.Deserialize<CharactersUsageInfo>(jsonString);
                     if (loadedData != null)
                     {
-                        _characterUsageCounters = loadedData._characterUsageCounters;
-                        _characterUsageTimestamp = loadedData._characterUsageTimestamp;
+                        // Create temporary dictionaries and only assign on successful load
+                        var tempCounters = loadedData._characterUsageCounters;
+                        var tempTimestamps = loadedData._characterUsageTimestamp;
+                        
+                        // Only replace the existing data if loading was successful
+                        _characterUsageCounters = tempCounters;
+                        _characterUsageTimestamp = tempTimestamps;
                     }
                 }
             }
             catch (Exception)
             {
-                // If loading fails, continue with empty data
-                Clear();
+                // If loading fails, continue with existing data
+                // No Clear() call here to preserve existing data
             }
         }
 
@@ -114,6 +128,9 @@ namespace PowerAccent.Core.Tools
                 string filePath = Path.Combine(settingsPath, UsageDataFileName);
                 string jsonString = JsonSerializer.Serialize(this);
                 File.WriteAllText(filePath, jsonString);
+                
+                // Reset the counter after successful save
+                _changeCounter = 0;
             }
             catch (Exception)
             {

@@ -175,7 +175,7 @@ namespace ImageResizer.Models
             if (_settings.IgnoreOrientation
                 && !_settings.SelectedSize.HasAuto
                 && _settings.SelectedSize.Unit != ResizeUnit.Percent
-                && originalWidth < originalHeight != (width < height))
+                && (originalWidth < originalHeight) != (width < height))
             {
                 var temp = width;
                 width = height;

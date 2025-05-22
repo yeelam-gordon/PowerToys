@@ -4,6 +4,9 @@
 #include <common/utils/string_utils.h>
 #include <common/version/version.h>
 #include <common/version/helper.h>
+#include <common/logger/logger.h>
+#include <common/logger/logger_settings.h>
+#include <chrono>
 
 #include "updating.h"
 
@@ -198,6 +201,59 @@ namespace updating
         co_return download_success ? installer_download_path : std::nullopt;
     }
 
+    void cleanup_log_files(const std::filesystem::path& dir_path, int retention_days)
+    {
+        if (!std::filesystem::exists(dir_path) || !std::filesystem::is_directory(dir_path))
+        {
+            return;
+        }
+
+        try
+        {
+            const auto now = std::filesystem::file_time_type::clock::now();
+            const auto max_age = std::chrono::hours(24 * retention_days);
+
+            for (const auto& entry : std::filesystem::recursive_directory_iterator(dir_path))
+            {
+                if (!entry.is_regular_file())
+                {
+                    continue;
+                }
+
+                auto file_path = entry.path();
+                if (file_path.extension() == ".log")
+                {
+                    std::error_code ec;
+                    auto last_write_time = std::filesystem::last_write_time(file_path, ec);
+                    if (ec)
+                    {
+                        Logger::warn("Failed to get last write time for {}: {}", file_path.string(), ec.message());
+                        continue;
+                    }
+
+                    auto file_age = now - last_write_time;
+                    if (file_age > max_age)
+                    {
+                        std::error_code remove_ec;
+                        std::filesystem::remove(file_path, remove_ec);
+                        if (remove_ec)
+                        {
+                            Logger::warn("Failed to delete old log file {}: {}", file_path.string(), remove_ec.message());
+                        }
+                        else
+                        {
+                            Logger::info("Deleted old log file: {}", file_path.string());
+                        }
+                    }
+                }
+            }
+        }
+        catch (const std::exception& ex)
+        {
+            Logger::error("Error cleaning up log files in {}: {}", dir_path.string(), ex.what());
+        }
+    }
+
     void cleanup_updates()
     {
         auto update_dir = updating::get_pending_updates_path();
@@ -238,6 +294,23 @@ namespace updating
                     {
                         Logger::warn("Failed to delete log file {}. {}", entry.path().string(), err.message());
                     }
+                }
+            }
+        }
+
+        // Clean up log files based on age
+        auto root_folder = PTSettingsHelper::get_root_save_folder_location();
+        if (std::filesystem::exists(root_folder))
+        {
+            // Clean up main logs directory
+            cleanup_log_files(root_folder, LogSettings::retention);
+
+            // Also clean up logs in module-specific folders
+            for (const auto& entry : std::filesystem::directory_iterator(root_folder))
+            {
+                if (entry.is_directory())
+                {
+                    cleanup_log_files(entry.path(), LogSettings::retention);
                 }
             }
         }

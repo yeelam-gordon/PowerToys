@@ -55,6 +55,7 @@ internal sealed class ImageMethods
         using Bitmap bmp = new(screenRectangle.Width, screenRectangle.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using Graphics g = Graphics.FromImage(bmp);
 
+        // Capture exactly the screen area defined by the screenRectangle
         g.CopyFromScreen(screenRectangle.Left, screenRectangle.Top, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
         return BitmapToImageSource(bmp);
     }
@@ -69,9 +70,14 @@ internal sealed class ImageMethods
         using Graphics g = Graphics.FromImage(bmp);
         Rectangle screenRectangle = passedWindow.GetScreenRectangle();
 
+        // Calculate the absolute screen coordinates for the selected region
+        // This ensures correct capture on all monitors
+        int captureX = screenRectangle.Left + selectedRegion.Left;
+        int captureY = screenRectangle.Top + selectedRegion.Top;
+
         g.CopyFromScreen(
-            screenRectangle.Left + selectedRegion.Left,
-            screenRectangle.Top + selectedRegion.Top,
+            captureX,
+            captureY,
             0,
             0,
             bmp.Size,
@@ -100,10 +106,13 @@ internal sealed class ImageMethods
         Bitmap bmp = new((int)screenRectangle.Width, (int)passedWindow.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         Graphics g = Graphics.FromImage(bmp);
 
+        // Get the absolute position of the window in screen coordinates
         System.Windows.Point absPosPoint = passedWindow.GetAbsolutePosition();
-
+        
+        // Copy from the actual screen position to ensure correct capture on any monitor
         g.CopyFromScreen((int)absPosPoint.X, (int)absPosPoint.Y, 0, 0, bmp.Size, CopyPixelOperation.SourceCopy);
 
+        // Use the clicked point directly for text extraction
         System.Windows.Point adjustedPoint = new(clickedPoint.X, clickedPoint.Y);
 
         string resultText = await ExtractText(bmp, preferredLanguage, adjustedPoint);

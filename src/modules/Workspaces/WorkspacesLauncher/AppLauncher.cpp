@@ -90,20 +90,67 @@ namespace AppLauncher
     bool Launch(const WorkspacesData::WorkspacesProject::Application& app, ErrorList& launchErrors)
     {
         bool launched{ false };
+        
+        std::wstring appPathFinal = app.path;
+        std::wstring commandLineArgsFinal = app.commandLineArgs;
 
-        // packaged apps: check protocol in registry
-        // usage example: Settings with cmd args
-        if (!app.packageFullName.empty())
+        // First, check if it's a PWA app and set up its launch parameters
+        if (!app.pwaAppId.empty())
         {
-            auto names = RegistryUtils::GetUriProtocolNames(app.packageFullName);
-            if (!names.empty())
+            std::filesystem::path appPath(app.path);
+            if (appPath.filename() == NonLocalizable::EdgeFilename)
             {
-                Logger::trace(L"Launching packaged by protocol with command line args {}", app.name);
+                appPathFinal = appPath.parent_path() / NonLocalizable::EdgePwaFilename;
+                commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
+                
+                Logger::trace(L"Setting up Edge PWA launch for {} with appId {}", app.name, app.pwaAppId);
+            }
+            else if (appPath.filename() == NonLocalizable::ChromeFilename)
+            {
+                appPathFinal = appPath.parent_path() / NonLocalizable::ChromePwaFilename;
+                commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
+                
+                Logger::trace(L"Setting up Chrome PWA launch for {} with appId {}", app.name, app.pwaAppId);
+            }
+        }
 
-                std::wstring uriProtocolName = names[0];
-                std::wstring command = std::wstring(uriProtocolName + (app.commandLineArgs.starts_with(L":") ? L"" : L":") + app.commandLineArgs);
+        // PWA apps should skip these packaged app launch methods
+        if (app.pwaAppId.empty())
+        {
+            // packaged apps: check protocol in registry
+            // usage example: Settings with cmd args
+            if (!app.packageFullName.empty())
+            {
+                auto names = RegistryUtils::GetUriProtocolNames(app.packageFullName);
+                if (!names.empty())
+                {
+                    Logger::trace(L"Launching packaged by protocol with command line args {}", app.name);
 
-                auto res = LaunchApp(command, L"", app.isElevated);
+                    std::wstring uriProtocolName = names[0];
+                    std::wstring command = std::wstring(uriProtocolName + (app.commandLineArgs.starts_with(L":") ? L"" : L":") + app.commandLineArgs);
+
+                    auto res = LaunchApp(command, L"", app.isElevated);
+                    if (res.isOk())
+                    {
+                        launched = true;
+                    }
+                    else
+                    {
+                        launchErrors.push_back({ std::filesystem::path(app.path).filename(), res.error() });
+                    }
+                }
+                else
+                {
+                    Logger::info(L"Uri protocol names not found for {}", app.packageFullName);
+                }
+            }
+
+            // packaged apps: try launching first by AppUserModel.ID
+            // usage example: elevated Terminal
+            if (!launched && !app.appUserModelId.empty() && !app.packageFullName.empty())
+            {
+                Logger::trace(L"Launching {} as {} - {app.packageFullName}", app.name, app.appUserModelId, app.packageFullName);
+                auto res = LaunchApp(L"shell:AppsFolder\\" + app.appUserModelId, app.commandLineArgs, app.isElevated);
                 if (res.isOk())
                 {
                     launched = true;
@@ -113,71 +160,32 @@ namespace AppLauncher
                     launchErrors.push_back({ std::filesystem::path(app.path).filename(), res.error() });
                 }
             }
-            else
+
+            // protocol launch for steam
+            if (!launched && !app.appUserModelId.empty() && app.appUserModelId.contains(NonLocalizable::SteamProtocolPrefix))
             {
-                Logger::info(L"Uri protocol names not found for {}", app.packageFullName);
+                Logger::trace(L"Launching {} as {}", app.name, app.appUserModelId);
+                auto res = LaunchApp(app.appUserModelId, app.commandLineArgs, app.isElevated);
+                if (res.isOk())
+                {
+                    launched = true;
+                }
+                else
+                {
+                    launchErrors.push_back({ std::filesystem::path(app.path).filename(), res.error() });
+                }
+            }
+
+            // packaged apps: try launching by package full name
+            // doesn't work for elevated apps or apps with command line args
+            if (!launched && !app.packageFullName.empty() && app.commandLineArgs.empty() && !app.isElevated)
+            {
+                Logger::trace(L"Launching packaged app {}", app.name);
+                launched = LaunchPackagedApp(app.packageFullName, launchErrors);
             }
         }
 
-        // packaged apps: try launching first by AppUserModel.ID
-        // usage example: elevated Terminal
-        if (!launched && !app.appUserModelId.empty() && !app.packageFullName.empty())
-        {
-            Logger::trace(L"Launching {} as {} - {app.packageFullName}", app.name, app.appUserModelId, app.packageFullName);
-            auto res = LaunchApp(L"shell:AppsFolder\\" + app.appUserModelId, app.commandLineArgs, app.isElevated);
-            if (res.isOk())
-            {
-                launched = true;
-            }
-            else
-            {
-                launchErrors.push_back({ std::filesystem::path(app.path).filename(), res.error() });
-            }
-        }
-
-        // protocol launch for steam
-        if (!launched && !app.appUserModelId.empty() && app.appUserModelId.contains(NonLocalizable::SteamProtocolPrefix))
-        {
-            Logger::trace(L"Launching {} as {}", app.name, app.appUserModelId);
-            auto res = LaunchApp(app.appUserModelId, app.commandLineArgs, app.isElevated);
-            if (res.isOk())
-            {
-                launched = true;
-            }
-            else
-            {
-                launchErrors.push_back({ std::filesystem::path(app.path).filename(), res.error() });
-            }
-        }
-
-        // packaged apps: try launching by package full name
-        // doesn't work for elevated apps or apps with command line args
-        if (!launched && !app.packageFullName.empty() && app.commandLineArgs.empty() && !app.isElevated)
-        {
-            Logger::trace(L"Launching packaged app {}", app.name);
-            launched = LaunchPackagedApp(app.packageFullName, launchErrors);
-        }
-
-        std::wstring appPathFinal;
-        std::wstring commandLineArgsFinal;
-        appPathFinal = app.path;
-        commandLineArgsFinal = app.commandLineArgs;
-
-        if (!launched && !app.pwaAppId.empty())
-        {
-            std::filesystem::path appPath(app.path);
-            if (appPath.filename() == NonLocalizable::EdgeFilename)
-            {
-                appPathFinal = appPath.parent_path() / NonLocalizable::EdgePwaFilename;
-                commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
-            }
-            if (appPath.filename() == NonLocalizable::ChromeFilename)
-            {
-                appPathFinal = appPath.parent_path() / NonLocalizable::ChromePwaFilename;
-                commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
-            }
-        }
-
+        // Launch app with the appropriate path and command line args
         if (!launched)
         {
             Logger::trace(L"Launching {} at {}", app.name, appPathFinal);

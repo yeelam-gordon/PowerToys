@@ -21,12 +21,14 @@ using PowerToys.Interop;
 namespace ColorPicker.ViewModels
 {
     [Export(typeof(IMainViewModel))]
-    public class MainViewModel : ViewModelBase, IMainViewModel
+    public class MainViewModel : ViewModelBase, IMainViewModel, IDisposable
     {
         private readonly ZoomWindowHelper _zoomWindowHelper;
         private readonly AppStateHandler _appStateHandler;
         private readonly IUserSettings _userSettings;
         private KeyboardMonitor _keyboardMonitor;
+        private IMouseInfoProvider _mouseInfoProvider;
+        private bool _disposed;
 
         /// <summary>
         /// Backing field for <see cref="OtherColor"/>
@@ -56,6 +58,7 @@ namespace ColorPicker.ViewModels
             _appStateHandler = appStateHandler;
             _userSettings = userSettings;
             _keyboardMonitor = keyboardMonitor;
+            _mouseInfoProvider = mouseInfoProvider;
 
             NativeEventWaiter.WaitForEventLoop(
                 Constants.TerminateColorPickerSharedEvent(),
@@ -84,7 +87,7 @@ namespace ColorPicker.ViewModels
                 mouseInfoProvider.OnSecondaryMouseUp += MouseInfoProvider_OnSecondaryMouseUp;
             }
 
-            _userSettings.ShowColorName.PropertyChanged += (s, e) => { OnPropertyChanged(nameof(ShowColorName)); };
+            _userSettings.ShowColorName.PropertyChanged += ShowColorName_PropertyChanged;
 
             _appStateHandler.EnterPressed += AppStateHandler_EnterPressed;
             _appStateHandler.UserSessionStarted += AppStateHandler_UserSessionStarted;
@@ -99,6 +102,11 @@ namespace ColorPicker.ViewModels
             {
                 keyboardMonitor?.Start();
             }
+        }
+
+        private void ShowColorName_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ShowColorName));
         }
 
         private void AppStateHandler_UserSessionEnded(object sender, EventArgs e)
@@ -225,6 +233,44 @@ namespace ColorPicker.ViewModels
         public void RegisterWindowHandle(System.Windows.Interop.HwndSource hwndSource)
         {
             _appStateHandler.RegisterWindowHandle(hwndSource);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Unsubscribe from events to prevent memory leaks
+                    if (_mouseInfoProvider != null)
+                    {
+                        _mouseInfoProvider.MouseColorChanged -= Mouse_ColorChanged;
+                        _mouseInfoProvider.OnMouseDown -= MouseInfoProvider_OnMouseDown;
+                        _mouseInfoProvider.OnMouseWheel -= MouseInfoProvider_OnMouseWheel;
+                        _mouseInfoProvider.OnSecondaryMouseUp -= MouseInfoProvider_OnSecondaryMouseUp;
+                    }
+
+                    if (_userSettings != null)
+                    {
+                        _userSettings.ShowColorName.PropertyChanged -= ShowColorName_PropertyChanged;
+                    }
+                    
+                    if (_appStateHandler != null)
+                    {
+                        _appStateHandler.EnterPressed -= AppStateHandler_EnterPressed;
+                        _appStateHandler.UserSessionStarted -= AppStateHandler_UserSessionStarted;
+                        _appStateHandler.UserSessionEnded -= AppStateHandler_UserSessionEnded;
+                    }
+                }
+
+                _disposed = true;
+            }
         }
     }
 }

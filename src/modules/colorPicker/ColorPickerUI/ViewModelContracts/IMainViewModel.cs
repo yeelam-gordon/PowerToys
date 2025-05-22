@@ -2,11 +2,12 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Windows.Media;
 
 namespace ColorPicker.ViewModelContracts
 {
-    public interface IMainViewModel
+    public interface IMainViewModel : IDisposable
     {
         /// <summary>
         /// Gets the text representation of the selected color value

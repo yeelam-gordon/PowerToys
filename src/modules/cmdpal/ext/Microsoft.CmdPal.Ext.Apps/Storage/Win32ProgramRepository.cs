@@ -15,7 +15,7 @@ using Win32Program = Microsoft.CmdPal.Ext.Apps.Programs.Win32Program;
 
 namespace Microsoft.CmdPal.Ext.Apps.Storage;
 
-internal sealed partial class Win32ProgramRepository : ListRepository<Programs.Win32Program>, IProgramRepository
+internal sealed partial class Win32ProgramRepository : ListRepository<Programs.Win32Program>, IProgramRepository, IDisposable
 {
     private static readonly IFileSystem FileSystem = new FileSystem();
     private static readonly IPath Path = FileSystem.Path;
@@ -30,6 +30,7 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
     private Collection<string> extensionsToWatch = new Collection<string> { "*.exe", $"*{LnkExtension}", "*.appref-ms", $"*{UrlExtension}" };
 
     private bool _isDirty;
+    private bool _disposed;
 
     private static ConcurrentQueue<string> commonEventHandlingQueue = new ConcurrentQueue<string>();
 
@@ -272,5 +273,37 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
         var applications = Programs.Win32Program.All(_settings);
 
         SetList(applications);
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Unregister event handlers from each file system watcher
+                foreach (var watcher in _fileSystemWatcherHelpers)
+                {
+                    if (watcher is FileSystemWatcherWrapper fileSystemWatcher)
+                    {
+                        fileSystemWatcher.Created -= OnAppCreated;
+                        fileSystemWatcher.Deleted -= OnAppDeleted;
+                        fileSystemWatcher.Renamed -= OnAppRenamed;
+                        fileSystemWatcher.Changed -= OnAppChanged;
+                        
+                        // Disable events
+                        fileSystemWatcher.EnableRaisingEvents = false;
+                    }
+                }
+            }
+
+            _disposed = true;
+        }
     }
 }

@@ -102,6 +102,17 @@ public partial class Selector : FluentWindow, IDisposable, INotifyPropertyChange
 
     public void Dispose()
     {
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            _powerAccent.OnChangeDisplay -= PowerAccent_OnChangeDisplay;
+            _powerAccent.OnSelectCharacter -= PowerAccent_OnSelectionCharacter;
+        }
     }
 }

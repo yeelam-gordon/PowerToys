@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Microsoft.PowerToys.Settings.UI.Library.Utilities;
 
 namespace PowerAccent.Core.Tools
@@ -24,53 +25,73 @@ namespace PowerAccent.Core.Tools
         private const string UsageDataFileName = "usage_data.json";
         private int _changeCounter = 0;
         private const int SaveFrequency = 10;
+        
+        // Object for thread synchronization
+        private readonly object _lockObj = new object();
+        
+        // Task to track the current save operation
+        private Task _currentSaveTask = Task.CompletedTask;
 
         public bool Empty()
         {
-            return _characterUsageCounters.Count == 0;
+            lock (_lockObj)
+            {
+                return _characterUsageCounters.Count == 0;
+            }
         }
 
         public void Clear()
         {
-            _characterUsageCounters.Clear();
-            _characterUsageTimestamp.Clear();
+            lock (_lockObj)
+            {
+                _characterUsageCounters.Clear();
+                _characterUsageTimestamp.Clear();
+            }
         }
 
         public uint GetUsageFrequency(string character)
         {
-            _characterUsageCounters.TryGetValue(character, out uint frequency);
-
-            return frequency;
+            lock (_lockObj)
+            {
+                _characterUsageCounters.TryGetValue(character, out uint frequency);
+                return frequency;
+            }
         }
 
         public long GetLastUsageTimestamp(string character)
         {
-            _characterUsageTimestamp.TryGetValue(character, out long timestamp);
-
-            return timestamp;
+            lock (_lockObj)
+            {
+                _characterUsageTimestamp.TryGetValue(character, out long timestamp);
+                return timestamp;
+            }
         }
 
         public void IncrementUsageFrequency(string character)
         {
-            if (_characterUsageCounters.TryGetValue(character, out uint currentCount))
+            lock (_lockObj)
             {
-                _characterUsageCounters[character] = currentCount + 1;
-            }
-            else
-            {
-                _characterUsageCounters[character] = 1;
-            }
+                if (_characterUsageCounters.TryGetValue(character, out uint currentCount))
+                {
+                    _characterUsageCounters[character] = currentCount + 1;
+                }
+                else
+                {
+                    _characterUsageCounters[character] = 1;
+                }
 
-            _characterUsageTimestamp[character] = DateTimeOffset.Now.ToUnixTimeSeconds();
-            
-            // Increment change counter
-            _changeCounter++;
-            
-            // Only save after certain number of changes
-            if (_changeCounter >= SaveFrequency)
-            {
-                SaveUsageData();
-                _changeCounter = 0;
+                _characterUsageTimestamp[character] = DateTimeOffset.Now.ToUnixTimeSeconds();
+                
+                // Increment change counter
+                _changeCounter++;
+                
+                // Only save after certain number of changes
+                if (_changeCounter >= SaveFrequency)
+                {
+                    // Start save operation without awaiting (fire and forget)
+                    SaveUsageDataAsync();
+                    _changeCounter = 0;
+                }
             }
         }
 
@@ -92,13 +113,16 @@ namespace PowerAccent.Core.Tools
                     var loadedData = JsonSerializer.Deserialize<CharactersUsageInfo>(jsonString);
                     if (loadedData != null)
                     {
-                        // Create temporary dictionaries and only assign on successful load
-                        var tempCounters = loadedData._characterUsageCounters;
-                        var tempTimestamps = loadedData._characterUsageTimestamp;
-                        
-                        // Only replace the existing data if loading was successful
-                        _characterUsageCounters = tempCounters;
-                        _characterUsageTimestamp = tempTimestamps;
+                        lock (_lockObj)
+                        {
+                            // Create temporary dictionaries and only assign on successful load
+                            var tempCounters = loadedData._characterUsageCounters;
+                            var tempTimestamps = loadedData._characterUsageTimestamp;
+                            
+                            // Only replace the existing data if loading was successful
+                            _characterUsageCounters = tempCounters;
+                            _characterUsageTimestamp = tempTimestamps;
+                        }
                     }
                 }
             }
@@ -109,32 +133,81 @@ namespace PowerAccent.Core.Tools
             }
         }
 
+        // Public method that triggers the async save operation
         public void SaveUsageData()
         {
-            try
+            // Start save operation without awaiting (fire and forget)
+            SaveUsageDataAsync();
+        }
+        
+        // Private async implementation that does the actual saving
+        private Task SaveUsageDataAsync()
+        {
+            // Make a copy of the data to save while holding the lock
+            Dictionary<string, uint> countersCopy;
+            Dictionary<string, long> timestampsCopy;
+            
+            lock (_lockObj)
             {
-                string settingsPath = Path.Combine(
-                    Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                    "Microsoft", 
-                    "PowerToys",
-                    PowerAccentModuleName);
-                
-                // Create the directory if it doesn't exist
-                if (!Directory.Exists(settingsPath))
+                // We only lock while making a copy of the data
+                countersCopy = new Dictionary<string, uint>(_characterUsageCounters);
+                timestampsCopy = new Dictionary<string, long>(_characterUsageTimestamp);
+            }
+            
+            // Store a class to serialize with the copied data
+            var dataToSave = new CharactersUsageInfo
+            {
+                _characterUsageCounters = countersCopy,
+                _characterUsageTimestamp = timestampsCopy
+            };
+            
+            // Lock to ensure only one save operation runs at a time
+            lock (_currentSaveTask)
+            {
+                // If the previous task is still running, wait for it to complete
+                if (!_currentSaveTask.IsCompleted)
                 {
-                    Directory.CreateDirectory(settingsPath);
+                    try
+                    {
+                        // Try to wait for it, but don't block indefinitely
+                        _currentSaveTask.Wait(100);
+                    }
+                    catch (Exception)
+                    {
+                        // Ignore exceptions from the previous task
+                    }
                 }
                 
-                string filePath = Path.Combine(settingsPath, UsageDataFileName);
-                string jsonString = JsonSerializer.Serialize(this);
-                File.WriteAllText(filePath, jsonString);
+                // Create a new task for the save operation
+                _currentSaveTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        string settingsPath = Path.Combine(
+                            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                            "Microsoft", 
+                            "PowerToys",
+                            PowerAccentModuleName);
+                        
+                        // Create the directory if it doesn't exist
+                        if (!Directory.Exists(settingsPath))
+                        {
+                            Directory.CreateDirectory(settingsPath);
+                        }
+                        
+                        string filePath = Path.Combine(settingsPath, UsageDataFileName);
+                        string jsonString = JsonSerializer.Serialize(dataToSave);
+                        
+                        // Use async file operations to avoid blocking
+                        await File.WriteAllTextAsync(filePath, jsonString);
+                    }
+                    catch (Exception)
+                    {
+                        // Silently fail if saving doesn't work
+                    }
+                });
                 
-                // Reset the counter after successful save
-                _changeCounter = 0;
-            }
-            catch (Exception)
-            {
-                // Silently fail if saving doesn't work
+                return _currentSaveTask;
             }
         }
     }

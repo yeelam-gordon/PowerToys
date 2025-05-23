@@ -100,5 +100,24 @@ namespace PreviewPaneUnitTests
             const string expected = "<p><img src=\"#\" class=\"img-fluid\" alt=\"text\" title=\"Figure\" /></p>\n";
             Assert.AreEqual(expected, html);
         }
+
+        [TestMethod]
+        public void ExtensionHandlesHTMLDetailsTagCorrectly()
+        {
+            // arrange
+            string mdString = "# Test Markdown\n\nThis is a test.\n\n<details>\n<summary>Click me</summary>\n\nThis is hidden text\n</details>\n\nMore text.";
+            Microsoft.PowerToys.FilePreviewCommon.HTMLParsingExtension htmlParsingExtension = new Microsoft.PowerToys.FilePreviewCommon.HTMLParsingExtension(() => { });
+            MarkdownPipeline markdownPipeline = BuildPipeline(htmlParsingExtension);
+
+            // Act
+            string html = Markdown.ToHtml(mdString, markdownPipeline);
+
+            // Assert
+            // Verify that the <details> tag is present in the output
+            Assert.IsTrue(html.Contains("<details>"));
+            Assert.IsTrue(html.Contains("<summary>Click me</summary>"));
+            Assert.IsTrue(html.Contains("This is hidden text"));
+            Assert.IsTrue(html.Contains("</details>"));
+        }
     }
 }

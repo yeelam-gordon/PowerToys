@@ -53,29 +53,85 @@ namespace Awake.Core
         private static readonly CompositeFormat AwakeHours = CompositeFormat.Parse(Resources.AWAKE_HOURS);
         private static readonly BlockingCollection<ExecutionState> _stateQueue;
         private static CancellationTokenSource _tokenSource;
+        private static Thread? _monitorThread;
+        private static readonly object _monitorLock = new();
+        private static bool _monitorThreadRunning;
+        private static Timer? _stateRefreshTimer;
+        private static ExecutionState _currentState;
 
         static Manager()
         {
             _tokenSource = new CancellationTokenSource();
             _stateQueue = [];
             ModuleSettings = new SettingsUtils();
+            _monitorThreadRunning = false;
         }
 
         internal static void StartMonitor()
         {
-            Thread monitorThread = new(() =>
+            lock (_monitorLock)
             {
-                Thread.CurrentThread.IsBackground = false;
-                while (true)
+                // Check if monitor thread is already running
+                if (_monitorThreadRunning && _monitorThread?.IsAlive == true)
                 {
-                    ExecutionState state = _stateQueue.Take();
-
-                    Logger.LogInfo($"Setting state to {state}");
-
-                    SetAwakeState(state);
+                    Logger.LogInfo("Monitor thread is already running. No need to start a new one.");
+                    return;
                 }
-            });
-            monitorThread.Start();
+
+                if (_monitorThread?.IsAlive == false)
+                {
+                    Logger.LogWarning("Previous monitor thread has died. Starting a new one.");
+                }
+
+                _monitorThreadRunning = true;
+                _monitorThread = new Thread(() =>
+                {
+                    Thread.CurrentThread.IsBackground = false;
+                    try
+                    {
+                        Logger.LogInfo("Monitor thread started.");
+                        while (_monitorThreadRunning)
+                        {
+                            try
+                            {
+                                ExecutionState state = _stateQueue.Take();
+                                _currentState = state;
+
+                                Logger.LogInfo($"Setting state to {state}");
+
+                                SetAwakeState(state);
+                            }
+                            catch (ThreadAbortException)
+                            {
+                                Logger.LogWarning("Monitor thread is being aborted.");
+                                _monitorThreadRunning = false;
+                                break;
+                            }
+                            catch (Exception ex)
+                            {
+                                Logger.LogError($"Error in monitor thread: {ex.Message}");
+                                // Continue running despite errors
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.LogError($"Monitor thread failed: {ex.Message}");
+                        _monitorThreadRunning = false;
+                    }
+                });
+                _monitorThread.Start();
+            }
+        }
+
+        internal static void EnsureMonitorThreadIsRunning()
+        {
+            if (!_monitorThreadRunning || _monitorThread?.IsAlive != true)
+            {
+                Logger.LogWarning("Monitor thread is not running. Restarting it.");
+                _monitorThreadRunning = false; // Reset the flag
+                StartMonitor();
+            }
         }
 
         internal static void SetConsoleControlHandler(ConsoleEventHandler handler, bool addHandler)
@@ -139,6 +195,13 @@ namespace Awake.Core
             }
 
             _tokenSource = new CancellationTokenSource();
+
+            // Dispose the state refresh timer if it exists
+            if (_stateRefreshTimer != null)
+            {
+                _stateRefreshTimer.Dispose();
+                _stateRefreshTimer = null;
+            }
 
             Logger.LogInfo("New token source and thread token instantiated.");
         }
@@ -215,13 +278,43 @@ namespace Awake.Core
 
             Logger.LogInfo($"Indefinite keep-awake starting, invoked by {callerName}...");
 
-            _stateQueue.Add(ComputeAwakeState(keepDisplayOn));
+            // Ensure the monitor thread is running
+            EnsureMonitorThreadIsRunning();
+
+            // Calculate the state
+            ExecutionState state = ComputeAwakeState(keepDisplayOn);
+            _stateQueue.Add(state);
 
             IsDisplayOn = keepDisplayOn;
             CurrentOperatingMode = AwakeMode.INDEFINITE;
             ProcessId = processId;
 
             SetModeShellIcon();
+
+            // Set up a timer to periodically reapply the state in indefinite mode
+            // This ensures the system stays awake even if something else changes the state
+            if (_stateRefreshTimer != null)
+            {
+                _stateRefreshTimer.Dispose();
+                _stateRefreshTimer = null;
+            }
+
+            _stateRefreshTimer = new Timer(_ => 
+            {
+                Logger.LogInfo("Refreshing indefinite keep-awake state.");
+                
+                // Ensure monitor thread is still running
+                EnsureMonitorThreadIsRunning();
+                
+                // Reapply the current state
+                if (CurrentOperatingMode == AwakeMode.INDEFINITE)
+                {
+                    _stateQueue.Add(state);
+                }
+            }, 
+            null, 
+            TimeSpan.FromMinutes(5), // First run after 5 minutes
+            TimeSpan.FromMinutes(5)); // Then every 5 minutes
         }
 
         internal static void SetExpirableKeepAwake(DateTimeOffset expireAt, bool keepDisplayOn = true, [CallerMemberName] string callerName = "")
@@ -398,6 +491,16 @@ namespace Awake.Core
         internal static void CompleteExit(int exitCode)
         {
             SetPassiveKeepAwake(updateSettings: false);
+
+            // Clean up the state refresh timer if it exists
+            if (_stateRefreshTimer != null)
+            {
+                _stateRefreshTimer.Dispose();
+                _stateRefreshTimer = null;
+            }
+
+            // Signal the monitor thread to stop
+            _monitorThreadRunning = false;
 
             if (TrayHelper.WindowHandle != IntPtr.Zero)
             {

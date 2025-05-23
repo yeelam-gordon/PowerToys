@@ -422,6 +422,9 @@ namespace Awake
 
                 Logger.LogInfo($"Identified custom time shortcuts for the tray: {settings.Properties.CustomTrayTimes.Count}");
 
+                // Ensure monitor thread is healthy before applying settings
+                Manager.EnsureMonitorThreadIsRunning();
+
                 switch (settings.Properties.Mode)
                 {
                     case AwakeMode.PASSIVE:

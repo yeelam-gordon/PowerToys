@@ -814,14 +814,30 @@ UINT __stdcall RemoveScheduledTasksCA(MSIHANDLE hInstall)
     }
 
     // ------------------------------------------------------
-    // Get the pointer to the root task folder and delete the PowerToys subfolder.
+    // Get the pointer to the root task folder and check if the PowerToys subfolder still exists before deleting it
     hr = pService->GetFolder(_bstr_t(L"\\"), &pRootFolder);
     ExitOnFailure(hr, "Cannot get Root Folder pointer: %x", hr);
-    hr = pRootFolder->DeleteFolder(_bstr_t(L"PowerToys"), 0);
+    
+    // Try to get the PowerToys folder to check if it still exists
+    ITaskFolder *pTempFolder = nullptr;
+    HRESULT hrCheck = pService->GetFolder(_bstr_t(L"\\PowerToys"), &pTempFolder);
+    
+    if (SUCCEEDED(hrCheck) && pTempFolder)
+    {
+        // Folder still exists, release the temp pointer and delete it
+        pTempFolder->Release();
+        hr = pRootFolder->DeleteFolder(_bstr_t(L"PowerToys"), 0);
+        ExitOnFailure(hr, "Cannot delete the PowerToys folder: %x", hr);
+        Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
+    }
+    else
+    {
+        // Folder doesn't exist, nothing to delete
+        hr = S_OK;
+        Logger::info(L"The PowerToys Task Scheduler folder has already been deleted.");
+    }
+    
     pRootFolder->Release();
-    ExitOnFailure(hr, "Cannot delete the PowerToys folder: %x", hr);
-
-    Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
 
 LExit:
     if (pService)

@@ -11,6 +11,7 @@
 #include <common/utils/elevation.h>
 #include <common/utils/process_path.h>
 #include <common/utils/resources.h>
+#include <common/utils/package.h>
 #include <Settings.h>
 #include <trace.h>
 
@@ -25,6 +26,107 @@ Shared::Trace::ETWTrace trace(L"ImageResizerContextMenu");
 
 #define BUFSIZE 4096 * 4
 
+// CLSID of ImageResizer shell extension
+static const CLSID CLSID_ImageResizerExt = { 0x51B4D7E5, 0x7568, 0x4234, { 0xB4, 0xBB, 0x47, 0xFB, 0x3C, 0x01, 0x6A, 0x69 } };
+
+// Registry helper function for Windows 10 per-user installations
+HRESULT RegisterContextMenuHandler(bool perUser, bool isRegister)
+{
+    // Only needed for Windows 10 per-user installations
+    if (package::IsWin11OrGreater() || !perUser)
+        return S_OK;
+
+    HKEY hKey = nullptr;
+    HKEY rootKey = perUser ? HKEY_CURRENT_USER : HKEY_LOCAL_MACHINE;
+    LONG result;
+    const wchar_t* strImageFileTypes[] = {
+        L".bmp", L".dib", L".gif", L".jfif", L".jpe", L".jpeg", L".jpg", 
+        L".jxr", L".png", L".rle", L".tif", L".tiff", L".wdp"
+    };
+
+    if (isRegister)
+    {
+        // Create or open the CLSID key
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}\\InprocServer32", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Get the module path
+        wchar_t modulePath[MAX_PATH];
+        GetModuleFileName(g_hInst, modulePath, MAX_PATH);
+
+        // Set the default value
+        result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(modulePath), 
+                              static_cast<DWORD>((wcslen(modulePath) + 1) * sizeof(wchar_t)));
+        if (result != ERROR_SUCCESS)
+        {
+            RegCloseKey(hKey);
+            return HRESULT_FROM_WIN32(result);
+        }
+
+        // Set the threading model
+        const wchar_t* threadingModel = L"Apartment";
+        result = RegSetValueEx(hKey, L"ThreadingModel", 0, REG_SZ, reinterpret_cast<const BYTE*>(threadingModel), 
+                              static_cast<DWORD>((wcslen(threadingModel) + 1) * sizeof(wchar_t)));
+        RegCloseKey(hKey);
+
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Register for each file type
+        for (const wchar_t* fileType : strImageFileTypes)
+        {
+            std::wstring keyPath = L"Software\\Classes\\SystemFileAssociations\\";
+            keyPath += fileType;
+            keyPath += L"\\ShellEx\\ContextMenuHandlers\\ImageResizer";
+
+            result = RegCreateKeyEx(rootKey, keyPath.c_str(), 0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+            if (result != ERROR_SUCCESS)
+                continue;
+
+            // Set the CLSID value
+            const wchar_t* clsidStr = L"{51B4D7E5-7568-4234-B4BB-47FB3C016A69}";
+            result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(clsidStr), 
+                                  static_cast<DWORD>((wcslen(clsidStr) + 1) * sizeof(wchar_t)));
+            RegCloseKey(hKey);
+        }
+
+        // Register for drag & drop
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\Directory\\ShellEx\\DragDropHandlers\\ImageResizer", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result == ERROR_SUCCESS)
+        {
+            // Set the CLSID value
+            const wchar_t* clsidStr = L"{51B4D7E5-7568-4234-B4BB-47FB3C016A69}";
+            result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(clsidStr), 
+                                  static_cast<DWORD>((wcslen(clsidStr) + 1) * sizeof(wchar_t)));
+            RegCloseKey(hKey);
+        }
+    }
+    else
+    {
+        // Unregister for each file type
+        for (const wchar_t* fileType : strImageFileTypes)
+        {
+            std::wstring keyPath = L"Software\\Classes\\SystemFileAssociations\\";
+            keyPath += fileType;
+            keyPath += L"\\ShellEx\\ContextMenuHandlers\\ImageResizer";
+
+            RegDeleteKey(rootKey, keyPath.c_str());
+        }
+
+        // Unregister for drag & drop
+        RegDeleteKey(rootKey, L"Software\\Classes\\Directory\\ShellEx\\DragDropHandlers\\ImageResizer");
+
+        // Delete the CLSID key
+        RegDeleteKey(rootKey, L"Software\\Classes\\CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}\\InprocServer32");
+        RegDeleteKey(rootKey, L"Software\\Classes\\CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}");
+    }
+
+    return S_OK;
+}
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -35,9 +137,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         g_hInst = hModule;
         Trace::RegisterProvider();
+        // Register for Windows 10 per-user installation
+        RegisterContextMenuHandler(true, true);
         break;
     case DLL_PROCESS_DETACH:
         Trace::UnregisterProvider();
+        // Unregister for Windows 10 per-user installation if process is terminating
+        if (lpReserved == nullptr) // Only clean up if process is terminating
+            RegisterContextMenuHandler(true, false);
         break;
     }
     return TRUE;

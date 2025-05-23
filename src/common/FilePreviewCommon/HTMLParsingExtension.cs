@@ -85,11 +85,8 @@ namespace Microsoft.PowerToys.FilePreviewCommon
                     {
                         node.GetAttributes().AddClass("figure-caption");
                     }
-                    else if (node is HtmlBlock htmlBlock)
-                    {
-                        // Preserve HTML blocks like <details> tags
-                        // This ensures they are rendered correctly in the HTML output
-                    }
+                    // HTML blocks like <details> tags are preserved by default in the markdown pipeline
+                    // No additional processing needed
                 }
                 else if (node is Inline)
                 {

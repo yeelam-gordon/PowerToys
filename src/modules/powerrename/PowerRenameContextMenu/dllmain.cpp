@@ -22,6 +22,7 @@
 #include <common/utils/elevation.h>
 #include <common/utils/process_path.h>
 #include <common/utils/resources.h>
+#include <common/utils/package.h>
 #include <Helpers.h>
 #include <Settings.h>
 #include <trace.h>
@@ -37,6 +38,110 @@ Shared::Trace::ETWTrace trace(L"PowerRenameContextMenu");
 
 #define BUFSIZE 4096 * 4
 
+// CLSID of PowerRename shell extension
+static const CLSID CLSID_PowerRenameExt = { 0x0440049F, 0xD1DC, 0x4E46, { 0xB2, 0x7B, 0x98, 0x39, 0x3D, 0x79, 0x48, 0x6B } };
+
+// Registry helper function for Windows 10 per-user installations
+HRESULT RegisterContextMenuHandler(bool perUser, bool isRegister)
+{
+    // Only needed for Windows 10 per-user installations
+    if (package::IsWin11OrGreater() || !perUser)
+        return S_OK;
+
+    HKEY hKey = nullptr;
+    HKEY rootKey = perUser ? HKEY_CURRENT_USER : HKEY_LOCAL_MACHINE;
+    LONG result;
+
+    if (isRegister)
+    {
+        // Create or open the CLSID key
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\CLSID\\{0440049F-D1DC-4E46-B27B-98393D79486B}", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Set the default value
+        const wchar_t* displayName = L"PowerRename Shell Extension";
+        result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(displayName), 
+                              static_cast<DWORD>((wcslen(displayName) + 1) * sizeof(wchar_t)));
+        RegCloseKey(hKey);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Set the ContextMenuOptIn value
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\CLSID\\{0440049F-D1DC-4E46-B27B-98393D79486B}", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result == ERROR_SUCCESS)
+        {
+            const wchar_t* optIn = L"";
+            result = RegSetValueEx(hKey, L"ContextMenuOptIn", 0, REG_SZ, reinterpret_cast<const BYTE*>(optIn), 
+                                   static_cast<DWORD>((wcslen(optIn) + 1) * sizeof(wchar_t)));
+            RegCloseKey(hKey);
+        }
+
+        // Create the InprocServer32 key
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\CLSID\\{0440049F-D1DC-4E46-B27B-98393D79486B}\\InprocServer32", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Get the module path
+        wchar_t modulePath[MAX_PATH];
+        GetModuleFileName(g_hInst, modulePath, MAX_PATH);
+
+        // Set the default value
+        result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(modulePath), 
+                              static_cast<DWORD>((wcslen(modulePath) + 1) * sizeof(wchar_t)));
+        if (result != ERROR_SUCCESS)
+        {
+            RegCloseKey(hKey);
+            return HRESULT_FROM_WIN32(result);
+        }
+
+        // Set the threading model
+        const wchar_t* threadingModel = L"Apartment";
+        result = RegSetValueEx(hKey, L"ThreadingModel", 0, REG_SZ, reinterpret_cast<const BYTE*>(threadingModel), 
+                              static_cast<DWORD>((wcslen(threadingModel) + 1) * sizeof(wchar_t)));
+        RegCloseKey(hKey);
+        if (result != ERROR_SUCCESS)
+            return HRESULT_FROM_WIN32(result);
+
+        // Register for all file system objects
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\AllFileSystemObjects\\ShellEx\\ContextMenuHandlers\\PowerRenameExt", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result == ERROR_SUCCESS)
+        {
+            const wchar_t* clsidStr = L"{0440049F-D1DC-4E46-B27B-98393D79486B}";
+            result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(clsidStr), 
+                                  static_cast<DWORD>((wcslen(clsidStr) + 1) * sizeof(wchar_t)));
+            RegCloseKey(hKey);
+        }
+
+        // Register for directory background
+        result = RegCreateKeyEx(rootKey, L"Software\\Classes\\Directory\\background\\ShellEx\\ContextMenuHandlers\\PowerRenameExt", 
+                               0, nullptr, 0, KEY_WRITE, nullptr, &hKey, nullptr);
+        if (result == ERROR_SUCCESS)
+        {
+            const wchar_t* clsidStr = L"{0440049F-D1DC-4E46-B27B-98393D79486B}";
+            result = RegSetValueEx(hKey, nullptr, 0, REG_SZ, reinterpret_cast<const BYTE*>(clsidStr), 
+                                  static_cast<DWORD>((wcslen(clsidStr) + 1) * sizeof(wchar_t)));
+            RegCloseKey(hKey);
+        }
+    }
+    else
+    {
+        // Unregister context menu handlers
+        RegDeleteKey(rootKey, L"Software\\Classes\\AllFileSystemObjects\\ShellEx\\ContextMenuHandlers\\PowerRenameExt");
+        RegDeleteKey(rootKey, L"Software\\Classes\\Directory\\background\\ShellEx\\ContextMenuHandlers\\PowerRenameExt");
+        
+        // Delete the CLSID keys
+        RegDeleteKey(rootKey, L"Software\\Classes\\CLSID\\{0440049F-D1DC-4E46-B27B-98393D79486B}\\InprocServer32");
+        RegDeleteKey(rootKey, L"Software\\Classes\\CLSID\\{0440049F-D1DC-4E46-B27B-98393D79486B}");
+    }
+
+    return S_OK;
+}
+
 BOOL APIENTRY DllMain( HMODULE hModule,
                        DWORD  ul_reason_for_call,
                        LPVOID lpReserved
@@ -47,9 +152,14 @@ BOOL APIENTRY DllMain( HMODULE hModule,
     case DLL_PROCESS_ATTACH:
         g_hInst = hModule;
         Trace::RegisterProvider();
+        // Register for Windows 10 per-user installation
+        RegisterContextMenuHandler(true, true);
         break;
     case DLL_PROCESS_DETACH:
         Trace::UnregisterProvider();
+        // Unregister for Windows 10 per-user installation if process is terminating
+        if (lpReserved == nullptr) // Only clean up if process is terminating
+            RegisterContextMenuHandler(true, false);
         break;
     }
     return TRUE;

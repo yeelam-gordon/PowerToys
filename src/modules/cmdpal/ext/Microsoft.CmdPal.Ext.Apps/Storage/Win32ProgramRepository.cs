@@ -33,6 +33,8 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
     private bool _disposed;
 
     private static ConcurrentQueue<string> commonEventHandlingQueue = new ConcurrentQueue<string>();
+    private Task _queueProcessingTask;
+    private CancellationTokenSource _cancellationTokenSource;
 
     public Win32ProgramRepository(IList<IFileSystemWatcherWrapper> fileSystemWatcherHelpers, AllAppsSettings settings, string[] pathsToWatch)
     {
@@ -42,28 +44,44 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
         _numberOfPathsToWatch = pathsToWatch.Length;
         InitializeFileSystemWatchers();
 
+        // Create a cancellation token source for the background task
+        _cancellationTokenSource = new CancellationTokenSource();
+
         // This task would always run in the background trying to dequeue file paths from the queue at regular intervals.
-        _ = Task.Run(async () =>
+        _queueProcessingTask = Task.Run(async () =>
         {
-            while (true)
+            try
             {
-                var dequeueDelay = 500;
-                var appPath = await EventHandler.GetAppPathFromQueueAsync(commonEventHandlingQueue, dequeueDelay).ConfigureAwait(false);
-
-                // To allow for the installation process to finish.
-                await Task.Delay(5000).ConfigureAwait(false);
-
-                if (!string.IsNullOrEmpty(appPath))
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    Win32Program? app = Win32Program.GetAppFromPath(appPath);
-                    if (app != null)
+                    var dequeueDelay = 500;
+                    var appPath = await EventHandler.GetAppPathFromQueueAsync(commonEventHandlingQueue, dequeueDelay).ConfigureAwait(false);
+
+                    // To allow for the installation process to finish.
+                    await Task.Delay(5000, _cancellationTokenSource.Token).ConfigureAwait(false);
+
+                    if (!string.IsNullOrEmpty(appPath) && !_cancellationTokenSource.Token.IsCancellationRequested)
                     {
-                        Add(app);
-                        _isDirty = true;
+                        Win32Program? app = Win32Program.GetAppFromPath(appPath);
+                        if (app != null)
+                        {
+                            Add(app);
+                            _isDirty = true;
+                        }
                     }
                 }
             }
-        }).ConfigureAwait(false);
+            catch (OperationCanceledException)
+            {
+                // Task was canceled, this is expected during shutdown
+                Logger.LogInfo("Win32ProgramRepository background task was canceled");
+            }
+            catch (Exception ex)
+            {
+                // Log any unexpected exceptions
+                Logger.LogError($"Error in Win32ProgramRepository background task: {ex.Message}");
+            }
+        }, _cancellationTokenSource.Token);
     }
 
     public bool ShouldReload()
@@ -287,6 +305,30 @@ internal sealed partial class Win32ProgramRepository : ListRepository<Programs.W
         {
             if (disposing)
             {
+                // Cancel the background task
+                try
+                {
+                    if (_cancellationTokenSource != null)
+                    {
+                        _cancellationTokenSource.Cancel();
+                        // Wait for the task to complete with a timeout to avoid deadlocks
+                        if (_queueProcessingTask != null)
+                        {
+                            // Don't wait indefinitely to avoid blocking the UI
+                            if (!_queueProcessingTask.Wait(TimeSpan.FromSeconds(2)))
+                            {
+                                Logger.LogWarning("Background task did not complete in time during disposal");
+                            }
+                        }
+                        _cancellationTokenSource.Dispose();
+                        _cancellationTokenSource = null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError($"Error disposing Win32ProgramRepository background task: {ex.Message}");
+                }
+
                 // Unregister event handlers from each file system watcher
                 foreach (var watcher in _fileSystemWatcherHelpers)
                 {

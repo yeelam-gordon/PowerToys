@@ -9,6 +9,7 @@
 
 #include <common/telemetry/EtwTrace/EtwTrace.h>
 #include <common/utils/elevation.h>
+#include <common/utils/package.h>
 #include <common/utils/process_path.h>
 #include <common/utils/resources.h>
 #include <Settings.h>
@@ -90,18 +91,18 @@ public:
             return S_OK;
         }
 
-        // Check if the MSI context menu handler is registered and hide this one if it is
-        // This prevents duplicate entries in the context menu
         // The MSI handler has GUID: {51B4D7E5-7568-4234-B4BB-47FB3C016A69}
         // This MSIX handler has GUID: {8F491918-259F-451A-950F-8C3EBF4864AF}
-        HKEY hKey;
-        if (RegOpenKeyEx(HKEY_CLASSES_ROOT, L"CLSID\\{51B4D7E5-7568-4234-B4BB-47FB3C016A69}\\InprocServer32", 0, KEY_READ, &hKey) == ERROR_SUCCESS)
+        // On Windows 10, we should hide this MSIX handler as Windows 10 uses the MSI version
+        // On Windows 11, we should prioritize this MSIX handler and keep it visible
+        if (!package::IsWin11OrGreater())
         {
-            RegCloseKey(hKey);
-            // MSI version is installed, hide this one to avoid duplicate entries
+            // On Windows 10, hide this MSIX handler
             *cmdState = ECS_HIDDEN;
             return S_OK;
         }
+        
+        // We are on Windows 11, so show this MSIX handler (preferred for Windows 11)
 
         // Hide if the file is not an image
         *cmdState = ECS_HIDDEN;

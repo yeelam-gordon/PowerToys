@@ -21,12 +21,14 @@ using PowerToys.Interop;
 namespace ColorPicker.ViewModels
 {
     [Export(typeof(IMainViewModel))]
-    public class MainViewModel : ViewModelBase, IMainViewModel
+    public class MainViewModel : ViewModelBase, IMainViewModel, IDisposable
     {
         private readonly ZoomWindowHelper _zoomWindowHelper;
         private readonly AppStateHandler _appStateHandler;
         private readonly IUserSettings _userSettings;
         private KeyboardMonitor _keyboardMonitor;
+        private IMouseInfoProvider _mouseInfoProvider;
+        private bool _disposed;
 
         /// <summary>
         /// Backing field for <see cref="OtherColor"/>
@@ -56,7 +58,25 @@ namespace ColorPicker.ViewModels
             _appStateHandler = appStateHandler;
             _userSettings = userSettings;
             _keyboardMonitor = keyboardMonitor;
+            _mouseInfoProvider = mouseInfoProvider;
 
+            // Subscribe to events safely
+            SubscribeToEvents(exitToken);
+
+            // Only start a local keyboard low level hook if running as a standalone.
+            // Otherwise, the global keyboard hook from runner will be used to activate Color Picker through ShowColorPickerSharedEvent
+            // The appStateHandler starts and disposes a low level hook when ColorPicker is being used.
+            // The hook catches the Esc, Space, Enter and Arrow key presses.
+            // This is much lighter than using a permanent local low level keyboard hook.
+            if ((System.Windows.Application.Current as ColorPickerUI.App).IsRunningDetachedFromPowerToys())
+            {
+                keyboardMonitor?.Start();
+            }
+        }
+
+        private void SubscribeToEvents(CancellationToken exitToken)
+        {
+            // Set up event waiters with proper cancellation support
             NativeEventWaiter.WaitForEventLoop(
                 Constants.TerminateColorPickerSharedEvent(),
                 Application.Current.Shutdown,
@@ -75,30 +95,33 @@ namespace ColorPicker.ViewModels
                 Application.Current.Dispatcher,
                 exitToken);
 
-            if (mouseInfoProvider != null)
+            // Subscribe to mouse events
+            if (_mouseInfoProvider != null)
             {
-                SetColorDetails(mouseInfoProvider.CurrentColor);
-                mouseInfoProvider.MouseColorChanged += Mouse_ColorChanged;
-                mouseInfoProvider.OnMouseDown += MouseInfoProvider_OnMouseDown;
-                mouseInfoProvider.OnMouseWheel += MouseInfoProvider_OnMouseWheel;
-                mouseInfoProvider.OnSecondaryMouseUp += MouseInfoProvider_OnSecondaryMouseUp;
+                SetColorDetails(_mouseInfoProvider.CurrentColor);
+                _mouseInfoProvider.MouseColorChanged += Mouse_ColorChanged;
+                _mouseInfoProvider.OnMouseDown += MouseInfoProvider_OnMouseDown;
+                _mouseInfoProvider.OnMouseWheel += MouseInfoProvider_OnMouseWheel;
+                _mouseInfoProvider.OnSecondaryMouseUp += MouseInfoProvider_OnSecondaryMouseUp;
             }
 
-            _userSettings.ShowColorName.PropertyChanged += (s, e) => { OnPropertyChanged(nameof(ShowColorName)); };
-
-            _appStateHandler.EnterPressed += AppStateHandler_EnterPressed;
-            _appStateHandler.UserSessionStarted += AppStateHandler_UserSessionStarted;
-            _appStateHandler.UserSessionEnded += AppStateHandler_UserSessionEnded;
-
-            // Only start a local keyboard low level hook if running as a standalone.
-            // Otherwise, the global keyboard hook from runner will be used to activate Color Picker through ShowColorPickerSharedEvent
-            // The appStateHandler starts and disposes a low level hook when ColorPicker is being used.
-            // The hook catches the Esc, Space, Enter and Arrow key presses.
-            // This is much lighter than using a permanent local low level keyboard hook.
-            if ((System.Windows.Application.Current as ColorPickerUI.App).IsRunningDetachedFromPowerToys())
+            // Subscribe to settings and app state events
+            if (_userSettings != null)
             {
-                keyboardMonitor?.Start();
+                _userSettings.ShowColorName.PropertyChanged += ShowColorName_PropertyChanged;
             }
+
+            if (_appStateHandler != null)
+            {
+                _appStateHandler.EnterPressed += AppStateHandler_EnterPressed;
+                _appStateHandler.UserSessionStarted += AppStateHandler_UserSessionStarted;
+                _appStateHandler.UserSessionEnded += AppStateHandler_UserSessionEnded;
+            }
+        }
+
+        private void ShowColorName_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        {
+            OnPropertyChanged(nameof(ShowColorName));
         }
 
         private void AppStateHandler_UserSessionEnded(object sender, EventArgs e)
@@ -225,6 +248,57 @@ namespace ColorPicker.ViewModels
         public void RegisterWindowHandle(System.Windows.Interop.HwndSource hwndSource)
         {
             _appStateHandler.RegisterWindowHandle(hwndSource);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Unsubscribe from events to prevent memory leaks
+                    if (_mouseInfoProvider != null)
+                    {
+                        _mouseInfoProvider.MouseColorChanged -= Mouse_ColorChanged;
+                        _mouseInfoProvider.OnMouseDown -= MouseInfoProvider_OnMouseDown;
+                        _mouseInfoProvider.OnMouseWheel -= MouseInfoProvider_OnMouseWheel;
+                        _mouseInfoProvider.OnSecondaryMouseUp -= MouseInfoProvider_OnSecondaryMouseUp;
+                        _mouseInfoProvider = null;
+                    }
+
+                    if (_userSettings != null && _userSettings.ShowColorName != null)
+                    {
+                        _userSettings.ShowColorName.PropertyChanged -= ShowColorName_PropertyChanged;
+                    }
+                    
+                    if (_appStateHandler != null)
+                    {
+                        _appStateHandler.EnterPressed -= AppStateHandler_EnterPressed;
+                        _appStateHandler.UserSessionStarted -= AppStateHandler_UserSessionStarted;
+                        _appStateHandler.UserSessionEnded -= AppStateHandler_UserSessionEnded;
+                    }
+                    
+                    // Dispose the keyboard monitor if needed
+                    if (_keyboardMonitor != null)
+                    {
+                        _keyboardMonitor.Dispose();
+                        _keyboardMonitor = null;
+                    }
+                    
+                    // Clear references to other services to break any potential circular references
+                    _zoomWindowHelper = null;
+                    _appStateHandler = null;
+                    _userSettings = null;
+                }
+
+                _disposed = true;
+            }
         }
     }
 }

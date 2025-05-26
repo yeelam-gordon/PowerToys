@@ -50,9 +50,28 @@ public partial class Selector : FluentWindow, IDisposable, INotifyPropertyChange
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        _powerAccent.OnChangeDisplay += PowerAccent_OnChangeDisplay;
-        _powerAccent.OnSelectCharacter += PowerAccent_OnSelectionCharacter;
+        SubscribeToEvents();
         this.Visibility = Visibility.Hidden;
+    }
+
+    private void SubscribeToEvents()
+    {
+        // Only subscribe if not already subscribed
+        if (_powerAccent != null)
+        {
+            _powerAccent.OnChangeDisplay += PowerAccent_OnChangeDisplay;
+            _powerAccent.OnSelectCharacter += PowerAccent_OnSelectionCharacter;
+        }
+    }
+
+    private void UnsubscribeFromEvents()
+    {
+        // Unsubscribe to prevent memory leaks
+        if (_powerAccent != null)
+        {
+            _powerAccent.OnChangeDisplay -= PowerAccent_OnChangeDisplay;
+            _powerAccent.OnSelectCharacter -= PowerAccent_OnSelectionCharacter;
+        }
     }
 
     private void PowerAccent_OnSelectionCharacter(int index, string character)
@@ -96,12 +115,24 @@ public partial class Selector : FluentWindow, IDisposable, INotifyPropertyChange
 
     protected override void OnClosed(EventArgs e)
     {
+        // Unsubscribe from events before disposing PowerAccent
+        UnsubscribeFromEvents();
         _powerAccent.Dispose();
         base.OnClosed(e);
     }
 
     public void Dispose()
     {
+        Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            UnsubscribeFromEvents();
+        }
     }
 }

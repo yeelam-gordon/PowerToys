@@ -15,11 +15,12 @@ namespace Microsoft.CmdPal.Ext.Apps.Storage;
 /// A repository for storing packaged applications such as UWP apps or appx packaged desktop apps.
 /// This repository will also monitor for changes to the PackageCatalog and update the repository accordingly
 /// </summary>
-internal sealed partial class PackageRepository : ListRepository<UWPApplication>, IProgramRepository
+internal sealed partial class PackageRepository : ListRepository<UWPApplication>, IProgramRepository, IDisposable
 {
     private readonly IPackageCatalog _packageCatalog;
 
     private bool _isDirty;
+    private bool _disposed;
 
     public bool ShouldReload()
     {
@@ -39,6 +40,28 @@ internal sealed partial class PackageRepository : ListRepository<UWPApplication>
         _packageCatalog.PackageInstalling += OnPackageInstalling;
         _packageCatalog.PackageUninstalling += OnPackageUninstalling;
         _packageCatalog.PackageUpdating += OnPackageUpdating;
+    }
+
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+
+    private void Dispose(bool disposing)
+    {
+        if (!_disposed)
+        {
+            if (disposing)
+            {
+                // Unsubscribe from events to prevent memory leaks
+                _packageCatalog.PackageInstalling -= OnPackageInstalling;
+                _packageCatalog.PackageUninstalling -= OnPackageUninstalling;
+                _packageCatalog.PackageUpdating -= OnPackageUpdating;
+            }
+
+            _disposed = true;
+        }
     }
 
     public void OnPackageInstalling(PackageCatalog p, PackageInstallingEventArgs args)

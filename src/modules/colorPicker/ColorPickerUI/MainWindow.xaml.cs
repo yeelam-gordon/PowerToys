@@ -31,6 +31,13 @@ namespace ColorPicker
         private void MainWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
             Closing -= MainWindow_Closing;
+            
+            // Dispose the view model to unsubscribe from events
+            if (MainViewModel is IDisposable disposable)
+            {
+                disposable.Dispose();
+            }
+            
             Bootstrapper.Dispose();
         }
 

@@ -83,6 +83,18 @@ public sealed partial class AppCache : IDisposable
             if (disposing)
             {
                 _win32ProgramRepositoryHelper?.Dispose();
+                
+                // Dispose repositories that have event handlers
+                if (_packageRepository != null)
+                {
+                    _packageRepository.Dispose();
+                }
+                
+                if (_win32ProgramRepository != null)
+                {
+                    _win32ProgramRepository.Dispose();
+                }
+                
                 _disposed = true;
             }
         }

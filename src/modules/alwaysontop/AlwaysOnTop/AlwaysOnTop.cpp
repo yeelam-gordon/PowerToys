@@ -510,8 +510,27 @@ void AlwaysOnTop::HandleWinHookEvent(WinHookEvent* data) noexcept
     {
         if (!is_process_elevated() && IsProcessOfWindowElevated(data->hwnd))
         {
+            auto processPath = get_process_path(data->hwnd);
+            std::wstring appName = L"unknown";
+            
+            if (!processPath.empty())
+            {
+                // Extract filename from path
+                size_t lastBackslash = processPath.find_last_of(L'\\');
+                if (lastBackslash != std::wstring::npos)
+                {
+                    appName = processPath.substr(lastBackslash + 1);
+                }
+                else
+                {
+                    appName = processPath;
+                }
+            }
+            
+            std::wstring message = GET_RESOURCE_STRING(IDS_SYSTEM_FOREGROUND_ELEVATED) + L" (" + appName + L")";
+            
             m_notificationUtil->WarnIfElevationIsRequired(GET_RESOURCE_STRING(IDS_ALWAYSONTOP),
-                                                          GET_RESOURCE_STRING(IDS_SYSTEM_FOREGROUND_ELEVATED),
+                                                          message,
                                                           GET_RESOURCE_STRING(IDS_SYSTEM_FOREGROUND_ELEVATED_LEARN_MORE),
                                                           GET_RESOURCE_STRING(IDS_SYSTEM_FOREGROUND_ELEVATED_DIALOG_DONT_SHOW_AGAIN));
         }

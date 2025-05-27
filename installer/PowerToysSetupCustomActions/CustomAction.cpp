@@ -824,11 +824,25 @@ UINT __stdcall RemoveScheduledTasksCA(MSIHANDLE hInstall)
     
     if (SUCCEEDED(hrCheck) && pTempFolder)
     {
-        // Folder still exists, release the temp pointer and delete it
+        // Folder still exists, release the temp pointer and attempt to delete it
         pTempFolder->Release();
         hr = pRootFolder->DeleteFolder(_bstr_t(L"PowerToys"), 0);
-        ExitOnFailure(hr, "Cannot delete the PowerToys folder: %x", hr);
-        Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
+        
+        if (hr == E_ACCESSDENIED || hr == 0x80070005)
+        {
+            // If access is denied, consider it a success but log the issue
+            Logger::info(L"PowerToys Task Scheduler folder could not be deleted due to access restrictions. It can be removed manually later.");
+            hr = S_OK; // Mark as success to continue the installation
+        }
+        else if (SUCCEEDED(hr))
+        {
+            Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
+        }
+        else
+        {
+            // Keep the error for other failure cases
+            ExitOnFailure(hr, "Cannot delete the PowerToys folder: %x", hr);
+        }
     }
     else
     {

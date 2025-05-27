@@ -76,6 +76,24 @@ namespace ColorPicker.Mouse
             }
         }
 
+        public void UpdateCursorPosition(System.Windows.Point position)
+        {
+            if (_previousMousePosition != position)
+            {
+                _previousMousePosition = position;
+                MousePositionChanged?.Invoke(this, position);
+
+                // Update color at the new position
+                var color = GetPixelColor(position);
+                if (_previousColor != color || _colorFormatChanged)
+                {
+                    _previousColor = color;
+                    _colorFormatChanged = false;
+                    MouseColorChanged?.Invoke(this, color);
+                }
+            }
+        }
+
         private void Timer_Tick(object sender, EventArgs e)
         {
             UpdateMouseInfo();
@@ -151,11 +169,18 @@ namespace ColorPicker.Mouse
             _mouseHook.OnMouseDown += MouseHook_OnMouseDown;
             _mouseHook.OnMouseWheel += MouseHook_OnMouseWheel;
             _mouseHook.OnSecondaryMouseUp += MouseHook_OnSecondaryMouseUp;
+            _mouseHook.OnPointerUpdate += MouseHook_OnPointerUpdate;
 
             if (_userSettings.ChangeCursor.Value)
             {
                 CursorManager.SetColorPickerCursor();
             }
+        }
+
+        private void MouseHook_OnPointerUpdate(object sender, System.Windows.Point position)
+        {
+            // Update cursor position from touch/stylus
+            UpdateCursorPosition(position);
         }
 
         private void MouseHook_OnMouseWheel(object sender, MouseWheelEventArgs e)
@@ -197,6 +222,7 @@ namespace ColorPicker.Mouse
             _mouseHook.OnMouseDown -= MouseHook_OnMouseDown;
             _mouseHook.OnMouseWheel -= MouseHook_OnMouseWheel;
             _mouseHook.OnSecondaryMouseUp -= MouseHook_OnSecondaryMouseUp;
+            _mouseHook.OnPointerUpdate -= MouseHook_OnPointerUpdate;
 
             if (_userSettings.ChangeCursor.Value)
             {

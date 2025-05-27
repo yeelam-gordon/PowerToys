@@ -817,11 +817,21 @@ UINT __stdcall RemoveScheduledTasksCA(MSIHANDLE hInstall)
     // Get the pointer to the root task folder and delete the PowerToys subfolder.
     hr = pService->GetFolder(_bstr_t(L"\\"), &pRootFolder);
     ExitOnFailure(hr, "Cannot get Root Folder pointer: %x", hr);
-    hr = pRootFolder->DeleteFolder(_bstr_t(L"PowerToys"), 0);
+    
+    // Try to delete the PowerToys folder but ignore errors if it fails
+    HRESULT hrDelete = pRootFolder->DeleteFolder(_bstr_t(L"PowerToys"), 0);
     pRootFolder->Release();
-    ExitOnFailure(hr, "Cannot delete the PowerToys folder: %x", hr);
-
-    Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
+    
+    if (SUCCEEDED(hrDelete))
+    {
+        Logger::info(L"Deleted the PowerToys Task Scheduler folder.");
+    }
+    else
+    {
+        // Log the issue but don't show error to user by returning failure
+        Logger::info(L"Could not delete PowerToys Task Scheduler folder (hr=0x%x). It can be removed manually later.", hrDelete);
+        // Continue with installation regardless of the folder deletion result
+    }
 
 LExit:
     if (pService)

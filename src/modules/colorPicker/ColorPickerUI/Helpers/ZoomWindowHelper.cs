@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -43,7 +44,7 @@ namespace ColorPicker.Helpers
             _appStateHandler.AppHidden += AppStateHandler_AppClosed;
             
             // Listen for color name changes
-            _mainViewModel.PropertyChanged += (sender, e) =>
+            ((INotifyPropertyChanged)_mainViewModel).PropertyChanged += (sender, e) =>
             {
                 if (e.PropertyName == nameof(IMainViewModel.ColorName))
                 {

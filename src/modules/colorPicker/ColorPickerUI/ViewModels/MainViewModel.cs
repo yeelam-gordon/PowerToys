@@ -26,6 +26,7 @@ namespace ColorPicker.ViewModels
         private readonly ZoomWindowHelper _zoomWindowHelper;
         private readonly AppStateHandler _appStateHandler;
         private readonly IUserSettings _userSettings;
+        private readonly IZoomViewModel _zoomViewModel;
         private KeyboardMonitor _keyboardMonitor;
 
         /// <summary>
@@ -50,12 +51,14 @@ namespace ColorPicker.ViewModels
             AppStateHandler appStateHandler,
             KeyboardMonitor keyboardMonitor,
             IUserSettings userSettings,
+            IZoomViewModel zoomViewModel,
             CancellationToken exitToken)
         {
             _zoomWindowHelper = zoomWindowHelper;
             _appStateHandler = appStateHandler;
             _userSettings = userSettings;
             _keyboardMonitor = keyboardMonitor;
+            _zoomViewModel = zoomViewModel;
 
             NativeEventWaiter.WaitForEventLoop(
                 Constants.TerminateColorPickerSharedEvent(),
@@ -149,6 +152,12 @@ namespace ColorPicker.ViewModels
             {
                 _colorName = value;
                 OnPropertyChanged();
+
+                // Update the zoom view model with the color name
+                if (_zoomViewModel != null)
+                {
+                    _zoomViewModel.ColorName = value;
+                }
             }
         }
 

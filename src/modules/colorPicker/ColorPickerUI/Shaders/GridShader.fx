@@ -52,24 +52,47 @@ float4 main(float2 uv
 
     if (distanceFromMouse <= radius)
     {
-        // draw grid
-        if (pixelPositionX % squareSize == 0 || pixelPositionY % squareSize == 0)
+        // Draw dot grid pattern - create circular dots at regular intervals
+        int dotSpacing = squareSize;
+        int dotRadius = max(1, squareSize / 8);
+        
+        int gridX = pixelPositionX % dotSpacing;
+        int gridY = pixelPositionY % dotSpacing;
+        
+        // Calculate distance from the nearest grid point
+        float distToGridX = min(gridX, dotSpacing - gridX);
+        float distToGridY = min(gridY, dotSpacing - gridY);
+        
+        // Check if we're close to a grid intersection (for circular dots)
+        if ((gridX <= dotRadius || gridX >= dotSpacing - dotRadius) && 
+            (gridY <= dotRadius || gridY >= dotSpacing - dotRadius))
         {
-            if (gridColor == 1.0f)
+            float dotDistanceX = gridX <= dotRadius ? gridX : dotSpacing - gridX;
+            float dotDistanceY = gridY <= dotRadius ? gridY : dotSpacing - gridY;
+            float dotDistance = sqrt(dotDistanceX * dotDistanceX + dotDistanceY * dotDistanceY);
+            
+            if (dotDistance <= dotRadius)
             {
-                color.r = color.r + ((1.0 - color.r) * (1.0 - (distanceFromMouse / radius)));
-                color.g = color.g + ((1.0 - color.g) * (1.0 - (distanceFromMouse / radius)));
-                color.b = color.b + ((1.0 - color.b) * (1.0 - (distanceFromMouse / radius)));
-            }
-            else
-            {
-                color.r = color.r * (distanceFromMouse / radius);
-                color.g = color.g * (distanceFromMouse / radius);
-                color.b = color.b * (distanceFromMouse / radius);
+                float dotIntensity = 1.0 - (dotDistance / dotRadius);
+                if (gridColor == 1.0f)
+                {
+                    // For light backgrounds, make dots darker
+                    color.r = color.r * (1.0 - dotIntensity * 0.6);
+                    color.g = color.g * (1.0 - dotIntensity * 0.6);
+                    color.b = color.b * (1.0 - dotIntensity * 0.6);
+                }
+                else
+                {
+                    // For dark backgrounds, make dots lighter
+                    color.r = color.r + ((1.0 - color.r) * dotIntensity * 0.6);
+                    color.g = color.g + ((1.0 - color.g) * dotIntensity * 0.6);
+                    color.b = color.b + ((1.0 - color.b) * dotIntensity * 0.6);
+                }
             }
         }
     }
 
+    // Make the selection rectangle more prominent
     if (((pixelPositionX >= topLeftRectangle.x && pixelPositionX <= topLeftRectangle.x + squareSize + 2) && (pixelPositionY == topLeftRectangle.y || pixelPositionY == topLeftRectangle.y + squareSize + 2)) ||
         ((pixelPositionY >= topLeftRectangle.y && pixelPositionY <= topLeftRectangle.y + squareSize + 2) && (pixelPositionX == topLeftRectangle.x || pixelPositionX == topLeftRectangle.x + squareSize + 2)))
     {

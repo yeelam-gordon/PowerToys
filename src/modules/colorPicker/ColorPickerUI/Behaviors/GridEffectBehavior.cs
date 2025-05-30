@@ -2,6 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Windows;
 
 using ColorPicker.Shaders;
@@ -47,19 +48,12 @@ namespace ColorPicker.Behaviors
             var relativeY = position.Y / AssociatedObject.Height;
             Effect.MousePosition = new Point(relativeX, relativeY);
 
-            if (ZoomFactor >= 4)
-            {
-                Effect.Radius = 0.04;
-                Effect.SquareSize = ZoomFactor;
-                Effect.TextureSize = _baseZoomImageSizeInPx * ZoomFactor;
-            }
-            else
-            {
-                // don't show grid, too small pixels
-                Effect.Radius = 0.0;
-                Effect.SquareSize = 0;
-                Effect.TextureSize = 0;
-            }
+            // Always show the grid with enhanced visibility
+            Effect.Radius = 0.08; // Slightly larger radius for better dot visibility
+
+            // Ensure consistent dot spacing regardless of zoom level
+            Effect.SquareSize = Math.Max(8, ZoomFactor >= 4 ? ZoomFactor : ZoomFactor * 2);
+            Effect.TextureSize = _baseZoomImageSizeInPx * ZoomFactor;
         }
     }
 }

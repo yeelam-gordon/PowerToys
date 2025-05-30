@@ -3,7 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -26,7 +25,6 @@ namespace ColorPicker.Helpers
         private static readonly Graphics _graphics = Graphics.FromImage(_bmp);
 
         private readonly IZoomViewModel _zoomViewModel;
-        private readonly IMainViewModel _mainViewModel;
         private readonly AppStateHandler _appStateHandler;
 
         private int _currentZoomLevel;
@@ -35,22 +33,12 @@ namespace ColorPicker.Helpers
         private ZoomWindow _zoomWindow;
 
         [ImportingConstructor]
-        public ZoomWindowHelper(IZoomViewModel zoomViewModel, IMainViewModel mainViewModel, AppStateHandler appStateHandler)
+        public ZoomWindowHelper(IZoomViewModel zoomViewModel, AppStateHandler appStateHandler)
         {
             _zoomViewModel = zoomViewModel;
-            _mainViewModel = mainViewModel;
             _appStateHandler = appStateHandler;
             _appStateHandler.AppClosed += AppStateHandler_AppClosed;
             _appStateHandler.AppHidden += AppStateHandler_AppClosed;
-            
-            // Listen for color name changes
-            ((INotifyPropertyChanged)_mainViewModel).PropertyChanged += (sender, e) =>
-            {
-                if (e.PropertyName == nameof(IMainViewModel.ColorName))
-                {
-                    _zoomViewModel.ColorName = _mainViewModel.ColorName;
-                }
-            };
         }
 
         public void Zoom(System.Windows.Point position, bool zoomIn)
@@ -97,9 +85,6 @@ namespace ColorPicker.Helpers
                 _graphics.CopyFromScreen(x, y, 0, 0, _bmp.Size, CopyPixelOperation.SourceCopy);
 
                 _zoomViewModel.ZoomArea = BitmapToImageSource(_bmp);
-                
-                // Update the color name
-                _zoomViewModel.ColorName = _mainViewModel.ColorName;
             }
 
             _zoomViewModel.ZoomFactor = Math.Pow(ZoomFactor, _currentZoomLevel - 1);

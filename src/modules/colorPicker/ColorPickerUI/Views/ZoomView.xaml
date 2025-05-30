@@ -19,27 +19,31 @@
         Background="{DynamicResource LayerFillColorDefaultBrush}"
         BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
         BorderThickness="1"
-        CornerRadius="24">
+        CornerRadius="32">
         <Border.Effect>
             <DropShadowEffect ShadowDepth="2" BlurRadius="8" Color="Black" Opacity="0.3" />
         </Border.Effect>
         <Grid>
-            <!-- Main zoom image display -->
-            <Image
+            <!-- Main zoom image display with rounded corners -->
+            <Border
                 Width="{Binding Width, Mode=TwoWay}"
                 Height="{Binding Height, Mode=TwoWay}"
                 Margin="3"
-                RenderOptions.BitmapScalingMode="NearestNeighbor"
-                Source="{Binding ZoomArea}"
-                Stretch="Fill">
+                CornerRadius="28">
+                <Border.Background>
+                    <ImageBrush 
+                        ImageSource="{Binding ZoomArea}"
+                        RenderOptions.BitmapScalingMode="NearestNeighbor"
+                        Stretch="Fill" />
+                </Border.Background>
                 <e:Interaction.Behaviors>
                     <behaviors:ResizeBehavior Width="{Binding DesiredWidth}" Height="{Binding DesiredHeight}" />
                     <behaviors:GridEffectBehavior Effect="{Binding ElementName=gridEffect}" ZoomFactor="{Binding ZoomFactor}" />
                 </e:Interaction.Behaviors>
-                <Image.Effect>
+                <Border.Effect>
                     <shaders:GridShaderEffect x:Name="gridEffect" />
-                </Image.Effect>
-            </Image>
+                </Border.Effect>
+            </Border>
 
             <!-- Crosshair lines for precise color picking -->
             <Line

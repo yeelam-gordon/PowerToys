@@ -109,7 +109,7 @@ namespace ColorPicker.ViewModels
                 OnPropertyChanged();
             }
         }
-        
+
         public string ColorName
         {
             get

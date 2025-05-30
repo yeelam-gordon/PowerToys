@@ -2,6 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Windows;
 
 using ColorPicker.Shaders;
@@ -49,6 +50,7 @@ namespace ColorPicker.Behaviors
 
             // Always show the grid with enhanced visibility
             Effect.Radius = 0.08; // Slightly larger radius for better dot visibility
+
             // Ensure consistent dot spacing regardless of zoom level
             Effect.SquareSize = Math.Max(8, ZoomFactor >= 4 ? ZoomFactor : ZoomFactor * 2);
             Effect.TextureSize = _baseZoomImageSizeInPx * ZoomFactor;

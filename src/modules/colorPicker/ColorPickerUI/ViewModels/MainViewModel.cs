@@ -152,7 +152,7 @@ namespace ColorPicker.ViewModels
             {
                 _colorName = value;
                 OnPropertyChanged();
-                
+
                 // Update the zoom view model with the color name
                 if (_zoomViewModel != null)
                 {

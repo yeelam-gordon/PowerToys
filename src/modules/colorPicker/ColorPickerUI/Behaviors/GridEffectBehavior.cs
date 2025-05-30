@@ -47,9 +47,10 @@ namespace ColorPicker.Behaviors
             var relativeY = position.Y / AssociatedObject.Height;
             Effect.MousePosition = new Point(relativeX, relativeY);
 
-            // Always show the grid, regardless of zoom factor
-            Effect.Radius = 0.05;
-            Effect.SquareSize = ZoomFactor >= 4 ? ZoomFactor : ZoomFactor * 2;
+            // Always show the grid with enhanced visibility
+            Effect.Radius = 0.08; // Slightly larger radius for better dot visibility
+            // Ensure consistent dot spacing regardless of zoom level
+            Effect.SquareSize = Math.Max(8, ZoomFactor >= 4 ? ZoomFactor : ZoomFactor * 2);
             Effect.TextureSize = _baseZoomImageSizeInPx * ZoomFactor;
         }
     }

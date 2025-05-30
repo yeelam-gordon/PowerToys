@@ -19,7 +19,10 @@
         Background="{DynamicResource LayerFillColorDefaultBrush}"
         BorderBrush="{DynamicResource SurfaceStrokeColorDefaultBrush}"
         BorderThickness="1"
-        CornerRadius="16">
+        CornerRadius="24">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="8" Color="Black" Opacity="0.3" />
+        </Border.Effect>
         <Grid>
             <!-- Main zoom image display -->
             <Image

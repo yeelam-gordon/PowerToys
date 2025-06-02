@@ -6,6 +6,7 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <RootNamespace>Microsoft.PowerToys.Settings.UI</RootNamespace>
+    <AssemblyName>PowerToys Settings</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <UseWinUI>true</UseWinUI>
     <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>

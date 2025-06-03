@@ -4,11 +4,10 @@
 
 using System;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
 
-[GeneratedComInterface]
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("0C733A55-2A1C-11CE-ADE5-00AA0044773D")]
 public partial interface IRowsetInfo
 {
@@ -17,7 +16,7 @@ public partial interface IRowsetInfo
         uint cPropertyIDSets,
         [MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] DBPROPIDSET[] rgPropertyIDSets,
         out ulong pcPropertySets,
-        out nint prgPropertySets);
+        out IntPtr prgPropertySets);
 
     [PreserveSig]
     int GetReferencedRowset(

@@ -1,17 +1,14 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Runtime.InteropServices.Marshalling;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer.SystemSearch;
 
-[GeneratedComInterface]
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("AB310581-AC80-11D1-8DF3-00C04FB6EF50")]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.OrderingRules", "SA1212:Property accessors should follow order", Justification = "The order of the property accessors must match the order in which the methods were defined in the vtable")]
 public partial interface ISearchCatalogManager
 {
     string Name
@@ -20,7 +17,7 @@ public partial interface ISearchCatalogManager
         get;
     }
 
-    nint GetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+    IntPtr GetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName);
 
     void SetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName, ref object pValue);
 
@@ -69,7 +66,7 @@ public partial interface ISearchCatalogManager
     void GetItemsChangedSink(
       [MarshalAs(UnmanagedType.Interface)] object pISearchNotifyInlineSite,
       ref Guid riid,
-      out nint ppv,
+      out IntPtr ppv,
       out Guid pGUIDCatalogResetSignature,
       out Guid pGUIDCheckPointSignature,
       out uint pdwLastCheckPointNumber);
@@ -82,7 +79,7 @@ public partial interface ISearchCatalogManager
     object EnumerateExcludedExtensions();
 
     [return: MarshalAs(UnmanagedType.Interface)]
-    ISearchQueryHelper GetQueryHelper();
+    CSearchQueryHelper GetQueryHelper();
 
     int DiacriticSensitivity
     {

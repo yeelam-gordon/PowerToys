@@ -17,7 +17,7 @@ public partial interface ISearchManager
 
     void GetIndexerVersion(out uint pdwMajor, out uint pdwMinor);
 
-    nint GetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+    IntPtr GetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName);
 
     void SetParameter([MarshalAs(UnmanagedType.LPWStr)] string pszName, ref object pValue);
 

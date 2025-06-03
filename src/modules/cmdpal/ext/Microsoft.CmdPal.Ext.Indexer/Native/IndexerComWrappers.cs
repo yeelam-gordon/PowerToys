@@ -16,10 +16,10 @@ internal static partial class Win32Apis
     [LibraryImport("ole32.dll")]
     public static partial int CoCreateInstance(
         ref Guid rclsid,
-        nint pUnkOuter,
+        IntPtr pUnkOuter,
         uint dwClsContext,
         ref Guid riid,
-        out nint ppv);
+        out IntPtr ppv);
 
     [LibraryImport("shell32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -30,19 +30,19 @@ internal static partial class Win32Apis
     {
         public uint cbSize;
         public uint fMask;
-        public nint hwnd;
-        public nint lpVerb;
-        public nint lpFile;
-        public nint lpParameters;
-        public nint lpDirectory;
+        public IntPtr hwnd;
+        public IntPtr lpVerb;
+        public IntPtr lpFile;
+        public IntPtr lpParameters;
+        public IntPtr lpDirectory;
         public int nShow;
-        public nint hInstApp;
-        public nint lpIDList;
-        public nint lpClass;
-        public nint hkeyClass;
+        public IntPtr hInstApp;
+        public IntPtr lpIDList;
+        public IntPtr lpClass;
+        public IntPtr hkeyClass;
         public uint dwHotKey;
-        public nint hIcon;
-        public nint hProcess;
+        public IntPtr hIcon;
+        public IntPtr hProcess;
     }
 
     // CLSCTX constants
@@ -62,7 +62,7 @@ internal sealed class IndexerComWrappers : ComWrappers
         return null;
     }
 
-    protected override object? CreateObject(nint externalComObject, CreateObjectFlags flags)
+    protected override object? CreateObject(IntPtr externalComObject, CreateObjectFlags flags)
     {
         // This method is called when we need to create a managed wrapper for a COM object
         // For our use case with Search API, we'll let the runtime handle this

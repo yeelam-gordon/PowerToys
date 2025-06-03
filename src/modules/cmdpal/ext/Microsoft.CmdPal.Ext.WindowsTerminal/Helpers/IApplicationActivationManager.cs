@@ -9,7 +9,7 @@ using Windows.Win32.UI.Shell;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Helpers;
 
-[GeneratedComInterface]
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]
 public partial interface IApplicationActivationManager
 {

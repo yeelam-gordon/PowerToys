@@ -4,6 +4,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using System.Runtime.InteropServices;
+using Microsoft.CmdPal.Ext.Apps.Utils;
 using Windows.Win32;
 using Windows.Win32.UI.Shell;
 
@@ -35,13 +37,13 @@ public class ShellLocalization
         }
 
         var shellItemType = ShellConstants.ShellItemGuid;
-        var hr = PInvoke.SHCreateItemFromParsingName(path, null, shellItemType, out var item);
+        var hr = NativeHelper.SHCreateItemFromParsingName(path, nint.Zero, shellItemType, out var itemPtr);
         if (hr.Failed)
         {
             return string.Empty;
         }
 
-        var shellItem = (IShellItem)item;
+        var shellItem = (IShellItem)Marshal.GetObjectForIUnknown(itemPtr);
         var filename = shellItem.GetDisplayName(SIGDN.SIGDN_NORMALDISPLAY);
 
         _ = _localizationCache.TryAdd(lowerInvariantPath, filename);

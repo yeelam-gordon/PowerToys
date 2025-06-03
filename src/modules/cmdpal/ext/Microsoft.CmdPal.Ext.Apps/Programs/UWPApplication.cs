@@ -204,13 +204,13 @@ public class UWPApplication : IProgram
             var outBuffer = new StringBuilder(128);
             var source = $"@{{{packageFullName}? {parsed}}}";
             var capacity = (uint)outBuffer.Capacity;
-            var hResult = PInvoke.SHLoadIndirectString(source, outBuffer, capacity, nint.Zero);
+            var hResult = NativeHelper.SHLoadIndirectString(source, outBuffer, capacity, nint.Zero);
             if (hResult.Failed)
             {
                 if (!string.IsNullOrEmpty(parsedFallback))
                 {
                     var sourceFallback = $"@{{{packageFullName}? {parsedFallback}}}";
-                    hResult = PInvoke.SHLoadIndirectString(sourceFallback, outBuffer, capacity, nint.Zero);
+                    hResult = NativeHelper.SHLoadIndirectString(sourceFallback, outBuffer, capacity, nint.Zero);
                     if (hResult.Succeeded)
                     {
                         var loaded = outBuffer.ToString();

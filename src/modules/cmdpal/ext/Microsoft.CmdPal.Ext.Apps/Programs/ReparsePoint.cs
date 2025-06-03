@@ -8,6 +8,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
 
+using Microsoft.CmdPal.Ext.Apps.Utils;
 using Microsoft.Win32.SafeHandles;
 using Windows.Storage.Streams;
 using Windows.Win32;
@@ -97,16 +98,14 @@ public static class ReparsePoint
     /// </exception>
     public static unsafe string? GetTarget(string reparsePoint)
     {
-        using (SafeFileHandle reparsePointHandle = new SafeFileHandle(
-            PInvoke.CreateFile(
-                reparsePoint,
-                (uint)(FILE_ACCESS_RIGHTS.FILE_READ_ATTRIBUTES | FILE_ACCESS_RIGHTS.FILE_READ_EA),
-                FILE_SHARE_MODE.FILE_SHARE_DELETE | FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE,
-                null,
-                FILE_CREATION_DISPOSITION.OPEN_EXISTING,
-                FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT,
-                null),
-            true))
+        using (SafeFileHandle reparsePointHandle = NativeHelper.CreateFile(
+            reparsePoint,
+            FILE_ACCESS_RIGHTS.FILE_READ_ATTRIBUTES | FILE_ACCESS_RIGHTS.FILE_READ_EA,
+            FILE_SHARE_MODE.FILE_SHARE_DELETE | FILE_SHARE_MODE.FILE_SHARE_READ | FILE_SHARE_MODE.FILE_SHARE_WRITE,
+            nint.Zero,
+            FILE_CREATION_DISPOSITION.OPEN_EXISTING,
+            FILE_FLAGS_AND_ATTRIBUTES.FILE_FLAG_OPEN_REPARSE_POINT,
+            nint.Zero))
         {
             if (Marshal.GetLastWin32Error() != 0)
             {
@@ -121,15 +120,15 @@ public static class ReparsePoint
                 // For-loop allows an attempt with 512-bytes buffer, before retrying with a 'MAXIMUM_REPARSE_DATA_BUFFER_SIZE' bytes buffer.
                 for (var i = 0; i < 2; ++i)
                 {
-                    var result = PInvoke.DeviceIoControl(
+                    var result = NativeHelper.DeviceIoControl(
                         reparsePointHandle,
                         FSCTL_GET_REPARSE_POINT,
-                        null,
+                        nint.Zero,
                         0,
-                        outBuffer.ToPointer(),
+                        outBuffer,
                         (uint)outBufferSize,
                         out var bytesReturned,
-                        null);
+                        nint.Zero);
 
                     if (!result)
                     {

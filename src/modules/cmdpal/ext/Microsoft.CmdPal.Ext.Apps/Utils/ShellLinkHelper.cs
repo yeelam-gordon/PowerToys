@@ -8,6 +8,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using ManagedCommon;
+using Microsoft.CmdPal.Ext.Apps.Utils;
 using Windows.Win32;
 using Windows.Win32.Storage.StructuredStorage;
 using Windows.Win32.System.Com;
@@ -132,14 +133,7 @@ public class ShellLinkHelper : IShellLinkHelper
         var clsid = new Guid("00021401-0000-0000-C000-000000000046"); // ShellLink CLSID
         var iid = typeof(IShellLinkW).GUID;
         
-        var hr = PInvoke.CoCreateInstance(clsid, null, CLSCTX.CLSCTX_INPROC_SERVER, iid, out var linkObj);
-        if (hr.Failed)
-        {
-            Logger.LogError($"Failed to create ShellLink: {hr}");
-            return string.Empty;
-        }
-        
-        var link = (IShellLinkW)linkObj;
+        var link = ComHelper.CreateInstance<IShellLinkW>(clsid, iid);
 
         try
         {

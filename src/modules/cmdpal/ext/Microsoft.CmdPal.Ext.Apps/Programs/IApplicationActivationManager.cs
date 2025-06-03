@@ -5,6 +5,7 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
@@ -19,29 +20,13 @@ public enum ActivateOptions
 }
 
 // ApplicationActivationManager
-[ComImport]
+[GeneratedComInterface]
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IApplicationActivationManager
+public partial interface IApplicationActivationManager
 {
-    IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
+    nint ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
 
-    IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
+    nint ActivateForFile([In] string appUserModelId, [In] nint /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
 
-    IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
-}
-
-// Application Activation Manager Class
-[ComImport]
-[Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C")]
-public class ApplicationActivationManager : IApplicationActivationManager
-{
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)/*, PreserveSig*/]
-    public extern IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
-
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
-
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
+    nint ActivateForProtocol([In] string appUserModelId, [In] nint /* IShellItemArray* */itemArray, [Out] out uint processId);
 }

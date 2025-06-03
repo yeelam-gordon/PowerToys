@@ -9,6 +9,8 @@ using ManagedCommon;
 using Microsoft.CmdPal.Ext.Apps.Programs;
 using Microsoft.CmdPal.Ext.Apps.Properties;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Windows.Win32;
+using Windows.Win32.System.Com;
 using WyHash;
 
 namespace Microsoft.CmdPal.Ext.Apps;
@@ -27,7 +29,17 @@ internal sealed partial class AppCommand : InvokableCommand
 
     internal static async Task StartApp(string aumid)
     {
-        var appManager = new ApplicationActivationManager();
+        var clsid = new Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C"); // ApplicationActivationManager CLSID
+        var iid = typeof(IApplicationActivationManager).GUID;
+        
+        var hr = PInvoke.CoCreateInstance(clsid, null, CLSCTX.CLSCTX_LOCAL_SERVER, iid, out var appManagerObj);
+        if (hr.Failed)
+        {
+            Logger.LogError($"Failed to create ApplicationActivationManager: {hr}");
+            return;
+        }
+        
+        var appManager = (IApplicationActivationManager)appManagerObj;
         const ActivateOptions noFlags = ActivateOptions.None;
         await Task.Run(() =>
         {
@@ -44,9 +56,6 @@ internal sealed partial class AppCommand : InvokableCommand
 
     internal static async Task StartExe(string path)
     {
-        var appManager = new ApplicationActivationManager();
-
-        // const ActivateOptions noFlags = ActivateOptions.None;
         await Task.Run(() =>
         {
             try

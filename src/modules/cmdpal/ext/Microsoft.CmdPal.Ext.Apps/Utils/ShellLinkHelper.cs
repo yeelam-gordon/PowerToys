@@ -5,8 +5,11 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using ManagedCommon;
+using Windows.Win32;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
 
@@ -55,10 +58,9 @@ public class ShellLinkHelper : IShellLinkHelper
     // Reference : http://www.pinvoke.net/default.aspx/Interfaces.IShellLinkW
 
     // The IShellLink interface allows Shell links to be created, modified, and resolved
-    [ComImport]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [GeneratedComInterface]
     [Guid("000214F9-0000-0000-C000-000000000046")]
-    private interface IShellLinkW
+    private partial interface IShellLinkW
     {
         /// <summary>Retrieves the path and file name of a Shell link object</summary>
         void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cchMaxPath, ref WIN32_FIND_DATAW pfd, SLGP_FLAGS fFlags);
@@ -115,12 +117,6 @@ public class ShellLinkHelper : IShellLinkHelper
         void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
     }
 
-    [ComImport]
-    [Guid("00021401-0000-0000-C000-000000000046")]
-    private class ShellLink
-    {
-    }
-
     // Contains the description of the app
     public string Description { get; set; } = string.Empty;
 
@@ -132,7 +128,17 @@ public class ShellLinkHelper : IShellLinkHelper
     // Retrieve the target path using Shell Link
     public string RetrieveTargetPath(string path)
     {
-        var link = new ShellLink();
+        var clsid = new Guid("00021401-0000-0000-C000-000000000046"); // ShellLink CLSID
+        var iid = typeof(IShellLinkW).GUID;
+        
+        var hr = PInvoke.CoCreateInstance(clsid, null, CLSCTX.CLSCTX_INPROC_SERVER, iid, out var linkObj);
+        if (hr.Failed)
+        {
+            Logger.LogError($"Failed to create ShellLink: {hr}");
+            return string.Empty;
+        }
+        
+        var link = (IShellLinkW)linkObj;
         const int STGM_READ = 0;
 
         try
@@ -146,13 +152,13 @@ public class ShellLinkHelper : IShellLinkHelper
         }
 
         var hwnd = default(nint);
-        ((IShellLinkW)link).Resolve(ref hwnd, 0);
+        link.Resolve(ref hwnd, 0);
 
         const int MAX_PATH = 260;
         var buffer = new StringBuilder(MAX_PATH);
 
         var data = default(WIN32_FIND_DATAW);
-        ((IShellLinkW)link).GetPath(buffer, buffer.Capacity, ref data, SLGP_FLAGS.SLGP_SHORTPATH);
+        link.GetPath(buffer, buffer.Capacity, ref data, SLGP_FLAGS.SLGP_SHORTPATH);
         var target = buffer.ToString();
 
         // To set the app description
@@ -161,7 +167,7 @@ public class ShellLinkHelper : IShellLinkHelper
             buffer = new StringBuilder(MAX_PATH);
             try
             {
-                ((IShellLinkW)link).GetDescription(buffer, MAX_PATH);
+                link.GetDescription(buffer, MAX_PATH);
                 Description = buffer.ToString();
             }
             catch (Exception ex)
@@ -171,7 +177,7 @@ public class ShellLinkHelper : IShellLinkHelper
             }
 
             var argumentBuffer = new StringBuilder(MAX_PATH);
-            ((IShellLinkW)link).GetArguments(argumentBuffer, argumentBuffer.Capacity);
+            link.GetArguments(argumentBuffer, argumentBuffer.Capacity);
             Arguments = argumentBuffer.ToString();
 
             // Set variable to true if the program takes in any arguments

@@ -13,6 +13,7 @@ using Microsoft.CmdPal.Ext.Apps.Commands;
 using Microsoft.CmdPal.Ext.Apps.Properties;
 using Microsoft.CmdPal.Ext.Apps.Utils;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Windows.Win32.Foundation;
 using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 using PackageVersion = Microsoft.CmdPal.Ext.Apps.Programs.UWP.PackageVersion;
 using Theme = Microsoft.CmdPal.Ext.Apps.Utils.Theme;

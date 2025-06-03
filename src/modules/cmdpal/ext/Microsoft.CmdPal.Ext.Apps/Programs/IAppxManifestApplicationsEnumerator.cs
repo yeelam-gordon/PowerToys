@@ -4,12 +4,13 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
+[GeneratedComInterface]
 [Guid("9EB8A55A-F04B-4D0D-808D-686185D4847A")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IAppxManifestApplicationsEnumerator
+public partial interface IAppxManifestApplicationsEnumerator
 {
     IAppxManifestApplication GetCurrent();
 

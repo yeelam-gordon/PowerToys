@@ -3,13 +3,14 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Runtime.InteropServices;
-using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
+using System.Runtime.InteropServices.Marshalling;
+using Windows.Win32.Foundation;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
+[GeneratedComInterface]
 [Guid("5DA89BF4-3773-46BE-B650-7E744863B7E8")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IAppxManifestApplication
+public partial interface IAppxManifestApplication
 {
     [PreserveSig]
     HRESULT GetStringValue([MarshalAs(UnmanagedType.LPWStr)] string name, [MarshalAs(UnmanagedType.LPWStr)] out string value);

@@ -4,6 +4,8 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Windows.Win32;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Helpers;
 
@@ -14,31 +16,21 @@ public static class ApplicationActivationManagerFactory
     
     public static IApplicationActivationManager CreateInstance()
     {
-        var comWrappers = new StrategyBasedComWrappers();
+        // Use PInvoke.CoCreateInstance to create the COM object (AOT compatible)
+        var hr = PInvoke.CoCreateInstance(
+            ApplicationActivationManagerClsid, 
+            null, 
+            CLSCTX.CLSCTX_ALL, 
+            typeof(IApplicationActivationManager).GUID, 
+            out var comObject);
+            
+        Marshal.ThrowExceptionForHR(hr);
         
-        // Use Type.GetTypeFromCLSID to create the COM object
-        var type = Type.GetTypeFromCLSID(ApplicationActivationManagerClsid);
-        if (type == null)
-        {
-            throw new InvalidOperationException("Failed to get COM type for ApplicationActivationManager");
-        }
-        
-        var comObject = Activator.CreateInstance(type);
         if (comObject == null)
         {
             throw new InvalidOperationException("Failed to create ApplicationActivationManager instance");
         }
         
-        // Use ComWrappers to get the managed interface
-        var pUnk = Marshal.GetIUnknownForObject(comObject);
-        try
-        {
-            var result = comWrappers.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.None);
-            return (IApplicationActivationManager)result;
-        }
-        finally
-        {
-            Marshal.Release(pUnk);
-        }
+        return (IApplicationActivationManager)comObject;
     }
 }

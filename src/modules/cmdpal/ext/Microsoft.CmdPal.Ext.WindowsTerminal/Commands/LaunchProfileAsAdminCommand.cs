@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Resources;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ManagedCommon;
@@ -68,12 +69,36 @@ internal sealed partial class LaunchProfileAsAdminCommand : InvokableCommand
 
     private void Launch(string id, string profile)
     {
-        var appManager = new ApplicationActivationManager();
-        const ActivateOptions noFlags = ActivateOptions.None;
-        var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
+        // Use AOT-compatible COM wrapper to create IApplicationActivationManager
+        ComWrappers cw = new StrategyBasedComWrappers();
+        var clsid = new Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C"); // ApplicationActivationManager CLSID
+        var iid = new Guid("2e941141-7f97-4756-ba1d-9decde894a3d");   // IApplicationActivationManager IID
+        
         try
         {
-            appManager.ActivateApplication(id, queryArguments, noFlags, out var unusedPid);
+            // Create the COM object and get the interface
+            var hr = NativeMethods.CoCreateInstance(ref clsid, IntPtr.Zero, 1 /* CLSCTX_INPROC_SERVER */, ref iid, out var pUnk);
+            if (hr != 0)
+            {
+                Logger.LogError($"Failed to create ApplicationActivationManager COM object. HRESULT: 0x{hr:X8}");
+                return;
+            }
+
+            var appManager = cw.GetOrCreateObjectForComInstance(pUnk, CreateObjectFlags.Unwrap) as IApplicationActivationManager;
+            if (appManager == null)
+            {
+                Logger.LogError("Failed to get IApplicationActivationManager interface");
+                return;
+            }
+
+            const ActivateOptions noFlags = ActivateOptions.None;
+            var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
+            
+            var result = appManager.ActivateApplication(id, queryArguments, noFlags, out var unusedPid);
+            if (result != 0)
+            {
+                Logger.LogError($"ActivateApplication failed with HRESULT: 0x{result:X8}");
+            }
         }
 #pragma warning disable IDE0059, CS0168
         catch (Exception ex)

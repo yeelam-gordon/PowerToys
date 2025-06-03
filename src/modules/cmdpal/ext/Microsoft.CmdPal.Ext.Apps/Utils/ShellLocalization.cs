@@ -4,8 +4,8 @@
 using System;
 using System.Collections.Concurrent;
 using System.IO;
+using Windows.Win32;
 using Windows.Win32.UI.Shell;
-using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
 
@@ -34,14 +34,15 @@ public class ShellLocalization
             return value;
         }
 
-        var shellItemType = ShellItemTypeConstants.ShellItemGuid;
-        var retCode = SHCreateItemFromParsingName(path, nint.Zero, ref shellItemType, out var shellItem);
-        if (retCode != 0)
+        var shellItemType = ShellConstants.ShellItemGuid;
+        var hr = PInvoke.SHCreateItemFromParsingName(path, null, shellItemType, out var item);
+        if (hr.Failed)
         {
             return string.Empty;
         }
 
-        shellItem.GetDisplayName(SIGDN.SIGDN_NORMALDISPLAY, out var filename);
+        var shellItem = (IShellItem)item;
+        var filename = shellItem.GetDisplayName(SIGDN.SIGDN_NORMALDISPLAY);
 
         _ = _localizationCache.TryAdd(lowerInvariantPath, filename);
 

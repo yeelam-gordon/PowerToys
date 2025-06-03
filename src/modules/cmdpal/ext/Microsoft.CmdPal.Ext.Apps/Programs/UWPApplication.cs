@@ -13,8 +13,8 @@ using Microsoft.CmdPal.Ext.Apps.Commands;
 using Microsoft.CmdPal.Ext.Apps.Properties;
 using Microsoft.CmdPal.Ext.Apps.Utils;
 using Microsoft.CommandPalette.Extensions.Toolkit;
+using Windows.Win32;
 using Windows.Win32.Foundation;
-using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 using PackageVersion = Microsoft.CmdPal.Ext.Apps.Programs.UWP.PackageVersion;
 using Theme = Microsoft.CmdPal.Ext.Apps.Utils.Theme;
 
@@ -204,14 +204,14 @@ public class UWPApplication : IProgram
             var outBuffer = new StringBuilder(128);
             var source = $"@{{{packageFullName}? {parsed}}}";
             var capacity = (uint)outBuffer.Capacity;
-            var hResult = SHLoadIndirectString(source, outBuffer, capacity, IntPtr.Zero);
-            if (hResult != HRESULT.S_OK)
+            var hResult = PInvoke.SHLoadIndirectString(source, outBuffer, capacity, nint.Zero);
+            if (hResult.Failed)
             {
                 if (!string.IsNullOrEmpty(parsedFallback))
                 {
                     var sourceFallback = $"@{{{packageFullName}? {parsedFallback}}}";
-                    hResult = SHLoadIndirectString(sourceFallback, outBuffer, capacity, IntPtr.Zero);
-                    if (hResult == HRESULT.S_OK)
+                    hResult = PInvoke.SHLoadIndirectString(sourceFallback, outBuffer, capacity, nint.Zero);
+                    if (hResult.Succeeded)
                     {
                         var loaded = outBuffer.ToString();
                         if (!string.IsNullOrEmpty(loaded))

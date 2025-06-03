@@ -4,9 +4,8 @@
 
 using System;
 using ManagedCommon;
-using Windows.Win32;
-using Windows.Win32.System.Com;
-using Windows.Win32.System.Search;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
+using System.Runtime.InteropServices;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
 
@@ -28,22 +27,44 @@ internal static class DataSourceManager
 
     private static bool InitializeDataSource()
     {
-        var hr = PInvoke.CoCreateInstance(CLSIDCollatorDataSource, null, CLSCTX.CLSCTX_INPROC_SERVER, typeof(IDBInitialize).GUID, out var dataSourceObj);
+        var hr = ComApi.CoCreateInstance(
+            CLSIDCollatorDataSource, 
+            IntPtr.Zero, 
+            ClsContext.CLSCTX_INPROC_SERVER, 
+            typeof(IDBInitialize).GUID, 
+            out var dataSourcePtr);
+            
         if (hr != 0)
         {
             Logger.LogError("CoCreateInstance failed: " + hr);
             return false;
         }
 
-        if (dataSourceObj == null)
+        if (dataSourcePtr == IntPtr.Zero)
         {
-            Logger.LogError("CoCreateInstance failed: dataSourceObj is null");
+            Logger.LogError("CoCreateInstance failed: dataSourcePtr is null");
             return false;
         }
 
-        _dataSource = (IDBInitialize)dataSourceObj;
-        _dataSource.Initialize();
+        try
+        {
+            var dataSourceObj = Marshal.GetObjectForIUnknown(dataSourcePtr);
+            _dataSource = (IDBInitialize)dataSourceObj;
+            _dataSource.Initialize();
 
-        return true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to cast COM object to IDBInitialize", ex);
+            return false;
+        }
+        finally
+        {
+            if (dataSourcePtr != IntPtr.Zero)
+            {
+                Marshal.Release(dataSourcePtr);
+            }
+        }
     }
 }

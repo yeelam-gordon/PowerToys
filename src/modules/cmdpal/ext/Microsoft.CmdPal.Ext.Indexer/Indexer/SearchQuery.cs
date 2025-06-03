@@ -10,9 +10,7 @@ using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.Utils;
 using Microsoft.CmdPal.Ext.Indexer.Native;
-using Windows.Win32;
-using Windows.Win32.System.Com;
-using Windows.Win32.System.Search;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
 using Windows.Win32.UI.Shell.PropertiesSystem;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
@@ -122,7 +120,7 @@ internal sealed partial class SearchQuery : IDisposable
                 {
                     if (reuseRowset != null)
                     {
-                        Marshal.ReleaseComObject(reuseRowset);
+                        // No need to release - using GeneratedComInterface
                     }
 
                     // We have a previous rowset, this means the user is typing and we should store this
@@ -148,13 +146,19 @@ internal sealed partial class SearchQuery : IDisposable
 
     private bool HandleRow(IGetRow getRow, nuint rowHandle)
     {
-        object propertyStorePtr = null;
+        IntPtr propertyStorePtr = IntPtr.Zero;
 
         try
         {
-            getRow.GetRowFromHROW(null, rowHandle, typeof(IPropertyStore).GUID, out propertyStorePtr);
+            getRow.GetRowFromHROW(IntPtr.Zero, rowHandle, typeof(IPropertyStore).GUID, out propertyStorePtr);
 
-            var propertyStore = (IPropertyStore)propertyStorePtr;
+            if (propertyStorePtr == IntPtr.Zero)
+            {
+                Logger.LogError("Failed to get IPropertyStore interface");
+                return false;
+            }
+
+            var propertyStore = (IPropertyStore)Marshal.GetObjectForIUnknown(propertyStorePtr);
             if (propertyStore == null)
             {
                 Logger.LogError("Failed to get IPropertyStore interface");
@@ -178,10 +182,10 @@ internal sealed partial class SearchQuery : IDisposable
         }
         finally
         {
-            // Ensure the COM object is released if not returned
-            if (propertyStorePtr != null)
+            // Ensure the COM object is released
+            if (propertyStorePtr != IntPtr.Zero)
             {
-                Marshal.ReleaseComObject(propertyStorePtr);
+                Marshal.Release(propertyStorePtr);
             }
         }
     }
@@ -270,7 +274,7 @@ internal sealed partial class SearchQuery : IDisposable
         {
             if (reuseRowset != null)
             {
-                Marshal.ReleaseComObject(reuseRowset);
+                // No need to release - using GeneratedComInterface
             }
 
             reuseRowset = rowset;
@@ -280,28 +284,30 @@ internal sealed partial class SearchQuery : IDisposable
 
     private unsafe IRowset ExecuteCommand(string queryStr)
     {
-        object sessionPtr = null;
-        object commandPtr = null;
+        IntPtr sessionPtr = IntPtr.Zero;
+        IntPtr commandPtr = IntPtr.Zero;
 
         try
         {
             var session = (IDBCreateSession)DataSourceManager.GetDataSource();
-            session.CreateSession(null, typeof(IDBCreateCommand).GUID, out sessionPtr);
-            if (sessionPtr == null)
+            session.CreateSession(IntPtr.Zero, typeof(IDBCreateCommand).GUID, out sessionPtr);
+            if (sessionPtr == IntPtr.Zero)
             {
                 Logger.LogError("CreateSession failed");
                 return null;
             }
 
-            var createCommand = (IDBCreateCommand)sessionPtr;
-            createCommand.CreateCommand(null, typeof(ICommandText).GUID, out commandPtr);
-            if (commandPtr == null)
+            var sessionObject = Marshal.GetObjectForIUnknown(sessionPtr);
+            var createCommand = (IDBCreateCommand)sessionObject;
+            createCommand.CreateCommand(IntPtr.Zero, typeof(ICommandText).GUID, out commandPtr);
+            if (commandPtr == IntPtr.Zero)
             {
                 Logger.LogError("CreateCommand failed");
                 return null;
             }
 
-            var commandText = (ICommandText)commandPtr;
+            var commandObject = Marshal.GetObjectForIUnknown(commandPtr);
+            var commandText = (ICommandText)commandObject;
             if (commandText == null)
             {
                 Logger.LogError("Failed to get ICommandText interface");
@@ -309,9 +315,15 @@ internal sealed partial class SearchQuery : IDisposable
             }
 
             commandText.SetCommandText(in NativeHelpers.OleDb.DbGuidDefault, queryStr);
-            commandText.Execute(null, typeof(IRowset).GUID, null, null, out var rowsetPointer);
+            commandText.Execute(IntPtr.Zero, typeof(IRowset).GUID, IntPtr.Zero, out var rowsAffected, out var rowsetPtr);
 
-            return rowsetPointer as IRowset;
+            if (rowsetPtr == IntPtr.Zero)
+            {
+                return null;
+            }
+
+            var rowsetObject = Marshal.GetObjectForIUnknown(rowsetPtr);
+            return rowsetObject as IRowset;
         }
         catch (Exception ex)
         {
@@ -321,15 +333,15 @@ internal sealed partial class SearchQuery : IDisposable
         finally
         {
             // Release the command pointer
-            if (commandPtr != null)
+            if (commandPtr != IntPtr.Zero)
             {
-                Marshal.ReleaseComObject(commandPtr);
+                Marshal.Release(commandPtr);
             }
 
             // Release the session pointer
-            if (sessionPtr != null)
+            if (sessionPtr != IntPtr.Zero)
             {
-                Marshal.ReleaseComObject(sessionPtr);
+                Marshal.Release(sessionPtr);
             }
         }
     }
@@ -464,13 +476,13 @@ internal sealed partial class SearchQuery : IDisposable
 
         if (reuseRowset != null)
         {
-            Marshal.ReleaseComObject(reuseRowset);
+            // No need to release - using GeneratedComInterface
             reuseRowset = null;
         }
 
         if (currentRowset != null)
         {
-            Marshal.ReleaseComObject(currentRowset);
+            // No need to release - using GeneratedComInterface
             currentRowset = null;
         }
 

@@ -15,14 +15,14 @@ public partial interface IApplicationActivationManager
 {
     int ActivateApplication(
         [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId,
-        [MarshalAs(UnmanagedType.LPWStr)] string? arguments,
+        [MarshalAs(UnmanagedType.LPWStr)] string arguments,
         Windows.Win32.UI.Shell.ACTIVATEOPTIONS options,
         out uint processId);
         
     int ActivateForFile(
         [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId,
         IntPtr itemArray, // IShellItemArray*
-        [MarshalAs(UnmanagedType.LPWStr)] string? verb,
+        [MarshalAs(UnmanagedType.LPWStr)] string verb,
         out uint processId);
         
     int ActivateForProtocol(

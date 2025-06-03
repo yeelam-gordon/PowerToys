@@ -67,6 +67,10 @@ internal sealed class QueryStringBuilder
                 queryHelper.QuerySelectColumns = Properties;
                 queryHelper.QueryContentProperties = "System.FileName";
                 queryHelper.QuerySorting = OrderConditions;
+                
+                // Release intermediate COM pointers
+                Marshal.Release(catalogManagerPtr);
+                Marshal.Release(queryHelperPtr);
             }
             finally
             {

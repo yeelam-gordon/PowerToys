@@ -21,3 +21,6 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '9.0.x'
+
+
+    # In case using dotnet to build, here is example: dotnet build /p:Configuration=Release /p:Platform=x64

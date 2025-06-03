@@ -16,7 +16,7 @@ public partial interface IApplicationActivationManager
     int ActivateApplication(
         [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId,
         [MarshalAs(UnmanagedType.LPWStr)] string? arguments,
-        ACTIVATEOPTIONS options,
+        Windows.Win32.UI.Shell.ACTIVATEOPTIONS options,
         out uint processId);
         
     int ActivateForFile(

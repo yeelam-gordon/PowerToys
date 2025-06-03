@@ -38,6 +38,19 @@ The guidance in this section applies to all interop scenarios.
 
   - This allows your `\[LibraryImport]` `\[GeneratedComInterface]` or attributes to use the C# `nameof` language feature to pass in the name of the native library and ensure that you didn't misspell the name of the native library.
 
+\-✔️ Do check for all the parameters' type for the interface defined at `\[GeneratedComInterface]`, if the type is an interface continues to genreate its `\[GeneratedComInterface]`, if the type is bittable struct/type, please use csWin32 to generate with NativeMethods.txt with NativeMethods.json with the following:
+```json
+{
+  "$schema": "https://aka.ms/CsWin32.schema.json",
+  "allowMarshaling": false,
+  "public": true,
+  "comInterop": {
+    "preserveSigMethods": [ "*" ]
+  }
+```
+
+\-✔️ Do generate all the parent (inherited) of the interface defined at `\[GeneratedComInterface]` as `\[GeneratedComInterface]`
+
 \-✔️ DO use `SafeHandle` handles to manage lifetime of objects for `\[LibraryImport]` that encapsulate unmanaged resources. For more information, see \[Cleaning up unmanaged resources](../garbage-collection/unmanaged.md). No need for those using `\[GeneratedComInterface]`
 
 \-✔️ Do use CLSCTX\_INPROC\_SERVER for CoCreateInstance 3rd parameters, and CoCreateInstance is using `\[LibraryImport]` with good Marshal.Release.

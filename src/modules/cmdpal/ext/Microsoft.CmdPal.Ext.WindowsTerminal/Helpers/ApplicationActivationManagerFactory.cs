@@ -22,11 +22,12 @@ internal static class ApplicationActivationManagerFactory
         unsafe
         {
             void* pUnknown;
+            var iid = typeof(IApplicationActivationManager).GUID;
             PInvoke.CoCreateInstance(
                 CLSID_ApplicationActivationManager,
                 null,
                 CLSCTX.CLSCTX_LOCAL_SERVER,
-                typeof(IApplicationActivationManager).GUID,
+                iid,
                 &pUnknown).ThrowOnFailure();
 
             return (IApplicationActivationManager)Marshal.GetObjectForIUnknown((IntPtr)pUnknown);

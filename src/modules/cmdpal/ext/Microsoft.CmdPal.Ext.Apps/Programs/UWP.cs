@@ -13,6 +13,7 @@ using Microsoft.CommandPalette.Extensions.Toolkit;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
+using Windows.Win32.Storage.StructuredStorage;
 using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
@@ -66,7 +67,7 @@ public partial class UWP
 
         const uint noAttribute = 0x80;
 
-        var access = (uint)STGM.READ;
+        var access = (uint)Windows.Win32.Storage.StructuredStorage.STGM.STGM_READ;
         var hResult = PInvoke.SHCreateStreamOnFileEx(path, access, noAttribute, false, null, out IStream stream);
 
         // S_OK

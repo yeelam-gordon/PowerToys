@@ -44,7 +44,7 @@ public static class AppxPackageHelper
 
     internal static T CheckHRAndReturnOrThrow<T>(HRESULT hr, T result)
     {
-        if (hr != HRESULT.S_OK)
+        if (hr.Failed)
         {
             Marshal.ThrowExceptionForHR((int)hr);
         }

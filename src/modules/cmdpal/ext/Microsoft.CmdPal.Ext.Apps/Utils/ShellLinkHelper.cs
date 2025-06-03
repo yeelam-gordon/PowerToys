@@ -9,6 +9,7 @@ using System.Runtime.InteropServices.Marshalling;
 using System.Text;
 using ManagedCommon;
 using Windows.Win32;
+using Windows.Win32.Storage.StructuredStorage;
 using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
@@ -139,11 +140,10 @@ public class ShellLinkHelper : IShellLinkHelper
         }
         
         var link = (IShellLinkW)linkObj;
-        const int STGM_READ = 0;
 
         try
         {
-            ((IPersistFile)link).Load(path, STGM_READ);
+            ((IPersistFile)link).Load(path, (int)STGM.STGM_READ);
         }
         catch (System.IO.FileNotFoundException ex)
         {

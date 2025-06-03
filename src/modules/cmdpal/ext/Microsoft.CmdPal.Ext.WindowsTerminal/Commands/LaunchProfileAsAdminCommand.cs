@@ -16,7 +16,6 @@ using Microsoft.CmdPal.Ext.WindowsTerminal.Properties;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Windows.UI;
-using Windows.Win32.UI.Shell;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Commands;
 
@@ -71,7 +70,7 @@ internal sealed partial class LaunchProfileAsAdminCommand : InvokableCommand
     private void Launch(string id, string profile)
     {
         var appManager = ApplicationActivationManagerFactory.CreateInstance();
-        const ACTIVATEOPTIONS noFlags = ACTIVATEOPTIONS.AO_NONE;
+        const Windows.Win32.UI.Shell.ACTIVATEOPTIONS noFlags = Windows.Win32.UI.Shell.ACTIVATEOPTIONS.AO_NONE;
         var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
         try
         {

@@ -19,6 +19,11 @@ public enum ActivateOptions
     NoSplashScreen = 0x00000004,
 }
 
+public static class ApplicationActivationManagerConstants
+{
+    public static readonly Guid CLSID = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
+}
+
 // ApplicationActivationManager
 [GeneratedComInterface]
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]

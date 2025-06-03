@@ -15,6 +15,11 @@ using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
 
+public static class ShellLinkConstants
+{
+    public static readonly Guid CLSID = new("00021401-0000-0000-C000-000000000046");
+}
+
 public class ShellLinkHelper : IShellLinkHelper
 {
     [Flags]
@@ -130,10 +135,7 @@ public class ShellLinkHelper : IShellLinkHelper
     // Retrieve the target path using Shell Link
     public string RetrieveTargetPath(string path)
     {
-        var clsid = new Guid("00021401-0000-0000-C000-000000000046"); // ShellLink CLSID
-        var iid = typeof(IShellLinkW).GUID;
-        
-        var link = ComHelper.CreateInstance<IShellLinkW>(clsid, iid);
+        var link = ComHelper.CreateInstance<IShellLinkW>(ShellLinkConstants.CLSID, typeof(IShellLinkW).GUID);
 
         try
         {

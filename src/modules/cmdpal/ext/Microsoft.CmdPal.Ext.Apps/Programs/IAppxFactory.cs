@@ -8,6 +8,11 @@ using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
+public static class AppxFactoryConstants
+{
+    public static readonly System.Guid CLSID = new("5842a140-ff9f-4166-8f5c-62f5b7b0c781");
+}
+
 [GeneratedComInterface]
 [Guid("BEB94909-E451-438B-B5A7-D79E767B75D8")]
 public partial interface IAppxFactory

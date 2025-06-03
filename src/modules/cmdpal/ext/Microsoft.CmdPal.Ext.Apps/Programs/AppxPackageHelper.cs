@@ -16,10 +16,7 @@ public static class AppxPackageHelper
     // This function returns a list of attributes of applications
     internal static IEnumerable<IAppxManifestApplication> GetAppsFromManifest(IStream stream)
     {
-        var clsid = new System.Guid("5842a140-ff9f-4166-8f5c-62f5b7b0c781"); // AppxFactory CLSID
-        var iid = typeof(IAppxFactory).GUID;
-        
-        var appxFactory = ComHelper.CreateInstance<IAppxFactory>(clsid, iid);
+        var appxFactory = ComHelper.CreateInstance<IAppxFactory>(AppxFactoryConstants.CLSID, typeof(IAppxFactory).GUID);
         var reader = appxFactory.CreateManifestReader(stream);
         var manifestApps = reader.GetApplications();
 

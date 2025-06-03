@@ -30,10 +30,7 @@ internal sealed partial class AppCommand : InvokableCommand
 
     internal static async Task StartApp(string aumid)
     {
-        var clsid = new Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C"); // ApplicationActivationManager CLSID
-        var iid = typeof(IApplicationActivationManager).GUID;
-        
-        var appManager = ComHelper.CreateInstance<IApplicationActivationManager>(clsid, iid, CLSCTX.CLSCTX_LOCAL_SERVER);
+        var appManager = ComHelper.CreateInstance<IApplicationActivationManager>(ApplicationActivationManagerConstants.CLSID, typeof(IApplicationActivationManager).GUID, CLSCTX.CLSCTX_LOCAL_SERVER);
         const ActivateOptions noFlags = ActivateOptions.None;
         await Task.Run(() =>
         {

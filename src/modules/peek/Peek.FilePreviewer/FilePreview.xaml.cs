@@ -78,6 +78,20 @@ namespace Peek.FilePreviewer
         public void Dispose()
         {
             _cancellationTokenSource.Dispose();
+            CleanupMediaPlayers();
+        }
+        
+        /// <summary>
+        /// Explicitly cleanup media player resources to prevent them from persisting as media players in the system
+        /// </summary>
+        public void CleanupMediaPlayers()
+        {
+            // Clean up video player
+            VideoPreview.MediaPlayer.Pause();
+            VideoPreview.MediaPlayer.Source = null;
+            
+            // Clean up audio player if available
+            AudioPreview?.CleanupMediaPlayer();
         }
 
         private async void Previewer_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

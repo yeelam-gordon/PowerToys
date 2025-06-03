@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 
 using ManagedCommon;
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media;
 using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.Graphics.Gdi;
@@ -20,6 +21,39 @@ namespace Peek.UI.Extensions
         {
             var hwnd = new HWND(window.GetWindowHandle());
             return hwnd.GetMonitorScale();
+        }
+
+        /// <summary>
+        /// Find a child element of a specific type in the visual tree
+        /// </summary>
+        /// <typeparam name="T">Type of element to find</typeparam>
+        /// <param name="parent">Parent element to search from</param>
+        /// <returns>First matching child of the specified type, or null if not found</returns>
+        public static T FindDescendant<T>(this DependencyObject parent) where T : DependencyObject
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            int count = VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < count; i++)
+            {
+                var child = VisualTreeHelper.GetChild(parent, i);
+                
+                if (child is T found)
+                {
+                    return found;
+                }
+
+                var result = FindDescendant<T>(child);
+                if (result != null)
+                {
+                    return result;
+                }
+            }
+
+            return null;
         }
 
         internal static void CenterOnMonitor(this Window window, HWND hwndDesktop, double? width = null, double? height = null)

@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Resources;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ManagedCommon;
@@ -69,12 +70,12 @@ internal sealed partial class LaunchProfileAsAdminCommand : InvokableCommand
     private void Launch(string id, string profile)
     {
         var appManager = ApplicationActivationManagerFactory.CreateInstance();
-        const Windows.Win32.UI.Shell.ACTIVATEOPTIONS noFlags = Windows.Win32.UI.Shell.ACTIVATEOPTIONS.AO_NONE;
+        const ActivateOptions noFlags = ActivateOptions.None;
         var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
         try
         {
-            uint unusedPid;
-            appManager.ActivateApplication(id, queryArguments, noFlags, out unusedPid);
+            var hr = appManager.ActivateApplication(id, queryArguments, noFlags, out var unusedPid);
+            Marshal.ThrowExceptionForHR(hr);
         }
 #pragma warning disable IDE0059, CS0168
         catch (Exception ex)

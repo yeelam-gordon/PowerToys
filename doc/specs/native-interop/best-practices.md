@@ -40,6 +40,8 @@ The guidance in this section applies to all interop scenarios.
 
 \-✔️ DO use `SafeHandle` handles to manage lifetime of objects for `\[LibraryImport]` that encapsulate unmanaged resources. For more information, see \[Cleaning up unmanaged resources](../garbage-collection/unmanaged.md). No need for those using `\[GeneratedComInterface]`
 
+\-✔️ Do use CLSCTX\_INPROC\_SERVER for CoCreateInstance 3rd parameters, and CoCreateInstance is using `\[LibraryImport]` with good Marshal.Release.
+
 \- ❌ AVOID finalizers to manage lifetime of objects that encapsulate unmanaged resources. For more information, see \[Implement a Dispose method](../garbage-collection/implementing-dispose.md).
 
 \## LibraryImport attribute settings

@@ -3,22 +3,35 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
+using Windows.Win32.Foundation;
+using Windows.Win32;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Helpers;
 
-// Application Activation Manager Class
-[ComImport]
-[Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C")]
-public class ApplicationActivationManager : IApplicationActivationManager
+// Application Activation Manager Helper
+public static class ApplicationActivationManagerHelper
 {
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)/*, PreserveSig*/]
-    public extern IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
+    private static readonly Guid CLSID_ApplicationActivationManager = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
+    private static readonly Guid IID_IApplicationActivationManager = new("2e941141-7f97-4756-ba1d-9decde894a3d");
 
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
+    public static IApplicationActivationManager CreateInstance()
+    {
+        var comWrappers = new StrategyBasedComWrappers();
+        
+        var hr = PInvoke.CoCreateInstance(
+            CLSID_ApplicationActivationManager,
+            null,
+            Windows.Win32.System.Com.CLSCTX.CLSCTX_INPROC_SERVER,
+            IID_IApplicationActivationManager,
+            out var ppv);
 
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
+        if (hr.Failed)
+        {
+            throw new COMException("Failed to create ApplicationActivationManager", hr);
+        }
+
+        return (IApplicationActivationManager)comWrappers.GetOrCreateObjectForComInstance((nint)ppv, CreateObjectFlags.None);
+    }
 }

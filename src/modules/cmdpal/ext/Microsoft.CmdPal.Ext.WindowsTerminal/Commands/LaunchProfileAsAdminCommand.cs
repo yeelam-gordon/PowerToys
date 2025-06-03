@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Resources;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using ManagedCommon;
@@ -16,7 +15,6 @@ using Microsoft.CmdPal.Ext.WindowsTerminal.Properties;
 using Microsoft.CommandPalette.Extensions;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using Windows.UI;
-using Windows.Win32;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Commands;
 
@@ -72,28 +70,14 @@ internal sealed partial class LaunchProfileAsAdminCommand : InvokableCommand
     {
         try
         {
-            ComWrappers cw = new StrategyBasedComWrappers();
+            var appManager = ComHelper.CreateApplicationActivationManager();
+            const Windows.Win32.UI.Shell.ACTIVATEOPTIONS noFlags = Windows.Win32.UI.Shell.ACTIVATEOPTIONS.AO_NONE;
+            var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
             
-            // Create the ApplicationActivationManager using ComWrappers
-            var clsid = new Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C"); // CLSID_ApplicationActivationManager
-            var iid = typeof(IApplicationActivationManager).GUID;
-            
-            int hr = Windows.Win32.PInvoke.CoCreateInstance(in clsid, null, Windows.Win32.System.Com.CLSCTX.CLSCTX_INPROC_SERVER, in iid, out object obj);
-            if (hr >= 0)
+            int hr = appManager.ActivateApplication(id, queryArguments, noFlags, out var unusedPid);
+            if (hr < 0)
             {
-                var appManager = (IApplicationActivationManager)cw.GetOrCreateObjectForComInstance((nint)obj, CreateObjectFlags.None);
-                const Windows.Win32.UI.Shell.ACTIVATEOPTIONS noFlags = Windows.Win32.UI.Shell.ACTIVATEOPTIONS.AO_NONE;
-                var queryArguments = TerminalHelper.GetArguments(profile, _openNewTab, _openQuake);
-                
-                hr = appManager.ActivateApplication(id, queryArguments, noFlags, out var unusedPid);
-                if (hr < 0)
-                {
-                    Logger.LogError($"Failed to activate application: HRESULT = 0x{hr:X8}");
-                }
-            }
-            else
-            {
-                Logger.LogError($"Failed to create ApplicationActivationManager: HRESULT = 0x{hr:X8}");
+                Logger.LogError($"Failed to activate application: HRESULT = 0x{hr:X8}");
             }
         }
         catch (Exception ex)

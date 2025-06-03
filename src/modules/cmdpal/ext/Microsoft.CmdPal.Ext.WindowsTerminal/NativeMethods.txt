@@ -1,1 +1,3 @@
 CoCreateInstance
+IApplicationActivationManager
+ACTIVATEOPTIONS

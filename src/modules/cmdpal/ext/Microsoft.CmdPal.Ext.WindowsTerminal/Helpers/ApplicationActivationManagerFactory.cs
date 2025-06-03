@@ -6,6 +6,7 @@ using System;
 using System.Runtime.InteropServices;
 using Windows.Win32;
 using Windows.Win32.System.Com;
+using Windows.Win32.UI.Shell;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Helpers;
 

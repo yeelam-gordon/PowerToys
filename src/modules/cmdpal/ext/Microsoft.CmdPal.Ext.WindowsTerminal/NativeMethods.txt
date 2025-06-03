@@ -1,0 +1,6 @@
+IApplicationActivationManager
+ACTIVATEOPTIONS
+IShellItemArray
+CoCreateInstance
+CLSCTX
+CLSID_ApplicationActivationManager

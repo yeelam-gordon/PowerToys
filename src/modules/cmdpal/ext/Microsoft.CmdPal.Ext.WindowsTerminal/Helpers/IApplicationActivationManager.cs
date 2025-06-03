@@ -4,28 +4,19 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Windows.Win32;
+using Windows.Win32.UI.Shell;
 
 namespace Microsoft.CmdPal.Ext.WindowsTerminal.Helpers;
 
-// Reference : https://github.com/MicrosoftEdge/edge-launcher/blob/108e63df0b4cb5cd9d5e45aa7a264690851ec51d/MIcrosoftEdgeLauncherCsharp/Program.cs
-[Flags]
-public enum ActivateOptions
-{
-    None = 0x00000000,
-    DesignMode = 0x00000001,
-    NoErrorUI = 0x00000002,
-    NoSplashScreen = 0x00000004,
-}
-
 // ApplicationActivationManager
-[ComImport]
+[GeneratedComInterface]
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IApplicationActivationManager
+public partial interface IApplicationActivationManager
 {
-    IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
+    int ActivateApplication([In] [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId, [In] [MarshalAs(UnmanagedType.LPWStr)] string? arguments, [In] ACTIVATEOPTIONS options, [Out] out uint processId);
 
-    IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
+    int ActivateForFile([In] [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId, [In] IShellItemArray itemArray, [In] [MarshalAs(UnmanagedType.LPWStr)] string? verb, [Out] out uint processId);
 
-    IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
+    int ActivateForProtocol([In] [MarshalAs(UnmanagedType.LPWStr)] string appUserModelId, [In] IShellItemArray itemArray, [Out] out uint processId);
 }

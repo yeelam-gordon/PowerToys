@@ -7,10 +7,6 @@ using Microsoft.CmdPal.Ext.Indexer.Data;
 using Microsoft.CmdPal.Ext.Indexer.Native;
 using Microsoft.CmdPal.Ext.Indexer.Properties;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using Windows.Win32;
-using Windows.Win32.Foundation;
-using Windows.Win32.UI.Shell;
-using Windows.Win32.UI.WindowsAndMessaging;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Commands;
 
@@ -25,19 +21,16 @@ internal sealed partial class OpenWithCommand : InvokableCommand
 
         try
         {
-            var filenamePCWSTR = new PCWSTR((char*)filenamePtr);
-            var verbPCWSTR = new PCWSTR((char*)verbPtr);
-
-            var info = new SHELLEXECUTEINFOW
+            var info = new Win32Apis.ShellExecuteInfo
             {
-                cbSize = (uint)Marshal.SizeOf<SHELLEXECUTEINFOW>(),
-                lpVerb = verbPCWSTR,
-                lpFile = filenamePCWSTR,
-                nShow = (int)SHOW_WINDOW_CMD.SW_SHOWNORMAL,
+                cbSize = (uint)Marshal.SizeOf<Win32Apis.ShellExecuteInfo>(),
+                lpVerb = verbPtr,
+                lpFile = filenamePtr,
+                nShow = 1, // SW_SHOWNORMAL
                 fMask = NativeHelpers.SEEMASKINVOKEIDLIST,
             };
 
-            return PInvoke.ShellExecuteEx(ref info);
+            return Win32Apis.ShellExecuteExW(ref info);
         }
         finally
         {

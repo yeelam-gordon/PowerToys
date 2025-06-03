@@ -9,3 +9,7 @@ IDBInitialize
 IGetRow
 IPropertyStore
 ShellExecuteEx
+SHELLEXECUTEINFOW
+PCWSTR
+CLSCTX
+DBPROPIDSET

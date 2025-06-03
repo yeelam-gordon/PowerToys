@@ -7,12 +7,8 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer.SystemSearch;
 
-[CoClass(typeof(CSearchManagerClass))]
-[Guid("AB310581-AC80-11D1-8DF3-00C04FB6EF69")]
-[ComImport]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1715:Identifiers should have correct prefix", Justification = "Using original name from type lib")]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1302:Interface names should begin with I", Justification = "Using original name from type lib")]
-[System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Using original name from type lib")]
-public interface CSearchManager : ISearchManager
+// Deprecated - Use NativeHelpers.SearchCLSIDs.CLSID_CSearchManager instead
+internal static class SearchManagerCLSID
 {
+    public static readonly Guid CLSID_CSearchManager = new("7D096C5F-AC08-4F1F-BEB7-5C22C517CE39");
 }

@@ -22,4 +22,12 @@ internal sealed class NativeHelpers
     {
         public static readonly Guid DbGuidDefault = new("C8B521FB-5CF3-11CE-ADE5-00AA0044773D");
     }
+
+    // Search Manager CLSIDs for COM object creation
+    internal static class SearchCLSIDs
+    {
+        public static readonly Guid CLSID_CSearchManager = new("7D096C5F-AC08-4F1F-BEB7-5C22C517CE39");
+        public static readonly Guid CLSID_CSearchCatalogManager = new("AAB49DD5-AD0B-40AE-B654-AE8976BF6BD2");
+        public static readonly Guid CLSID_CSearchQueryHelper = new("B271E955-09E1-42E1-9B95-5994A534B613");
+    }
 }

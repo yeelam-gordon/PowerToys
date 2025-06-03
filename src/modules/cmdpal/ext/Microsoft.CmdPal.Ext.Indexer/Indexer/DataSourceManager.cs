@@ -4,8 +4,7 @@
 
 using System;
 using ManagedCommon;
-using Windows.Win32;
-using Windows.Win32.System.Com;
+using Microsoft.CmdPal.Ext.Indexer.Native;
 using Windows.Win32.System.Search;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
@@ -28,19 +27,24 @@ internal static class DataSourceManager
 
     private static bool InitializeDataSource()
     {
-        var hr = PInvoke.CoCreateInstance(CLSIDCollatorDataSource, null, CLSCTX.CLSCTX_INPROC_SERVER, typeof(IDBInitialize).GUID, out var dataSourceObj);
+        var clsid = CLSIDCollatorDataSource;
+        var iid = typeof(IDBInitialize).GUID;
+        var hr = Win32Apis.CoCreateInstance(ref clsid, 0, Win32Apis.CLSCTX_INPROC_SERVER, ref iid, out var dataSourcePtr);
         if (hr != 0)
         {
             Logger.LogError("CoCreateInstance failed: " + hr);
             return false;
         }
 
-        if (dataSourceObj == null)
+        if (dataSourcePtr == 0)
         {
-            Logger.LogError("CoCreateInstance failed: dataSourceObj is null");
+            Logger.LogError("CoCreateInstance failed: dataSourcePtr is null");
             return false;
         }
 
+        // Use ComWrappers to create the managed wrapper
+        var comWrappers = new IndexerComWrappers();
+        var dataSourceObj = comWrappers.GetOrCreateObjectForComInstance(dataSourcePtr, CreateObjectFlags.None);
         _dataSource = (IDBInitialize)dataSourceObj;
         _dataSource.Initialize();
 

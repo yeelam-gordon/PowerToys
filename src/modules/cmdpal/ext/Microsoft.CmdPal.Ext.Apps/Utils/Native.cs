@@ -12,17 +12,17 @@ namespace Microsoft.CmdPal.Ext.Apps.Utils;
 [SuppressMessage("Interoperability", "CA1401:P/Invokes should not be visible", Justification = "We want plugins to share this NativeMethods class, instead of each one creating its own.")]
 public sealed class Native
 {
-    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
-    public static extern int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, int cchOutBuf, nint ppvReserved);
+    [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, int cchOutBuf, nint ppvReserved);
 
-    [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern int SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string path, nint pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItem shellItem);
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
+    public static partial int SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string path, nint pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItem shellItem);
 
-    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
-    public static extern HRESULT SHCreateStreamOnFileEx(string fileName, STGM grfMode, uint attributes, bool create, System.Runtime.InteropServices.ComTypes.IStream reserved, out System.Runtime.InteropServices.ComTypes.IStream stream);
+    [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial HRESULT SHCreateStreamOnFileEx(string fileName, STGM grfMode, uint attributes, [MarshalAs(UnmanagedType.Bool)] bool create, System.Runtime.InteropServices.ComTypes.IStream reserved, out System.Runtime.InteropServices.ComTypes.IStream stream);
 
-    [DllImport("shlwapi.dll", CharSet = CharSet.Unicode)]
-    public static extern HRESULT SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, uint cchOutBuf, nint ppvReserved);
+    [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
+    public static partial HRESULT SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, uint cchOutBuf, nint ppvReserved);
 
     public enum HRESULT : uint
     {
@@ -123,10 +123,9 @@ public sealed class Native
         URL = 0x80068000,
     }
 
-    [ComImport]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
     [Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe")]
-    public interface IShellItem
+    public partial interface IShellItem
     {
         void BindToHandler(
             nint pbc,

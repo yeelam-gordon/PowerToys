@@ -4,6 +4,7 @@
 
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Windows.Win32;
 using Windows.Win32.System.Com;
 using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 
@@ -11,7 +12,18 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
 public static class AppxPackageHelper
 {
-    private static readonly IAppxFactory AppxFactory = (IAppxFactory)new AppxFactory();
+    private static readonly IAppxFactory AppxFactory = GetAppxFactory();
+
+    private static IAppxFactory GetAppxFactory()
+    {
+        var cw = new StrategyBasedComWrappers();
+        var comInstance = PInvoke.CoCreateInstance(
+            AppxFactoryClsid.CLSID_AppxFactory,
+            null,
+            CLSCTX.CLSCTX_INPROC_SERVER);
+        
+        return cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IAppxFactory;
+    }
 
     // This function returns a list of attributes of applications
     internal static IEnumerable<IAppxManifestApplication> GetAppsFromManifest(IStream stream)

@@ -18,3 +18,9 @@ ShellLink
 IPersistFile
 CoTaskMemFree
 IUnknown
+HRESULT
+STGM
+SIGDN
+CLSCTX
+CreateObjectFlags
+StrategyBasedComWrappers

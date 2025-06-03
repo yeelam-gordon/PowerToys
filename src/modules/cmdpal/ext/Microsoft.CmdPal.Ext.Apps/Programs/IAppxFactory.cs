@@ -7,9 +7,9 @@ using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("BEB94909-E451-438B-B5A7-D79E767B75D8")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IAppxFactory
+public partial interface IAppxFactory
 {
     [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:Element should begin with upper-case letter", Justification = "Implements COM Interface")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Implements COM Interface")]

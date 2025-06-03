@@ -4,12 +4,14 @@
 
 using System;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Apps.Programs;
 using Microsoft.CmdPal.Ext.Apps.Properties;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using WyHash;
+using Windows.Win32;
 
 namespace Microsoft.CmdPal.Ext.Apps;
 
@@ -27,13 +29,20 @@ internal sealed partial class AppCommand : InvokableCommand
 
     internal static async Task StartApp(string aumid)
     {
-        var appManager = new ApplicationActivationManager();
+        var cw = new StrategyBasedComWrappers();
+        var comInstance = PInvoke.CoCreateInstance(
+            ApplicationActivationManagerClsid.CLSID_ApplicationActivationManager,
+            null,
+            Windows.Win32.System.Com.CLSCTX.CLSCTX_INPROC_SERVER);
+        
+        var appManager = cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IApplicationActivationManager;
+
         const ActivateOptions noFlags = ActivateOptions.None;
         await Task.Run(() =>
         {
             try
             {
-                appManager.ActivateApplication(aumid, /*queryArguments*/ string.Empty, noFlags, out var unusedPid);
+                appManager?.ActivateApplication(aumid, /*queryArguments*/ string.Empty, noFlags, out var unusedPid);
             }
             catch (System.Exception ex)
             {
@@ -44,8 +53,6 @@ internal sealed partial class AppCommand : InvokableCommand
 
     internal static async Task StartExe(string path)
     {
-        var appManager = new ApplicationActivationManager();
-
         // const ActivateOptions noFlags = ActivateOptions.None;
         await Task.Run(() =>
         {

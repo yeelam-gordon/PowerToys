@@ -7,9 +7,9 @@ using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("03FAF64D-F26F-4B2C-AAF7-8FE7789B8BCA")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IAppxManifestProperties
+public partial interface IAppxManifestProperties
 {
     [PreserveSig]
     HRESULT GetBoolValue([MarshalAs(UnmanagedType.LPWStr)] string name, out bool value);

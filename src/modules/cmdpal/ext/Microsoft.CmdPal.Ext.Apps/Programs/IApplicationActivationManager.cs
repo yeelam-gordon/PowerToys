@@ -18,11 +18,15 @@ public enum ActivateOptions
     NoSplashScreen = 0x00000004,
 }
 
+public static class ApplicationActivationManagerClsid
+{
+    public static readonly Guid CLSID_ApplicationActivationManager = new("45BA127D-10A8-46EA-8AB7-56EA9078943C");
+}
+
 // ApplicationActivationManager
-[ComImport]
+[GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]
-[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-public interface IApplicationActivationManager
+public partial interface IApplicationActivationManager
 {
     IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
 
@@ -31,17 +35,4 @@ public interface IApplicationActivationManager
     IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
 }
 
-// Application Activation Manager Class
-[ComImport]
-[Guid("45BA127D-10A8-46EA-8AB7-56EA9078943C")]
-public class ApplicationActivationManager : IApplicationActivationManager
-{
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)/*, PreserveSig*/]
-    public extern IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
 
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
-
-    [MethodImpl(MethodImplOptions.InternalCall, MethodCodeType = MethodCodeType.Runtime)]
-    public extern IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
-}

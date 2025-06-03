@@ -47,4 +47,3 @@ public static class ShellConstants
     /// </summary>
     public static readonly Guid ShellItem2Guid = new("7E9FB0D3-919F-4307-AB2E-9B1860310C93");
 }
-}

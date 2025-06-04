@@ -22,7 +22,7 @@ The guidance in this section applies to all interop scenarios.
 
 \-✔️ CONSIDER using the same naming and capitalization for constant values.
 
-\-✔️ DO use .NET types that map closest to the native type. For example, in C#, use `uint` when the native type is `unsigned int`.
+\-✔️ DO use .NET types that map closest to the native type. Please refer to the table in the section "Common Windows data types" in below for any conversion. For example, in C#, use `uint` when the native type is `unsigned int`.
 
 \-✔️ DO prefer expressing higher level native types using .NET structs rather than classes.
 

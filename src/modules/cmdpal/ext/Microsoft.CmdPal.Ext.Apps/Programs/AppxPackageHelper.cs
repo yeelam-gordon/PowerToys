@@ -5,6 +5,7 @@
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
 using static Microsoft.CmdPal.Ext.Apps.Utils.Native;
 
@@ -28,20 +29,36 @@ public static class AppxPackageHelper
     // This function returns a list of attributes of applications
     internal static IEnumerable<IAppxManifestApplication> GetAppsFromManifest(IStream stream)
     {
-        var reader = AppxFactory.CreateManifestReader(stream);
-        var manifestApps = reader.GetApplications();
-
-        while (manifestApps.GetHasCurrent())
+        var hr = AppxFactory.CreateManifestReader(stream, out var reader);
+        if (hr.Failed || reader == null)
         {
-            var manifestApp = manifestApps.GetCurrent();
-            var hr = manifestApp.GetStringValue("AppListEntry", out var appListEntry);
-            _ = CheckHRAndReturnOrThrow(hr, appListEntry);
+            yield break;
+        }
+
+        hr = reader.GetApplications(out var manifestApps);
+        if (hr.Failed || manifestApps == null)
+        {
+            yield break;
+        }
+
+        hr = manifestApps.GetHasCurrent(out var hasCurrent);
+        while (hr.Succeeded && hasCurrent)
+        {
+            hr = manifestApps.GetCurrent(out var manifestApp);
+            if (hr.Failed || manifestApp == null)
+            {
+                break;
+            }
+
+            var appListEntryHr = manifestApp.GetStringValue("AppListEntry", out var appListEntry);
+            _ = CheckHRAndReturnOrThrow(appListEntryHr, appListEntry);
             if (appListEntry != "none")
             {
                 yield return manifestApp;
             }
 
-            manifestApps.MoveNext();
+            hr = manifestApps.MoveNext(out var hasNext);
+            hasCurrent = hasNext;
         }
     }
 

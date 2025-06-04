@@ -4,6 +4,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Windows.Win32.Foundation;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
@@ -11,17 +12,21 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("4E1BD148-55A0-4480-A3D1-15544710637C")]
 public partial interface IAppxManifestReader
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:Element should begin with upper-case letter", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Implements COM Interface")]
-    void _VtblGap0_1(); // skip 1 method
+    HRESULT GetPackageId([Out] out nint packageId);
 
-    IAppxManifestProperties GetProperties();
+    HRESULT GetProperties([Out] out IAppxManifestProperties packageProperties);
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:Element should begin with upper-case letter", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Implements COM Interface")]
-    void _VtblGap1_5(); // skip 5 methods
+    HRESULT GetPackageDependencies([Out] out nint dependencies);
 
-    IAppxManifestApplicationsEnumerator GetApplications();
+    HRESULT GetCapabilities([Out] out nint capabilities);
+
+    HRESULT GetResources([Out] out nint resources);
+
+    HRESULT GetDeviceCapabilities([Out] out nint deviceCapabilities);
+
+    HRESULT GetPrerequisite([In] string name, [Out] out ulong value);
+
+    HRESULT GetApplications([Out] out IAppxManifestApplicationsEnumerator applications);
+
+    HRESULT GetStream([Out] out nint manifestStream);
 }

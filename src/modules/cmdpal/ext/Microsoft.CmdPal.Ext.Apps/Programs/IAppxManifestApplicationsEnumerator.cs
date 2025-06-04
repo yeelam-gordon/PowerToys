@@ -4,6 +4,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using Windows.Win32.Foundation;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
@@ -11,9 +12,9 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("9EB8A55A-F04B-4D0D-808D-686185D4847A")]
 public partial interface IAppxManifestApplicationsEnumerator
 {
-    IAppxManifestApplication GetCurrent();
+    HRESULT GetCurrent([Out] out IAppxManifestApplication application);
 
-    bool GetHasCurrent();
+    HRESULT GetHasCurrent([Out] out bool hasCurrent);
 
-    bool MoveNext();
+    HRESULT MoveNext([Out] out bool hasNext);
 }

@@ -127,19 +127,19 @@ public sealed class Native
     [Guid("43826d1e-e718-42ee-bc55-a1e261c37bfe")]
     public partial interface IShellItem
     {
-        void BindToHandler(
+        HRESULT BindToHandler(
             nint pbc,
             [MarshalAs(UnmanagedType.LPStruct)] Guid bhid,
             [MarshalAs(UnmanagedType.LPStruct)] Guid riid,
             out nint ppv);
 
-        void GetParent(out IShellItem ppsi);
+        HRESULT GetParent(out IShellItem ppsi);
 
-        void GetDisplayName(SIGDN sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string ppszName);
+        HRESULT GetDisplayName(SIGDN sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string ppszName);
 
-        void GetAttributes(uint sfgaoMask, out uint psfgaoAttribs);
+        HRESULT GetAttributes(uint sfgaoMask, out uint psfgaoAttribs);
 
-        void Compare(IShellItem psi, uint hint, out int piOrder);
+        HRESULT Compare(IShellItem psi, uint hint, out int piOrder);
     }
 
     /// <summary>

@@ -5,17 +5,19 @@
 using System;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Windows.Win32.Foundation;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
 // Reference : https://github.com/MicrosoftEdge/edge-launcher/blob/108e63df0b4cb5cd9d5e45aa7a264690851ec51d/MIcrosoftEdgeLauncherCsharp/Program.cs
 [Flags]
-public enum ActivateOptions
+public enum ACTIVATEOPTIONS
 {
-    None = 0x00000000,
-    DesignMode = 0x00000001,
-    NoErrorUI = 0x00000002,
-    NoSplashScreen = 0x00000004,
+    AO_NONE = 0x00000000,
+    AO_DESIGNMODE = 0x00000001,
+    AO_NOERRORUI = 0x00000002,
+    AO_NOSPLASHSCREEN = 0x00000004,
+    AO_PRELAUNCH = 0x02000000,
 }
 
 public static class ApplicationActivationManagerClsid
@@ -28,11 +30,11 @@ public static class ApplicationActivationManagerClsid
 [Guid("2e941141-7f97-4756-ba1d-9decde894a3d")]
 public partial interface IApplicationActivationManager
 {
-    IntPtr ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ActivateOptions options, [Out] out uint processId);
+    HRESULT ActivateApplication([In] string appUserModelId, [In] string arguments, [In] ACTIVATEOPTIONS options, [Out] out uint processId);
 
-    IntPtr ActivateForFile([In] string appUserModelId, [In] IntPtr /*IShellItemArray* */ itemArray, [In] string verb, [Out] out uint processId);
+    HRESULT ActivateForFile([In] string appUserModelId, [In] IShellItemArray itemArray, [In] string verb, [Out] out uint processId);
 
-    IntPtr ActivateForProtocol([In] string appUserModelId, [In] IntPtr /* IShellItemArray* */itemArray, [Out] out uint processId);
+    HRESULT ActivateForProtocol([In] string appUserModelId, [In] IShellItemArray itemArray, [Out] out uint processId);
 }
 
 

@@ -5,6 +5,7 @@ ApplicationActivationManager
 SHCreateStreamOnFileEx
 SHCreateItemFromParsingName
 IShellItem
+IShellItemArray
 ISequentialStream
 SHLoadIndirectString
 IAppxFactory
@@ -24,3 +25,12 @@ SIGDN
 CLSCTX
 CreateObjectFlags
 StrategyBasedComWrappers
+ACTIVATEOPTIONS
+BOOL
+DWORD
+LPCWSTR
+LPWSTR
+REFIID
+REFGUID
+SFGAOF
+SICHINTF

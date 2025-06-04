@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System.Runtime.InteropServices;
+using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
@@ -11,10 +12,9 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("BEB94909-E451-438B-B5A7-D79E767B75D8")]
 public partial interface IAppxFactory
 {
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1300:Element should begin with upper-case letter", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "Implements COM Interface")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1707:Identifiers should not contain underscores", Justification = "Implements COM Interface")]
-    void _VtblGap0_2(); // skip 2 methods
+    HRESULT CreatePackageWriter([In] IStream outputStream, [In] nint settings, [Out] out nint packageWriter);
 
-    internal IAppxManifestReader CreateManifestReader(IStream inputStream);
+    HRESULT CreatePackageReader([In] IStream inputStream, [Out] out nint packageReader);
+
+    HRESULT CreateManifestReader([In] IStream inputStream, [Out] out IAppxManifestReader manifestReader);
 }

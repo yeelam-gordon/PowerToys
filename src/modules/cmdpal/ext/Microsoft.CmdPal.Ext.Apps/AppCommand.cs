@@ -37,12 +37,16 @@ internal sealed partial class AppCommand : InvokableCommand
         
         var appManager = cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IApplicationActivationManager;
 
-        const ActivateOptions noFlags = ActivateOptions.None;
+        const ACTIVATEOPTIONS noFlags = ACTIVATEOPTIONS.AO_NONE;
         await Task.Run(() =>
         {
             try
             {
-                appManager?.ActivateApplication(aumid, /*queryArguments*/ string.Empty, noFlags, out var unusedPid);
+                var hr = appManager?.ActivateApplication(aumid, /*queryArguments*/ string.Empty, noFlags, out var unusedPid);
+                if (hr.HasValue && hr.Value.Failed)
+                {
+                    Logger.LogError($"Failed to activate application: {hr.Value}");
+                }
             }
             catch (System.Exception ex)
             {

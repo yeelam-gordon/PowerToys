@@ -51,8 +51,8 @@ public static class AppxPackageHelper
             yield break;
         }
 
-        hr = manifestApps.GetHasCurrent(out var hasCurrent);
-        while (hr.Succeeded && hasCurrent)
+        hr = manifestApps.GetHasCurrent(out var hasCurrentInt);
+        while (hr.Succeeded && hasCurrentInt != 0)
         {
             hr = manifestApps.GetCurrent(out var manifestApp);
             if (hr.Failed || manifestApp == null)
@@ -67,8 +67,8 @@ public static class AppxPackageHelper
                 yield return manifestApp;
             }
 
-            hr = manifestApps.MoveNext(out var hasNext);
-            hasCurrent = hasNext;
+            hr = manifestApps.MoveNext(out var hasNextInt);
+            hasCurrentInt = hasNextInt;
         }
     }
 

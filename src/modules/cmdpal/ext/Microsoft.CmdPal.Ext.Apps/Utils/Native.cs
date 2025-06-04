@@ -18,7 +18,7 @@ public sealed class Native
     public static partial int SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, int cchOutBuf, nint ppvReserved);
 
     [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16, SetLastError = true)]
-    public static partial int SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string path, nint pbc, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out IShellItem shellItem);
+    public static partial HRESULT SHCreateItemFromParsingName([MarshalAs(UnmanagedType.LPWStr)] string path, [In, Optional] IBindCtx? pbc, [In] ref Guid riid, [Out] out IShellItem shellItem);
 
     [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial HRESULT SHCreateStreamOnFileEx(string fileName, STGM grfMode, uint attributes, [MarshalAs(UnmanagedType.Bool)] bool create, System.Runtime.InteropServices.ComTypes.IStream reserved, out System.Runtime.InteropServices.ComTypes.IStream stream);
@@ -68,18 +68,18 @@ public sealed class Native
     public partial interface IShellItem
     {
         HRESULT BindToHandler(
-            nint pbc,
-            [MarshalAs(UnmanagedType.LPStruct)] Guid bhid,
-            [MarshalAs(UnmanagedType.LPStruct)] Guid riid,
+            [In, Optional] IBindCtx? pbc,
+            [In] ref Guid bhid,
+            [In] ref Guid riid,
             out nint ppv);
 
         HRESULT GetParent(out IShellItem ppsi);
 
         HRESULT GetDisplayName(SIGDN sigdnName, [MarshalAs(UnmanagedType.LPWStr)] out string ppszName);
 
-        HRESULT GetAttributes(uint sfgaoMask, out uint psfgaoAttribs);
+        HRESULT GetAttributes(SFGAOF sfgaoMask, out SFGAOF psfgaoAttribs);
 
-        HRESULT Compare(IShellItem psi, uint hint, out int piOrder);
+        HRESULT Compare(IShellItem psi, SICHINTF hint, out int piOrder);
     }
 
     /// <summary>

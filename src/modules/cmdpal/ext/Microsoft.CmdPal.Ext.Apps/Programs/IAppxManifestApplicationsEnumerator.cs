@@ -14,7 +14,7 @@ public partial interface IAppxManifestApplicationsEnumerator
 {
     HRESULT GetCurrent([Out] out IAppxManifestApplication application);
 
-    HRESULT GetHasCurrent([Out] out bool hasCurrent);
+    HRESULT GetHasCurrent([Out] out int hasCurrent);
 
-    HRESULT MoveNext([Out] out bool hasNext);
+    HRESULT MoveNext([Out] out int hasNext);
 }

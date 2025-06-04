@@ -34,13 +34,17 @@ public class ShellLocalization
         }
 
         var shellItemType = ShellItemTypeConstants.ShellItemGuid;
-        var retCode = SHCreateItemFromParsingName(path, nint.Zero, ref shellItemType, out var shellItem);
-        if (retCode != 0)
+        var retCode = SHCreateItemFromParsingName(path, null, ref shellItemType, out var shellItem);
+        if (retCode.Failed)
         {
             return string.Empty;
         }
 
-        shellItem.GetDisplayName(SIGDN.NORMALDISPLAY, out var filename);
+        var hr = shellItem.GetDisplayName(SIGDN.NORMALDISPLAY, out var filename);
+        if (hr.Failed)
+        {
+            return string.Empty;
+        }
 
         _ = _localizationCache.TryAdd(lowerInvariantPath, filename);
 

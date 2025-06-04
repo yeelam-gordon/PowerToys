@@ -11,7 +11,7 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("03FAF64D-F26F-4B2C-AAF7-8FE7789B8BCA")]
 public partial interface IAppxManifestProperties
 {
-    HRESULT GetBoolValue([In, MarshalAs(UnmanagedType.LPWStr)] string name, [Out] out bool value);
+    HRESULT GetBoolValue([In, MarshalAs(UnmanagedType.LPWStr)] string name, [Out] out int value);
 
     HRESULT GetStringValue([In, MarshalAs(UnmanagedType.LPWStr)] string name, [Out, MarshalAs(UnmanagedType.LPWStr)] out string value);
 }

@@ -51,3 +51,4 @@ IAppxManifestPackageDependenciesEnumerator
 APPX_CAPABILITIES
 IAppxManifestResourcesEnumerator
 IAppxManifestDeviceCapabilitiesEnumerator
+SICHINTF

@@ -7,6 +7,7 @@ using System.Runtime.InteropServices;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.SystemSearch;
 using Microsoft.CmdPal.Ext.Indexer.Interop;
 using System;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer.Utils;
 
@@ -32,11 +33,11 @@ internal sealed class QueryStringBuilder
             var hr = ComApi.CoCreateInstance(
                 CLSIDSearchManager,
                 IntPtr.Zero,
-                ClsContext.CLSCTX_INPROC_SERVER,
+                CLSCTX.CLSCTX_INPROC_SERVER,
                 typeof(ISearchManager).GUID,
                 out var searchManagerPtr);
 
-            if (hr != 0 || searchManagerPtr == IntPtr.Zero)
+            if (hr.Failed || searchManagerPtr == IntPtr.Zero)
             {
                 throw new Exception($"Failed to create SearchManager: {hr}");
             }

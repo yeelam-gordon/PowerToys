@@ -6,6 +6,7 @@ using System;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Interop;
 using System.Runtime.InteropServices;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
 
@@ -30,11 +31,11 @@ internal static class DataSourceManager
         var hr = ComApi.CoCreateInstance(
             CLSIDCollatorDataSource, 
             IntPtr.Zero, 
-            ClsContext.CLSCTX_INPROC_SERVER, 
+            CLSCTX.CLSCTX_INPROC_SERVER, 
             typeof(IDBInitialize).GUID, 
             out var dataSourcePtr);
             
-        if (hr != 0)
+        if (hr.Failed)
         {
             Logger.LogError("CoCreateInstance failed: " + hr);
             return false;

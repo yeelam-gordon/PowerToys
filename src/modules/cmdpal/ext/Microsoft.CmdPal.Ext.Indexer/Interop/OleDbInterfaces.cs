@@ -5,6 +5,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+using Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Interop;
 
@@ -20,14 +21,14 @@ public partial interface IDBInitialize
 [Guid("0c733a9c-2a1c-11ce-ade5-00aa0044773d")]
 public partial interface IDBCreateSession
 {
-    void CreateSession(IntPtr pUnkOuter, in Guid riid, out IntPtr ppDBSession);
+    void CreateSession(IntPtr pUnkOuter, in Guid riid, out IDBCreateCommand? ppDBSession);
 }
 
 [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
 [Guid("0c733a7d-2a1c-11ce-ade5-00aa0044773d")]
 public partial interface IDBCreateCommand
 {
-    void CreateCommand(IntPtr pUnkOuter, in Guid riid, out IntPtr ppCommand);
+    void CreateCommand(IntPtr pUnkOuter, in Guid riid, out ICommandText? ppCommand);
 }
 
 [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]
@@ -42,8 +43,8 @@ public partial interface ICommandText
     void Prepare(uint cExpectedRuns);
     void Unprepare();
     void Cancel();
-    void Execute(IntPtr pUnkOuter, in Guid riid, IntPtr pParams, out int pcRowsAffected, out IntPtr ppRowset);
-    void GetDBSession(in Guid riid, out IntPtr ppSession);
+    void Execute(IntPtr pUnkOuter, in Guid riid, IntPtr pParams, out int pcRowsAffected, out IRowset? ppRowset);
+    void GetDBSession(in Guid riid, out IDBCreateSession? ppSession);
 }
 
 [GeneratedComInterface(StringMarshalling = StringMarshalling.Utf16)]

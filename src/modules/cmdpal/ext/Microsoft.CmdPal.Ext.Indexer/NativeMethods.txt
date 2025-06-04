@@ -11,3 +11,4 @@ GUID
 REFIID
 IUnknown
 IPropertyStore
+ShellExecuteExW

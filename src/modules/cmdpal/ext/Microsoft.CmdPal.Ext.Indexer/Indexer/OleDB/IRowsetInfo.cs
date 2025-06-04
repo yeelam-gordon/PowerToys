@@ -5,6 +5,7 @@
 using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
 
@@ -21,9 +22,9 @@ public partial interface IRowsetInfo
     int GetReferencedRowset(
         uint iOrdinal,
         in Guid riid,
-        out IntPtr ppReferencedRowset);
+        out IRowset? ppReferencedRowset);
 
     int GetSpecification(
         in Guid riid,
-        out IntPtr ppSpecification);
+        out ICommandText? ppSpecification);
 }

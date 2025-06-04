@@ -284,46 +284,35 @@ internal sealed partial class SearchQuery : IDisposable
 
     private unsafe IRowset ExecuteCommand(string queryStr)
     {
-        IntPtr sessionPtr = IntPtr.Zero;
-        IntPtr commandPtr = IntPtr.Zero;
+        IDBCreateCommand? sessionInterface = null;
+        ICommandText? commandInterface = null;
 
         try
         {
             var session = (IDBCreateSession)DataSourceManager.GetDataSource();
-            session.CreateSession(IntPtr.Zero, typeof(IDBCreateCommand).GUID, out sessionPtr);
-            if (sessionPtr == IntPtr.Zero)
+            session.CreateSession(IntPtr.Zero, typeof(IDBCreateCommand).GUID, out sessionInterface);
+            if (sessionInterface == null)
             {
                 Logger.LogError("CreateSession failed");
                 return null;
             }
 
-            var sessionObject = Marshal.GetObjectForIUnknown(sessionPtr);
-            var createCommand = (IDBCreateCommand)sessionObject;
-            createCommand.CreateCommand(IntPtr.Zero, typeof(ICommandText).GUID, out commandPtr);
-            if (commandPtr == IntPtr.Zero)
+            sessionInterface.CreateCommand(IntPtr.Zero, typeof(ICommandText).GUID, out commandInterface);
+            if (commandInterface == null)
             {
                 Logger.LogError("CreateCommand failed");
                 return null;
             }
 
-            var commandObject = Marshal.GetObjectForIUnknown(commandPtr);
-            var commandText = (ICommandText)commandObject;
-            if (commandText == null)
-            {
-                Logger.LogError("Failed to get ICommandText interface");
-                return null;
-            }
+            commandInterface.SetCommandText(in NativeHelpers.OleDb.DbGuidDefault, queryStr);
+            commandInterface.Execute(IntPtr.Zero, typeof(IRowset).GUID, IntPtr.Zero, out var rowsAffected, out var rowsetInterface);
 
-            commandText.SetCommandText(in NativeHelpers.OleDb.DbGuidDefault, queryStr);
-            commandText.Execute(IntPtr.Zero, typeof(IRowset).GUID, IntPtr.Zero, out var rowsAffected, out var rowsetPtr);
-
-            if (rowsetPtr == IntPtr.Zero)
+            if (rowsetInterface == null)
             {
                 return null;
             }
-
-            var rowsetObject = Marshal.GetObjectForIUnknown(rowsetPtr);
-            return rowsetObject as IRowset;
+            
+            return rowsetInterface;
         }
         catch (Exception ex)
         {
@@ -332,17 +321,8 @@ internal sealed partial class SearchQuery : IDisposable
         }
         finally
         {
-            // Release the command pointer
-            if (commandPtr != IntPtr.Zero)
-            {
-                Marshal.Release(commandPtr);
-            }
-
-            // Release the session pointer
-            if (sessionPtr != IntPtr.Zero)
-            {
-                Marshal.Release(sessionPtr);
-            }
+            // GeneratedComInterface objects don't need explicit cleanup
+            // The runtime will handle their lifecycle
         }
     }
 

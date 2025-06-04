@@ -6,6 +6,7 @@ using System;
 using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
+using Windows.Win32.UI.Shell;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Interop;
 
@@ -23,4 +24,8 @@ internal static partial class ComApi
     internal static partial HRESULT GetErrorInfo(
         uint dwReserved,
         out IntPtr pperrinfo);
+
+    [LibraryImport("shell32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool ShellExecuteExW(ref SHELLEXECUTEINFOW lpExecInfo);
 }

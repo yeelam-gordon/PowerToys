@@ -47,23 +47,17 @@ internal sealed class QueryStringBuilder
                 var searchManagerObj = Marshal.GetObjectForIUnknown(searchManagerPtr);
                 var searchManager = (ISearchManager)searchManagerObj;
                 
-                var catalogManagerPtr = searchManager.GetCatalog(SystemIndex);
-                if (catalogManagerPtr == IntPtr.Zero)
+                var catalogManager = searchManager.GetCatalog(SystemIndex);
+                if (catalogManager == null)
                 {
                     throw new Exception("Failed to get catalog manager");
                 }
 
-                var catalogManagerObj = Marshal.GetObjectForIUnknown(catalogManagerPtr);
-                var catalogManager = (ISearchCatalogManager)catalogManagerObj;
-                
-                var queryHelperPtr = catalogManager.GetQueryHelper();
-                if (queryHelperPtr == IntPtr.Zero)
+                queryHelper = catalogManager.GetQueryHelper();
+                if (queryHelper == null)
                 {
                     throw new Exception("Failed to get query helper");
                 }
-
-                var queryHelperObj = Marshal.GetObjectForIUnknown(queryHelperPtr);
-                queryHelper = (ISearchQueryHelper)queryHelperObj;
 
                 queryHelper.QuerySelectColumns = Properties;
                 queryHelper.QueryContentProperties = "System.FileName";

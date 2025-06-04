@@ -31,7 +31,7 @@ public partial interface ISearchManager
       string pszProxyName,
       string pszByPassList);
 
-    IntPtr GetCatalog(string pszCatalog);
+    ISearchCatalogManager GetCatalog(string pszCatalog);
 
     string UserAgent { get; set; }
 

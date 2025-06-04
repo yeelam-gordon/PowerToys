@@ -64,7 +64,7 @@ public partial interface ISearchCatalogManager
 
     IntPtr EnumerateExcludedExtensions();
 
-    IntPtr GetQueryHelper();
+    ISearchQueryHelper GetQueryHelper();
 
     int DiacriticSensitivity { get; set; }
 

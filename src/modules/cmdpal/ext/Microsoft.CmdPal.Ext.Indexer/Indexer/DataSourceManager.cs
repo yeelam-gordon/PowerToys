@@ -6,6 +6,7 @@ using System;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Interop;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
@@ -13,6 +14,7 @@ namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
 internal static class DataSourceManager
 {
     private static readonly Guid CLSIDCollatorDataSource = new("9E175B8B-F52A-11D8-B9A5-505054503030");
+    private static readonly StrategyBasedComWrappers s_comWrappers = new();
 
     private static IDBInitialize _dataSource;
 
@@ -49,7 +51,7 @@ internal static class DataSourceManager
 
         try
         {
-            var dataSourceObj = Marshal.GetObjectForIUnknown(dataSourcePtr);
+            var dataSourceObj = s_comWrappers.GetOrCreateObjectForComInstance(dataSourcePtr, CreateObjectFlags.None);
             _dataSource = (IDBInitialize)dataSourceObj;
             _dataSource.Initialize();
 

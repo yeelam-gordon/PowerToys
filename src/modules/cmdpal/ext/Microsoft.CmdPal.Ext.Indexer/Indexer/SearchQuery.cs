@@ -5,6 +5,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
@@ -19,6 +20,7 @@ internal sealed partial class SearchQuery : IDisposable
 {
     private readonly Lock _lockObject = new(); // Lock object for synchronization
     private readonly DBPROPIDSET dbPropIdSet;
+    private static readonly StrategyBasedComWrappers s_comWrappers = new();
 
     private uint reuseWhereID;
     private EventWaitHandle queryCompletedEvent;
@@ -337,8 +339,8 @@ internal sealed partial class SearchQuery : IDisposable
                 return null;
             }
 
-            // Marshal the interface pointer to the actual IRowsetInfo object
-            var rowsetInfo = (IRowsetInfo)Marshal.GetObjectForIUnknown(rowsetInfoPtr);
+            // Marshal the interface pointer to the actual IRowsetInfo object using ComWrappers
+            var rowsetInfo = (IRowsetInfo)s_comWrappers.GetOrCreateObjectForComInstance(rowsetInfoPtr, CreateObjectFlags.None);
             return rowsetInfo;
         }
         catch (Exception ex)

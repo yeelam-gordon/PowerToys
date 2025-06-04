@@ -66,11 +66,11 @@ public partial class UWP
 
         const uint noAttribute = 0x80;
 
-        var access = (uint)STGM.READ;
-        var hResult = PInvoke.SHCreateStreamOnFileEx(path, access, noAttribute, false, null, out IStream stream);
+        var access = STGM.READ;
+        var hResult = SHCreateStreamOnFileEx(path, access, noAttribute, false, null, out var stream);
 
         // S_OK
-        if (hResult == 0)
+        if (hResult.Succeeded)
         {
             Apps = AppxPackageHelper.GetAppsFromManifest(stream).Select(appInManifest => new UWPApplication(appInManifest, this)).Where(a =>
             {

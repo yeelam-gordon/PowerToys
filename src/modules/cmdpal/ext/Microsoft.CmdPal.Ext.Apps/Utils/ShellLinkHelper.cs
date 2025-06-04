@@ -8,6 +8,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using ManagedCommon;
 using Windows.Win32;
+using Windows.Win32.Foundation;
 using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
@@ -62,58 +63,58 @@ public class ShellLinkHelper : IShellLinkHelper
     private partial interface IShellLinkW
     {
         /// <summary>Retrieves the path and file name of a Shell link object</summary>
-        void GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cchMaxPath, ref WIN32_FIND_DATAW pfd, SLGP_FLAGS fFlags);
+        HRESULT GetPath([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszFile, int cchMaxPath, [In, Out, Optional] ref WIN32_FIND_DATAW pfd, SLGP_FLAGS fFlags);
 
         /// <summary>Retrieves the list of item identifiers for a Shell link object</summary>
-        void GetIDList(out nint ppidl);
+        HRESULT GetIDList([Out] out nint ppidl);
 
         /// <summary>Sets the pointer to an item identifier list (PIDL) for a Shell link object.</summary>
-        void SetIDList(nint pidl);
+        HRESULT SetIDList([In, Optional] nint pidl);
 
         /// <summary>Retrieves the description string for a Shell link object</summary>
-        void GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cchMaxName);
+        HRESULT GetDescription([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszName, int cchMaxName);
 
         /// <summary>Sets the description for a Shell link object. The description can be any application-defined string</summary>
-        void SetDescription([MarshalAs(UnmanagedType.LPWStr)] string pszName);
+        HRESULT SetDescription([In, MarshalAs(UnmanagedType.LPWStr)] string pszName);
 
         /// <summary>Retrieves the name of the working directory for a Shell link object</summary>
-        void GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cchMaxPath);
+        HRESULT GetWorkingDirectory([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszDir, int cchMaxPath);
 
         /// <summary>Sets the name of the working directory for a Shell link object</summary>
-        void SetWorkingDirectory([MarshalAs(UnmanagedType.LPWStr)] string pszDir);
+        HRESULT SetWorkingDirectory([In, MarshalAs(UnmanagedType.LPWStr)] string pszDir);
 
         /// <summary>Retrieves the command-line arguments associated with a Shell link object</summary>
-        void GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cchMaxPath);
+        HRESULT GetArguments([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszArgs, int cchMaxPath);
 
         /// <summary>Sets the command-line arguments for a Shell link object</summary>
-        void SetArguments([MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
+        HRESULT SetArguments([In, MarshalAs(UnmanagedType.LPWStr)] string pszArgs);
 
         /// <summary>Retrieves the hot key for a Shell link object</summary>
-        void GetHotkey(out short pwHotkey);
+        HRESULT GetHotkey([Out] out short pwHotkey);
 
         /// <summary>Sets a hot key for a Shell link object</summary>
-        void SetHotkey(short wHotkey);
+        HRESULT SetHotkey(short wHotkey);
 
         /// <summary>Retrieves the show command for a Shell link object</summary>
-        void GetShowCmd(out int piShowCmd);
+        HRESULT GetShowCmd([Out] out int piShowCmd);
 
         /// <summary>Sets the show command for a Shell link object. The show command sets the initial show state of the window.</summary>
-        void SetShowCmd(int iShowCmd);
+        HRESULT SetShowCmd(int iShowCmd);
 
         /// <summary>Retrieves the location (path and index) of the icon for a Shell link object</summary>
-        void GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cchIconPath, out int piIcon);
+        HRESULT GetIconLocation([Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pszIconPath, int cchIconPath, [Out] out int piIcon);
 
         /// <summary>Sets the location (path and index) of the icon for a Shell link object</summary>
-        void SetIconLocation([MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
+        HRESULT SetIconLocation([In, MarshalAs(UnmanagedType.LPWStr)] string pszIconPath, int iIcon);
 
         /// <summary>Sets the relative path to the Shell link object</summary>
-        void SetRelativePath([MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, int dwReserved);
+        HRESULT SetRelativePath([In, MarshalAs(UnmanagedType.LPWStr)] string pszPathRel, uint dwReserved);
 
         /// <summary>Attempts to find the target of a Shell link, even if it has been moved or renamed</summary>
-        void Resolve(ref nint hwnd, SLR_FLAGS fFlags);
+        HRESULT Resolve([In] nint hwnd, SLR_FLAGS fFlags);
 
         /// <summary>Sets the path and file name of a Shell link object</summary>
-        void SetPath([MarshalAs(UnmanagedType.LPWStr)] string pszFile);
+        HRESULT SetPath([In, MarshalAs(UnmanagedType.LPWStr)] string pszFile);
     }
 
     private static class ShellLinkClsid
@@ -133,10 +134,20 @@ public class ShellLinkHelper : IShellLinkHelper
     public string RetrieveTargetPath(string path)
     {
         var cw = new StrategyBasedComWrappers();
-        var comInstance = PInvoke.CoCreateInstance(
-            ShellLinkClsid.CLSID_ShellLink,
-            null,
-            CLSCTX.CLSCTX_INPROC_SERVER);
+        
+        var clsid = ShellLinkClsid.CLSID_ShellLink;
+        var iid = typeof(IShellLinkW).GUID;
+        var hr = Native.CoCreateInstance(
+            ref clsid,
+            nint.Zero,
+            CLSCTX.CLSCTX_INPROC_SERVER,
+            ref iid,
+            out var comInstance);
+            
+        if (hr.Failed)
+        {
+            return string.Empty;
+        }
         
         var link = cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IShellLinkW;
 
@@ -149,18 +160,22 @@ public class ShellLinkHelper : IShellLinkHelper
         catch (System.IO.FileNotFoundException ex)
         {
             Logger.LogError(ex.Message);
+            if (comInstance != nint.Zero)
+            {
+                Marshal.Release(comInstance);
+            }
             return string.Empty;
         }
 
         var hwnd = default(nint);
-        link?.Resolve(ref hwnd, 0);
+        link?.Resolve(hwnd, 0);
 
         const int MAX_PATH = 260;
         var buffer = new StringBuilder(MAX_PATH);
 
         var data = default(WIN32_FIND_DATAW);
-        link?.GetPath(buffer, buffer.Capacity, ref data, SLGP_FLAGS.SLGP_SHORTPATH);
-        var target = buffer.ToString();
+        var hr = link?.GetPath(buffer, buffer.Capacity, ref data, SLGP_FLAGS.SLGP_SHORTPATH);
+        var target = hr?.Succeeded == true ? buffer.ToString() : string.Empty;
 
         // To set the app description
         if (!string.IsNullOrEmpty(target))
@@ -168,8 +183,8 @@ public class ShellLinkHelper : IShellLinkHelper
             buffer = new StringBuilder(MAX_PATH);
             try
             {
-                link?.GetDescription(buffer, MAX_PATH);
-                Description = buffer.ToString();
+                hr = link?.GetDescription(buffer, MAX_PATH);
+                Description = hr?.Succeeded == true ? buffer.ToString() : string.Empty;
             }
             catch (Exception ex)
             {
@@ -178,17 +193,22 @@ public class ShellLinkHelper : IShellLinkHelper
             }
 
             var argumentBuffer = new StringBuilder(MAX_PATH);
-            link?.GetArguments(argumentBuffer, argumentBuffer.Capacity);
-            Arguments = argumentBuffer.ToString();
+            hr = link?.GetArguments(argumentBuffer, argumentBuffer.Capacity);
+            Arguments = hr?.Succeeded == true ? argumentBuffer.ToString() : string.Empty;
 
             // Set variable to true if the program takes in any arguments
-            if (argumentBuffer.Length != 0)
+            if (!string.IsNullOrEmpty(Arguments))
             {
                 HasArguments = true;
             }
         }
 
         // No need to call Marshal.ReleaseComObject when using GeneratedComInterface
+        if (comInstance != nint.Zero)
+        {
+            Marshal.Release(comInstance);
+        }
+        
         return target;
     }
 }

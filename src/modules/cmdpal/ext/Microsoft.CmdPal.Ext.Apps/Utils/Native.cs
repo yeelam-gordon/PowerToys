@@ -6,6 +6,8 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 using System.Text;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps.Utils;
 
@@ -21,78 +23,16 @@ public sealed class Native
     [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
     public static partial HRESULT SHCreateStreamOnFileEx(string fileName, STGM grfMode, uint attributes, [MarshalAs(UnmanagedType.Bool)] bool create, System.Runtime.InteropServices.ComTypes.IStream reserved, out System.Runtime.InteropServices.ComTypes.IStream stream);
 
-    [LibraryImport("shlwapi.dll", StringMarshalling = StringMarshalling.Utf16)]
-    public static partial HRESULT SHLoadIndirectString(string pszSource, StringBuilder pszOutBuf, uint cchOutBuf, nint ppvReserved);
+    [LibraryImport("ole32.dll")]
+    public static partial HRESULT CoCreateInstance(
+        [In] ref Guid rclsid,
+        [In] IntPtr pUnkOuter,
+        [In] CLSCTX dwClsContext,
+        [In] ref Guid riid,
+        [Out] out IntPtr ppv);
 
-    public enum HRESULT : uint
-    {
-        /// <summary>
-        /// Operation successful.
-        /// </summary>
-        S_OK = 0x00000000,
-
-        /// <summary>
-        /// Operation successful. (negative condition/no operation)
-        /// </summary>
-        S_FALSE = 0x00000001,
-
-        /// <summary>
-        /// Not implemented.
-        /// </summary>
-        E_NOTIMPL = 0x80004001,
-
-        /// <summary>
-        /// No such interface supported.
-        /// </summary>
-        E_NOINTERFACE = 0x80004002,
-
-        /// <summary>
-        /// Pointer that is not valid.
-        /// </summary>
-        E_POINTER = 0x80004003,
-
-        /// <summary>
-        /// Operation aborted.
-        /// </summary>
-        E_ABORT = 0x80004004,
-
-        /// <summary>
-        /// Unspecified failure.
-        /// </summary>
-        E_FAIL = 0x80004005,
-
-        /// <summary>
-        /// Unexpected failure.
-        /// </summary>
-        E_UNEXPECTED = 0x8000FFFF,
-
-        /// <summary>
-        /// General access denied error.
-        /// </summary>
-        E_ACCESSDENIED = 0x80070005,
-
-        /// <summary>
-        /// Handle that is not valid.
-        /// </summary>
-        E_HANDLE = 0x80070006,
-
-        /// <summary>
-        /// Failed to allocate necessary memory.
-        /// </summary>
-        E_OUTOFMEMORY = 0x8007000E,
-
-        /// <summary>
-        /// One or more arguments are not valid.
-        /// </summary>
-        E_INVALIDARG = 0x80070057,
-
-        /// <summary>
-        /// The operation was canceled by the user. (Error source 7 means Win32.)
-        /// </summary>
-        /// <SeeAlso href="https://learn.microsoft.com/windows/win32/debug/system-error-codes--1000-1299-"/>
-        /// <SeeAlso href="https://en.wikipedia.org/wiki/HRESULT"/>
-        E_CANCELLED = 0x800704C7,
-    }
+    [LibraryImport("ole32.dll")]
+    public static partial void CoTaskMemFree(IntPtr pv);
 
     public static class ShellItemTypeConstants
     {

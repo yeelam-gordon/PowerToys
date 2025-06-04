@@ -6,6 +6,7 @@ using System;
 using System.Runtime.InteropServices;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
+using Windows.Win32.UI.Shell.PropertiesSystem;
 
 namespace Microsoft.CmdPal.Ext.Apps.Programs;
 
@@ -13,13 +14,13 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("b63ea76d-1f85-456f-a19c-48159efa858b")]
 public partial interface IShellItemArray
 {
-    HRESULT BindToHandler([In] nint pbc, [In] Guid bhid, [In] Guid riid, [Out] out nint ppvOut);
+    HRESULT BindToHandler([In, Optional] IBindCtx? pbc, [In] Guid bhid, [In] Guid riid, [Out] out nint ppvOut);
 
-    HRESULT GetPropertyStore([In] uint flags, [In] Guid riid, [Out] out nint ppv);
+    HRESULT GetPropertyStore([In] GETPROPERTYSTOREFLAGS flags, [In] Guid riid, [Out] out nint ppv);
 
-    HRESULT GetPropertyDescriptionList([In] nint keyType, [In] Guid riid, [Out] out nint ppv);
+    HRESULT GetPropertyDescriptionList([In] ref PROPERTYKEY keyType, [In] Guid riid, [Out] out nint ppv);
 
-    HRESULT GetAttributes([In] uint AttribFlags, [In] uint sfgaoMask, [Out] out uint psfgaoAttribs);
+    HRESULT GetAttributes([In] SIATTRIBFLAGS AttribFlags, [In] SFGAOF sfgaoMask, [Out] out SFGAOF psfgaoAttribs);
 
     HRESULT GetCount([Out] out uint pdwNumItems);
 

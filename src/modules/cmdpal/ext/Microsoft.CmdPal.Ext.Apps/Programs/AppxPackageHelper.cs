@@ -18,10 +18,20 @@ public static class AppxPackageHelper
     private static IAppxFactory GetAppxFactory()
     {
         var cw = new StrategyBasedComWrappers();
-        var comInstance = PInvoke.CoCreateInstance(
-            AppxFactoryClsid.CLSID_AppxFactory,
-            null,
-            CLSCTX.CLSCTX_INPROC_SERVER);
+        
+        var clsid = AppxFactoryClsid.CLSID_AppxFactory;
+        var iid = typeof(IAppxFactory).GUID;
+        var hr = CoCreateInstance(
+            ref clsid,
+            nint.Zero,
+            CLSCTX.CLSCTX_INPROC_SERVER,
+            ref iid,
+            out var comInstance);
+            
+        if (hr.Failed)
+        {
+            return null;
+        }
         
         return cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IAppxFactory;
     }

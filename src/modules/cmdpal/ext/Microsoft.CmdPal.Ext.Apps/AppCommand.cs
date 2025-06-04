@@ -9,9 +9,12 @@ using System.Threading.Tasks;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Apps.Programs;
 using Microsoft.CmdPal.Ext.Apps.Properties;
+using Microsoft.CmdPal.Ext.Apps.Utils;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 using WyHash;
 using Windows.Win32;
+using Windows.Win32.Foundation;
+using Windows.Win32.System.Com;
 
 namespace Microsoft.CmdPal.Ext.Apps;
 
@@ -30,10 +33,21 @@ internal sealed partial class AppCommand : InvokableCommand
     internal static async Task StartApp(string aumid)
     {
         var cw = new StrategyBasedComWrappers();
-        var comInstance = PInvoke.CoCreateInstance(
-            ApplicationActivationManagerClsid.CLSID_ApplicationActivationManager,
-            null,
-            Windows.Win32.System.Com.CLSCTX.CLSCTX_INPROC_SERVER);
+        
+        var clsid = ApplicationActivationManagerClsid.CLSID_ApplicationActivationManager;
+        var iid = typeof(IApplicationActivationManager).GUID;
+        var hr = Native.CoCreateInstance(
+            ref clsid,
+            IntPtr.Zero,
+            CLSCTX.CLSCTX_INPROC_SERVER,
+            ref iid,
+            out var comInstance);
+            
+        if (hr.Failed)
+        {
+            Logger.LogError($"Failed to create ApplicationActivationManager: {hr}");
+            return;
+        }
         
         var appManager = cw.GetOrCreateObjectForComInstance(comInstance, CreateObjectFlags.None) as IApplicationActivationManager;
 
@@ -51,6 +65,13 @@ internal sealed partial class AppCommand : InvokableCommand
             catch (System.Exception ex)
             {
                 Logger.LogError(ex.Message);
+            }
+            finally
+            {
+                if (comInstance != IntPtr.Zero)
+                {
+                    Marshal.Release(comInstance);
+                }
             }
         }).ConfigureAwait(false);
     }

@@ -12,7 +12,7 @@ namespace Microsoft.CmdPal.Ext.Apps.Programs;
 [Guid("BEB94909-E451-438B-B5A7-D79E767B75D8")]
 public partial interface IAppxFactory
 {
-    HRESULT CreatePackageWriter([In] IStream outputStream, [In] nint settings, [Out] out nint packageWriter);
+    HRESULT CreatePackageWriter([In] IStream outputStream, [In, Optional] nint settings, [Out] out nint packageWriter);
 
     HRESULT CreatePackageReader([In] IStream inputStream, [Out] out nint packageReader);
 

@@ -146,19 +146,10 @@ internal sealed partial class SearchQuery : IDisposable
 
     private bool HandleRow(IGetRow getRow, nuint rowHandle)
     {
-        IntPtr propertyStorePtr = IntPtr.Zero;
-
         try
         {
-            getRow.GetRowFromHROW(IntPtr.Zero, rowHandle, typeof(IPropertyStore).GUID, out propertyStorePtr);
+            getRow.GetRowFromHROW(IntPtr.Zero, rowHandle, typeof(IPropertyStore).GUID, out var propertyStore);
 
-            if (propertyStorePtr == IntPtr.Zero)
-            {
-                Logger.LogError("Failed to get IPropertyStore interface");
-                return false;
-            }
-
-            var propertyStore = (IPropertyStore)Marshal.GetObjectForIUnknown(propertyStorePtr);
             if (propertyStore == null)
             {
                 Logger.LogError("Failed to get IPropertyStore interface");
@@ -182,11 +173,7 @@ internal sealed partial class SearchQuery : IDisposable
         }
         finally
         {
-            // Ensure the COM object is released
-            if (propertyStorePtr != IntPtr.Zero)
-            {
-                Marshal.Release(propertyStorePtr);
-            }
+            // GeneratedComInterface objects don't need explicit cleanup
         }
     }
 

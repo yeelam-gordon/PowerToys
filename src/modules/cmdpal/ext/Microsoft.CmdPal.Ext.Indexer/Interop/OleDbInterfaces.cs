@@ -6,6 +6,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.Marshalling;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
+using Windows.Win32.UI.Shell.PropertiesSystem;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Interop;
 
@@ -51,6 +52,6 @@ public partial interface ICommandText
 [Guid("0c733a83-2a1c-11ce-ade5-00aa0044773d")]
 public partial interface IGetRow
 {
-    void GetRowFromHROW(IntPtr pUnkOuter, nuint hRow, in Guid riid, out IntPtr ppUnk);
+    void GetRowFromHROW(IntPtr pUnkOuter, nuint hRow, in Guid riid, out IPropertyStore? ppUnk);
     void GetURLFromHROW(nuint hRow, out string ppwszURL);
 }

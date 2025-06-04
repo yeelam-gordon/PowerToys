@@ -4,15 +4,17 @@
 
 using System;
 using ManagedCommon;
-using Windows.Win32;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using Windows.Win32.System.Com;
-using Windows.Win32.System.Search;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
 
 internal static class DataSourceManager
 {
     private static readonly Guid CLSIDCollatorDataSource = new("9E175B8B-F52A-11D8-B9A5-505054503030");
+    private static readonly StrategyBasedComWrappers s_comWrappers = new();
 
     private static IDBInitialize _dataSource;
 
@@ -28,22 +30,44 @@ internal static class DataSourceManager
 
     private static bool InitializeDataSource()
     {
-        var hr = PInvoke.CoCreateInstance(CLSIDCollatorDataSource, null, CLSCTX.CLSCTX_INPROC_SERVER, typeof(IDBInitialize).GUID, out var dataSourceObj);
-        if (hr != 0)
+        var hr = ComApi.CoCreateInstance(
+            CLSIDCollatorDataSource, 
+            IntPtr.Zero, 
+            CLSCTX.CLSCTX_INPROC_SERVER, 
+            typeof(IDBInitialize).GUID, 
+            out var dataSourcePtr);
+            
+        if (hr.Failed)
         {
             Logger.LogError("CoCreateInstance failed: " + hr);
             return false;
         }
 
-        if (dataSourceObj == null)
+        if (dataSourcePtr == IntPtr.Zero)
         {
-            Logger.LogError("CoCreateInstance failed: dataSourceObj is null");
+            Logger.LogError("CoCreateInstance failed: dataSourcePtr is null");
             return false;
         }
 
-        _dataSource = (IDBInitialize)dataSourceObj;
-        _dataSource.Initialize();
+        try
+        {
+            var dataSourceObj = s_comWrappers.GetOrCreateObjectForComInstance(dataSourcePtr, CreateObjectFlags.None);
+            _dataSource = (IDBInitialize)dataSourceObj;
+            _dataSource.Initialize();
 
-        return true;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError("Failed to cast COM object to IDBInitialize", ex);
+            return false;
+        }
+        finally
+        {
+            if (dataSourcePtr != IntPtr.Zero)
+            {
+                Marshal.Release(dataSourcePtr);
+            }
+        }
     }
 }

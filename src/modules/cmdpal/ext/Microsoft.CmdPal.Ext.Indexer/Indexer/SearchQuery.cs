@@ -5,14 +5,13 @@
 using System;
 using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.Marshalling;
 using System.Threading;
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.OleDB;
 using Microsoft.CmdPal.Ext.Indexer.Indexer.Utils;
 using Microsoft.CmdPal.Ext.Indexer.Native;
-using Windows.Win32;
-using Windows.Win32.System.Com;
-using Windows.Win32.System.Search;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
 using Windows.Win32.UI.Shell.PropertiesSystem;
 
 namespace Microsoft.CmdPal.Ext.Indexer.Indexer;
@@ -21,6 +20,7 @@ internal sealed partial class SearchQuery : IDisposable
 {
     private readonly Lock _lockObject = new(); // Lock object for synchronization
     private readonly DBPROPIDSET dbPropIdSet;
+    private static readonly StrategyBasedComWrappers s_comWrappers = new();
 
     private uint reuseWhereID;
     private EventWaitHandle queryCompletedEvent;
@@ -122,7 +122,7 @@ internal sealed partial class SearchQuery : IDisposable
                 {
                     if (reuseRowset != null)
                     {
-                        Marshal.ReleaseComObject(reuseRowset);
+                        // No need to release - using GeneratedComInterface
                     }
 
                     // We have a previous rowset, this means the user is typing and we should store this
@@ -148,13 +148,10 @@ internal sealed partial class SearchQuery : IDisposable
 
     private bool HandleRow(IGetRow getRow, nuint rowHandle)
     {
-        object propertyStorePtr = null;
-
         try
         {
-            getRow.GetRowFromHROW(null, rowHandle, typeof(IPropertyStore).GUID, out propertyStorePtr);
+            getRow.GetRowFromHROW(IntPtr.Zero, rowHandle, typeof(IPropertyStore).GUID, out var propertyStore);
 
-            var propertyStore = (IPropertyStore)propertyStorePtr;
             if (propertyStore == null)
             {
                 Logger.LogError("Failed to get IPropertyStore interface");
@@ -178,11 +175,7 @@ internal sealed partial class SearchQuery : IDisposable
         }
         finally
         {
-            // Ensure the COM object is released if not returned
-            if (propertyStorePtr != null)
-            {
-                Marshal.ReleaseComObject(propertyStorePtr);
-            }
+            // GeneratedComInterface objects don't need explicit cleanup
         }
     }
 
@@ -270,7 +263,7 @@ internal sealed partial class SearchQuery : IDisposable
         {
             if (reuseRowset != null)
             {
-                Marshal.ReleaseComObject(reuseRowset);
+                // No need to release - using GeneratedComInterface
             }
 
             reuseRowset = rowset;
@@ -280,38 +273,35 @@ internal sealed partial class SearchQuery : IDisposable
 
     private unsafe IRowset ExecuteCommand(string queryStr)
     {
-        object sessionPtr = null;
-        object commandPtr = null;
+        IDBCreateCommand? sessionInterface = null;
+        ICommandText? commandInterface = null;
 
         try
         {
             var session = (IDBCreateSession)DataSourceManager.GetDataSource();
-            session.CreateSession(null, typeof(IDBCreateCommand).GUID, out sessionPtr);
-            if (sessionPtr == null)
+            session.CreateSession(IntPtr.Zero, typeof(IDBCreateCommand).GUID, out sessionInterface);
+            if (sessionInterface == null)
             {
                 Logger.LogError("CreateSession failed");
                 return null;
             }
 
-            var createCommand = (IDBCreateCommand)sessionPtr;
-            createCommand.CreateCommand(null, typeof(ICommandText).GUID, out commandPtr);
-            if (commandPtr == null)
+            sessionInterface.CreateCommand(IntPtr.Zero, typeof(ICommandText).GUID, out commandInterface);
+            if (commandInterface == null)
             {
                 Logger.LogError("CreateCommand failed");
                 return null;
             }
 
-            var commandText = (ICommandText)commandPtr;
-            if (commandText == null)
+            commandInterface.SetCommandText(in NativeHelpers.OleDb.DbGuidDefault, queryStr);
+            commandInterface.Execute(IntPtr.Zero, typeof(IRowset).GUID, IntPtr.Zero, out var rowsAffected, out var rowsetInterface);
+
+            if (rowsetInterface == null)
             {
-                Logger.LogError("Failed to get ICommandText interface");
                 return null;
             }
-
-            commandText.SetCommandText(in NativeHelpers.OleDb.DbGuidDefault, queryStr);
-            commandText.Execute(null, typeof(IRowset).GUID, null, null, out var rowsetPointer);
-
-            return rowsetPointer as IRowset;
+            
+            return rowsetInterface;
         }
         catch (Exception ex)
         {
@@ -320,17 +310,8 @@ internal sealed partial class SearchQuery : IDisposable
         }
         finally
         {
-            // Release the command pointer
-            if (commandPtr != null)
-            {
-                Marshal.ReleaseComObject(commandPtr);
-            }
-
-            // Release the session pointer
-            if (sessionPtr != null)
-            {
-                Marshal.ReleaseComObject(sessionPtr);
-            }
+            // GeneratedComInterface objects don't need explicit cleanup
+            // The runtime will handle their lifecycle
         }
     }
 
@@ -358,8 +339,8 @@ internal sealed partial class SearchQuery : IDisposable
                 return null;
             }
 
-            // Marshal the interface pointer to the actual IRowsetInfo object
-            var rowsetInfo = (IRowsetInfo)Marshal.GetObjectForIUnknown(rowsetInfoPtr);
+            // Marshal the interface pointer to the actual IRowsetInfo object using ComWrappers
+            var rowsetInfo = (IRowsetInfo)s_comWrappers.GetOrCreateObjectForComInstance(rowsetInfoPtr, CreateObjectFlags.None);
             return rowsetInfo;
         }
         catch (Exception ex)
@@ -464,13 +445,13 @@ internal sealed partial class SearchQuery : IDisposable
 
         if (reuseRowset != null)
         {
-            Marshal.ReleaseComObject(reuseRowset);
+            // No need to release - using GeneratedComInterface
             reuseRowset = null;
         }
 
         if (currentRowset != null)
         {
-            Marshal.ReleaseComObject(currentRowset);
+            // No need to release - using GeneratedComInterface
             currentRowset = null;
         }
 

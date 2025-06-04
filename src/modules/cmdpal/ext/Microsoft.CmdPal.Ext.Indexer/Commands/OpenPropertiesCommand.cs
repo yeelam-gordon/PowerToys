@@ -8,8 +8,8 @@ using ManagedCommon;
 using Microsoft.CmdPal.Ext.Indexer.Data;
 using Microsoft.CmdPal.Ext.Indexer.Native;
 using Microsoft.CmdPal.Ext.Indexer.Properties;
+using Microsoft.CmdPal.Ext.Indexer.Interop;
 using Microsoft.CommandPalette.Extensions.Toolkit;
-using Windows.Win32;
 using Windows.Win32.Foundation;
 using Windows.Win32.UI.Shell;
 using Windows.Win32.UI.WindowsAndMessaging;
@@ -39,7 +39,7 @@ internal sealed partial class OpenPropertiesCommand : InvokableCommand
                 fMask = NativeHelpers.SEEMASKINVOKEIDLIST,
             };
 
-            return PInvoke.ShellExecuteEx(ref info);
+            return ComApi.ShellExecuteExW(ref info);
         }
         finally
         {

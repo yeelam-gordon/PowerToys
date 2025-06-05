@@ -46,20 +46,8 @@ namespace ManagedCommon
         {
             if (OSVersionHelper.IsWindows10())
             {
-                // Check if DWM composition is enabled before calling DWM APIs
-                if (NativeMethods.DwmIsCompositionEnabled(out bool compositionEnabled) == 0 && compositionEnabled)
-                {
-                    try
-                    {
-                        var margins = new NativeMethods.MARGINS { cxLeftWidth = 0, cxRightWidth = 0, cyBottomHeight = 0, cyTopHeight = 2 };
-                        NativeMethods.DwmExtendFrameIntoClientArea(handle, ref margins);
-                    }
-                    catch (System.Runtime.InteropServices.COMException)
-                    {
-                        // Silently fail if DWM API call fails to avoid crashes
-                        // This can happen if DWM composition becomes disabled after our check
-                    }
-                }
+                var margins = new NativeMethods.MARGINS { cxLeftWidth = 0, cxRightWidth = 0, cyBottomHeight = 0, cyTopHeight = 2 };
+                NativeMethods.DwmExtendFrameIntoClientArea(handle, ref margins);
             }
         }
     }

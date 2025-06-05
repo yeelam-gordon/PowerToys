@@ -53,7 +53,17 @@ namespace PowerLauncher.Helper
 
         public static void DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            // handle ui thread exceptions
+            // Handle specific DWM composition COM exception gracefully
+            if (e?.Exception is System.Runtime.InteropServices.COMException comEx && 
+                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+            {
+                var logger = LogManager.GetLogger("DWMCompositionException");
+                logger.Info("DWM composition not available - continuing without advanced window styling");
+                e.Handled = true;
+                return;
+            }
+
+            // handle other ui thread exceptions
             Report(e?.Exception, false);
 
             // prevent application exist, so the user can copy prompted error info

@@ -45,9 +45,6 @@ namespace ManagedCommon
         [DllImport("dwmapi")]
         internal static extern IntPtr DwmExtendFrameIntoClientArea(IntPtr hWnd, ref MARGINS pMarInset);
 
-        [DllImport("dwmapi")]
-        internal static extern int DwmIsCompositionEnabled(out bool pfEnabled);
-
         [StructLayout(LayoutKind.Sequential)]
         public struct INPUT
         {

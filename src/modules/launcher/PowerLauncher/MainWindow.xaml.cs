@@ -75,9 +75,6 @@ namespace PowerLauncher
             ref DWM_WINDOW_CORNER_PREFERENCE pvAttribute,
             uint cbAttribute);
 
-        [DllImport("dwmapi.dll")]
-        internal static extern int DwmIsCompositionEnabled(out bool pfEnabled);
-
         public MainWindow(PowerToysRunSettings settings, MainViewModel mainVM, CancellationToken nativeWaiterCancelToken)
             : this()
         {
@@ -198,23 +195,11 @@ namespace PowerLauncher
             _viewModel.RegisterHotkey(_hwndSource.Handle);
             if (OSVersionHelper.IsGreaterThanWindows11_21H2())
             {
-                // Check if DWM composition is enabled before calling DWM APIs
-                if (DwmIsCompositionEnabled(out bool compositionEnabled) == 0 && compositionEnabled)
-                {
-                    try
-                    {
-                        // ResizeMode="NoResize" removes rounded corners. So force them to rounded.
-                        IntPtr hWnd = new WindowInteropHelper(GetWindow(this)).EnsureHandle();
-                        DWMWINDOWATTRIBUTE attribute = DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE;
-                        DWM_WINDOW_CORNER_PREFERENCE preference = DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
-                        DwmSetWindowAttribute(hWnd, attribute, ref preference, sizeof(uint));
-                    }
-                    catch (COMException ex)
-                    {
-                        // Log the exception but don't crash the application
-                        Log.Exception("Failed to set window corner preference", ex, GetType());
-                    }
-                }
+                // ResizeMode="NoResize" removes rounded corners. So force them to rounded.
+                IntPtr hWnd = new WindowInteropHelper(GetWindow(this)).EnsureHandle();
+                DWMWINDOWATTRIBUTE attribute = DWMWINDOWATTRIBUTE.DWMWA_WINDOW_CORNER_PREFERENCE;
+                DWM_WINDOW_CORNER_PREFERENCE preference = DWM_WINDOW_CORNER_PREFERENCE.DWMWCP_ROUND;
+                DwmSetWindowAttribute(hWnd, attribute, ref preference, sizeof(uint));
             }
             else
             {

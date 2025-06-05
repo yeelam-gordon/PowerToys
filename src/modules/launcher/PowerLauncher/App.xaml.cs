@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 using ManagedCommon;
@@ -140,6 +141,7 @@ namespace PowerLauncher
 
                 RegisterAppDomainExceptions();
                 RegisterDispatcherUnhandledException();
+                RegisterTaskSchedulerUnobservedTaskException();
 
                 ImageLoader.Initialize();
 
@@ -245,6 +247,15 @@ namespace PowerLauncher
         private static void RegisterAppDomainExceptions()
         {
             AppDomain.CurrentDomain.UnhandledException += ErrorReporting.UnhandledExceptionHandle;
+        }
+
+        /// <summary>
+        /// let exception throw as normal is better for Debug
+        /// </summary>
+        [Conditional("RELEASE")]
+        private static void RegisterTaskSchedulerUnobservedTaskException()
+        {
+            TaskScheduler.UnobservedTaskException += ErrorReporting.TaskSchedulerUnobservedTaskException;
         }
 
         public void OnSecondAppStarted()

@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -44,7 +45,16 @@ namespace PowerLauncher.Helper
 
         public static void UnhandledExceptionHandle(object sender, UnhandledExceptionEventArgs e)
         {
-            // handle non-ui thread exceptions
+            // Handle specific DWM composition COM exception gracefully
+            if (e?.ExceptionObject is System.Runtime.InteropServices.COMException comEx && 
+                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+            {
+                var logger = LogManager.GetLogger("DWMCompositionException");
+                logger.Info("DWM composition not available on background thread - continuing without advanced window styling");
+                return;
+            }
+
+            // handle other non-ui thread exceptions
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
                 Report((Exception)e?.ExceptionObject, true);
@@ -58,7 +68,7 @@ namespace PowerLauncher.Helper
                 (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
             {
                 var logger = LogManager.GetLogger("DWMCompositionException");
-                logger.Info("DWM composition not available - continuing without advanced window styling");
+                logger.Info("DWM composition not available on UI thread - continuing without advanced window styling");
                 e.Handled = true;
                 return;
             }
@@ -68,6 +78,42 @@ namespace PowerLauncher.Helper
 
             // prevent application exist, so the user can copy prompted error info
             e.Handled = true;
+        }
+
+        public static void TaskSchedulerUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
+        {
+            // Handle specific DWM composition COM exception gracefully
+            if (e?.Exception?.InnerException is System.Runtime.InteropServices.COMException comEx && 
+                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+            {
+                var logger = LogManager.GetLogger("DWMCompositionException");
+                logger.Info("DWM composition not available in unobserved task - continuing without advanced window styling");
+                e.SetObserved();
+                return;
+            }
+
+            // Check if any inner exception in the aggregate is the DWM COM exception
+            if (e?.Exception != null)
+            {
+                foreach (var ex in e.Exception.InnerExceptions)
+                {
+                    if (ex is System.Runtime.InteropServices.COMException innerComEx &&
+                        (innerComEx.HResult == unchecked((int)0xD0000701) || innerComEx.HResult == -805306367))
+                    {
+                        var logger = LogManager.GetLogger("DWMCompositionException");
+                        logger.Info("DWM composition not available in unobserved task (inner exception) - continuing without advanced window styling");
+                        e.SetObserved();
+                        return;
+                    }
+                }
+            }
+
+            // handle other unobserved task exceptions
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                Report(e?.Exception, false);
+            });
+            e.SetObserved();
         }
 
         public static string RuntimeInfo()

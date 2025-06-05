@@ -45,12 +45,12 @@ namespace PowerLauncher.Helper
 
         public static void UnhandledExceptionHandle(object sender, UnhandledExceptionEventArgs e)
         {
-            // Handle specific DWM composition COM exception gracefully
+            // Handle DWM composition COM exceptions gracefully by checking stack trace pattern
             if (e?.ExceptionObject is System.Runtime.InteropServices.COMException comEx && 
-                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+                IsDwmCompositionException(comEx))
             {
                 var logger = LogManager.GetLogger("DWMCompositionException");
-                logger.Info("DWM composition not available on background thread - continuing without advanced window styling");
+                logger.Info($"DWM composition exception on background thread (HRESULT: 0x{comEx.HResult:X8}) - continuing without advanced window styling");
                 return;
             }
 
@@ -63,12 +63,12 @@ namespace PowerLauncher.Helper
 
         public static void DispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
         {
-            // Handle specific DWM composition COM exception gracefully
+            // Handle DWM composition COM exceptions gracefully by checking stack trace pattern
             if (e?.Exception is System.Runtime.InteropServices.COMException comEx && 
-                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+                IsDwmCompositionException(comEx))
             {
                 var logger = LogManager.GetLogger("DWMCompositionException");
-                logger.Info("DWM composition not available on UI thread - continuing without advanced window styling");
+                logger.Info($"DWM composition exception on UI thread (HRESULT: 0x{comEx.HResult:X8}) - continuing without advanced window styling");
                 e.Handled = true;
                 return;
             }
@@ -82,26 +82,26 @@ namespace PowerLauncher.Helper
 
         public static void TaskSchedulerUnobservedTaskException(object sender, UnobservedTaskExceptionEventArgs e)
         {
-            // Handle specific DWM composition COM exception gracefully
+            // Handle DWM composition COM exceptions gracefully by checking stack trace pattern
             if (e?.Exception?.InnerException is System.Runtime.InteropServices.COMException comEx && 
-                (comEx.HResult == unchecked((int)0xD0000701) || comEx.HResult == -805306367))
+                IsDwmCompositionException(comEx))
             {
                 var logger = LogManager.GetLogger("DWMCompositionException");
-                logger.Info("DWM composition not available in unobserved task - continuing without advanced window styling");
+                logger.Info($"DWM composition exception in unobserved task (HRESULT: 0x{comEx.HResult:X8}) - continuing without advanced window styling");
                 e.SetObserved();
                 return;
             }
 
-            // Check if any inner exception in the aggregate is the DWM COM exception
+            // Check if any inner exception in the aggregate is a DWM COM exception
             if (e?.Exception != null)
             {
                 foreach (var ex in e.Exception.InnerExceptions)
                 {
                     if (ex is System.Runtime.InteropServices.COMException innerComEx &&
-                        (innerComEx.HResult == unchecked((int)0xD0000701) || innerComEx.HResult == -805306367))
+                        IsDwmCompositionException(innerComEx))
                     {
                         var logger = LogManager.GetLogger("DWMCompositionException");
-                        logger.Info("DWM composition not available in unobserved task (inner exception) - continuing without advanced window styling");
+                        logger.Info($"DWM composition exception in unobserved task (inner exception, HRESULT: 0x{innerComEx.HResult:X8}) - continuing without advanced window styling");
                         e.SetObserved();
                         return;
                     }
@@ -123,6 +123,28 @@ namespace PowerLauncher.Helper
                        $"\nIntPtr Length: {IntPtr.Size}" +
                        $"\nx64: {Environment.Is64BitOperatingSystem}";
             return info;
+        }
+
+        /// <summary>
+        /// Determines if a COM exception is related to DWM composition being disabled
+        /// by examining the stack trace for DWM-related call patterns.
+        /// </summary>
+        /// <param name="comException">The COM exception to analyze</param>
+        /// <returns>True if the exception is related to DWM composition issues</returns>
+        private static bool IsDwmCompositionException(System.Runtime.InteropServices.COMException comException)
+        {
+            if (comException == null)
+                return false;
+
+            var stackTrace = comException.StackTrace;
+            if (string.IsNullOrEmpty(stackTrace))
+                return false;
+
+            // Check for common DWM composition-related patterns in the stack trace
+            return stackTrace.Contains("DwmCompositionChanged") ||
+                   stackTrace.Contains("WindowChromeWorker._ExtendGlassFrame") ||
+                   stackTrace.Contains("DwmExtendFrameIntoClientArea") ||
+                   stackTrace.Contains("DwmSetWindowAttribute");
         }
     }
 }

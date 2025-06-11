@@ -613,7 +613,8 @@
             x:Uid="EntryDialog"
             IsPrimaryButtonEnabled="{Binding Valid, Mode=OneWay}"
             Loaded="ContentDialog_Loaded_ApplyMargin"
-            PrimaryButtonStyle="{StaticResource AccentButtonStyle}">
+            PrimaryButtonStyle="{StaticResource AccentButtonStyle}"
+            x:SuppressXamlTrimWarnings="True">
             <ContentDialog.DataContext>
                 <models:Entry />
             </ContentDialog.DataContext>
@@ -625,13 +626,15 @@
                     <TextBox
                         x:Uid="Address"
                         IsSpellCheckEnabled="False"
-                        Text="{Binding Address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                        Text="{Binding Address, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        x:SuppressXamlTrimWarnings="True">
                         <TextBox.Description>
                             <StackPanel
                                 Margin="0,4"
                                 Orientation="Horizontal"
                                 Spacing="4"
-                                Visibility="{Binding IsAddressValid, Converter={StaticResource BoolToInvertedVisibilityConverter}}">
+                                Visibility="{Binding IsAddressValid, Converter={StaticResource BoolToInvertedVisibilityConverter}}"
+                                x:SuppressXamlTrimWarnings="True">
                                 <FontIcon
                                     Margin="0,0,0,0"
                                     AutomationProperties.AccessibilityView="Raw"
@@ -650,13 +653,15 @@
                         ScrollViewer.VerticalScrollBarVisibility="Visible"
                         ScrollViewer.VerticalScrollMode="Enabled"
                         Text="{Binding Hosts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        TextWrapping="Wrap">
+                        TextWrapping="Wrap"
+                        x:SuppressXamlTrimWarnings="True">
                         <TextBox.Description>
                             <StackPanel
                                 Margin="0,4"
                                 Orientation="Horizontal"
                                 Spacing="4"
-                                Visibility="{Binding IsHostsValid, Converter={StaticResource BoolToInvertedVisibilityConverter}}">
+                                Visibility="{Binding IsHostsValid, Converter={StaticResource BoolToInvertedVisibilityConverter}}"
+                                x:SuppressXamlTrimWarnings="True">
                                 <FontIcon
                                     AutomationProperties.AccessibilityView="Raw"
                                     FontSize="14"
@@ -674,12 +679,14 @@
                         ScrollViewer.VerticalScrollBarVisibility="Visible"
                         ScrollViewer.VerticalScrollMode="Enabled"
                         Text="{Binding Comment, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                        TextWrapping="Wrap" />
+                        TextWrapping="Wrap"
+                        x:SuppressXamlTrimWarnings="True" />
                     <ToggleSwitch
                         x:Uid="Active"
                         IsOn="{Binding Active, Mode=TwoWay}"
                         OffContent=""
-                        OnContent="" />
+                        OnContent=""
+                        x:SuppressXamlTrimWarnings="True" />
                 </StackPanel>
             </ScrollViewer>
         </ContentDialog>

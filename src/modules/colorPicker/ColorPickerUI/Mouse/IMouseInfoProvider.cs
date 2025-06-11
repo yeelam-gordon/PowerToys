@@ -23,5 +23,8 @@ namespace ColorPicker.Mouse
         System.Windows.Point CurrentPosition { get; }
 
         Color CurrentColor { get; }
+
+        // Manually update the mouse position for touch/stylus input
+        void UpdateCursorPosition(System.Windows.Point position);
     }
 }

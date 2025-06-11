@@ -30,6 +30,10 @@ namespace ColorPicker.Mouse
         private const int WM_RBUTTONUP = 0x0205;
         [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1310:Field names should not contain underscore", Justification = "Interop object")]
         private const int WM_RBUTTONDOWN = 0x0204;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1310:Field names should not contain underscore", Justification = "Interop object")]
+        private const int WM_POINTERUPDATE = 0x0245;
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("StyleCop.CSharp.NamingRules", "SA1310:Field names should not contain underscore", Justification = "Interop object")]
+        private const int WM_POINTERDOWN = 0x0246;
 
         private IntPtr _mouseHookHandle;
         private HookProc _mouseDelegate;
@@ -81,6 +85,23 @@ namespace ColorPicker.Mouse
             remove
             {
                 MouseWheel -= value;
+                Unsubscribe();
+            }
+        }
+
+        private event EventHandler<System.Windows.Point> PointerUpdate;
+
+        public event EventHandler<System.Windows.Point> OnPointerUpdate
+        {
+            add
+            {
+                Subscribe();
+                PointerUpdate += value;
+            }
+
+            remove
+            {
+                PointerUpdate -= value;
                 Unsubscribe();
             }
         }
@@ -157,6 +178,15 @@ namespace ColorPicker.Mouse
                         MouseDevice mouseDev = InputManager.Current.PrimaryMouseDevice;
                         MouseWheel.Invoke(null, new MouseWheelEventArgs(mouseDev, Environment.TickCount, (int)mouseHookStruct.mouseData >> 16));
                         return new IntPtr(-1);
+                    }
+                }
+
+                // Handle pointer events for touch/stylus input
+                if (wParam.ToInt32() == WM_POINTERUPDATE || wParam.ToInt32() == WM_POINTERDOWN)
+                {
+                    if (PointerUpdate != null)
+                    {
+                        PointerUpdate.Invoke(null, new System.Windows.Point(mouseHookStruct.pt.x, mouseHookStruct.pt.y));
                     }
                 }
             }

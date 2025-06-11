@@ -73,7 +73,7 @@ $returnList = [System.Collections.Generic.HashSet[string]]($totalList) -join "`r
 Write-Host $returnList
 
 # Extract the current package list from NOTICE.md
-$noticePattern = "## NuGet Packages used by PowerToys\s*\n\n((?:- .+\n)*)"
+$noticePattern = "## NuGet Packages used by PowerToys\s*\r?\n\r?\n((?:- .+(?:\r?\n|$))*)"
 $noticeMatch = [regex]::Match($noticeFile, $noticePattern)
 
 if ($noticeMatch.Success) {

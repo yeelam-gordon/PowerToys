@@ -73,7 +73,8 @@ $returnList = [System.Collections.Generic.HashSet[string]]($totalList) -join "`r
 Write-Host $returnList
 
 # Extract the current package list from NOTICE.md
-$noticePattern = "## NuGet Packages used by PowerToys\s*\r?\n\r?\n((?:- .+(?:\r?\n|$))*)"
+# Pattern handles various line endings (LF, CRLF) and multiple newlines
+$noticePattern = '## NuGet Packages used by PowerToys\s*(?:\r?\n)+((?:- .+(?:\r?\n|$))*)'
 $noticeMatch = [regex]::Match($noticeFile, $noticePattern)
 
 if ($noticeMatch.Success) {
@@ -96,20 +97,20 @@ if (!$noticeFile.Trim().EndsWith($returnList.Trim()))
 	Write-Host ""
 	
 	# Find packages in proj file list but not in NOTICE.md
-	$missingFromNotice = $generatedPackages | Where-Object { $noticePackages -notcontains $_ }
-	if ($missingFromNotice.Count -gt 0) {
-		Write-Host -ForegroundColor Red "MissingFromNotice:"
-		foreach ($pkg in $missingFromNotice) {
+	$inProjFilesOnly = $generatedPackages | Where-Object { $noticePackages -notcontains $_ }
+	if ($inProjFilesOnly.Count -gt 0) {
+		Write-Host -ForegroundColor Red "In proj files only:"
+		foreach ($pkg in $inProjFilesOnly) {
 			Write-Host -ForegroundColor Red "  $pkg"
 		}
 		Write-Host ""
 	}
 	
 	# Find packages in NOTICE.md but not in proj file list
-	$extraInNotice = $noticePackages | Where-Object { $generatedPackages -notcontains $_ }
-	if ($extraInNotice.Count -gt 0) {
-		Write-Host -ForegroundColor Yellow "ExtraInNotice:"
-		foreach ($pkg in $extraInNotice) {
+	$inNoticeOnly = $noticePackages | Where-Object { $generatedPackages -notcontains $_ }
+	if ($inNoticeOnly.Count -gt 0) {
+		Write-Host -ForegroundColor Yellow "In NOTICE.md only:"
+		foreach ($pkg in $inNoticeOnly) {
 			Write-Host -ForegroundColor Yellow "  $pkg"
 		}
 		Write-Host ""
@@ -119,8 +120,8 @@ if (!$noticeFile.Trim().EndsWith($returnList.Trim()))
 	Write-Host -ForegroundColor Cyan "Summary:"
 	Write-Host "  Proj file list has $($generatedPackages.Count) packages"
 	Write-Host "  NOTICE.md has $($noticePackages.Count) packages"
-	Write-Host "  MissingFromNotice: $($missingFromNotice.Count) packages"
-	Write-Host "  ExtraInNotice: $($extraInNotice.Count) packages"
+	Write-Host "  In proj files only: $($inProjFilesOnly.Count) packages"
+	Write-Host "  In NOTICE.md only: $($inNoticeOnly.Count) packages"
 	Write-Host ""
 	
 	exit 1

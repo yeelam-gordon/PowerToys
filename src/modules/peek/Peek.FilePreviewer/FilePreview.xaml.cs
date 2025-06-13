@@ -414,7 +414,7 @@ namespace Peek.FilePreviewer
         /// </summary>
         private async void ImagePreview_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
-            if (ImagePreviewer == null || ImagePreviewer.Preview == null)
+            if (ImagePreviewer == null)
             {
                 return;
             }

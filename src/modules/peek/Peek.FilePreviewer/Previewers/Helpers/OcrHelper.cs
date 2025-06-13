@@ -3,8 +3,6 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -15,13 +13,94 @@ using Windows.Foundation;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
-using Windows.Storage.Streams;
+using Windows.Storage;
 using Windows.System.UserProfile;
 
 namespace Peek.FilePreviewer.Previewers.Helpers
 {
     public static class OcrHelper
     {
+        /// <summary>
+        /// Extract text from the specified point in an image file
+        /// </summary>
+        /// <param name="imagePath">The path to the image file</param>
+        /// <param name="clickPoint">The point where user clicked/double-clicked</param>
+        /// <param name="cancellationToken">Cancellation token</param>
+        /// <returns>The extracted text at the specified point</returns>
+        public static async Task<string> ExtractTextAtPointFromFileAsync(string imagePath, Windows.Foundation.Point clickPoint, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+            {
+                return string.Empty;
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
+            {
+                // Check for unsupported file types
+                var extension = Path.GetExtension(imagePath).ToLowerInvariant();
+                if (extension == ".svg" || extension == ".qoi")
+                {
+                    // SVG and QOI files are not directly supported by BitmapDecoder for OCR
+                    return string.Empty;
+                }
+
+                // Load image file as SoftwareBitmap
+                var storageFile = await StorageFile.GetFileFromPathAsync(imagePath);
+                
+                cancellationToken.ThrowIfCancellationRequested();
+
+                using var stream = await storageFile.OpenAsync(FileAccessMode.Read);
+                var decoder = await BitmapDecoder.CreateAsync(stream);
+                var softwareBitmap = await decoder.GetSoftwareBitmapAsync();
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Get OCR language
+                var ocrLanguage = GetOcrLanguage();
+                if (ocrLanguage == null)
+                {
+                    return string.Empty;
+                }
+
+                // Create OCR engine
+                var ocrEngine = OcrEngine.TryCreateFromLanguage(ocrLanguage);
+                if (ocrEngine == null)
+                {
+                    ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
+                    if (ocrEngine == null)
+                    {
+                        return string.Empty;
+                    }
+                }
+
+                cancellationToken.ThrowIfCancellationRequested();
+
+                // Perform OCR
+                var ocrResult = await ocrEngine.RecognizeAsync(softwareBitmap);
+                
+                // Find text at the clicked point
+                foreach (var line in ocrResult.Lines)
+                {
+                    foreach (var word in line.Words)
+                    {
+                        if (word.BoundingRect.Contains(clickPoint))
+                        {
+                            return word.Text;
+                        }
+                    }
+                }
+
+                return string.Empty;
+            }
+            catch (Exception)
+            {
+                // Return empty string on any error
+                return string.Empty;
+            }
+        }
+
         /// <summary>
         /// Extract text from the specified point in an image
         /// </summary>
@@ -147,31 +226,18 @@ namespace Peek.FilePreviewer.Previewers.Helpers
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Convert BitmapSource to stream, then to SoftwareBitmap
-            using var memoryStream = new MemoryStream();
-            
-            // Create a RenderTargetBitmap to get pixel data
-            var renderTargetBitmap = new RenderTargetBitmap();
-            
-            // We need an Image element to render the BitmapSource
-            var imageElement = new Microsoft.UI.Xaml.Controls.Image
+            // Simple approach: if it's a WriteableBitmap, we can access pixel buffer directly
+            if (bitmapSource is WriteableBitmap writeableBitmap)
             {
-                Source = bitmapSource
-            };
+                return SoftwareBitmap.CreateCopyFromBuffer(
+                    writeableBitmap.PixelBuffer,
+                    BitmapPixelFormat.Bgra8,
+                    writeableBitmap.PixelWidth,
+                    writeableBitmap.PixelHeight);
+            }
 
-            await renderTargetBitmap.RenderAsync(imageElement);
-            
-            cancellationToken.ThrowIfCancellationRequested();
-
-            // Get pixels from RenderTargetBitmap
-            var pixelBuffer = await renderTargetBitmap.GetPixelsAsync();
-            
-            // Create SoftwareBitmap from pixel buffer
-            return SoftwareBitmap.CreateCopyFromBuffer(
-                pixelBuffer,
-                BitmapPixelFormat.Bgra8,
-                renderTargetBitmap.PixelWidth,
-                renderTargetBitmap.PixelHeight);
+            // For other types, throw an exception as this is a fallback method
+            throw new NotSupportedException("This BitmapSource type is not supported for OCR. Use file-based method instead.");
         }
 
         private static Language GetOcrLanguage()

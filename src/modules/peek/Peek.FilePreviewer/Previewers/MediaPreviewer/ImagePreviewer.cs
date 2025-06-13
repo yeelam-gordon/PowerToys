@@ -127,14 +127,11 @@ namespace Peek.FilePreviewer.Previewers
 
         public async Task<string> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default)
         {
-            if (Preview is not BitmapSource bitmapSource)
-            {
-                return string.Empty;
-            }
-
             try
             {
-                return await OcrHelper.ExtractTextAtPointAsync(bitmapSource, clickPoint, cancellationToken);
+                // Use the original file path for OCR instead of the preview image
+                // This ensures we have the full quality image for text extraction
+                return await OcrHelper.ExtractTextAtPointFromFileAsync(Item.Path, clickPoint, cancellationToken);
             }
             catch (Exception ex)
             {

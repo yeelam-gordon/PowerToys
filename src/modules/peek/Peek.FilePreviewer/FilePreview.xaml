@@ -30,6 +30,7 @@
             MaxWidth="{x:Bind ImagePreviewer.MaxImageSize.Width, Mode=OneWay}"
             MaxHeight="{x:Bind ImagePreviewer.MaxImageSize.Height, Mode=OneWay}"
             PointerMoved="ToolTipParentControl_PointerMoved"
+            DoubleTapped="ImagePreview_DoubleTapped"
             Source="{x:Bind ImagePreviewer.Preview, Mode=OneWay}"
             Visibility="{x:Bind IsPreviewVisible(ImagePreviewer, Previewer.State), Mode=OneWay}">
             <ToolTipService.ToolTip>

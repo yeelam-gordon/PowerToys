@@ -20,10 +20,13 @@ using Microsoft.Web.WebView2.Core;
 using Peek.Common.Extensions;
 using Peek.Common.Helpers;
 using Peek.Common.Models;
+using Peek.FilePreviewer.Helpers;
 using Peek.FilePreviewer.Models;
 using Peek.FilePreviewer.Previewers;
 using Peek.FilePreviewer.Previewers.Interfaces;
 using Peek.UI.Telemetry.Events;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Globalization;
 
 namespace Peek.FilePreviewer
 {
@@ -406,6 +409,54 @@ namespace Peek.FilePreviewer
                     toolTip.Placement = pos.Y < previewControl.ActualHeight / 2 ?
                         PlacementMode.Bottom : PlacementMode.Top;
                 }
+            }
+        }
+
+        private async void ImagePreview_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            // Only process if this is an image previewer
+            if (ImagePreviewer == null || Item == null)
+            {
+                return;
+            }
+
+            try
+            {
+                // Get the position relative to the image control
+                var position = e.GetPosition(ImagePreview);
+                
+                // Get the actual image size and control size for scaling
+                var imageSize = ImagePreviewer.ImageSize;
+                var controlSize = new Windows.Foundation.Size(ImagePreview.ActualWidth, ImagePreview.ActualHeight);
+                
+                if (!imageSize.HasValue || controlSize.Width == 0 || controlSize.Height == 0)
+                {
+                    return;
+                }
+                
+                // Convert to Windows.Foundation.Point for OCR compatibility
+                var clickPoint = new Windows.Foundation.Point(position.X, position.Y);
+                
+                // Extract text at the clicked position
+                string extractedText = await OcrHelper.ExtractTextAtPointAsync(
+                    Item.Path, 
+                    clickPoint, 
+                    controlSize, 
+                    imageSize.Value);
+                
+                if (!string.IsNullOrWhiteSpace(extractedText))
+                {
+                    // Copy the extracted text to clipboard
+                    var dataPackage = new DataPackage();
+                    dataPackage.SetText(extractedText.Trim());
+                    Clipboard.SetContent(dataPackage);
+                    Clipboard.Flush();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't show UI as this is a user gesture
+                Logger.LogError("Error extracting text from image", ex);
             }
         }
     }

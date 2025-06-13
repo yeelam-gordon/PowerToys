@@ -147,6 +147,15 @@ namespace Peek.UI
             }
         }
 
+        /// <summary>
+        /// Show Peek with a specific file path (for command line launch)
+        /// </summary>
+        public void ShowWithFilePath(string filePath)
+        {
+            Activate();
+            InitializeWithFilePath(filePath);
+        }
+
         private void HandleThemeChange()
         {
             AppWindow appWindow = this.AppWindow;
@@ -187,6 +196,20 @@ namespace Peek.UI
             bootTime.Start();
 
             ViewModel.Initialize(foregroundWindowHandle);
+            ViewModel.ScalingFactor = this.GetMonitorScale();
+            this.Content.KeyUp += Content_KeyUp;
+
+            bootTime.Stop();
+
+            PowerToysTelemetry.Log.WriteEvent(new OpenedEvent() { FileExtension = ViewModel.CurrentItem?.Extension ?? string.Empty, HotKeyToVisibleTimeMs = bootTime.ElapsedMilliseconds });
+        }
+
+        private void InitializeWithFilePath(string filePath)
+        {
+            var bootTime = new System.Diagnostics.Stopwatch();
+            bootTime.Start();
+
+            ViewModel.InitializeWithFilePath(filePath);
             ViewModel.ScalingFactor = this.GetMonitorScale();
             this.Content.KeyUp += Content_KeyUp;
 

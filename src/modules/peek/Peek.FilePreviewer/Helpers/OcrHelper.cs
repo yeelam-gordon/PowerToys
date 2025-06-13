@@ -6,6 +6,7 @@ using System;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using ManagedCommon;
@@ -33,9 +34,18 @@ namespace Peek.FilePreviewer.Helpers
         {
             try
             {
-                // Get the OCR language (fallback to English)
-                var language = GetOcrLanguage() ?? new Language("en-US");
-                var ocrEngine = OcrEngine.TryCreateFromLanguage(language);
+                // Get the OCR language and create engine
+                var language = GetOcrLanguage();
+                OcrEngine ocrEngine;
+                
+                if (language != null)
+                {
+                    ocrEngine = OcrEngine.TryCreateFromLanguage(language);
+                }
+                else
+                {
+                    ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
+                }
                 
                 if (ocrEngine == null)
                 {
@@ -119,27 +129,15 @@ namespace Peek.FilePreviewer.Helpers
         {
             try
             {
-                var userLanguages = Windows.System.UserProfile.GlobalizationPreferences.Languages;
-                
-                foreach (var userLanguage in userLanguages)
-                {
-                    var language = new Language(userLanguage);
-                    if (OcrEngine.IsLanguageSupported(language))
-                    {
-                        return language;
-                    }
-                }
-                
-                // Fallback to English if available
-                var englishLanguage = new Language("en-US");
-                if (OcrEngine.IsLanguageSupported(englishLanguage))
-                {
-                    return englishLanguage;
-                }
-                
-                // Return the first available language
-                var availableLanguages = OcrEngine.AvailableRecognizerLanguages;
-                return availableLanguages.Count > 0 ? availableLanguages[0] : null;
+                var userLanguageTags = Windows.System.UserProfile.GlobalizationPreferences.Languages.ToList();
+
+                var languages = from language in OcrEngine.AvailableRecognizerLanguages
+                                let tag = language.LanguageTag
+                                where userLanguageTags.Contains(tag)
+                                orderby userLanguageTags.IndexOf(tag)
+                                select language;
+
+                return languages.FirstOrDefault();
             }
             catch (Exception ex)
             {

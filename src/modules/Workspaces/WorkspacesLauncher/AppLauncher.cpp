@@ -24,6 +24,8 @@ namespace AppLauncher
         const std::wstring EdgePwaFilename = L"msedge_proxy.exe";
         const std::wstring ChromeFilename = L"chrome.exe";
         const std::wstring ChromePwaFilename = L"chrome_proxy.exe";
+        const std::wstring VivaldiFilename = L"vivaldi.exe";
+        const std::wstring VivaldiPwaFilename = L"vivaldi_proxy.exe";
         const std::wstring PwaCommandLineAddition = L"--profile-directory=Default --app-id=";
         const std::wstring SteamProtocolPrefix = L"steam:";
     }
@@ -166,14 +168,30 @@ namespace AppLauncher
         if (!launched && !app.pwaAppId.empty())
         {
             std::filesystem::path appPath(app.path);
-            if (appPath.filename() == NonLocalizable::EdgeFilename)
+            std::wstring filename = appPath.filename().wstring();
+            
+            // Some paths may contain backslashes in filename part (e.g. vivaldi_proxy.exe\ms-teams.exe)
+            // In such cases, use only the first part as the executable
+            size_t backslashPos = filename.find(L'\\');
+            if (backslashPos != std::wstring::npos)
+            {
+                filename = filename.substr(0, backslashPos);
+                appPath = appPath.parent_path() / filename;
+            }
+            
+            if (filename == NonLocalizable::EdgeFilename)
             {
                 appPathFinal = appPath.parent_path() / NonLocalizable::EdgePwaFilename;
                 commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
             }
-            if (appPath.filename() == NonLocalizable::ChromeFilename)
+            if (filename == NonLocalizable::ChromeFilename)
             {
                 appPathFinal = appPath.parent_path() / NonLocalizable::ChromePwaFilename;
+                commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
+            }
+            if (filename == NonLocalizable::VivaldiFilename || filename == NonLocalizable::VivaldiPwaFilename)
+            {
+                appPathFinal = appPath.parent_path() / NonLocalizable::VivaldiPwaFilename;
                 commandLineArgsFinal = NonLocalizable::PwaCommandLineAddition + app.pwaAppId + L" " + app.commandLineArgs;
             }
         }

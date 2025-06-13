@@ -125,6 +125,24 @@ namespace Peek.FilePreviewer.Previewers
             });
         }
 
+        public async Task<string> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default)
+        {
+            if (Preview is not BitmapSource bitmapSource)
+            {
+                return string.Empty;
+            }
+
+            try
+            {
+                return await OcrHelper.ExtractTextAtPointAsync(bitmapSource, clickPoint, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error extracting text at point: {ex.Message}");
+                return string.Empty;
+            }
+        }
+
         partial void OnPreviewChanged(ImageSource? value)
         {
             if (Preview != null)

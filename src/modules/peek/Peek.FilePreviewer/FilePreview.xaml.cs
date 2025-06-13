@@ -408,5 +408,61 @@ namespace Peek.FilePreviewer
                 }
             }
         }
+
+        /// <summary>
+        /// Handle double-tap on image to extract and copy text at that point
+        /// </summary>
+        private async void ImagePreview_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            if (ImagePreviewer == null || ImagePreviewer.Preview == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var clickPoint = e.GetPosition(sender as FrameworkElement);
+                
+                // Convert UI coordinates to image coordinates
+                var imageElement = sender as FrameworkElement;
+                if (imageElement == null)
+                {
+                    return;
+                }
+
+                // Get the actual image dimensions vs display dimensions
+                var displayWidth = imageElement.ActualWidth;
+                var displayHeight = imageElement.ActualHeight;
+                
+                var imageSize = ImagePreviewer.ImageSize;
+                if (imageSize == null)
+                {
+                    return;
+                }
+
+                // Calculate scaling factors
+                var scaleX = imageSize.Value.Width / displayWidth;
+                var scaleY = imageSize.Value.Height / displayHeight;
+
+                // Convert click point to image coordinates
+                var imageClickPoint = new Windows.Foundation.Point(
+                    clickPoint.X * scaleX,
+                    clickPoint.Y * scaleY);
+
+                // Extract text at the clicked point
+                var extractedText = await ImagePreviewer.ExtractTextAtPointAsync(imageClickPoint, _cancellationTokenSource.Token);
+                
+                if (!string.IsNullOrWhiteSpace(extractedText))
+                {
+                    // Copy to clipboard
+                    ClipboardHelper.SaveToClipboard(extractedText);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't show to user to avoid interrupting workflow
+                Logger.LogError($"Error extracting text from image: {ex.Message}");
+            }
+        }
     }
 }

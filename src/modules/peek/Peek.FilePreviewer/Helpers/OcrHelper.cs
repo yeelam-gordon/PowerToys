@@ -8,6 +8,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
+using ManagedCommon;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
 using Windows.Media.Ocr;
@@ -20,12 +21,12 @@ namespace Peek.FilePreviewer.Helpers
     internal static class OcrHelper
     {
         /// <summary>
-        /// Extract text from a specific point in an image
+        /// Extract text from a specific point in an image with proper aspect ratio scaling
         /// </summary>
         /// <param name="imagePath">Path to the image file</param>
-        /// <param name="clickPoint">Point where user clicked</param>
+        /// <param name="clickPoint">Point where user clicked relative to the image control</param>
         /// <param name="imageControlSize">Size of the image control displaying the image</param>
-        /// <param name="actualImageSize">Actual size of the image</param>
+        /// <param name="actualImageSize">Actual size of the image file</param>
         /// <returns>Extracted text at the clicked position, or empty string if no text found</returns>
         public static async Task<string> ExtractTextAtPointAsync(string imagePath, Windows.Foundation.Point clickPoint, 
             Windows.Foundation.Size imageControlSize, Windows.Foundation.Size actualImageSize)
@@ -46,14 +47,45 @@ namespace Peek.FilePreviewer.Helpers
                 var decoder = await BitmapDecoder.CreateAsync(fileStream.AsRandomAccessStream());
                 var softwareBitmap = await decoder.GetSoftwareBitmapAsync();
                 
-                // Calculate scaling factors to map from control coordinates to image coordinates
-                var scaleX = actualImageSize.Width / imageControlSize.Width;
-                var scaleY = actualImageSize.Height / imageControlSize.Height;
+                // Calculate scaling factors accounting for aspect ratio preservation
+                // The Image control preserves aspect ratio, so we need to find the actual displayed image bounds
+                var imageAspectRatio = actualImageSize.Width / actualImageSize.Height;
+                var controlAspectRatio = imageControlSize.Width / imageControlSize.Height;
+                
+                double displayedWidth, displayedHeight;
+                double offsetX = 0, offsetY = 0;
+                
+                if (imageAspectRatio > controlAspectRatio)
+                {
+                    // Image is wider - fit to control width, center vertically
+                    displayedWidth = imageControlSize.Width;
+                    displayedHeight = imageControlSize.Width / imageAspectRatio;
+                    offsetY = (imageControlSize.Height - displayedHeight) / 2;
+                }
+                else
+                {
+                    // Image is taller - fit to control height, center horizontally
+                    displayedHeight = imageControlSize.Height;
+                    displayedWidth = imageControlSize.Height * imageAspectRatio;
+                    offsetX = (imageControlSize.Width - displayedWidth) / 2;
+                }
+                
+                // Check if click is within the actual image bounds
+                if (clickPoint.X < offsetX || clickPoint.X > offsetX + displayedWidth ||
+                    clickPoint.Y < offsetY || clickPoint.Y > offsetY + displayedHeight)
+                {
+                    return string.Empty; // Click is outside the image
+                }
                 
                 // Scale the click point to image coordinates
+                var relativeX = clickPoint.X - offsetX;
+                var relativeY = clickPoint.Y - offsetY;
+                var scaleX = actualImageSize.Width / displayedWidth;
+                var scaleY = actualImageSize.Height / displayedHeight;
+                
                 var scaledPoint = new Windows.Foundation.Point(
-                    clickPoint.X * scaleX,
-                    clickPoint.Y * scaleY);
+                    relativeX * scaleX,
+                    relativeY * scaleY);
                 
                 // Perform OCR
                 var ocrResult = await ocrEngine.RecognizeAsync(softwareBitmap);
@@ -72,9 +104,10 @@ namespace Peek.FilePreviewer.Helpers
                 
                 return string.Empty;
             }
-            catch
+            catch (Exception ex)
             {
-                // Return empty string on any error
+                // Log the specific error for debugging
+                Logger.LogError($"OCR text extraction failed: {ex.Message}", ex);
                 return string.Empty;
             }
         }
@@ -108,8 +141,9 @@ namespace Peek.FilePreviewer.Helpers
                 var availableLanguages = OcrEngine.AvailableRecognizerLanguages;
                 return availableLanguages.Count > 0 ? availableLanguages[0] : null;
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.LogError($"Failed to get OCR language: {ex.Message}", ex);
                 return null;
             }
         }

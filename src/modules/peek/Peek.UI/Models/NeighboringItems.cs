@@ -12,7 +12,7 @@ namespace Peek.UI.Models
 {
     public partial class NeighboringItems : IReadOnlyList<IFileSystemItem>
     {
-        public IFileSystemItem this[int index] => Items[index] ?? (ShellItemArray != null ? (Items[index] = ShellItemArray.GetItemAt(index).ToIFileSystemItem()) : Items[index]);
+        public IFileSystemItem this[int index] => Items[index] ??= ShellItemArray?.GetItemAt(index).ToIFileSystemItem() ?? throw new InvalidOperationException("Item is null");
 
         public int Count { get; }
 

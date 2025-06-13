@@ -5,6 +5,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml.Media;
+using Peek.FilePreviewer.Models;
 using Windows.Foundation;
 
 namespace Peek.FilePreviewer.Previewers.Interfaces
@@ -22,7 +23,7 @@ namespace Peek.FilePreviewer.Previewers.Interfaces
         /// </summary>
         /// <param name="clickPoint">The point where user clicked</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The extracted text at the specified point</returns>
-        public Task<string> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default);
+        /// <returns>The extracted text and its bounding rectangle at the specified point</returns>
+        public Task<TextExtractionResult> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default);
     }
 }

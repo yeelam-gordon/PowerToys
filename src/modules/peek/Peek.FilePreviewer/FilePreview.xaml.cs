@@ -184,6 +184,9 @@ namespace Peek.FilePreviewer
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource = new();
 
+            // Hide any existing text highlight when changing items
+            HideTextHighlight();
+
             // Clear up any unmanaged resources before creating a new previewer instance.
             (Previewer as IDisposable)?.Dispose();
 
@@ -410,7 +413,7 @@ namespace Peek.FilePreviewer
         }
 
         /// <summary>
-        /// Handle double-tap on image to extract and copy text at that point
+        /// Handle double-tap on image to extract and copy text at that point, and highlight the text with a rectangle
         /// </summary>
         private async void ImagePreview_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
         {
@@ -450,18 +453,86 @@ namespace Peek.FilePreviewer
                     clickPoint.Y * scaleY);
 
                 // Extract text at the clicked point
-                var extractedText = await ImagePreviewer.ExtractTextAtPointAsync(imageClickPoint, _cancellationTokenSource.Token);
+                var extractionResult = await ImagePreviewer.ExtractTextAtPointAsync(imageClickPoint, _cancellationTokenSource.Token);
                 
-                if (!string.IsNullOrWhiteSpace(extractedText))
+                if (extractionResult.HasText)
                 {
                     // Copy to clipboard
-                    ClipboardHelper.SaveToClipboard(extractedText);
+                    ClipboardHelper.SaveToClipboard(extractionResult.Text);
+                    
+                    // Show rectangle highlight
+                    ShowTextHighlight(extractionResult.BoundingRect, scaleX, scaleY);
+                }
+                else
+                {
+                    // Hide rectangle if no text found
+                    HideTextHighlight();
                 }
             }
             catch (Exception ex)
             {
                 // Log error but don't show to user to avoid interrupting workflow
                 Logger.LogError($"Error extracting text from image: {ex.Message}");
+                
+                // Hide rectangle on error
+                HideTextHighlight();
+            }
+        }
+
+        /// <summary>
+        /// Show rectangle highlight for detected text
+        /// </summary>
+        private void ShowTextHighlight(Windows.Foundation.Rect textBoundingRect, double scaleX, double scaleY)
+        {
+            try
+            {
+                if (TextHighlightRectangle == null || TextHighlightCanvas == null)
+                {
+                    return;
+                }
+
+                // Convert from image coordinates to UI coordinates
+                var uiLeft = textBoundingRect.X / scaleX;
+                var uiTop = textBoundingRect.Y / scaleY;
+                var uiWidth = textBoundingRect.Width / scaleX;
+                var uiHeight = textBoundingRect.Height / scaleY;
+
+                // Position and size the rectangle
+                Canvas.SetLeft(TextHighlightRectangle, uiLeft);
+                Canvas.SetTop(TextHighlightRectangle, uiTop);
+                TextHighlightRectangle.Width = uiWidth;
+                TextHighlightRectangle.Height = uiHeight;
+
+                // Show the rectangle
+                TextHighlightRectangle.Visibility = Visibility.Visible;
+
+                // Auto-hide after 3 seconds
+                _ = Task.Delay(3000).ContinueWith(_ => 
+                {
+                    DispatcherQueue.TryEnqueue(() => HideTextHighlight());
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error showing text highlight: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hide rectangle highlight
+        /// </summary>
+        private void HideTextHighlight()
+        {
+            try
+            {
+                if (TextHighlightRectangle != null)
+                {
+                    TextHighlightRectangle.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error hiding text highlight: {ex.Message}");
             }
         }
     }

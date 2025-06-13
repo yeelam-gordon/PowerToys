@@ -125,7 +125,7 @@ namespace Peek.FilePreviewer.Previewers
             });
         }
 
-        public async Task<string> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default)
+        public async Task<TextExtractionResult> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -136,7 +136,7 @@ namespace Peek.FilePreviewer.Previewers
             catch (Exception ex)
             {
                 Logger.LogError($"Error extracting text at point: {ex.Message}");
-                return string.Empty;
+                return new TextExtractionResult();
             }
         }
 

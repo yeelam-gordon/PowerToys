@@ -9,6 +9,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 using Microsoft.UI.Xaml.Media.Imaging;
+using Peek.FilePreviewer.Models;
 using Windows.Foundation;
 using Windows.Globalization;
 using Windows.Graphics.Imaging;
@@ -26,12 +27,12 @@ namespace Peek.FilePreviewer.Previewers.Helpers
         /// <param name="imagePath">The path to the image file</param>
         /// <param name="clickPoint">The point where user clicked/double-clicked</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The extracted text at the specified point</returns>
-        public static async Task<string> ExtractTextAtPointFromFileAsync(string imagePath, Windows.Foundation.Point clickPoint, CancellationToken cancellationToken = default)
+        /// <returns>The extracted text and its bounding rectangle at the specified point</returns>
+        public static async Task<TextExtractionResult> ExtractTextAtPointFromFileAsync(string imagePath, Windows.Foundation.Point clickPoint, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
             {
-                return string.Empty;
+                return new TextExtractionResult();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -43,7 +44,7 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                 if (extension == ".svg" || extension == ".qoi")
                 {
                     // SVG and QOI files are not directly supported by BitmapDecoder for OCR
-                    return string.Empty;
+                    return new TextExtractionResult();
                 }
 
                 // Load image file as SoftwareBitmap
@@ -61,7 +62,7 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                 var ocrLanguage = GetOcrLanguage();
                 if (ocrLanguage == null)
                 {
-                    return string.Empty;
+                    return new TextExtractionResult();
                 }
 
                 // Create OCR engine
@@ -71,7 +72,7 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                     ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
                     if (ocrEngine == null)
                     {
-                        return string.Empty;
+                        return new TextExtractionResult();
                     }
                 }
 
@@ -87,17 +88,17 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                     {
                         if (word.BoundingRect.Contains(clickPoint))
                         {
-                            return word.Text;
+                            return new TextExtractionResult(word.Text, word.BoundingRect);
                         }
                     }
                 }
 
-                return string.Empty;
+                return new TextExtractionResult();
             }
             catch (Exception)
             {
-                // Return empty string on any error
-                return string.Empty;
+                // Return empty result on any error
+                return new TextExtractionResult();
             }
         }
 
@@ -107,12 +108,12 @@ namespace Peek.FilePreviewer.Previewers.Helpers
         /// <param name="imageSource">The image source to extract text from</param>
         /// <param name="clickPoint">The point where user clicked/double-clicked</param>
         /// <param name="cancellationToken">Cancellation token</param>
-        /// <returns>The extracted text at the specified point</returns>
-        public static async Task<string> ExtractTextAtPointAsync(BitmapSource imageSource, Windows.Foundation.Point clickPoint, CancellationToken cancellationToken = default)
+        /// <returns>The extracted text and its bounding rectangle at the specified point</returns>
+        public static async Task<TextExtractionResult> ExtractTextAtPointAsync(BitmapSource imageSource, Windows.Foundation.Point clickPoint, CancellationToken cancellationToken = default)
         {
             if (imageSource == null)
             {
-                return string.Empty;
+                return new TextExtractionResult();
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -128,7 +129,7 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                 var ocrLanguage = GetOcrLanguage();
                 if (ocrLanguage == null)
                 {
-                    return string.Empty;
+                    return new TextExtractionResult();
                 }
 
                 // Create OCR engine
@@ -138,7 +139,7 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                     ocrEngine = OcrEngine.TryCreateFromUserProfileLanguages();
                     if (ocrEngine == null)
                     {
-                        return string.Empty;
+                        return new TextExtractionResult();
                     }
                 }
 
@@ -154,17 +155,17 @@ namespace Peek.FilePreviewer.Previewers.Helpers
                     {
                         if (word.BoundingRect.Contains(clickPoint))
                         {
-                            return word.Text;
+                            return new TextExtractionResult(word.Text, word.BoundingRect);
                         }
                     }
                 }
 
-                return string.Empty;
+                return new TextExtractionResult();
             }
             catch (Exception)
             {
-                // Return empty string on any error
-                return string.Empty;
+                // Return empty result on any error
+                return new TextExtractionResult();
             }
         }
 

@@ -38,6 +38,21 @@
             </ToolTipService.ToolTip>
         </Image>
 
+        <!-- Text highlight overlay for images -->
+        <Canvas
+            x:Name="TextHighlightCanvas"
+            MaxWidth="{x:Bind ImagePreviewer.MaxImageSize.Width, Mode=OneWay}"
+            MaxHeight="{x:Bind ImagePreviewer.MaxImageSize.Height, Mode=OneWay}"
+            IsHitTestVisible="False"
+            Visibility="{x:Bind IsPreviewVisible(ImagePreviewer, Previewer.State), Mode=OneWay}">
+            <Rectangle
+                x:Name="TextHighlightRectangle"
+                Fill="Transparent"
+                Stroke="#FF0078D4"
+                StrokeThickness="2"
+                Visibility="Collapsed" />
+        </Canvas>
+
         <MediaPlayerElement
             x:Name="VideoPreview"
             AreTransportControlsEnabled="True"

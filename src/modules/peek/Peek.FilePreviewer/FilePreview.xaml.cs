@@ -184,6 +184,9 @@ namespace Peek.FilePreviewer
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource = new();
 
+            // Hide any existing text highlight when changing items
+            HideTextHighlight();
+
             // Clear up any unmanaged resources before creating a new previewer instance.
             (Previewer as IDisposable)?.Dispose();
 
@@ -406,6 +409,130 @@ namespace Peek.FilePreviewer
                     toolTip.Placement = pos.Y < previewControl.ActualHeight / 2 ?
                         PlacementMode.Bottom : PlacementMode.Top;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Handle double-tap on image to extract and copy text at that point, and highlight the text with a rectangle
+        /// </summary>
+        private async void ImagePreview_DoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+        {
+            if (ImagePreviewer == null)
+            {
+                return;
+            }
+
+            try
+            {
+                var clickPoint = e.GetPosition(sender as FrameworkElement);
+                
+                // Convert UI coordinates to image coordinates
+                var imageElement = sender as FrameworkElement;
+                if (imageElement == null)
+                {
+                    return;
+                }
+
+                // Get the actual image dimensions vs display dimensions
+                var displayWidth = imageElement.ActualWidth;
+                var displayHeight = imageElement.ActualHeight;
+                
+                var imageSize = ImagePreviewer.ImageSize;
+                if (imageSize == null)
+                {
+                    return;
+                }
+
+                // Calculate scaling factors
+                var scaleX = imageSize.Value.Width / displayWidth;
+                var scaleY = imageSize.Value.Height / displayHeight;
+
+                // Convert click point to image coordinates
+                var imageClickPoint = new Windows.Foundation.Point(
+                    clickPoint.X * scaleX,
+                    clickPoint.Y * scaleY);
+
+                // Extract text at the clicked point
+                var extractionResult = await ImagePreviewer.ExtractTextAtPointAsync(imageClickPoint, _cancellationTokenSource.Token);
+                
+                if (extractionResult.HasText)
+                {
+                    // Copy to clipboard
+                    ClipboardHelper.SaveToClipboard(extractionResult.Text);
+                    
+                    // Show rectangle highlight
+                    ShowTextHighlight(extractionResult.BoundingRect, scaleX, scaleY);
+                }
+                else
+                {
+                    // Hide rectangle if no text found
+                    HideTextHighlight();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't show to user to avoid interrupting workflow
+                Logger.LogError($"Error extracting text from image: {ex.Message}");
+                
+                // Hide rectangle on error
+                HideTextHighlight();
+            }
+        }
+
+        /// <summary>
+        /// Show rectangle highlight for detected text
+        /// </summary>
+        private void ShowTextHighlight(Windows.Foundation.Rect textBoundingRect, double scaleX, double scaleY)
+        {
+            try
+            {
+                if (TextHighlightRectangle == null || TextHighlightCanvas == null)
+                {
+                    return;
+                }
+
+                // Convert from image coordinates to UI coordinates
+                var uiLeft = textBoundingRect.X / scaleX;
+                var uiTop = textBoundingRect.Y / scaleY;
+                var uiWidth = textBoundingRect.Width / scaleX;
+                var uiHeight = textBoundingRect.Height / scaleY;
+
+                // Position and size the rectangle
+                Canvas.SetLeft(TextHighlightRectangle, uiLeft);
+                Canvas.SetTop(TextHighlightRectangle, uiTop);
+                TextHighlightRectangle.Width = uiWidth;
+                TextHighlightRectangle.Height = uiHeight;
+
+                // Show the rectangle
+                TextHighlightRectangle.Visibility = Visibility.Visible;
+
+                // Auto-hide after 3 seconds
+                _ = Task.Delay(3000).ContinueWith(_ => 
+                {
+                    DispatcherQueue.TryEnqueue(() => HideTextHighlight());
+                });
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error showing text highlight: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Hide rectangle highlight
+        /// </summary>
+        private void HideTextHighlight()
+        {
+            try
+            {
+                if (TextHighlightRectangle != null)
+                {
+                    TextHighlightRectangle.Visibility = Visibility.Collapsed;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error hiding text highlight: {ex.Message}");
             }
         }
     }

@@ -125,6 +125,21 @@ namespace Peek.FilePreviewer.Previewers
             });
         }
 
+        public async Task<TextExtractionResult> ExtractTextAtPointAsync(Point clickPoint, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                // Use the original file path for OCR instead of the preview image
+                // This ensures we have the full quality image for text extraction
+                return await OcrHelper.ExtractTextAtPointFromFileAsync(Item.Path, clickPoint, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Error extracting text at point: {ex.Message}");
+                return new TextExtractionResult();
+            }
+        }
+
         partial void OnPreviewChanged(ImageSource? value)
         {
             if (Preview != null)

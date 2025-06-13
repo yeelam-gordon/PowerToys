@@ -145,6 +145,22 @@ namespace Peek.UI
             CurrentItem = (Items != null && Items.Count > 0) ? Items[0] : null;
         }
 
+        public void InitializeWithFilePath(string filePath)
+        {
+            try
+            {
+                Items = NeighboringItemsQuery.GetNeighboringItemsFromFilePath(filePath);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to get items from file path: {filePath}", ex);
+            }
+
+            _currentIndex = DisplayIndex = 0;
+
+            CurrentItem = (Items != null && Items.Count > 0) ? Items[0] : null;
+        }
+
         public void Uninitialize()
         {
             _currentIndex = DisplayIndex = 0;

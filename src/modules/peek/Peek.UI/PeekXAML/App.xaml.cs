@@ -26,6 +26,8 @@ namespace Peek.UI
     {
         public static int PowerToysPID { get; set; }
 
+        public static string? LaunchFilePath { get; set; }
+
         public ETWTrace EtwTrace { get; private set; } = new ETWTrace();
 
         public IHost Host
@@ -98,6 +100,7 @@ namespace Peek.UI
             var cmdArgs = Environment.GetCommandLineArgs();
             if (cmdArgs?.Length > 1)
             {
+                // Check if the last argument is a PowerToys PID (for legacy mode)
                 if (int.TryParse(cmdArgs[^1], out int powerToysRunnerPid))
                 {
                     RunnerHelper.WaitForPowerToysRunner(powerToysRunnerPid, () =>
@@ -105,6 +108,12 @@ namespace Peek.UI
                         EtwTrace?.Dispose();
                         Environment.Exit(0);
                     });
+                }
+                else
+                {
+                    // Treat the last argument as a file path
+                    LaunchFilePath = cmdArgs[^1];
+                    Logger.LogInfo($"Peek launched with file path: {LaunchFilePath}");
                 }
             }
 
@@ -114,6 +123,12 @@ namespace Peek.UI
                 EtwTrace?.Dispose();
                 Environment.Exit(0);
             });
+
+            // If launched with a file path, show the file immediately
+            if (!string.IsNullOrEmpty(LaunchFilePath))
+            {
+                ShowWithFilePath(LaunchFilePath);
+            }
         }
 
         private void App_UnhandledException(object sender, Microsoft.UI.Xaml.UnhandledExceptionEventArgs e)
@@ -127,7 +142,7 @@ namespace Peek.UI
         private void OnPeekHotkey()
         {
             // Need to read the foreground HWND before activating Peek to avoid focus stealing
-            // Foreground HWND must always be Explorer or Desktop
+            // Foreground HWND must always be Explorer or Desktop when launched via hotkey
             var foregroundWindowHandle = Windows.Win32.PInvoke.GetForegroundWindow();
 
             bool firstActivation = false;
@@ -139,6 +154,19 @@ namespace Peek.UI
             }
 
             Window.Toggle(firstActivation, foregroundWindowHandle);
+        }
+
+        /// <summary>
+        /// Show Peek with specified file path (for command line launch)
+        /// </summary>
+        public void ShowWithFilePath(string filePath)
+        {
+            if (Window == null)
+            {
+                Window = new MainWindow();
+            }
+
+            Window.ShowWithFilePath(filePath);
         }
     }
 }

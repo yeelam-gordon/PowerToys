@@ -41,6 +41,15 @@ namespace
             L"  </Query>" \
             L"</QueryList>";
 
+        const std::wstring QUERY_BY_CHANNEL_FILTERED = L"<QueryList>" \
+            L"  <Query Id='0'>" \
+            L"    <Select Path='%s'>" \
+            L"        *[System[TimeCreated[timediff(@SystemTime)&lt;%I64u]]] " \
+            L"        and (*[EventData[Data[contains(., 'PowerToys')]]] or *[UserData/*/*[contains(., 'PowerToys')]])" \
+            L"    </Select>" \
+            L"  </Query>" \
+            L"</QueryList>";
+
         std::wstring GetQuery(std::wstring processName)
         {
             wchar_t buff[1000];
@@ -54,6 +63,14 @@ namespace
             wchar_t buff[1000];
             memset(buff, 0, sizeof(buff));
             _snwprintf_s(buff, sizeof(buff), QUERY_BY_CHANNEL.c_str(), channelName.c_str(), PERIOD);
+            return buff;
+        }
+
+        std::wstring GetFilteredQueryByChannel(std::wstring channelName)
+        {
+            wchar_t buff[1000];
+            memset(buff, 0, sizeof(buff));
+            _snwprintf_s(buff, sizeof(buff), QUERY_BY_CHANNEL_FILTERED.c_str(), channelName.c_str(), PERIOD);
             return buff;
         }
 
@@ -167,9 +184,18 @@ namespace
             }
         }
 
-        EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring channelName)
+        EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring channelName, bool filterPowerToys = false)
         {
-            auto query = GetQueryByChannel(channelName);
+            std::wstring query;
+            if (filterPowerToys)
+            {
+                query = GetFilteredQueryByChannel(channelName);
+            }
+            else
+            {
+                query = GetQueryByChannel(channelName);
+            }
+            
             auto reportPath = tmpDir;
             // Replace forward slashes with dashes to create a valid filename
             std::wstring safeChannelName = channelName;
@@ -186,6 +212,7 @@ namespace
 
             // Write initial debug info to help diagnose issues
             report << L"<!-- Attempting to query channel: " << channelName << L" -->" << std::endl;
+            report << L"<!-- Filtered for PowerToys: " << (filterPowerToys ? L"Yes" : L"No") << L" -->" << std::endl;
             report << L"<!-- Query: " << query << L" -->" << std::endl;
             report << L"<!-- Safe filename: " << safeChannelName << L" -->" << std::endl;
 
@@ -257,5 +284,5 @@ void EventViewer::ReportEventViewerInfo(const std::filesystem::path& tmpDir)
 
 void EventViewer::ReportAppXDeploymentLogs(const std::filesystem::path& tmpDir)
 {
-    EventViewerReporter(tmpDir, L"Microsoft-Windows-AppXDeploymentServer/Operational").Report();
+    EventViewerReporter(tmpDir, L"Microsoft-Windows-AppXDeploymentServer/Operational", true).Report();
 }

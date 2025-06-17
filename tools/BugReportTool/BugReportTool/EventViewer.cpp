@@ -161,7 +161,7 @@ namespace
             }
         }
 
-        EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring channelName, bool isChannel)
+        EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring channelName)
         {
             auto query = GetQueryByChannel(channelName);
             auto reportPath = tmpDir;
@@ -212,5 +212,5 @@ void EventViewer::ReportEventViewerInfo(const std::filesystem::path& tmpDir)
 
 void EventViewer::ReportAppXDeploymentLogs(const std::filesystem::path& tmpDir)
 {
-    EventViewerReporter(tmpDir, L"Microsoft-Windows-AppXDeploymentServer/Operational", true).Report();
+    EventViewerReporter(tmpDir, L"Microsoft-Windows-AppXDeploymentServer/Operational").Report();
 }

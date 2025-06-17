@@ -117,15 +117,17 @@ namespace
             DWORD status = ERROR_SUCCESS;
             EVT_HANDLE hEvents[BATCH_SIZE];
             DWORD dwReturned = 0;
+            int totalEvents = 0;
 
             while (true)
             {
                 // Get a block of events from the result set.
                 if (!EvtNext(results, BATCH_SIZE, hEvents, INFINITE, 0, &dwReturned))
                 {
-                    if (ERROR_NO_MORE_ITEMS != (status = GetLastError()))
+                    status = GetLastError();
+                    if (ERROR_NO_MORE_ITEMS != status)
                     {
-                        report << L"EvtNext failed with " << status << std::endl;
+                        report << L"EvtNext failed with error " << status << L" (0x" << std::hex << status << std::dec << L")" << std::endl;
                     }
 
                     break;
@@ -136,8 +138,11 @@ namespace
                 for (DWORD i = 0; i < dwReturned; i++)
                 {
                     PrintEvent(hEvents[i]);
+                    totalEvents++;
                 }
             }
+
+            report << L"<!-- Total events processed: " << totalEvents << L" -->" << std::endl;
 
             for (DWORD i = 0; i < dwReturned; i++)
             {
@@ -170,14 +175,44 @@ namespace
             std::wstring safeChannelName = channelName;
             std::replace(safeChannelName.begin(), safeChannelName.end(), L'/', L'-');
             reportPath.append(L"EventViewer-" + safeChannelName + L".xml");
+            
+            // Ensure the file is created even if query fails
             report = std::wofstream(reportPath);
+            if (!report.is_open())
+            {
+                // If we can't create the file, there's a filesystem issue
+                return;
+            }
+
+            // Write initial debug info to help diagnose issues
+            report << L"<!-- Attempting to query channel: " << channelName << L" -->" << std::endl;
+            report << L"<!-- Query: " << query << L" -->" << std::endl;
+            report << L"<!-- Safe filename: " << safeChannelName << L" -->" << std::endl;
 
             hResults = EvtQuery(NULL, NULL, query.c_str(), EvtQueryChannelPath);
             if (NULL == hResults)
             {
-                report << "Failed to report info for channel " << channelName << ". " << get_last_error_or_default(GetLastError()) << std::endl;
+                DWORD error = GetLastError();
+                report << L"Failed to report info for channel " << channelName << L". Error: " << get_last_error_or_default(error) << L" (0x" << std::hex << error << std::dec << L")" << std::endl;
+                
+                // Common error codes and their meanings
+                if (error == ERROR_EVT_CHANNEL_NOT_FOUND)
+                {
+                    report << L"<!-- Error: The specified channel does not exist -->" << std::endl;
+                }
+                else if (error == ERROR_ACCESS_DENIED)
+                {
+                    report << L"<!-- Error: Access denied. The channel may require elevated privileges -->" << std::endl;
+                }
+                else if (error == ERROR_EVT_INVALID_QUERY)
+                {
+                    report << L"<!-- Error: Invalid query syntax -->" << std::endl;
+                }
+                
                 return;
             }
+            
+            report << L"<!-- Query successful, processing events -->" << std::endl;
         }
 
         ~EventViewerReporter()
@@ -195,12 +230,18 @@ namespace
             {
                 if (hResults)
                 {
+                    report << L"<!-- Beginning event processing -->" << std::endl;
                     PrintResults(hResults);
+                    report << L"<!-- Event processing completed -->" << std::endl;
+                }
+                else
+                {
+                    report << L"<!-- No results to process (hResults is NULL) -->" << std::endl;
                 }
             }
             catch (...)
             {
-                report << "Failed to report info" << std::endl;
+                report << L"Failed to report info (exception occurred)" << std::endl;
             }
         }
     };

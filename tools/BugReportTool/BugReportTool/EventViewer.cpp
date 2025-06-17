@@ -6,6 +6,7 @@
 #include <winevt.h>
 #include <fstream>
 #include <string>
+#include <algorithm>
 #include <common/utils/winapi_error.h>
 
 #include "XmlDocumentEx.h"
@@ -165,7 +166,10 @@ namespace
         {
             auto query = GetQueryByChannel(channelName);
             auto reportPath = tmpDir;
-            reportPath.append(L"EventViewer-" + channelName + L".xml");
+            // Replace forward slashes with dashes to create a valid filename
+            std::wstring safeChannelName = channelName;
+            std::replace(safeChannelName.begin(), safeChannelName.end(), L'/', L'-');
+            reportPath.append(L"EventViewer-" + safeChannelName + L".xml");
             report = std::wofstream(reportPath);
 
             hResults = EvtQuery(NULL, NULL, query.c_str(), EvtQueryChannelPath);

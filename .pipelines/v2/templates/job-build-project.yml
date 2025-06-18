@@ -371,8 +371,8 @@ jobs:
   # To streamline the pipeline and prevent errors, skip this step during compatibility tests with the latest WinAppSDK.
   - ${{ if eq(parameters.useLatestWinAppSDK, false) }}:
     - pwsh: |-
-        & '.pipelines/verifyNoticeMdAgainstNugetPackages.ps1' -path '$(build.sourcesdirectory)\'
-      displayName: Verify NOTICE.md and NuGet packages match
+        & '.pipelines/verifyDirectoryPakcagesAgainstNugetPackagesUsageInProjs.ps1' -path '$(build.sourcesdirectory)\'
+      displayName: Verify all NuGet package references exist in Directory.Packages.props
 
   - ${{ if eq(parameters.runTests, true) }}:
     # Publish test results which ran in MSBuild

@@ -45,7 +45,7 @@ namespace
             L"  <Query Id='0'>" \
             L"    <Select Path='%s'>" \
             L"        *[System[TimeCreated[timediff(@SystemTime)&lt;%I64u]]] " \
-            L"        and (*[EventData[Data[contains(., 'PowerToys')]]] or *[UserData/*/*[contains(., 'PowerToys')]])" \
+            L"        and ((*[EventData[Data[contains(., 'PowerToys')]]] or *[EventData[Data[contains(., 'CommandPalette')]]]) or (*[UserData/*/*[contains(., 'PowerToys')]] or *[UserData/*/*[contains(., 'CommandPalette')]]))" \
             L"    </Select>" \
             L"  </Query>" \
             L"</QueryList>";

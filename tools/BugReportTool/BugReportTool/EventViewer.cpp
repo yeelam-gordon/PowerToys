@@ -45,7 +45,7 @@ namespace
             L"  <Query Id='0'>" \
             L"    <Select Path='%s'>" \
             L"        *[System[TimeCreated[timediff(@SystemTime)&lt;%I64u]]] " \
-            L"        and ((*[EventData[Data[contains(., 'PowerToys')]]] or *[EventData[Data[contains(., 'CommandPalette')]]]) or (*[UserData/*/*[contains(., 'PowerToys')]] or *[UserData/*/*[contains(., 'CommandPalette')]]))" \
+            L"        and (*[EventData[Data[contains(., 'PowerToys')] or Data[contains(., 'CommandPalette')]]])" \
             L"    </Select>" \
             L"  </Query>" \
             L"</QueryList>";
@@ -220,23 +220,37 @@ namespace
             if (NULL == hResults)
             {
                 DWORD error = GetLastError();
-                report << L"Failed to report info for channel " << channelName << L". Error: " << get_last_error_or_default(error) << L" (0x" << std::hex << error << std::dec << L")" << std::endl;
                 
-                // Common error codes and their meanings
-                if (error == ERROR_EVT_CHANNEL_NOT_FOUND)
+                // If filtered query failed and we were trying to filter, fall back to unfiltered
+                if (filterPowerToys && error == ERROR_EVT_INVALID_QUERY)
                 {
-                    report << L"<!-- Error: The specified channel does not exist -->" << std::endl;
-                }
-                else if (error == ERROR_ACCESS_DENIED)
-                {
-                    report << L"<!-- Error: Access denied. The channel may require elevated privileges -->" << std::endl;
-                }
-                else if (error == ERROR_EVT_INVALID_QUERY)
-                {
-                    report << L"<!-- Error: Invalid query syntax -->" << std::endl;
+                    report << L"<!-- Filtered query failed, falling back to unfiltered query -->" << std::endl;
+                    query = GetQueryByChannel(channelName);
+                    report << L"<!-- Fallback Query: " << query << L" -->" << std::endl;
+                    hResults = EvtQuery(NULL, NULL, query.c_str(), EvtQueryChannelPath);
                 }
                 
-                return;
+                if (NULL == hResults)
+                {
+                    error = GetLastError();
+                    report << L"Failed to report info for channel " << channelName << L". Error: " << get_last_error_or_default(error) << L" (0x" << std::hex << error << std::dec << L")" << std::endl;
+                    
+                    // Common error codes and their meanings
+                    if (error == ERROR_EVT_CHANNEL_NOT_FOUND)
+                    {
+                        report << L"<!-- Error: The specified channel does not exist -->" << std::endl;
+                    }
+                    else if (error == ERROR_ACCESS_DENIED)
+                    {
+                        report << L"<!-- Error: Access denied. The channel may require elevated privileges -->" << std::endl;
+                    }
+                    else if (error == ERROR_EVT_INVALID_QUERY)
+                    {
+                        report << L"<!-- Error: Invalid query syntax -->" << std::endl;
+                    }
+                    
+                    return;
+                }
             }
             
             report << L"<!-- Query successful, processing events -->" << std::endl;

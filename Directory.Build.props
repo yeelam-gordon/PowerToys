@@ -24,6 +24,8 @@
     <RepositoryUrl>https://github.com/microsoft/PowerToys</RepositoryUrl>
     <RepositoryType>GitHub</RepositoryType>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Suppress MSB3106 and MSB3277 warnings for Microsoft.WindowsAppSDK and WindowsBase conflicts -->
+    <WarningsNotAsErrors>MSB3106;MSB3277</WarningsNotAsErrors>
   </PropertyGroup>
 
   <PropertyGroup>

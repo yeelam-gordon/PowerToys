@@ -41,14 +41,7 @@ namespace
             L"  </Query>" \
             L"</QueryList>";
 
-        const std::wstring QUERY_BY_CHANNEL_FILTERED = L"<QueryList>" \
-            L"  <Query Id='0'>" \
-            L"    <Select Path='%s'>" \
-            L"        *[System[TimeCreated[timediff(@SystemTime)&lt;%I64u]]] " \
-            L"        and (*[EventData[Data[contains(., 'PowerToys')] or Data[contains(., 'CommandPalette')]]])" \
-            L"    </Select>" \
-            L"  </Query>" \
-            L"</QueryList>";
+
 
         std::wstring GetQuery(std::wstring processName)
         {
@@ -66,16 +59,24 @@ namespace
             return buff;
         }
 
-        std::wstring GetFilteredQueryByChannel(std::wstring channelName)
-        {
-            wchar_t buff[1000];
-            memset(buff, 0, sizeof(buff));
-            _snwprintf_s(buff, sizeof(buff), QUERY_BY_CHANNEL_FILTERED.c_str(), channelName.c_str(), PERIOD);
-            return buff;
-        }
+
 
         std::wofstream report;
         EVT_HANDLE hResults;
+        bool filterForPowerToys;
+        int includedEvents;
+
+        bool ShouldIncludeEvent(const std::wstring& eventXml)
+        {
+            if (!filterForPowerToys)
+            {
+                return true;  // Include all events if no filtering
+            }
+            
+            // Check if the event contains PowerToys or CommandPalette
+            return (eventXml.find(L"PowerToys") != std::wstring::npos ||
+                    eventXml.find(L"CommandPalette") != std::wstring::npos);
+        }
 
         void PrintEvent(EVT_HANDLE hEvent)
         {
@@ -108,6 +109,20 @@ namespace
                     return;
                 }
             }
+
+            // Apply filtering if needed
+            std::wstring eventContent(pRenderedContent);
+            if (!ShouldIncludeEvent(eventContent))
+            {
+                if (pRenderedContent)
+                {
+                    free(pRenderedContent);
+                }
+                return; // Skip this event
+            }
+
+            // Count included events
+            includedEvents++;
 
             XmlDocumentEx doc;
             doc.LoadXml(pRenderedContent);
@@ -159,7 +174,14 @@ namespace
                 }
             }
 
-            report << L"<!-- Total events processed: " << totalEvents << L" -->" << std::endl;
+            if (filterForPowerToys)
+            {
+                report << L"<!-- Total events processed: " << totalEvents << L", PowerToys/CommandPalette events included: " << includedEvents << L" -->" << std::endl;
+            }
+            else
+            {
+                report << L"<!-- Total events processed: " << totalEvents << L" -->" << std::endl;
+            }
 
             for (DWORD i = 0; i < dwReturned; i++)
             {
@@ -170,6 +192,7 @@ namespace
 
     public:
         EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring processName)
+            : filterForPowerToys(false), includedEvents(0)
         {
             auto query = GetQuery(processName);
             auto reportPath = tmpDir;
@@ -185,16 +208,9 @@ namespace
         }
 
         EventViewerReporter(const std::filesystem::path& tmpDir, std::wstring channelName, bool filterPowerToys = false)
+            : filterForPowerToys(filterPowerToys), includedEvents(0)
         {
-            std::wstring query;
-            if (filterPowerToys)
-            {
-                query = GetFilteredQueryByChannel(channelName);
-            }
-            else
-            {
-                query = GetQueryByChannel(channelName);
-            }
+            std::wstring query = GetQueryByChannel(channelName);
             
             auto reportPath = tmpDir;
             // Replace forward slashes with dashes to create a valid filename
@@ -212,7 +228,7 @@ namespace
 
             // Write initial debug info to help diagnose issues
             report << L"<!-- Attempting to query channel: " << channelName << L" -->" << std::endl;
-            report << L"<!-- Filtered for PowerToys: " << (filterPowerToys ? L"Yes" : L"No") << L" -->" << std::endl;
+            report << L"<!-- Filtered for PowerToys: " << (filterPowerToys ? L"Yes (post-processing)" : L"No") << L" -->" << std::endl;
             report << L"<!-- Query: " << query << L" -->" << std::endl;
             report << L"<!-- Safe filename: " << safeChannelName << L" -->" << std::endl;
 
@@ -220,40 +236,26 @@ namespace
             if (NULL == hResults)
             {
                 DWORD error = GetLastError();
+                report << L"Failed to report info for channel " << channelName << L". Error: " << get_last_error_or_default(error) << L" (0x" << std::hex << error << std::dec << L")" << std::endl;
                 
-                // If filtered query failed and we were trying to filter, fall back to unfiltered
-                if (filterPowerToys && error == ERROR_EVT_INVALID_QUERY)
+                // Common error codes and their meanings
+                if (error == ERROR_EVT_CHANNEL_NOT_FOUND)
                 {
-                    report << L"<!-- Filtered query failed, falling back to unfiltered query -->" << std::endl;
-                    query = GetQueryByChannel(channelName);
-                    report << L"<!-- Fallback Query: " << query << L" -->" << std::endl;
-                    hResults = EvtQuery(NULL, NULL, query.c_str(), EvtQueryChannelPath);
+                    report << L"<!-- Error: The specified channel does not exist -->" << std::endl;
+                }
+                else if (error == ERROR_ACCESS_DENIED)
+                {
+                    report << L"<!-- Error: Access denied. The channel may require elevated privileges -->" << std::endl;
+                }
+                else if (error == ERROR_EVT_INVALID_QUERY)
+                {
+                    report << L"<!-- Error: Invalid query syntax -->" << std::endl;
                 }
                 
-                if (NULL == hResults)
-                {
-                    error = GetLastError();
-                    report << L"Failed to report info for channel " << channelName << L". Error: " << get_last_error_or_default(error) << L" (0x" << std::hex << error << std::dec << L")" << std::endl;
-                    
-                    // Common error codes and their meanings
-                    if (error == ERROR_EVT_CHANNEL_NOT_FOUND)
-                    {
-                        report << L"<!-- Error: The specified channel does not exist -->" << std::endl;
-                    }
-                    else if (error == ERROR_ACCESS_DENIED)
-                    {
-                        report << L"<!-- Error: Access denied. The channel may require elevated privileges -->" << std::endl;
-                    }
-                    else if (error == ERROR_EVT_INVALID_QUERY)
-                    {
-                        report << L"<!-- Error: Invalid query syntax -->" << std::endl;
-                    }
-                    
-                    return;
-                }
+                return;
             }
             
-            report << L"<!-- Query successful, processing events -->" << std::endl;
+            report << L"<!-- Query successful, will process events with post-filtering -->" << std::endl;
         }
 
         ~EventViewerReporter()

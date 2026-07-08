@@ -281,7 +281,7 @@ std::vector<NtdllExtensions::HandleInfo> NtdllExtensions::handles() noexcept
 
                 if (type_name == L"File")
                 {
-                    file_name = file_handle_to_path(handle_copy, object_info_buffer);
+                    file_name = file_handle_to_kernel_name(handle_copy, object_info_buffer);
 
                     if (!file_name.empty())
                     {

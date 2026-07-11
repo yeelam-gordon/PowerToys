@@ -11,3 +11,5 @@
 
 // Non-localizable
 //////////////////////////////
+
+#define IDS_ALT_WINDOW_CYCLE_SETTINGS_DESC 101

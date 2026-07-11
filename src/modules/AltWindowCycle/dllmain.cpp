@@ -4,9 +4,11 @@
 #include <interface/powertoy_module_interface.h>
 #include <common/SettingsAPI/settings_objects.h>
 #include <common/utils/gpo.h>
+#include <common/utils/resources.h>
 
 #include "AltWindowCycle.h"
 #include "AltWindowCycleLogic.h"
+#include "resource.h"
 #include "trace.h"
 
 extern "C" IMAGE_DOS_HEADER __ImageBase;
@@ -140,7 +142,7 @@ public:
         HINSTANCE hinstance = reinterpret_cast<HINSTANCE>(&__ImageBase);
 
         PowerToysSettings::Settings settings(hinstance, get_name());
-        settings.set_description(L"Cycle between the windows of the currently focused application.");
+        settings.set_description(GET_RESOURCE_STRING(IDS_ALT_WINDOW_CYCLE_SETTINGS_DESC));
 
         return settings.serialize_to_buffer(buffer, buffer_size);
     }

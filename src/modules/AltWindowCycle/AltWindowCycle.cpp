@@ -429,6 +429,8 @@ private:
     int pad = 0, gap = 0, tileW = 0, tileH = 0, previewH = 0, inner = 0, radius = 0;
     int cardTrimBottom = 0;
     int headerH = 0, iconSize = 0;
+    bool lightTheme = false;
+    COLORREF accentColor = AltTabStyle::AccentFallbackRef();
 
     HFONT font = nullptr;
     double fontScale = 0.0;
@@ -651,6 +653,8 @@ static UINT GetDpiForHostOnMonitor(HWND host, HMONITOR mon, const RECT& work)
     return GetMonitorEffectiveDpi(mon);
 }
 
+static COLORREF GetAccentColor();
+
 static HICON GetWindowIcon(HWND hwnd)
 {
     DWORD_PTR res = 0;
@@ -682,6 +686,8 @@ void Switcher::ShowOverlayWindow()
     RECT work = GetWorkArea(mon);
     UINT dpi = GetDpiForHostOnMonitor(thumbHost, mon, work);
     scale = dpi / 96.0;
+    lightTheme = AltTabStyle::IsLightTheme();
+    accentColor = GetAccentColor();
 
     int x, y, panelW, panelH;
     ComputeLayout(work, x, y, panelW, panelH);
@@ -700,7 +706,7 @@ void Switcher::ShowOverlayWindow()
 
     SetWindowPos(thumbHost, HWND_TOPMOST, x, y, panelW, panelH,
                  SWP_NOACTIVATE | SWP_NOOWNERZORDER);
-    ApplyBackdrop(thumbHost, AltTabStyle::IsLightTheme());
+    ApplyBackdrop(thumbHost, lightTheme);
     DWORD cornerPref = DWMWCP_ROUND;
     DwmSetWindowAttribute(thumbHost, DWMWA_WINDOW_CORNER_PREFERENCE,
                           &cornerPref, sizeof(cornerPref));
@@ -751,7 +757,9 @@ void Switcher::OnThemeChanged()
 {
     if (state != St::Visible)
         return;
-    ApplyBackdrop(thumbHost, AltTabStyle::IsLightTheme());
+    lightTheme = AltTabStyle::IsLightTheme();
+    accentColor = GetAccentColor();
+    ApplyBackdrop(thumbHost, lightTheme);
     RedrawWindow(thumbHost, nullptr, nullptr,
                  RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW | RDW_ALLCHILDREN);
     RenderLayered();
@@ -1211,7 +1219,7 @@ void Switcher::RenderLayered()
         g.SetTextRenderingHint(Gdiplus::TextRenderingHintAntiAliasGridFit);
 
         // Leave the panel background transparent; acrylic lives on thumbHost.
-        bool light = AltTabStyle::IsLightTheme();
+        const bool light = lightTheme;
         Gdiplus::REAL panelRadius = static_cast<Gdiplus::REAL>(Scaled(8));
         RECT panelRect = { 0, 0, w, h };
         Gdiplus::GraphicsPath panel;
@@ -1224,8 +1232,7 @@ void Switcher::RenderLayered()
                                  static_cast<Gdiplus::REAL>((std::max)(1, Scaled(1))));
         g.DrawPath(&panelStroke, &panel);
 
-        COLORREF accent = GetAccentColor();
-        Gdiplus::Color accentClr = AltTabStyle::Accent(accent);
+        Gdiplus::Color accentClr = AltTabStyle::Accent(accentColor);
 
         for (int i = 0; i < static_cast<int>(windows.size()); ++i)
         {

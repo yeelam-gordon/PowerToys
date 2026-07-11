@@ -2,7 +2,7 @@ name: Daily Dedupe Digest
 
 on:
   schedule:
-    # Daily at 08:00 UTC (~09:00 AMS, ~00:00 PT).
+    # Daily at 08:00 UTC.
     - cron: '0 8 * * *'
   workflow_dispatch:
 
@@ -210,7 +210,7 @@ jobs:
             async function askModelForDupes(newIssue, pool) {
               const token = process.env.GITHUB_TOKEN;
               if (!token) {
-                console.log('GITHUB_TOKEN is not set; skipping AI dedup.');
+                console.log('GITHUB_TOKEN is not set; skipping AI duplicate detection.');
                 return [];
               }
 
@@ -461,12 +461,9 @@ jobs:
               sections.push('');
             }
             if (newEntriesLow.length > 0) {
-              const lowCap = Math.max(0, MAX_CANDIDATES - newEntriesReview.length - newEntriesAuto.length - carryOverEntries.length);
-              if (lowCap > 0) {
-                sections.push('## 🟢 Low confidence');
-                sections.push(cap(newEntriesLow, lowCap).map(fmt).join('\n'));
-                sections.push('');
-              }
+              sections.push('## 🟢 Low confidence');
+              sections.push(cap(newEntriesLow, MAX_CANDIDATES).map(fmt).join('\n'));
+              sections.push('');
             }
             sections.push('---');
             sections.push(`_Window: ${windowStr}. New issues considered: ${newIssues.length}. Candidates surfaced: ${carryOverEntries.length + totalNew}._`);

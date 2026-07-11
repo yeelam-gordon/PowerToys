@@ -95,9 +95,8 @@ public sealed class IpcDispatcher
         }
 
         // The app stamps an explicit IsError discriminator on every response (see CliResponseHeader):
-        // error envelopes set it true; all success DTOs set it false — including apply-profile partial
-        // failures, which are still success envelopes and report their outcome via ExitCode. Read the
-        // flag first, then deserialize as the matching concrete type.
+        // error envelopes set it true; all success DTOs set it false. Read the flag first, then
+        // deserialize as the matching concrete type.
         var header = TryReadHeader(respJson);
 
         if (header is { IsError: true })

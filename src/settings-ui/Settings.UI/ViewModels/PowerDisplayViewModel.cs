@@ -805,6 +805,13 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
 
                 Logger.LogInfo($"Applying profile: {profile.DisplayName}");
 
+                var profileId = ResolveProfileIdForApply(profile);
+                if (profileId < 1)
+                {
+                    Logger.LogWarning($"Cannot apply profile '{profile.Name}': profile id is not available");
+                    return;
+                }
+
                 // Send custom action to trigger profile application
                 // The profile id is passed via Named Pipe IPC to PowerDisplay.exe
                 var actionMessage = new PowerDisplayActionMessage
@@ -814,7 +821,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                         PowerDisplay = new PowerDisplayActionMessage.PowerDisplayAction
                         {
                             ActionName = "ApplyProfile",
-                            Value = profile.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                            Value = profileId.ToString(System.Globalization.CultureInfo.InvariantCulture),
                         },
                     },
                 };
@@ -827,6 +834,32 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             {
                 Logger.LogError($"Failed to apply profile: {ex.Message}");
             }
+        }
+
+        private int ResolveProfileIdForApply(PowerDisplayProfile profile)
+        {
+            if (profile.Id > 0)
+            {
+                return profile.Id;
+            }
+
+            var selectedIndex = Profiles.IndexOf(profile);
+            var profilesData = ProfileHelper.LoadProfiles();
+            if (profilesData.EnsureIds())
+            {
+                ProfileHelper.SaveProfiles(profilesData);
+                LoadProfiles();
+            }
+
+            if (selectedIndex >= 0 && selectedIndex < Profiles.Count && Profiles[selectedIndex].Id > 0)
+            {
+                return Profiles[selectedIndex].Id;
+            }
+
+            var matches = Profiles
+                .Where(p => string.Equals(p.Name, profile.Name, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            return matches.Count == 1 ? matches[0].Id : 0;
         }
 
         /// <summary>

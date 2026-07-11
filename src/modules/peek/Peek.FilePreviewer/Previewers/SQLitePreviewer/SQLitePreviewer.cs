@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -47,7 +48,22 @@ namespace Peek.FilePreviewer.Previewers.SQLitePreviewer
 
         public static bool IsItemSupported(IFileSystemItem item)
         {
-            return _supportedFileTypes.Contains(item.Extension.ToLowerInvariant());
+            if (!_supportedFileTypes.Contains(item.Extension.ToLowerInvariant()))
+            {
+                return false;
+            }
+
+            try
+            {
+                ReadOnlySpan<byte> sqliteHeader = "SQLite format 3\0"u8;
+                Span<byte> header = stackalloc byte[sqliteHeader.Length];
+                using var stream = new FileStream(item.Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
+                return stream.Read(header) == sqliteHeader.Length && header.SequenceEqual(sqliteHeader);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or NotSupportedException or ArgumentException)
+            {
+                return false;
+            }
         }
 
         public Task<PreviewSize> GetPreviewSizeAsync(CancellationToken cancellationToken)

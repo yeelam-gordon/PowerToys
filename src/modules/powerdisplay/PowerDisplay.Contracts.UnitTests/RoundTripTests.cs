@@ -212,7 +212,7 @@ public class RoundTripTests
             VcpCodes = new List<CliVcpCodeInfo>
             {
                 new CliVcpCodeInfo { Code = "10", Name = "Luminance", Continuous = true },
-                new CliVcpCodeInfo { Code = "60", Name = "Input Source", Continuous = false, DiscreteValues = new List<string> { "DP1", "HDMI1" } },
+                new CliVcpCodeInfo { Code = "60", Name = "Input Source", Continuous = false, DiscreteValues = new List<string> { "Source1", "Source2" } },
             },
         };
 
@@ -230,7 +230,7 @@ public class RoundTripTests
         Assert.IsFalse(back.VcpCodes[1].Continuous);
         Assert.IsNotNull(back.VcpCodes[1].DiscreteValues);
         Assert.AreEqual(2, back.VcpCodes[1].DiscreteValues!.Count);
-        Assert.AreEqual("DP1", back.VcpCodes[1].DiscreteValues![0]);
+        Assert.AreEqual("Source1", back.VcpCodes[1].DiscreteValues![0]);
     }
 
     [TestMethod]

@@ -44,7 +44,7 @@ public class CliPipeServerTests
     [TestMethod]
     public async Task ReadBoundedLine_StopsAtFirstNewline()
     {
-        var line = await Read("first\nsecond\n");
+        var line = await Read("first" + '\n' + "second" + '\n');
         Assert.AreEqual("first", line);
     }
 
@@ -90,7 +90,7 @@ public class CliPipeServerTests
     // (FirstPipeInstance), a second *overlapping* instance can be created while the first is still
     // alive (so the loop can stand up the replacement before disposing the served one, never releasing
     // the well-known name), and a second first-instance create is rejected while one is alive (which is
-    // what surfaces a pre-existing squatter at startup).
+    // what surfaces a preexisting squatter at startup).
     private static PipeSecurity CurrentUserPipeSecurity()
     {
         using var identity = WindowsIdentity.GetCurrent();
@@ -128,7 +128,7 @@ public class CliPipeServerTests
     public void CreateServerStream_SecondFirstInstance_WhileOneAlive_Throws()
     {
         // FirstPipeInstance must reject a create when an instance of this name already exists — this is
-        // exactly what surfaces a pre-existing squatter at startup.
+        // exactly what surfaces a preexisting squatter at startup.
         var name = UniquePipeName();
         var security = CurrentUserPipeSecurity();
         using var first = CliPipeServer.CreateServerStream(name, security, firstInstance: true);

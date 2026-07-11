@@ -98,6 +98,21 @@ public class PowerDisplayProfilesTests
     }
 
     [TestMethod]
+    public void SetProfile_WithExplicitId_RemovesAllDuplicateIds()
+    {
+        var profiles = new PowerDisplayProfiles { NextId = 1 };
+        profiles.Profiles.Add(MakeProfile("Duplicate A", id: 5));
+        profiles.Profiles.Add(MakeProfile("Duplicate B", id: 5));
+
+        var replacement = MakeProfile("Replacement", id: 5);
+        profiles.SetProfile(replacement);
+
+        Assert.AreEqual(1, profiles.Profiles.Count);
+        Assert.AreSame(replacement, profiles.GetById(5));
+        Assert.AreEqual("Replacement", profiles.Profiles[0].Name);
+    }
+
+    [TestMethod]
     public void EnsureIds_BackfillsInOrder_SetsNextId_AndIsIdempotent()
     {
         var profiles = new PowerDisplayProfiles(); // NextId defaults to 0 (legacy file)

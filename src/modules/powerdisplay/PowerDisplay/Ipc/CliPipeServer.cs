@@ -58,7 +58,7 @@ public sealed class CliPipeServer
     private readonly CliRequestHandler _handler;
 
     /// <summary>
-    /// Initialises the server with the request handler that will be called for each connection.
+    /// Initializes the server with the request handler that will be called for each connection.
     /// </summary>
     /// <param name="handler">The handler that processes each request. Must not be null.</param>
     public CliPipeServer(CliRequestHandler handler)
@@ -99,7 +99,7 @@ public sealed class CliPipeServer
         // unowned between requests. Only the FIRST instance uses PipeOptions.FirstPipeInstance, which
         // fails loudly if another (possibly malicious) process already owns the predictable,
         // session-scoped name at startup. Every later instance is stood up BEFORE the just-served one
-        // is disposed, so at least one instance always holds the name — closing the gap a per-request
+        // is disposed, so at least one instance always holds the name — closing the per-request gap
         // create/dispose would otherwise reopen after every request. Without this, a same- or
         // cross-user process could win that gap with CreateNamedPipe, take the name under its own ACL,
         // and thereafter both deny the real server (its FirstPipeInstance create would fail forever)
@@ -297,7 +297,7 @@ public sealed class CliPipeServer
             int read = await reader.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false);
             if (read == 0)
             {
-                // End of stream: null when nothing was read, otherwise the (unterminated) tail.
+                // End of stream: null when nothing was read; otherwise the (unterminated) tail.
                 return builder.Length == 0 ? null : builder.ToString();
             }
 

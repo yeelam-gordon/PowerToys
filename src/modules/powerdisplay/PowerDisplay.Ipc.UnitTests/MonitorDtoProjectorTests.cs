@@ -134,11 +134,11 @@ public class MonitorDtoProjectorTests
     {
         var monitors = new List<Monitor> { MakeMon(1, "A") };
 
-        var (_, error) = MonitorDtoProjector.BuildGetResult(monitors, EmptyHidden, number: null, id: null, settingFilter: "BRIGHTNESSS");
+        var (_, error) = MonitorDtoProjector.BuildGetResult(monitors, EmptyHidden, number: null, id: null, settingFilter: "UNKNOWN_SETTING");
 
         Assert.IsNotNull(error);
         Assert.AreEqual(CliMessageIds.UnknownSetting, error!.Error.MessageId);
-        Assert.AreEqual("BRIGHTNESSS", error.Error.Value);
+        Assert.AreEqual("UNKNOWN_SETTING", error.Error.Value);
     }
 
     // ─── BuildGetResult — selected path ──────────────────────────────────────

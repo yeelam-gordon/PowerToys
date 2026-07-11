@@ -115,7 +115,7 @@ public class IpcDispatchTests
         Assert.AreEqual(0, output.StderrLines.Count, "must not go through WriteError");
     }
 
-    // ── schema-mismatch / undeserializable response → InternalError (9) ────────
+    // ── schema mismatch / malformed response → InternalError (9) ──────────────
     [TestMethod]
     public async Task Malformed_json_response_exits_internal_error()
     {

@@ -21,6 +21,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
         public const bool DefaultEnableLightModeProfile = false;
         public const string DefaultDarkModeProfile = "";
         public const string DefaultLightModeProfile = "";
+        public const string NoProfileSentinel = "(None)";
         public const int DefaultDarkModeProfileId = 0;
         public const int DefaultLightModeProfileId = 0;
         public static readonly HotkeySettings DefaultToggleThemeHotkey = new HotkeySettings(true, true, false, true, 0x44); // Ctrl+Win+Shift+D

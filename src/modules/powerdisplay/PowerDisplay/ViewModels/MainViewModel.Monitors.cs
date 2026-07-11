@@ -217,7 +217,7 @@ public partial class MainViewModel
     /// The app's live monitor manager exposed through the <see cref="IMonitorManager"/> hardware-write
     /// abstraction — used by the IPC set/apply-profile executors to perform hardware writes
     /// (SetBrightnessAsync, SetContrastAsync, etc.) on the single hardware-owning instance. Returning
-    /// the interface (not the concrete <c>MonitorManager</c>) keeps the IPC path decoupled and fakeable,
+    /// the interface (not the concrete <c>MonitorManager</c>) keeps the IPC path decoupled and mockable,
     /// which is the reason the interface exists.
     /// </summary>
     public IMonitorManager MonitorManager => _monitorManager;

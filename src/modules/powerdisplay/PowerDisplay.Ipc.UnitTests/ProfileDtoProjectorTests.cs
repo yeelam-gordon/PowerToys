@@ -58,6 +58,26 @@ public class ProfileDtoProjectorTests
     }
 
     [TestMethod]
+    public void BuildProfileListResult_DefaultLastModified_ProjectsNull()
+    {
+        var profiles = new PowerDisplayProfiles();
+        profiles.Profiles.Add(new PowerDisplayProfile
+        {
+            Name = "Legacy",
+            MonitorSettings = new List<ProfileMonitorSetting>
+            {
+                new ProfileMonitorSetting("MON-A", brightness: 30),
+            },
+        });
+
+        profiles.Profiles[0].LastModified = default;
+
+        var result = ProfileDtoProjector.BuildProfileListResult(profiles);
+
+        Assert.IsNull(result.Profiles[0].LastModified);
+    }
+
+    [TestMethod]
     public void BuildProfileListResult_NullProfiles_ThrowsArgumentNullException()
     {
         Assert.ThrowsException<ArgumentNullException>(

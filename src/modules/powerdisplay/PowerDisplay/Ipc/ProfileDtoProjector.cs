@@ -27,7 +27,7 @@ public static class ProfileDtoProjector
     ///   <item><see cref="CliProfileInfo.Name"/> — profile name.</item>
     ///   <item><see cref="CliProfileInfo.MonitorCount"/> — <c>MonitorSettings.Count</c>.</item>
     ///   <item><see cref="CliProfileInfo.LastModified"/> — <see cref="PowerDisplayProfile.LastModified"/>
-    ///         formatted as ISO 8601 round-trip ("o") with invariant culture.</item>
+    ///         formatted as ISO 8601 round-trip ("o") with invariant culture, or null when unknown.</item>
     /// </list>
     /// </summary>
     /// <param name="profiles">The loaded profiles collection (may be empty; must not be null).</param>
@@ -49,8 +49,10 @@ public static class ProfileDtoProjector
                 Name = profile.Name ?? string.Empty,
                 MonitorCount = profile.MonitorSettings?.Count ?? 0,
 
-                // ISO 8601 round-trip ("o") with invariant culture.
-                LastModified = profile.LastModified.ToString("o", CultureInfo.InvariantCulture),
+                // ISO 8601 round-trip ("o") with invariant culture; default means legacy/unknown.
+                LastModified = profile.LastModified == default
+                    ? null
+                    : profile.LastModified.ToString("o", CultureInfo.InvariantCulture),
             });
         }
 

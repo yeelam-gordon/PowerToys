@@ -70,11 +70,7 @@ namespace PowerDisplay.Models
             }
             else
             {
-                var existing = GetById(profile.Id);
-                if (existing != null)
-                {
-                    Profiles.Remove(existing);
-                }
+                Profiles.RemoveAll(p => p is not null && p.Id == profile.Id);
 
                 if (NextId <= profile.Id)
                 {

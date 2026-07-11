@@ -14,7 +14,7 @@ namespace PowerDisplay.Services
     public static class LightSwitchProfileResolver
     {
         /// <summary>None sentinel that older/manual settings may hold in the name field.</summary>
-        public const string NoneSentinel = "(None)";
+        public const string NoneSentinel = LightSwitchProperties.NoProfileSentinel;
 
         /// <summary>
         /// Returns the effective profile id for a stored (id, name) pair, or null for "none":

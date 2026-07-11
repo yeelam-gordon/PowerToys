@@ -868,7 +868,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         {
             try
             {
-                if (updatedProfile == null || !updatedProfile.IsValid())
+                if (!updatedProfile.IsValid())
                 {
                     Logger.LogWarning("Invalid profile");
                     return;

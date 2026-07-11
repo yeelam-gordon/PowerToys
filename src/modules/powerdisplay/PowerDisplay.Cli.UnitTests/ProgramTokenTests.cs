@@ -120,7 +120,7 @@ public class ProgramTokenTests
     public void Up_BrightnessFlag_RejectsAttachedValue()
     {
         // The up/down setting flags are pure presence flags (ArgumentArity.Zero). A following
-        // bareword like "false" must NOT be swallowed as the flag's value (which would silently make
+        // bare word like "false" must NOT be swallowed as the flag's value (which would silently make
         // the flag false and yield a misleading "no setting specified"); it is an unrecognized token.
         var parsed = Parse("up", "--brightness", "false");
         Assert.IsTrue(parsed.Errors.Count > 0, "an attached value on a no-value flag must be a parse error");
@@ -130,7 +130,7 @@ public class ProgramTokenTests
     public void Quiet_DoesNotSwallowFollowingArgument()
     {
         // Regression: --quiet is a global Option<bool>. With ArgumentArity.Zero it must NOT swallow a
-        // following bareword that parses as a bool, so `apply-profile --quiet 1` binds "1" as the
+        // following bare word that parses as a bool, so `apply-profile --quiet 1` binds "1" as the
         // profile id (not as --quiet's value, which would leave apply-profile with no argument).
         var parsed = Parse("apply-profile", "--quiet", "1");
 

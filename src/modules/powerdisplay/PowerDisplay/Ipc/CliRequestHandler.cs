@@ -42,7 +42,7 @@ public sealed class CliRequestHandler
     private readonly DispatcherQueue _dispatcherQueue;
 
     /// <summary>
-    /// Initialises the handler with the live <see cref="MainViewModel"/> and the WinUI dispatcher
+    /// Initializes the handler with the live <see cref="MainViewModel"/> and the WinUI dispatcher
     /// that owns the ViewModel's data (Monitors, MonitorManager, settings utils).
     /// </summary>
     /// <param name="vm">The app's main view-model. Must not be null.</param>

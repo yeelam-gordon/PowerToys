@@ -10,7 +10,7 @@ namespace PowerDisplay.Ipc;
 
 /// <summary>
 /// Shared serialization + error-envelope helpers for the CLI IPC command handlers. Centralizing
-/// these collapses the per-command "check the error, otherwise serialize the result" boilerplate the
+/// these collapses the per-command "check the error; otherwise serialize the result" boilerplate the
 /// dispatcher used to repeat for every command, so a new result DTO needs no new plumbing here.
 /// </summary>
 internal static class CliResponse
@@ -28,7 +28,7 @@ internal static class CliResponse
 
     /// <summary>
     /// Serializes the populated half of a projector/executor <c>(Result, Error)</c> tuple: the error
-    /// envelope when present, otherwise the success DTO. Exactly one is expected to be non-null.
+    /// envelope when present; otherwise the success DTO. Exactly one is expected to be non-null.
     /// </summary>
     public static string ResultOrError<T>((T? Result, CliErrorResult? Error) outcome, JsonTypeInfo<T> typeInfo)
         where T : class

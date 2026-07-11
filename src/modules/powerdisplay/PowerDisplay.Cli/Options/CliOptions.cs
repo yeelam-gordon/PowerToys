@@ -70,7 +70,7 @@ public static class CliOptions
     // System.CommandLine scopes alias resolution per command. Do NOT add both variants to one command.
     //
     // Arity is Zero (a pure presence flag), not ZeroOrOne: ZeroOrOne lets the option greedily swallow
-    // a following bareword, so `up --brightness false` would bind "false" as the flag value and then
+    // a following bare word, so `up --brightness false` would bind "false" as the flag value and then
     // report "no setting specified" — contradicting the documented "no value" contract. Zero rejects
     // any attached value while `up --brightness` still resolves to true.
     public static readonly Option<bool> BrightnessFlag = new(
@@ -131,7 +131,7 @@ public static class CliOptions
     };
 
     // Arity is Zero (a pure presence flag), not ZeroOrOne: a ZeroOrOne bool greedily swallows a
-    // following bareword that parses as a bool. Since --quiet is a global option, `apply-profile
+    // following bare word that parses as a bool. Since --quiet is a global option, `apply-profile
     // --quiet true` would otherwise bind "true" as the flag value and leave apply-profile with no
     // name (a misleading "Required argument missing"), so a profile literally named "true"/"false"
     // could not be applied. Zero rejects any attached value while a bare --quiet still resolves to

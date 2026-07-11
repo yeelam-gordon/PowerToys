@@ -772,7 +772,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             {
                 match = AvailableProfiles.FirstOrDefault(p => p.Id == storedId);
             }
-            else if (!string.IsNullOrEmpty(storedName) && storedName != "(None)")
+            else if (!string.IsNullOrEmpty(storedName) && storedName != LightSwitchProperties.NoProfileSentinel)
             {
                 match = AvailableProfiles.FirstOrDefault(p => p.Name.Equals(storedName, StringComparison.OrdinalIgnoreCase));
             }

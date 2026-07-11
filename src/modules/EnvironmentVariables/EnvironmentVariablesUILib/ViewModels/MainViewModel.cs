@@ -113,6 +113,7 @@ namespace EnvironmentVariablesUILib.ViewModels
             try
             {
                 var profiles = _environmentVariablesService.ReadProfiles();
+                bool shouldSaveProfiles = false;
                 foreach (var profile in profiles)
                 {
                     profile.PropertyChanged += Profile_PropertyChanged;
@@ -129,17 +130,13 @@ namespace EnvironmentVariablesUILib.ViewModels
                     var appliedProfile = appliedProfiles.First();
                     if (!appliedProfile.Valid)
                     {
-                        EnvironmentState = EnvironmentState.ProfileNameInvalid;
-                        appliedProfile.PropertyChanged -= Profile_PropertyChanged;
-                        appliedProfile.IsEnabled = false;
-                        appliedProfile.PropertyChanged += Profile_PropertyChanged;
+                        DisableLoadedProfile(appliedProfile, EnvironmentState.ProfileNameInvalid);
+                        shouldSaveProfiles = true;
                     }
                     else if (!appliedProfile.IsApplicable())
                     {
-                        EnvironmentState = EnvironmentState.ProfileNotApplicable;
-                        appliedProfile.PropertyChanged -= Profile_PropertyChanged;
-                        appliedProfile.IsEnabled = false;
-                        appliedProfile.PropertyChanged += Profile_PropertyChanged;
+                        DisableLoadedProfile(appliedProfile, EnvironmentState.ProfileNotApplicable);
+                        shouldSaveProfiles = true;
                     }
                     else if (appliedProfile.IsCorrectlyApplied())
                     {
@@ -154,6 +151,10 @@ namespace EnvironmentVariablesUILib.ViewModels
                 }
 
                 Profiles = new ObservableCollection<ProfileVariablesSet>(profiles);
+                if (shouldSaveProfiles)
+                {
+                    _ = Task.Run(SaveAsync);
+                }
             }
             catch (Exception ex)
             {
@@ -162,6 +163,15 @@ namespace EnvironmentVariablesUILib.ViewModels
 
                 Profiles = new ObservableCollection<ProfileVariablesSet>();
             }
+        }
+
+        private void DisableLoadedProfile(ProfileVariablesSet profile, EnvironmentState environmentState)
+        {
+            EnvironmentState = environmentState;
+            profile.UnApply().GetAwaiter().GetResult();
+            profile.PropertyChanged -= Profile_PropertyChanged;
+            profile.IsEnabled = false;
+            profile.PropertyChanged += Profile_PropertyChanged;
         }
 
         private void PopulateAppliedVariables()

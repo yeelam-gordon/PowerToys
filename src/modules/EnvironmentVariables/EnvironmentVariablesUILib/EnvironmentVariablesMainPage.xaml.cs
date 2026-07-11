@@ -278,10 +278,20 @@ namespace EnvironmentVariablesUILib
                 var duplicates = EnvironmentVariableComparisonHelper.GetDuplicateNameGroups(
                     list.SelectedItems.Cast<Variable>()).ToList();
 
-                foreach (var dup in duplicates)
+                foreach (var duplicate in duplicates)
                 {
+                    var itemsToRemove = duplicate
+                        .OrderBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(x => x.Name, StringComparer.Ordinal)
+                        .Skip(1)
+                        .ToList();
+
                     ExistingVariablesListView.SelectionChanged -= ExistingVariablesListView_SelectionChanged;
-                    list.SelectedItems.Remove(dup.ElementAt(1));
+                    foreach (var item in itemsToRemove)
+                    {
+                        list.SelectedItems.Remove(item);
+                    }
+
                     ExistingVariablesListView.SelectionChanged += ExistingVariablesListView_SelectionChanged;
                 }
             }

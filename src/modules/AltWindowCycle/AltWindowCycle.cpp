@@ -34,13 +34,6 @@
 #ifndef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
 #define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((DPI_AWARENESS_CONTEXT)-4)
 #endif
-#ifndef DWMWA_SYSTEMBACKDROP_TYPE
-#define DWMWA_SYSTEMBACKDROP_TYPE 38
-#endif
-#ifndef DWMSBT_TRANSIENTWINDOW
-#define DWMSBT_TRANSIENTWINDOW 3
-#endif
-
 namespace AltTabStyle
 {
     // Alt-Tab In-App Acrylic Thin tints (ABGR, alpha byte 0 = fully blurred tint).

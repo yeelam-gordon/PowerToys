@@ -206,14 +206,12 @@ public:
 
         if (hotkeyId == HotkeyNext)
         {
-            Logger::trace(L"AltWindowCycle next-window hotkey pressed");
             Trace::CycleWindow(true);
             return HandleAltWindowCycleHotkey(true, ModifierMaskFromHotkey(m_nextHotkey));
         }
 
         if (hotkeyId == HotkeyPrevious)
         {
-            Logger::trace(L"AltWindowCycle previous-window hotkey pressed");
             Trace::CycleWindow(false);
             return HandleAltWindowCycleHotkey(false, ModifierMaskFromHotkey(m_previousHotkey));
         }

@@ -81,6 +81,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
     // Properties Classes
     [JsonSerializable(typeof(AdvancedPasteProperties))]
+    [JsonSerializable(typeof(AltWindowCycleProperties))]
     [JsonSerializable(typeof(AlwaysOnTopProperties))]
     [JsonSerializable(typeof(AwakeProperties))]
     [JsonSerializable(typeof(CmdPalProperties))]

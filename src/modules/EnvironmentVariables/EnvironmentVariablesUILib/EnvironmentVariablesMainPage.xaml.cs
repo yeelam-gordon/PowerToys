@@ -387,11 +387,14 @@ namespace EnvironmentVariablesUILib
             var txtBox = sender as TextBox;
             var variable = EditVariableDialog.DataContext as Variable;
 
-            // Ensure Name is current regardless of binding timing.
-            if (variable != null)
+            if (txtBox == null || variable == null)
             {
-                variable.Name = txtBox.Text;
+                EditVariableDialog.IsPrimaryButtonEnabled = false;
+                return;
             }
+
+            // Ensure Name is current regardless of binding timing.
+            variable.Name = txtBox.Text;
 
             UpdateEditVariableDialogPrimaryButtonState();
         }
@@ -401,11 +404,14 @@ namespace EnvironmentVariablesUILib
             var txtBox = sender as TextBox;
             var variable = AddDefaultVariableDialog.DataContext as Variable;
 
-            // Ensure Name is current regardless of binding timing.
-            if (variable != null)
+            if (txtBox == null || variable == null)
             {
-                variable.Name = txtBox.Text;
+                AddDefaultVariableDialog.IsPrimaryButtonEnabled = false;
+                return;
             }
+
+            // Ensure Name is current regardless of binding timing.
+            variable.Name = txtBox.Text;
 
             UpdateAddDefaultVariableDialogButtonState();
         }
@@ -415,11 +421,14 @@ namespace EnvironmentVariablesUILib
             var txtBox = sender as TextBox;
             var variable = AddDefaultVariableDialog.DataContext as Variable;
 
-            // Ensure Values is current regardless of binding timing.
-            if (variable != null)
+            if (txtBox == null || variable == null)
             {
-                variable.Values = txtBox.Text;
+                AddDefaultVariableDialog.IsPrimaryButtonEnabled = false;
+                return;
             }
+
+            // Ensure Values is current regardless of binding timing.
+            variable.Values = txtBox.Text;
 
             UpdateAddDefaultVariableDialogButtonState();
         }
@@ -444,7 +453,7 @@ namespace EnvironmentVariablesUILib
             var txtBox = sender as TextBox;
             var variable = EditVariableDialog.DataContext as Variable;
 
-            if (variable == null)
+            if (txtBox == null || variable == null)
             {
                 EditVariableDialog.IsPrimaryButtonEnabled = false;
                 return;

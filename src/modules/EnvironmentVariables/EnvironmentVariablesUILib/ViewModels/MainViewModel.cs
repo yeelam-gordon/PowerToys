@@ -130,12 +130,16 @@ namespace EnvironmentVariablesUILib.ViewModels
                     if (!appliedProfile.Valid)
                     {
                         EnvironmentState = EnvironmentState.ProfileNameInvalid;
+                        appliedProfile.PropertyChanged -= Profile_PropertyChanged;
                         appliedProfile.IsEnabled = false;
+                        appliedProfile.PropertyChanged += Profile_PropertyChanged;
                     }
                     else if (!appliedProfile.IsApplicable())
                     {
                         EnvironmentState = EnvironmentState.ProfileNotApplicable;
+                        appliedProfile.PropertyChanged -= Profile_PropertyChanged;
                         appliedProfile.IsEnabled = false;
+                        appliedProfile.PropertyChanged += Profile_PropertyChanged;
                     }
                     else if (appliedProfile.IsCorrectlyApplied())
                     {
@@ -206,9 +210,8 @@ namespace EnvironmentVariablesUILib.ViewModels
                 variables.Remove(systemPath);
             }
 
-            // NB: we treat names case-insensitively when authoring and flagging conflicts, but we
-            // do not dedupe loaded entries here because they may still contain multiple variables
-            // whose names differ only by case, and the user still needs to review/delete each entry.
+            // NB: we treat names case-insensitively when authoring and flagging conflicts, but only
+            // collapse loaded entries into one conflict row when their casing differs.
             var duplicates = EnvironmentVariableComparisonHelper.GetDuplicateNameGroups(
                 variables.Where(x => !EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH")));
             foreach (var duplicate in duplicates)

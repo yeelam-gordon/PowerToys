@@ -231,8 +231,8 @@ namespace UnitTestsCommonUtils
 
             // After DestroyWindow the window must no longer exist and the
             // message loop must exit promptly because WM_QUIT was posted.
-            // The timeout is 1000 ms. Allow headroom for slow CI VMs while
-            // still failing if the loop waits out the full timeout.
+            // The timeout is 1000 ms; require the loop to exit well before
+            // that so the test catches regressions that wait for the timer.
             auto start = std::chrono::steady_clock::now();
             run_message_loop(false, 1000);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -240,7 +240,7 @@ namespace UnitTestsCommonUtils
 
             Assert::IsFalse(IsWindow(hwnd) == TRUE,
                             L"Window must be destroyed after WM_ENDSESSION(TRUE)");
-            Assert::IsTrue(elapsed.count() < 2000,
+            Assert::IsTrue(elapsed.count() < 500,
                            L"Message loop must exit quickly after WM_ENDSESSION, not wait for the timeout");
 
             UnregisterClassW(L"EndSessionTest_Confirmed", GetModuleHandleW(nullptr));

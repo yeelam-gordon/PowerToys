@@ -73,7 +73,7 @@ Roboto
 Segoe
 
 # Interfaces
-ISQ
+ISQLitePreviewer
 
 # IN URLs
 

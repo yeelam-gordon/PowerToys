@@ -25,11 +25,11 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <TextBlock 
+            <TextBlock
                 Grid.Row="0"
-                Text="{x:Bind TableCount, Mode=OneWay}" 
-                FontWeight="SemiBold" 
-                Margin="16,12,16,8" 
+                Text="{x:Bind TableCount, Mode=OneWay}"
+                FontWeight="SemiBold"
+                Margin="16,12,16,8"
                 Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
             <TreeView

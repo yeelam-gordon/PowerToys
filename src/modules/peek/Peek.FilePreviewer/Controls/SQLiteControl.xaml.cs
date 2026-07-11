@@ -179,7 +179,7 @@ namespace Peek.FilePreviewer.Controls
             // Capture the last column's natural auto-width the first time it is measured.
             // Once the column is Star-stretched we keep using the stored value so that
             // window resizes can correctly revert to Auto when the grid becomes too narrow.
-            if (!lastCol.Width.IsStar && lastCol.ActualWidth > 0)
+            if (double.IsNaN(_lastColumnAutoWidth) && !lastCol.Width.IsStar && lastCol.ActualWidth > 0)
             {
                 _lastColumnAutoWidth = lastCol.ActualWidth;
             }

@@ -19,7 +19,7 @@ env:
   DIGEST_LABEL: dedupe-digest
   DIGEST_TITLE_PREFIX: '[Dedupe Digest]'
   LOOKBACK_HOURS: '26'
-  MAX_CANDIDATES_PER_DIGEST: '40'
+  MAX_CANDIDATES_PER_SECTION: '40'
   CANDIDATE_POOL_SIZE: '200'
 
 jobs:
@@ -71,7 +71,7 @@ jobs:
             const LABEL            = process.env.DIGEST_LABEL;
             const TITLE_PREFIX     = process.env.DIGEST_TITLE_PREFIX;
             const LOOKBACK_HOURS   = parseInt(process.env.LOOKBACK_HOURS, 10);
-            const MAX_CANDIDATES   = parseInt(process.env.MAX_CANDIDATES_PER_DIGEST, 10);
+            const MAX_CANDIDATES   = parseInt(process.env.MAX_CANDIDATES_PER_SECTION, 10);
             const POOL_SIZE        = parseInt(process.env.CANDIDATE_POOL_SIZE, 10);
             const MAX_BODY_CHARS   = 60000; // leave headroom under GitHub's 65536 cap
             const MAX_ISSUE_BODY   = 1500;  // truncate per-issue body sent to the model
@@ -85,18 +85,23 @@ jobs:
               // Returns ALL open issues that look like a digest — sorted newest first.
               // Filtered by BOTH the label and the title prefix as defense in depth
               // against accidental manual labeling of unrelated issues.
-              const { data } = await github.rest.issues.listForRepo({
-                owner: context.repo.owner,
-                repo:  context.repo.repo,
-                state: 'open',
-                labels: LABEL,
-                sort: 'created',
-                direction: 'desc',
-                per_page: 50,
-              });
-              const digests = data
-                .filter(i => !i.pull_request)
-                .filter(i => (i.title || '').startsWith(TITLE_PREFIX));
+              const digests = [];
+              for (let page = 1; ; page++) {
+                const { data } = await github.rest.issues.listForRepo({
+                  owner: context.repo.owner,
+                  repo:  context.repo.repo,
+                  state: 'open',
+                  labels: LABEL,
+                  sort: 'created',
+                  direction: 'desc',
+                  per_page: 100,
+                  page,
+                });
+                digests.push(...data
+                  .filter(i => !i.pull_request)
+                  .filter(i => (i.title || '').startsWith(TITLE_PREFIX)));
+                if (data.length < 100) break;
+              }
               if (digests.length > 1) {
                 console.log(`Found ${digests.length} open digests; will aggregate carry-overs and close all but the new one.`);
               }
@@ -163,7 +168,7 @@ jobs:
                 for (const i of data) {
                   if (i.pull_request) continue;
                   if ((i.labels || []).some(l => l.name === LABEL)) continue;
-                  out.push({ number: i.number, title: i.title, labels: i.labels.map(l => l.name) });
+                  out.push({ number: i.number, title: i.title, labels: (i.labels || []).map(l => l.name) });
                   if (out.length >= limit) break;
                 }
                 if (data.length < 100 || out.length >= limit) break;

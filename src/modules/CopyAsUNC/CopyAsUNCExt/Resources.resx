@@ -7,4 +7,7 @@
   <data name="Copy_As_UNC_PowerToyName" xml:space="preserve">
     <value>Copy as UNC</value>
   </data>
+  <data name="Extended_Menu_Info" xml:space="preserve">
+    <value>Only show the Copy as UNC menu item on the extended context menu (Shift + Right-click).</value>
+  </data>
 </root>

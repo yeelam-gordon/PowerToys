@@ -7,6 +7,7 @@
 #include <common/utils/logger_helper.h>
 #include <common/utils/package.h>
 #include <common/utils/process_path.h>
+#include <common/utils/resources.h>
 
 #include "CopyAsUNCLib/Constants.h"
 #include "CopyAsUNCLib/Settings.h"
@@ -45,7 +46,7 @@ public:
         HINSTANCE hinstance = reinterpret_cast<HINSTANCE>(&__ImageBase);
         PowerToysSettings::Settings settings(hinstance, get_name());
         settings.add_bool_toggle(L"bool_show_extended_menu",
-                                 L"",
+                                 GET_RESOURCE_STRING(IDS_EXTENDED_MENU_INFO),
                                  CopyAsUNCSettingsInstance().GetShowInExtendedContextMenu());
         return settings.serialize_to_buffer(buffer, buffer_size);
     }

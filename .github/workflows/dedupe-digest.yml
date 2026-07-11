@@ -44,12 +44,20 @@ jobs:
               console.log(`Label '${name}' already exists.`);
             } catch (e) {
               if (e.status === 404) {
-                await github.rest.issues.createLabel({
-                  owner: context.repo.owner,
-                  repo:  context.repo.repo,
-                  name, color, description,
-                });
-                console.log(`Created label '${name}'.`);
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo:  context.repo.repo,
+                    name, color, description,
+                  });
+                  console.log(`Created label '${name}'.`);
+                } catch (createError) {
+                  if (createError.status === 422) {
+                    console.log(`Label '${name}' already exists.`);
+                  } else {
+                    throw createError;
+                  }
+                }
               } else {
                 throw e;
               }
@@ -179,7 +187,7 @@ jobs:
             async function listNewIssuesSince(sinceISO) {
               const sinceMs = new Date(sinceISO).getTime();
               const out = [];
-              for (let page = 1; page <= 5; page++) {
+              for (let page = 1; ; page++) {
                 const { data } = await github.rest.issues.listForRepo({
                   owner: context.repo.owner,
                   repo:  context.repo.repo,

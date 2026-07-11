@@ -46,4 +46,19 @@ public class EnvironmentVariableComparisonHelperTests
         Assert.AreEqual(1, duplicates.Count);
         CollectionAssert.AreEquivalent(new[] { first, second }, duplicates[0].ToList());
     }
+
+    [TestMethod]
+    public void GetDuplicateNameGroups_IgnoresSameSpellingAcrossScopes()
+    {
+        var variables = new[]
+        {
+            new Variable("PROFILE_VAR", "ProfileValue", VariablesSetType.Profile),
+            new Variable("PROFILE_VAR", "UserValue", VariablesSetType.User),
+            new Variable("PROFILE_VAR", "SystemValue", VariablesSetType.System),
+        };
+
+        var duplicates = EnvironmentVariableComparisonHelper.GetDuplicateNameGroups(variables).ToList();
+
+        Assert.AreEqual(0, duplicates.Count);
+    }
 }

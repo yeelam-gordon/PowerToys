@@ -11,7 +11,7 @@ using EnvironmentVariablesUILib.Models;
 namespace EnvironmentVariablesUILib.Helpers;
 
 /// <summary>
-/// Centralises comparison logic so that Windows' case-insensitive name semantics are
+/// Centralizes comparison logic so that Windows' case-insensitive name semantics are
 /// applied consistently throughout the application, rather than each call site
 /// independently selecting a StringComparison value.
 /// </summary>
@@ -41,5 +41,5 @@ internal static class EnvironmentVariableComparisonHelper
     /// </summary>
     internal static IEnumerable<IGrouping<string, Variable>> GetDuplicateNameGroups(IEnumerable<Variable> variables) =>
         variables.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-            .Where(g => g.Count() > 1);
+            .Where(g => g.Select(x => x.Name).Distinct(StringComparer.Ordinal).Count() > 1);
 }

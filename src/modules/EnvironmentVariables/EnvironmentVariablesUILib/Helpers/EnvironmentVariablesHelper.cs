@@ -172,7 +172,7 @@ namespace EnvironmentVariablesUILib.Helpers
         private static bool SetEnvironmentVariableFromRegistryWithoutNotify(string variable, string value, bool fromMachine, bool enforceAuthoringLimits = true)
         {
             // Deletion (value == null) must always be allowed so variables with
-            // pre-existing invalid names (older builds, regedit, external tools)
+            // preexisting invalid names (older builds, regedit, external tools)
             // can still be removed. Only validate when writing a value.
             if (value != null && !TryValidateVariable(variable, value, out string errorMessage, enforceAuthoringLimits))
             {

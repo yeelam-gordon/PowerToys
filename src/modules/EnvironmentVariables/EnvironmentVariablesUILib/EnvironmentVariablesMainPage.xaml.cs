@@ -444,6 +444,12 @@ namespace EnvironmentVariablesUILib
             var txtBox = sender as TextBox;
             var variable = EditVariableDialog.DataContext as Variable;
 
+            if (variable == null)
+            {
+                EditVariableDialog.IsPrimaryButtonEnabled = false;
+                return;
+            }
+
             // Ensure Values is current regardless of binding timing.
             variable.Values = txtBox.Text;
             variable.ValuesList = Variable.ValuesStringToValuesListItemCollection(txtBox.Text);

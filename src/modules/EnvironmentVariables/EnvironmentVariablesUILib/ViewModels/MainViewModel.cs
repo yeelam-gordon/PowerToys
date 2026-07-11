@@ -207,21 +207,37 @@ namespace EnvironmentVariablesUILib.ViewModels
             }
 
             // NB: we treat names case-insensitively when authoring and flagging conflicts, but we
-            // do not de-deupe loaded entries here because they may still contain multiple variables
+            // do not dedupe loaded entries here because they may still contain multiple variables
             // whose names differ only by case, and the user still needs to review/delete each entry.
             var duplicates = EnvironmentVariableComparisonHelper.GetDuplicateNameGroups(
                 variables.Where(x => !EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH")));
             foreach (var duplicate in duplicates)
             {
-                var userVar = duplicate.ElementAt(0);
-                var systemVar = duplicate.ElementAt(1);
+                var duplicateVariables = duplicate.ToList();
+                var insertIndex = duplicateVariables
+                    .Select(variable => variables.IndexOf(variable))
+                    .Where(x => x >= 0)
+                    .DefaultIfEmpty(variables.Count)
+                    .Min();
 
-                var clone = userVar.Clone();
+                var clone = duplicateVariables
+                    .OrderBy(x => x.ParentType)
+                    .ThenBy(x => x.Name, StringComparer.Ordinal)
+                    .First()
+                    .Clone();
                 clone.ParentType = VariablesSetType.Duplicate;
-                clone.Name = systemVar.Name;
-                variables.Insert(variables.IndexOf(userVar), clone);
-                variables.Remove(userVar);
-                variables.Remove(systemVar);
+                clone.Name = duplicateVariables
+                    .Select(x => x.Name)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(x => x, StringComparer.Ordinal)
+                    .First();
+
+                foreach (var variable in duplicateVariables)
+                {
+                    variables.Remove(variable);
+                }
+
+                variables.Insert(Math.Min(insertIndex, variables.Count), clone);
             }
 
             variables = variables.OrderBy(x => x.ParentType).ToList();

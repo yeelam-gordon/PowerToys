@@ -21,7 +21,6 @@ CopyAsUNCSettings::CopyAsUNCSettings()
 {
     generalJsonFilePath = PTSettingsHelper::get_powertoys_general_save_file_location();
     std::wstring savePath = PTSettingsHelper::get_module_save_folder_location(constants::nonlocalizable::PowerToyKey);
-    std::error_code ec;
 
     jsonFilePath = savePath + constants::nonlocalizable::DataFilePath;
     RefreshEnabledState();

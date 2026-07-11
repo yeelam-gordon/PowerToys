@@ -183,24 +183,30 @@ namespace PowerLauncher.ViewModel
                     }
 
                     var updateToken = querySession.Token;
-                    Task.Run(
-                        () =>
-                        {
-                            updateToken.ThrowIfCancellationRequested();
-                            lock (_addResultsLock)
+                    try
+                    {
+                        _ = Task.Run(
+                            () =>
                             {
-                                if (!ReferenceEquals(querySession, _currentQuerySession) ||
-                                    !_currentPluginQueries.TryGetValue(pair, out var currentQuery) ||
-                                    !IsCurrentQuery(currentQuery, e.Query))
+                                updateToken.ThrowIfCancellationRequested();
+                                lock (_addResultsLock)
                                 {
-                                    return;
-                                }
+                                    if (!ReferenceEquals(querySession, _currentQuerySession) ||
+                                        !_currentPluginQueries.TryGetValue(pair, out var currentQuery) ||
+                                        !IsCurrentQuery(currentQuery, e.Query))
+                                    {
+                                        return;
+                                    }
 
-                                PluginManager.UpdatePluginMetadata(e.Results, pair.Metadata, e.Query);
-                                UpdateResultView(e.Results, e.Query.RawQuery, updateToken);
-                            }
-                        },
-                        updateToken);
+                                    PluginManager.UpdatePluginMetadata(e.Results, pair.Metadata, e.Query);
+                                    UpdateResultView(e.Results, e.Query.RawQuery, updateToken);
+                                }
+                            },
+                            updateToken);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                    }
                 };
             }
         }

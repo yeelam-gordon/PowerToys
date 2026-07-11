@@ -15,6 +15,7 @@ namespace Wox.Test
     public class QuerySessionTest
     {
         private static readonly TimeSpan WaitTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan NegativeAssertionTimeout = TimeSpan.FromMilliseconds(250);
 
         [TestMethod]
         public void CancelSignalsCapturedTokenAfterSessionReplacement()
@@ -69,7 +70,7 @@ namespace Wox.Test
                 return Task.Run(() => releaseQuery.Wait(WaitTimeout));
             });
 
-            Assert.IsFalse(session.CancelAndWait(TimeSpan.FromMilliseconds(50)));
+            Assert.IsFalse(session.CancelAndWait(NegativeAssertionTimeout));
 
             // Register throws after CTS disposal, so success proves timeout cleanup was safely deferred.
             using (capturedToken.Register(() => { }))
@@ -102,7 +103,7 @@ namespace Wox.Test
                 return Task.CompletedTask;
             });
 
-            Assert.IsFalse(pipelineStarted.Task.Wait(TimeSpan.FromMilliseconds(50)));
+            Assert.IsFalse(pipelineStarted.Task.Wait(NegativeAssertionTimeout));
 
             session.Resume();
 

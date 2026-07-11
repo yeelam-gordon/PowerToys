@@ -385,11 +385,23 @@ namespace PowerDisplay
             else if (messageType == Constants.PowerDisplayApplyProfileMessage())
             {
                 // Apply profile by id
-                if (messageParts.Length > 1 && _mainWindow is MainWindow mainWindow && mainWindow.ViewModel != null
-                    && int.TryParse(messageParts[1].Trim(), out var profileId))
+                if (messageParts.Length > 1
+                    && int.TryParse(messageParts[1].Trim(), out var profileId)
+                    && profileId > 0)
                 {
-                    Logger.LogInfo($"[NamedPipe] Applying profile id: {profileId}");
-                    await mainWindow.ViewModel.ApplyProfileByIdAsync(profileId);
+                    if (_mainWindow is MainWindow mainWindow && mainWindow.ViewModel != null)
+                    {
+                        Logger.LogInfo($"[NamedPipe] Applying profile id: {profileId}");
+                        await mainWindow.ViewModel.ApplyProfileByIdAsync(profileId);
+                    }
+                    else
+                    {
+                        Logger.LogWarning("[NamedPipe] Cannot apply profile: main window is not ready");
+                    }
+                }
+                else
+                {
+                    Logger.LogWarning($"[NamedPipe] Invalid apply-profile payload: '{(messageParts.Length > 1 ? messageParts[1] : string.Empty)}'");
                 }
             }
             else if (messageType == Constants.PowerDisplayTerminateAppMessage())

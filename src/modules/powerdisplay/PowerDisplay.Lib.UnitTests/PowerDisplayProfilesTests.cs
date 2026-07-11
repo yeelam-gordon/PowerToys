@@ -146,4 +146,11 @@ public class PowerDisplayProfilesTests
         var p = MakeProfile("Gaming", id: 4);
         Assert.AreEqual("Gaming (#4)", p.DisplayName);
     }
+
+    [TestMethod]
+    public void DisplayName_OmitsUnsetId()
+    {
+        var p = MakeProfile("Legacy");
+        Assert.AreEqual("Legacy", p.DisplayName);
+    }
 }

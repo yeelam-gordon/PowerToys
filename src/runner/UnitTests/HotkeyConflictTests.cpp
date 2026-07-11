@@ -29,6 +29,7 @@ namespace RunnerUnitTests
             using namespace HotkeyConflictDetector;
 
             auto& manager = HotkeyConflictManager::GetInstance();
+            // No modifiers keeps the in-app conflict test isolated from OS-level hotkey registration.
             const Hotkey hotkey{ .win = false, .ctrl = false, .shift = false, .alt = false, .key = 'T' };
 
             Assert::IsTrue(manager.AddHotkey(hotkey, L"ModuleA", 1, true));

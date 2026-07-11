@@ -46,7 +46,9 @@
       <PrecompiledHeader Condition="'$(UsePrecompiledHeaders)' != 'false'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="HotkeyConflictTests.cpp" />
-    <ClCompile Include="..\hotkey_conflict_detector.cpp" />
+    <ClCompile Include="..\hotkey_conflict_detector.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />

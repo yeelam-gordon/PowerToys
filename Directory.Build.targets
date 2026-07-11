@@ -59,15 +59,15 @@
     WinUI/WinAppSDK projects use the CsWinRT projection and never get this reference, so this
     is a no-op for them.
   -->
-  <Target 
-	  Name="RemoveUnusedWebView2WpfReference"
+  <Target
+      Name="RemoveUnusedWebView2WpfReference"
       BeforeTargets="ResolveAssemblyReferences"
-	  Condition="'$(UseWPF)' != 'true'">
+      Condition="'$(UseWPF)' != 'true'">
     <ItemGroup>
-      <Reference Remove="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+      <_UnusedWebView2WpfReference Include="@(Reference)" Condition="'%(Reference.Filename)' == 'Microsoft.Web.WebView2.Wpf'" />
+      <Reference Remove="@(_UnusedWebView2WpfReference)" />
     </ItemGroup>
   </Target>
-	
   <PropertyGroup Condition="'$(IgnoreExperimentalWarnings)' == 'true'">
     <NoWarn>$(NoWarn);CS8305;SA1500;CA1852</NoWarn>
   </PropertyGroup>

@@ -199,10 +199,11 @@ LRESULT __stdcall tray_icon_window_proc(HWND window, UINT message, WPARAM wparam
             if (tray_icon_created)
             {
                 Shell_NotifyIcon(NIM_DELETE, &tray_icon_data);
-                tray_icon_created = false;
             }
             close_settings_window();
         }
+        tray_icon_created = false;
+        tray_icon_hwnd = NULL;
         PostQuitMessage(0);
         break;
     case WM_CLOSE:

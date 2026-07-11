@@ -231,9 +231,8 @@ namespace UnitTestsCommonUtils
 
             // After DestroyWindow the window must no longer exist and the
             // message loop must exit promptly because WM_QUIT was posted.
-            // The timeout was 1000 ms; assert well under that (2000 ms gives
-            // headroom for slow CI VMs while still failing if the loop is
-            // actually waiting out the full timeout).
+            // The timeout is 1000 ms. Allow headroom for slow CI VMs while
+            // still failing if the loop waits out the full timeout.
             auto start = std::chrono::steady_clock::now();
             run_message_loop(false, 1000);
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(

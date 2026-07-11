@@ -46,7 +46,7 @@ inline int run_message_loop(const bool until_idle = false,
 //
 // WndProcs should call this at the top of their dispatch and return early
 // when it reports the message was handled. Without this, the OS quiesce
-// handshake on shutdown / sign-out / restart / suspend has nothing to wait
+// handshake on shutdown / sign-out / restart has nothing to wait
 // on except the full timeout, producing APPLICATION_HANG_QUIESCE failure
 // buckets even though the process is idle in GetMessage.
 //

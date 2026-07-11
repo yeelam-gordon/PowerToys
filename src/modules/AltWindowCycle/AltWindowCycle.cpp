@@ -1390,15 +1390,39 @@ static std::atomic<bool> g_shutdownRequested{ false };
 static HINSTANCE g_threadHinst = nullptr;
 static HANDLE g_threadReadyEvent = nullptr;
 
+static void ResetUIThreadState()
+{
+    CloseHandle(g_uiThread);
+    g_uiThread = nullptr;
+    g_uiThreadId = 0;
+    g_initOk.store(false);
+    g_shutdownRequested.store(false);
+    g_switcherActive.store(false);
+}
+
+static bool WaitForUIThreadExitAndReset(DWORD timeoutMs)
+{
+    if (!g_uiThread)
+        return true;
+
+    if (g_uiThreadId)
+        PostThreadMessageW(g_uiThreadId, WM_QUIT, 0, 0);
+
+    if (WaitForSingleObject(g_uiThread, timeoutMs) != WAIT_OBJECT_0)
+    {
+        g_switcherActive.store(false);
+        return false;
+    }
+
+    ResetUIThreadState();
+    return true;
+}
+
 static void ClearExitedUIThread()
 {
     if (g_uiThread && WaitForSingleObject(g_uiThread, 0) == WAIT_OBJECT_0)
     {
-        CloseHandle(g_uiThread);
-        g_uiThread = nullptr;
-        g_uiThreadId = 0;
-        g_initOk.store(false);
-        g_switcherActive.store(false);
+        ResetUIThreadState();
     }
 }
 
@@ -1507,19 +1531,18 @@ bool InitializeAltWindowCycle(HINSTANCE hinst)
     if (waitResult != WAIT_OBJECT_0)
     {
         Logger::error("Timed out waiting for AltWindowCycle UI thread initialization");
+        g_shutdownRequested.store(true);
+        if (!WaitForUIThreadExitAndReset(5000))
+        {
+            Logger::error("Timed out waiting for AltWindowCycle UI thread to exit after initialization timeout");
+        }
         return false;
     }
 
     if (!g_initOk.load())
     {
-        if (WaitForSingleObject(g_uiThread, 2000) == WAIT_OBJECT_0)
-        {
-            CloseHandle(g_uiThread);
-            g_uiThread = nullptr;
-            g_uiThreadId = 0;
-            g_initOk.store(false);
-        }
-        else
+        g_shutdownRequested.store(true);
+        if (!WaitForUIThreadExitAndReset(2000))
         {
             Logger::error("Timed out waiting for failed AltWindowCycle UI thread initialization to exit");
         }
@@ -1537,16 +1560,11 @@ void ShutdownAltWindowCycle()
     g_shutdownRequested.store(true);
 
     // Ask the UI thread's GetMessage loop to exit.
-    PostThreadMessageW(g_uiThreadId, WM_QUIT, 0, 0);
-    if (WaitForSingleObject(g_uiThread, 5000) != WAIT_OBJECT_0)
+    if (!WaitForUIThreadExitAndReset(5000))
     {
-        g_switcherActive.store(false);
+        Logger::error("Timed out waiting for AltWindowCycle UI thread to exit");
         return;
     }
-    CloseHandle(g_uiThread);
-    g_uiThread = nullptr;
-    g_uiThreadId = 0;
-    g_switcherActive.store(false);
 }
 
 bool HandleAltWindowCycleHotkey(bool forward, unsigned int holdModifiers)

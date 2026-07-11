@@ -867,7 +867,7 @@ namespace AdvancedPaste.ViewModels
             if (customAction != null)
             {
                 await ReadClipboardAsync();
-                await ExecutePasteFormatAsync(CreateCustomAIPasteFormat(customAction.Name, customAction.Prompt, isSavedQuery: true), source);
+                await ExecutePasteFormatAsync(CreateCustomAIPasteFormat(customAction.Name, customAction.Prompt, isSavedQuery: true, providerId: customAction.ProviderId), source);
             }
         }
 

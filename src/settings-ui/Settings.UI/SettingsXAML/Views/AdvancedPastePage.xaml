@@ -121,7 +121,7 @@
                                                 VerticalAlignment="Center"
                                                 Background="{ThemeResource AccentFillColorDefaultBrush}"
                                                 CornerRadius="4"
-                                                Visibility="{x:Bind IsActive, Mode=OneWay}">
+                                                Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                                 <TextBlock
                                                     x:Uid="AdvancedPaste_DefaultBadge"
                                                     FontSize="12"
@@ -301,7 +301,7 @@
                                 <tkcontrols:SettingsCard
                                     x:Uid="FixSpellingAndGrammar_CoachingProvider"
                                     IsEnabled="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}">
+                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <ComboBox
                                             x:Name="CoachingProviderComboBox"
@@ -326,7 +326,7 @@
                                     HorizontalContentAlignment="Stretch"
                                     ContentAlignment="Vertical"
                                     IsEnabled="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}">
+                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <TextBox PlaceholderText="{x:Bind models:AdvancedPasteDefaultPrompts.FixSpellingAndGrammarCoaching}" Text="{Binding CoachingPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </tkcontrols:SettingsCard>
                                 <tkcontrols:SettingsCard
@@ -334,7 +334,7 @@
                                     HorizontalContentAlignment="Stretch"
                                     ContentAlignment="Vertical"
                                     IsEnabled="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}"
-                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay}">
+                                    Visibility="{x:Bind ViewModel.AdditionalActions.FixSpellingAndGrammar.CoachingEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                                     <TextBox PlaceholderText="{x:Bind models:AdvancedPasteDefaultPrompts.FixSpellingAndGrammarCoachingSystem}" Text="{Binding CoachingSystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </tkcontrols:SettingsCard>
                                 <tkcontrols:SettingsCard Visibility="Collapsed" />

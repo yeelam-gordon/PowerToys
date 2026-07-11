@@ -630,9 +630,8 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
 
-            if (!process.WaitForExit(10_000))
+            if (!WaitForRedirectedProcessExit(process, outputTask, errorTask, 10_000))
             {
-                TryKillProcess(process);
                 return ("NotSupported", string.Empty);
             }
 
@@ -686,9 +685,8 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
 
-            if (!process.WaitForExit(600_000))
+            if (!WaitForRedirectedProcessExit(process, outputTask, errorTask, 600_000))
             {
-                TryKillProcess(process);
                 return ("Failed", string.Empty);
             }
 
@@ -714,6 +712,34 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             catch (Exception)
             {
             }
+        }
+
+        private static bool WaitForRedirectedProcessExit(Process process, Task<string> outputTask, Task<string> errorTask, int timeoutMilliseconds)
+        {
+            if (process.WaitForExit(timeoutMilliseconds))
+            {
+                return true;
+            }
+
+            TryKillProcess(process);
+
+            try
+            {
+                process.WaitForExit(5_000);
+                Task.WaitAll([outputTask, errorTask], 5_000);
+            }
+            catch (Exception)
+            {
+            }
+
+            ObserveTask(outputTask);
+            ObserveTask(errorTask);
+            return false;
+        }
+
+        private static void ObserveTask(Task<string> task)
+        {
+            _ = task.Exception;
         }
 
         // AdvancedPaste writes structured Phi Silica diagnostics to stderr, one per line prefixed with

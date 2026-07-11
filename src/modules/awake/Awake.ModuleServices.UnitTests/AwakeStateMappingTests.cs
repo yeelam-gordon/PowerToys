@@ -37,7 +37,7 @@ public sealed class AwakeStateMappingTests
             },
         };
 
-        var state = AwakeService.CreateState(isRunning: true, settings);
+        var state = AwakeService.CreateState(isRunning: true, settings: settings);
 
         Assert.IsTrue(state.IsRunning);
         Assert.AreEqual(AwakeStateMode.Passive, state.Mode);
@@ -58,7 +58,7 @@ public sealed class AwakeStateMappingTests
             },
         };
 
-        var state = AwakeService.CreateState(isRunning: true, settings);
+        var state = AwakeService.CreateState(isRunning: true, settings: settings);
 
         Assert.IsTrue(state.IsRunning);
         Assert.AreEqual(AwakeStateMode.Indefinite, state.Mode);
@@ -82,7 +82,7 @@ public sealed class AwakeStateMappingTests
             },
         };
 
-        var state = AwakeService.CreateState(isRunning: true, settings);
+        var state = AwakeService.CreateState(isRunning: true, settings: settings);
 
         Assert.IsTrue(state.IsRunning);
         Assert.AreEqual(AwakeStateMode.Timed, state.Mode);
@@ -107,7 +107,7 @@ public sealed class AwakeStateMappingTests
             },
         };
 
-        var state = AwakeService.CreateState(isRunning: true, settings);
+        var state = AwakeService.CreateState(isRunning: true, settings: settings);
 
         Assert.IsTrue(state.IsRunning);
         Assert.AreEqual(AwakeStateMode.Expirable, state.Mode);

@@ -15,9 +15,8 @@ namespace PowerLauncher.ViewModel
     {
         private readonly CancellationTokenSource _cancellationSource;
         private readonly TaskCompletionSource<bool> _startSource;
-
-        // Interlocked.Exchange requires an int and provides the memory barrier for idempotent disposal.
-        private int _disposed;
+        private readonly Lock _disposeLock = new();
+        private Task _disposeTask;
 
         private QuerySession(CancellationTokenSource cancellationSource, Task completion, TaskCompletionSource<bool> startSource, CancellationToken token)
         {
@@ -84,17 +83,21 @@ namespace PowerLauncher.ViewModel
 
         public Task DisposeWhenComplete()
         {
-            if (Interlocked.Exchange(ref _disposed, 1) != 0)
+            lock (_disposeLock)
             {
-                return Task.CompletedTask;
-            }
+                if (_disposeTask != null)
+                {
+                    return _disposeTask;
+                }
 
-            return Completion.ContinueWith(
-                static (_, state) => ((CancellationTokenSource)state).Dispose(),
-                _cancellationSource,
-                CancellationToken.None,
-                TaskContinuationOptions.ExecuteSynchronously,
-                TaskScheduler.Default);
+                _disposeTask = Completion.ContinueWith(
+                    static (_, state) => ((CancellationTokenSource)state).Dispose(),
+                    _cancellationSource,
+                    CancellationToken.None,
+                    TaskContinuationOptions.ExecuteSynchronously,
+                    TaskScheduler.Default);
+                return _disposeTask;
+            }
         }
 
         public bool CancelAndWait(TimeSpan timeout)

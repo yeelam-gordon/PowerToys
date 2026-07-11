@@ -44,10 +44,12 @@ namespace Wox.Test
 
             session.Cancel();
             var disposal = session.DisposeWhenComplete();
+            var repeatedDisposal = session.DisposeWhenComplete();
 
             // Register throws after CTS disposal, so success proves the running query still owns a live source.
             using (capturedToken.Register(() => { }))
             {
+                Assert.AreSame(disposal, repeatedDisposal);
                 Assert.IsFalse(disposal.IsCompleted);
             }
 

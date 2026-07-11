@@ -23,19 +23,19 @@ namespace Peek.FilePreviewer.Controls
         public static readonly DependencyProperty TablesProperty = DependencyProperty.Register(
             nameof(Tables),
             typeof(ObservableCollection<SQLiteTableInfo>),
-            typeof(SQLitePreviewer),
+            typeof(SQLiteControl),
             new PropertyMetadata(null, OnTablesPropertyChanged));
 
         public static readonly DependencyProperty LoadingStateProperty = DependencyProperty.Register(
             nameof(LoadingState),
             typeof(PreviewState),
-            typeof(SQLitePreviewer),
+            typeof(SQLiteControl),
             new PropertyMetadata(PreviewState.Uninitialized));
 
         public static readonly DependencyProperty TableCountProperty = DependencyProperty.Register(
             nameof(TableCount),
             typeof(string),
-            typeof(SQLitePreviewer),
+            typeof(SQLiteControl),
             new PropertyMetadata(null));
 
         private double _lastColumnAutoWidth = double.NaN;
@@ -46,7 +46,7 @@ namespace Peek.FilePreviewer.Controls
             set => SetValue(TablesProperty, value);
         }
 
-        public PreviewState? LoadingState
+        public PreviewState LoadingState
         {
             get => (PreviewState)GetValue(LoadingStateProperty);
             set => SetValue(LoadingStateProperty, value);

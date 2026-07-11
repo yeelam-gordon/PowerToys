@@ -21,7 +21,7 @@ namespace
     {
     private:
         // Report last 30 days
-        const long long PERIOD = 10 * 24 * 3600ll * 1000;
+        const unsigned long long PERIOD = 10ull * 24 * 3600 * 1000;
 
         const std::wstring QUERY_BY_PROCESS = L"<QueryList>" \
             L"  <Query Id='0'>" \

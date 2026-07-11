@@ -20,7 +20,7 @@ namespace
     class EventViewerReporter
     {
     private:
-        // Report last 30 days
+        // Report last 10 days
         const unsigned long long PERIOD = 10ull * 24 * 3600 * 1000;
 
         const std::wstring QUERY_BY_PROCESS = L"<QueryList>" \

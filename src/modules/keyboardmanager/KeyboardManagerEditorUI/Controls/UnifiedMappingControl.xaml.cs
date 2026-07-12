@@ -648,7 +648,7 @@ namespace KeyboardManagerEditorUI.Controls
 
                 if (file != null)
                 {
-                    ProgramPathInput.Text = file.Path;
+                    ProgramPathInput.Text = file.Path ?? string.Empty;
                     RaiseValidationStateChanged();
                 }
             }
@@ -669,13 +669,12 @@ namespace KeyboardManagerEditorUI.Controls
                 {
                     SuggestedStartLocation = PickerLocationId.ComputerFolder,
                 };
-                picker.FileTypeFilter.Add("*");
 
                 var folder = await picker.PickSingleFolderAsync();
 
                 if (folder != null)
                 {
-                    StartInPathInput.Text = folder.Path;
+                    StartInPathInput.Text = folder.Path ?? string.Empty;
                 }
             }
             catch (Exception ex)

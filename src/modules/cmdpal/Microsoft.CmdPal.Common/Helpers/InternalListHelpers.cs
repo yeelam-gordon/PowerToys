@@ -60,9 +60,11 @@ public static partial class InternalListHelpers
         }
     }
 
-    // Minimum item count before the parallel path is worth its partitioning/merge overhead.
-    // Below this the serial path wins, so commands (hundreds) and small app sets stay serial.
+    // Target items per partition before the parallel path is worth its partitioning/merge
+    // overhead. The actual cutoff is roughly two partitions (about 2x this value) so commands
+    // (hundreds) and small app sets stay serial.
     private const int ParallelScoringThreshold = 512;
+    private const int InitialParallelPartitionMatchesCapacity = 64;
 
     /// <summary>
     /// Order-preserving parallel variant of <see cref="FilterListWithScores{T}"/>. Partitions the
@@ -107,7 +109,7 @@ public static partial class InternalListHelpers
             var start = (int)((long)p * count / partitions);
             var end = (int)((long)(p + 1) * count / partitions);
 
-            var local = new List<RoScored<T>>(end - start);
+            var local = new List<RoScored<T>>(Math.Min(end - start, InitialParallelPartitionMatchesCapacity));
             for (var i = start; i < end; i++)
             {
                 var item = source[i];

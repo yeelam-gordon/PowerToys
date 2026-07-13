@@ -23,13 +23,7 @@ namespace Microsoft.PowerToys.PreviewHandler.Monaco
         [STAThread]
         public static void Main(string[] args)
         {
-            try
-            {
-                System.IO.Directory.SetCurrentDirectory(AppContext.BaseDirectory);
-            }
-            catch
-            {
-            }
+            SetSafeCurrentDirectory();
 
             Logger.InitializeLogger("\\FileExplorer_localLow\\Monaco\\logs", true);
 
@@ -79,6 +73,18 @@ namespace Microsoft.PowerToys.PreviewHandler.Monaco
             // To customize application configuration such as set high DPI settings or default font,
             // see https://aka.ms/applicationconfiguration.
             Application.Run();
+        }
+
+        private static void SetSafeCurrentDirectory()
+        {
+            try
+            {
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException)
+            {
+                System.Diagnostics.Trace.TraceWarning($"Failed to set current directory to application base directory: {ex.Message}");
+            }
         }
     }
 }

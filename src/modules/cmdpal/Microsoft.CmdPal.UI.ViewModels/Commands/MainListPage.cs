@@ -76,6 +76,7 @@ public sealed partial class MainListPage : DynamicListPage,
     private InterlockedBoolean _fullRefreshRequested;
     private InterlockedBoolean _refreshRunning;
     private InterlockedBoolean _refreshRequested;
+    private InterlockedBoolean _forceSearchRefresh;
 
     private CancellationTokenSource? _cancellationTokenSource;
 
@@ -204,8 +205,13 @@ public sealed partial class MainListPage : DynamicListPage,
         _refreshThrottledDebouncedAction.Invoke(interval);
     }
 
-    private void ReapplySearchInBackground()
+    private void ReapplySearchInBackground(bool forceRefresh = false)
     {
+        if (forceRefresh)
+        {
+            _forceSearchRefresh.Set();
+        }
+
         _refreshRequested.Set();
         if (!_refreshRunning.Set())
         {
@@ -222,9 +228,10 @@ public sealed partial class MainListPage : DynamicListPage,
             do
             {
                 _refreshRequested.Clear();
+                var forceRefresh = _forceSearchRefresh.Clear();
                 lock (_tlcManager.TopLevelCommands)
                 {
-                    if (_filteredItemsIncludesApps == _includeApps)
+                    if (!forceRefresh && _filteredItemsIncludesApps == _includeApps)
                     {
                         break;
                     }
@@ -696,7 +703,7 @@ public sealed partial class MainListPage : DynamicListPage,
 
         var matchedLexically = nameScore > 0 || rawSubtitleScore > 0 || rawExtensionScore > 0;
 
-        // The hard tier decides ordering; frecency and the alias-substring nudge only
+        // The hard tier decides ordering; recent/frequent usage and the alias-substring nudge only
         // reorder items that already share a tier. ClassifyTier returns None precisely when
         // nothing matched (no lexical, alias, or fallback signal), so this single gate also
         // filters non-matches - no separate pre-check is needed.
@@ -706,7 +713,7 @@ public sealed partial class MainListPage : DynamicListPage,
             return 0;
         }
 
-        var frecencyWeight = history.GetCommandHistoryWeight(id);
+        var historyWeight = history.GetCommandHistoryWeight(id);
         var aliasSubstringBonus = isAliasSubstringMatch && !isAliasMatch ? MainListRanker.AliasSubstringBonus : 0.0;
 
         // Per-provider weight is a within-tier nudge only. Resolving it here (rather than in
@@ -716,7 +723,7 @@ public sealed partial class MainListPage : DynamicListPage,
 
         var withinTier = MainListRanker.WithinTierScore(
             lexicalQuality,
-            frecencyWeight,
+            historyWeight,
             aliasSubstringBonus,
             providerBonus: providerBonus);
 
@@ -801,7 +808,15 @@ public sealed partial class MainListPage : DynamicListPage,
         RequestRefresh(fullRefresh: false);
     }
 
-    private void SettingsChangedHandler(ISettingsService sender, SettingsModel args) => HotReloadSettings(args);
+    private void SettingsChangedHandler(ISettingsService sender, SettingsModel args)
+    {
+        HotReloadSettings(args);
+
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            ReapplySearchInBackground(forceRefresh: true);
+        }
+    }
 
     private void HotReloadSettings(SettingsModel settings) => ShowDetails = settings.ShowAppDetails;
 

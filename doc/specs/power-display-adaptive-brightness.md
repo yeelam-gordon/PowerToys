@@ -1,7 +1,7 @@
 # Power Display – Ambient-Light (ALS) Adaptive Brightness for External Monitors
 
-Tracking issue: microsoft/PowerToys#49038
-Behaviour discussion: #49038 (with @moooyo)
+Tracking issue: #49038
+Behavior discussion: #49038
 Related: #47480 (schedule-based auto-brightness), #42566 (Light Switch ALS → theme), #35564 (manual multi-monitor brightness), #1052 (Quick Display adjustment umbrella, completed)
 
 ## 1. Overview
@@ -21,9 +21,9 @@ to the **time/schedule-based** request tracked in #47480 — and it is what most
 
 ### Goals
 * Per-external-monitor opt-in adaptive brightness driven by the device ALS.
-* A per-monitor **calibration curve** (lux → %), so differently-behaving panels can be matched.
+* A per-monitor **calibration curve** (lux → %), so panels with different behavior can be matched.
 * A per-monitor **offset** for manual/CLI nudges that rides on top of the curve (iOS-style personalization).
-* Correct, safe behaviour when the sensor can't be trusted (e.g. laptop lid closed).
+* Correct, safe behavior when the sensor can't be trusted (e.g. laptop lid closed).
 * Smooth, flicker-free, DDC/CI-friendly updates (smoothing + hysteresis + rate limiting).
 * Coexist cleanly with manual brightness changes and the existing schedule/profile features.
 
@@ -31,7 +31,7 @@ to the **time/schedule-based** request tracked in #47480 — and it is what most
 * Driving the built-in laptop panel (Windows already does this).
 * Bundling external/USB ambient sensors (possible future extension).
 * Content-adaptive / gamma-overlay dimming (a different, software-only approach).
-* Colour-temperature / Night-Light behaviour.
+* Color-temperature / Night-Light behavior.
 
 ## 3. Scenarios
 
@@ -50,7 +50,7 @@ to the **time/schedule-based** request tracked in #47480 — and it is what most
         │
         ▼
 [ Adaptive Brightness engine ]  (new glue, lives in Power Display)
-   smoothing (EMA) → hysteresis/deadband → curve(lux) + offset (per monitor) → rate limit
+   smoothing (EMA) → hysteresis/dead band → curve(lux) + offset (per monitor) → rate limit
         │
         ▼
 [ Power Display DDC/CI writer ]          <-- already exists (SetMonitorBrightness, VCP 0x10)
@@ -111,7 +111,7 @@ Global: a module-level toggle and an enable/disable hotkey (consistent with othe
 
 The ALS reading is used **only when it can be trusted**.
 
-### 7.1 ALS / DDC-CI availability
+### 7.1 ALS / DDC/CI availability
 `LightSensor.GetDefault()` null → adaptive unavailable everywhere (e.g. a desktop). Per monitor, if DDC/CI brightness
 is unsupported → adaptive is disabled for that monitor with a reason.
 
@@ -121,7 +121,7 @@ When the lid is closed the ALS faces the keyboard deck and reads ~darkness, so w
   corroborated by `QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS)` for an active internal panel
   (`DISPLAYCONFIG_OUTPUT_TECHNOLOGY_INTERNAL`). Lid *position* is the true determinant — a user may have the lid open
   but the internal display disabled, and there the sensor still sees the room.
-* **Behaviour:** on lid-close → pause adaptation and **hold the last known-good brightness** (never dim-to-black),
+* **Behavior:** on lid-close → pause adaptation and **hold the last known-good brightness** (never dim-to-black),
   surface a status ("Adaptive paused — lid closed / ambient sensor blocked"), and **resume live on reopen**.
 
 ### 7.3 Honest boundary + fallbacks
@@ -140,7 +140,7 @@ Therefore:
 
 ### 8.2 Smoothing + hysteresis (anti-flicker, anti-wear)
 * **EMA** on lux: `s_t = α·lux + (1−α)·s_{t−1}` (α from the Responsiveness slider).
-* **Deadband:** ignore changes whose mapped target moves < ~2–3% from the last applied value.
+* **Dead band:** ignore changes whose mapped target moves < ~2–3% from the last applied value.
 * **Min update interval** per monitor (~1–2 s) and optional **ramping** (step toward target).
 * Rationale: DDC/CI writes are slow (tens–hundreds of ms) and excessive writes can flicker or wear some panels.
 
@@ -154,7 +154,8 @@ Therefore:
 
 ### 8.5 Concurrency
 * One engine per external monitor, one shared ALS subscription. Serialize DDC/CI writes per monitor on a worker;
-  **never block the sensor callback**. Handle monitor hotplug / dock connect-disconnect (Power Display already tracks add/remove).
+  **never block the sensor callback**. Handle monitor connection and removal / dock connect-disconnect
+  (Power Display already tracks add/remove).
 
 ## 9. Settings persistence
 
@@ -172,7 +173,7 @@ Extend Power Display's `settings.json` per-monitor entry, e.g.:
       "maxPercent": 100,
       "responsiveness": 0.4,                 // 0..1 → EMA α / update cadence
       "manualBehavior": "offset",            // "offset" (default) | "pause"
-      "deadbandPercent": 3,
+      "deadBandPercent": 3,
       "minUpdateMs": 1500
     }
   }]
@@ -185,7 +186,7 @@ Extend Power Display's `settings.json` per-monitor entry, e.g.:
 
 Per `doc/devdocs/development/logging.md`, emit (privacy-respecting, counts only):
 * Adaptive mode enabled/disabled per monitor; ALS-present; DDC/CI-supported; `manualBehavior` chosen.
-* Apply-rate (writes/min), deadband/clamp suppression counts, and lid-close pause events (to validate anti-wear tuning).
+* Apply-rate (writes/min), dead band/clamp suppression counts, and lid-close pause events (to validate anti-wear tuning).
 * No raw lux series or PII.
 
 ## 11. Performance & reliability

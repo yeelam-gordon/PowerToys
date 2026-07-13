@@ -570,7 +570,7 @@ public sealed partial class MainListPage : DynamicListPage,
         }
 
         // Handle changes to the filter text here
-        if (!string.IsNullOrEmpty(SearchText))
+        if (!string.IsNullOrEmpty(newSearch))
         {
             var aliases = _aliasManager;
 
@@ -642,7 +642,7 @@ public sealed partial class MainListPage : DynamicListPage,
                 }
             }
 
-            _fallbackUpdateManager.BeginUpdate(SearchText, [.. specialFallbacks, .. commonFallbacks], token);
+            _fallbackUpdateManager.BeginUpdate(newSearch, [.. specialFallbacks, .. commonFallbacks], token);
 
             if (token.IsCancellationRequested)
             {
@@ -767,7 +767,7 @@ public sealed partial class MainListPage : DynamicListPage,
         var settings = _settingsService.Settings;
         var scoringNow = DateTimeOffset.UtcNow;
 
-        var searchQuery = matcher.PrecomputeQuery(SearchText);
+        var searchQuery = matcher.PrecomputeQuery(newSearch);
 
         // Commands resolve their per-provider weight from the captured settings. Every installed app
         // belongs to the well-known AllApps provider, so its weight is constant across the whole apps

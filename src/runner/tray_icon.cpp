@@ -35,7 +35,7 @@ namespace
     NOTIFYICONDATAW tray_icon_data;
     bool tray_icon_created = false;
 
-    // True once OS-initiated shutdown is in progress, so WM_DESTROY can
+    // True once OS session end (shutdown/logoff) is in progress, so WM_DESTROY can
     // skip cross-process cleanup that the OS is reaping in parallel.
     bool g_session_ending = false;
 
@@ -178,7 +178,7 @@ LRESULT __stdcall tray_icon_window_proc(HWND window, UINT message, WPARAM wparam
         }
         break;
     case WM_DESTROY:
-        // Skip cross-process cleanup on OS shutdown: shell is dying and
+        // Skip cross-process cleanup on OS session end (shutdown/logoff): shell is dying and
         // close_settings_window() blocks 1.5s on Settings.exe which the
         // OS is reaping anyway — that wait would burn the quiesce budget.
         if (!g_session_ending)

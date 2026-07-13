@@ -264,6 +264,12 @@ public sealed partial class MainListPage : DynamicListPage,
 
     private IListItem[] GetSearchViewItems()
     {
+        if (!string.Equals(_searchQuery.Original, SearchText, StringComparison.Ordinal))
+        {
+            _queryMatcher = _fuzzyMatcherProvider.Current;
+            _searchQuery = _queryMatcher.PrecomputeQuery(SearchText);
+        }
+
         // Re-score global fallbacks on every read so late-arriving titles get fresh scores
         var scoredFallbacks = InternalListHelpers.FilterListWithScores<IListItem>(
             _globalFallbackCandidates, in _searchQuery, _scoringFunction);

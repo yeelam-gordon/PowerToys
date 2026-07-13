@@ -13,14 +13,50 @@
 #include <FancyZonesLib/util.h>
 
 #include <wrl/client.h>
-#pragma comment(lib, "Shell32.lib")
 #include <Shobjidl.h>
-#pragma comment(lib, "Propsys.lib")
 #include <propsys.h>
 #include <propkey.h>
 #include <wil/resource.h>
 
-using namespace Microsoft::WRL;
+namespace
+{
+    std::wstring GetProcessPathWithAUMID(HWND window)
+    {
+        auto processPath = get_process_path_waiting_uwp(window);
+
+        DWORD processId = 0;
+        GetWindowThreadProcessId(window, &processId);
+        if (processId == GetCurrentProcessId())
+        {
+            return processPath;
+        }
+
+        const HRESULT coInitResult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+        const bool shouldUninitializeCom = SUCCEEDED(coInitResult);
+
+        if (SUCCEEDED(coInitResult) || coInitResult == RPC_E_CHANGED_MODE)
+        {
+            Microsoft::WRL::ComPtr<IPropertyStore> propStore;
+            HRESULT hr = SHGetPropertyStoreForWindow(window, IID_PPV_ARGS(&propStore));
+            if (SUCCEEDED(hr))
+            {
+                wil::unique_prop_variant pv;
+                hr = propStore->GetValue(PKEY_AppUserModel_ID, &pv);
+                if (SUCCEEDED(hr) && pv.vt == VT_LPWSTR && pv.pwszVal != nullptr)
+                {
+                    processPath.append(L"?").append(pv.pwszVal);
+                }
+            }
+        }
+
+        if (shouldUninitializeCom)
+        {
+            CoUninitialize();
+        }
+
+        return processPath;
+    }
+}
 
 namespace JsonUtils
 {
@@ -322,25 +358,6 @@ void AppZoneHistory::AdjustWorkAreaIds(const std::vector<FancyZonesDataTypes::Mo
     {
         SaveData();
     }
-}
-
-std::wstring AppZoneHistory::GetProcessPathWithAUMID(HWND window) noexcept
-{
-    auto processPath = get_process_path_waiting_uwp(window);
-
-    ComPtr<IPropertyStore> propStore;
-    HRESULT hr = SHGetPropertyStoreForWindow(window, IID_PPV_ARGS(&propStore));
-    if (SUCCEEDED(hr))
-    {
-        wil::unique_prop_variant pv;
-        hr = propStore->GetValue(PKEY_AppUserModel_ID, &pv);
-        if (SUCCEEDED(hr) && pv.vt == VT_LPWSTR && pv.pwszVal != nullptr)
-        {
-            processPath.append(L"?").append(pv.pwszVal);
-        }
-    }
-
-    return processPath;
 }
 
 bool AppZoneHistory::SetAppLastZones(HWND window, const FancyZonesDataTypes::WorkAreaId& workAreaId, const GUID& layoutId, const ZoneIndexSet& zoneIndexSet)

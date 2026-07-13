@@ -122,7 +122,6 @@ namespace Community.PowerToys.Run.Plugin.VSCodeWorkspaces.WorkspacesHelper
             }
         }
 
-
         private string GetSharedStorageDbPath(VSCodeInstance vscodeInstance)
         {
             var appDataDirectoryInfo = new DirectoryInfo(vscodeInstance.AppData);
@@ -138,16 +137,21 @@ namespace Community.PowerToys.Run.Plugin.VSCodeWorkspaces.WorkspacesHelper
             }
 
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            var appDataDirectoryName = Path.GetFileName(Path.TrimEndingDirectorySeparator(vscodeInstance.AppData));
 
-            return Path.GetFileName(vscodeInstance.AppData) switch
+            var sharedStorageDirectory = appDataDirectoryName switch
             {
-                "Code" => Path.Combine(userProfile, ".vscode-shared", "sharedStorage", "state.vscdb"),
-                "Code - Insiders" => Path.Combine(userProfile, ".vscode-insiders-shared", "sharedStorage", "state.vscdb"),
-                "Code - Exploration" => Path.Combine(userProfile, ".vscode-exploration-shared", "sharedStorage", "state.vscdb"),
-                "VSCodium" => Path.Combine(userProfile, ".vscodium-shared", "sharedStorage", "state.vscdb"),
-                "VSCodium - Insiders" => Path.Combine(userProfile, ".vscodium-insiders-shared", "sharedStorage", "state.vscdb"),
+                var name when string.Equals(name, "Code", StringComparison.OrdinalIgnoreCase) => ".vscode-shared",
+                var name when string.Equals(name, "Code - Insiders", StringComparison.OrdinalIgnoreCase) => ".vscode-insiders-shared",
+                var name when string.Equals(name, "Code - Exploration", StringComparison.OrdinalIgnoreCase) => ".vscode-exploration-shared",
+                var name when string.Equals(name, "VSCodium", StringComparison.OrdinalIgnoreCase) => ".vscodium-shared",
+                var name when string.Equals(name, "VSCodium - Insiders", StringComparison.OrdinalIgnoreCase) => ".vscodium-insiders-shared",
                 _ => string.Empty,
             };
+
+            return string.IsNullOrEmpty(sharedStorageDirectory)
+                ? string.Empty
+                : Path.Combine(userProfile, sharedStorageDirectory, "sharedStorage", "state.vscdb");
         }
 
         private List<VSCodeWorkspace> GetWorkspacesInJson(VSCodeInstance vscodeInstance, string filePath)

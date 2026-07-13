@@ -101,7 +101,14 @@ public record RecentCommandsManager : IRecentCommandsManager
     }
 
     public int GetCommandHistoryWeight(string commandId)
-        => GetCommandHistoryWeight(commandId, DateTimeOffset.UtcNow);
+    {
+        if (!Index.TryGetValue(commandId, out var entry))
+        {
+            return 0;
+        }
+
+        return GetCommandHistoryWeight(entry, DateTimeOffset.UtcNow);
+    }
 
     /// <summary>
     /// Computes the time-decayed frecency weight for a command relative to <paramref name="now"/>.
@@ -116,6 +123,11 @@ public record RecentCommandsManager : IRecentCommandsManager
             return 0;
         }
 
+        return GetCommandHistoryWeight(entry, now);
+    }
+
+    private static int GetCommandHistoryWeight(HistoryItem entry, DateTimeOffset now)
+    {
         // Migrate items with a default (missing) timestamp to a mild backdate so they degrade
         // to Uses-ordering instead of appearing brand-new or invisible. See LegacyBackdate.
         var lastUsed = entry.LastUsed == default ? now - LegacyBackdate : entry.LastUsed;

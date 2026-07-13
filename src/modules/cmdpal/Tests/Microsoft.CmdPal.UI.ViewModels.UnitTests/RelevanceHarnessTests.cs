@@ -185,7 +185,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void Golden_ComplaintCase_SingleLetterSurfacesFrecentApp()
+    public void Golden_ComplaintCase_SingleLetterSurfacesFrequentlyUsedApp()
     {
         // "c" prefixes several apps (Calculator, Calendar, Command Prompt, Control Panel). With
         // no signal they tie; a user who keeps opening Calculator should see it at rank 1. This

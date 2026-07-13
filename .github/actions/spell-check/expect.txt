@@ -573,6 +573,7 @@ FILTERMODE
 findfast
 findmymouse
 FIXEDFILEINFO
+frecency
 FIXEDSYS
 flac
 flyouts
@@ -627,6 +628,7 @@ GETTASKBARPOS
 GETTEXTLENGTH
 GETWORKAREA
 gfx
+gfb
 GHND
 gitmodules
 GMEM
@@ -1546,6 +1548,7 @@ Remotable
 remotedesktop
 remoteip
 Removelnk
+reimplementation
 renamable
 RENAMEONCOLLISION
 RENDERFULLCONTENT
@@ -2041,6 +2044,7 @@ vpaddlq
 vqsubq
 vreinterpretq
 VSC
+vsc
 VSCBD
 vscdb
 vsconfig

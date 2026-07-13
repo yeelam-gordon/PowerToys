@@ -908,6 +908,11 @@ public sealed partial class MainListPage : DynamicListPage,
 
     private void EmitSearchResultsTelemetry()
     {
+        if (string.IsNullOrWhiteSpace(SearchText))
+        {
+            return;
+        }
+
         (int QueryLength, int ResultCount, long LatencyMs) snapshot;
         lock (_searchTelemetryLock)
         {

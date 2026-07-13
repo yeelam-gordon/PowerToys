@@ -41,9 +41,8 @@ internal static class MainListPageResultFactory
 
         int fallbackCount = fallbackItems?.Count ?? 0;
 
-        // Allocate the exact size of the result array.
-        // We'll add an extra slot for the fallbacks section header if needed,
-        // and another for the "Results" section header when merged results exist.
+        // Allocate enough space for the merged result array. Fallback titles can
+        // change before they are appended below, so the returned array may be trimmed.
         int mergedCount = len1 + len2 + len3;
         bool needsResultsHeader = mergedCount > 0;
         int totalCount = mergedCount + fallbackCount
@@ -142,17 +141,19 @@ internal static class MainListPageResultFactory
         // always at the end of the list and are sorted by user settings.
         if (fallbackItems is not null)
         {
-            // Create the fallbacks section header
-            if (fallbackItems.Count > 0)
-            {
-                result[writePos++] = fallbacksSeparator;
-            }
+            var wroteFallbacksHeader = false;
 
             for (int i = 0; i < fallbackItems.Count; i++)
             {
                 var item = fallbackItems[i].Item;
-                if (!string.IsNullOrEmpty(item.Title))
+                if (!string.IsNullOrWhiteSpace(item.Title))
                 {
+                    if (!wroteFallbacksHeader)
+                    {
+                        result[writePos++] = fallbacksSeparator;
+                        wroteFallbacksHeader = true;
+                    }
+
                     result[writePos++] = item;
                 }
             }

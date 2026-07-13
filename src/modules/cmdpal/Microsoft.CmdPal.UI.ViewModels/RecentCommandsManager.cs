@@ -191,7 +191,8 @@ public interface IRecentCommandsManager
     /// that score a whole batch should capture a single <paramref name="now"/> once and pass it for
     /// every item so the batch is scored against one consistent time snapshot.
     /// </summary>
-    int GetCommandHistoryWeight(string commandId, DateTimeOffset now);
+    int GetCommandHistoryWeight(string commandId, DateTimeOffset now)
+        => GetCommandHistoryWeight(commandId);
 
     RecentCommandsManager WithHistoryItem(string commandId);
 
@@ -201,5 +202,7 @@ public interface IRecentCommandsManager
     /// issue concurrently. Callers that score items in parallel must invoke this once, single-
     /// threaded, before the parallel loop.
     /// </summary>
-    void PrewarmIndex();
+    void PrewarmIndex()
+    {
+    }
 }

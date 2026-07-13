@@ -22,6 +22,7 @@
 #include <common/utils/process_path.h>
 #include <common/utils/resources.h>
 #include <common/utils/timeutil.h>
+#include <common/utils/winapi_error.h>
 
 #include <wil/resource.h>
 
@@ -211,7 +212,15 @@ bool InstallNewVersionStage1(fs::path installer)
             // Without this, the installer may find PT files locked.
             if (ptProcess)
             {
-                WaitForSingleObject(ptProcess.get(), 10000); // 10 second timeout
+                const DWORD waitResult = WaitForSingleObject(ptProcess.get(), 10000); // 10 second timeout
+                if (waitResult == WAIT_TIMEOUT)
+                {
+                    Logger::warn("Timed out waiting for PowerToys to exit before launching the update installer");
+                }
+                else if (waitResult == WAIT_FAILED)
+                {
+                    Logger::error(L"Failed while waiting for PowerToys to exit before launching the update installer. {}", get_last_error_or_default(GetLastError()));
+                }
             }
         }
 

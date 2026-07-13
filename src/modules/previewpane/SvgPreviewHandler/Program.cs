@@ -85,9 +85,9 @@ namespace Microsoft.PowerToys.PreviewHandler.Svg
             {
                 Directory.SetCurrentDirectory(AppContext.BaseDirectory);
             }
-            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException)
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException || ex is System.Security.SecurityException)
             {
-                System.Diagnostics.Trace.TraceWarning($"Failed to set current directory to application base directory: {ex.Message}");
+                System.Diagnostics.Trace.TraceWarning($"Failed to set current directory to application base directory: {ex}");
             }
         }
     }

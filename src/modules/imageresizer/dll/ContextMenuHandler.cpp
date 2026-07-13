@@ -190,8 +190,14 @@ HRESULT CContextMenuHandler::GetCommandString(UINT_PTR idCmd, UINT uType, _In_ U
 
     switch (uType)
     {
+    case GCS_VERBA:
+        return StringCchCopyA(pszName, cchMax, RESIZE_PICTURES_VERBA);
     case GCS_VERBW:
         return StringCchCopyW(reinterpret_cast<LPWSTR>(pszName), cchMax, RESIZE_PICTURES_VERBW);
+    case GCS_HELPTEXTA:
+        return StringCchCopyA(pszName, cchMax, "");
+    case GCS_HELPTEXTW:
+        return StringCchCopyW(reinterpret_cast<LPWSTR>(pszName), cchMax, L"");
     case GCS_VALIDATEA:
     case GCS_VALIDATEW:
         return S_OK;
@@ -214,6 +220,10 @@ HRESULT CContextMenuHandler::InvokeCommand(_In_ CMINVOKECOMMANDINFO* pici)
 
     if (!fUnicode && HIWORD(pici->lpVerb))
     {
+        if (strcmp(pici->lpVerb, RESIZE_PICTURES_VERBA) == 0)
+        {
+            hr = ResizePictures(pici, nullptr);
+        }
     }
     else if (fUnicode && HIWORD(((CMINVOKECOMMANDINFOEX*)pici)->lpVerbW))
     {

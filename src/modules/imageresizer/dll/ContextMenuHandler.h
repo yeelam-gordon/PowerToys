@@ -1,6 +1,7 @@
 #pragma once
 
 #define ID_RESIZE_PICTURES 0
+#define RESIZE_PICTURES_VERBA "resize"
 #define RESIZE_PICTURES_VERBW L"resize"
 #include "pch.h"
 #include "Generated Files/resource.h"

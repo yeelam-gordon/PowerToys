@@ -788,13 +788,16 @@ public sealed partial class MainListPage : DynamicListPage,
     }
 
     private ScoringFunction<IListItem> CreateTopLevelScoringFunction(DateTimeOffset historyEvaluationTime)
-        => (in FuzzyQuery query, IListItem item) => ScoreTopLevelItem(
+    {
+        var recentCommands = _appStateService.State.RecentCommands;
+        return (in FuzzyQuery query, IListItem item) => ScoreTopLevelItem(
             in query,
             item,
-            _appStateService.State.RecentCommands,
+            recentCommands,
             _fuzzyMatcherProvider.Current,
             ResolveProviderSearchWeight,
             historyEvaluationTime);
+    }
 
     private static int ScoreWhitespaceQuery(string query, string title, string subtitle, bool isFallback)
     {

@@ -21,11 +21,11 @@ internal static class MainListRanker
     // Scale factors that turn signals into within-tier points. These deliberately mirror
     // the previous flat balance (match x10 + history), so items that share a tier keep
     // their long-established relative ordering; only cross-tier behavior changes. Lexical
-    // quality leads (x10) while frecency (x1) breaks ties and reorders near-equal matches,
+    // quality leads (x10) while usage history (x1) breaks ties and reorders near-equal matches,
     // and can overcome roughly a single point of lexical difference - matching the old
     // "one use makes VS -> Visual Studio the top hit" intent.
     internal const double LexicalScale = 10.0;
-    internal const double FrecencyScale = 1.0;
+    internal const double HistoryScale = 1.0;
 
     // A small nudge for items whose alias merely starts with the query (as opposed to an
     // exact alias, which gets its own top tier). Mirrors the previous +1-before-x10 boost.
@@ -81,7 +81,7 @@ internal static class MainListRanker
 
     /// <summary>
     /// Classifies an item into a relevance tier based purely on the textual relationship
-    /// between the raw query and the title. Frecency/provider signals are intentionally
+    /// between the raw query and the title. Usage history/provider signals are intentionally
     /// not considered here - they only affect the within-tier score.
     /// </summary>
     /// <param name="query">The raw query text.</param>
@@ -150,17 +150,17 @@ internal static class MainListRanker
 
     /// <summary>
     /// Composes the within-tier score from normalized signals. Lexical quality dominates;
-    /// frecency, the alias-substring nudge, and the extension (provider) bonus only
+    /// usage history, the alias-substring nudge, and the extension (provider) bonus only
     /// reorder items that already share a tier.
     /// </summary>
     public static double WithinTierScore(
         double lexicalQuality,
-        double frecencyWeight,
+        double historyWeight,
         double aliasSubstringBonus,
         double providerBonus)
     {
         return (lexicalQuality * LexicalScale)
-            + (frecencyWeight * FrecencyScale)
+            + (historyWeight * HistoryScale)
             + aliasSubstringBonus
             + providerBonus;
     }
@@ -241,7 +241,7 @@ internal static class MainListRanker
 /// <summary>
 /// Relevance tiers for main/root page ranking, from worst (lowest value) to best
 /// (highest value). Ranking is <b>lexicographic</b>: an item in a higher tier always
-/// sorts above an item in a lower tier. Signals such as frecency and per-provider
+/// sorts above an item in a lower tier. Signals such as usage history and per-provider
 /// weighting only reorder items <i>within</i> the same tier - they can never promote an
 /// item across a tier boundary. This is what keeps ordering predictable ("an exact match
 /// always beats a fuzzy one").

@@ -460,12 +460,12 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
         var weightedScores = items.Select(item => MainListPage.ScoreTopLevelItem(q, item, history, fuzzyMatcher)).ToList();
         var weightedMatches = GetMatches(items, weightedScores).ToList();
 
-        Assert.AreEqual(3, weightedMatches.Count, "Find Terminal, VsCode and Run commands");
+        Assert.AreEqual(3, weightedMatches.Count, "Find Terminal, VS Code and Run commands");
 
         // Terminal is in bucket 1, VS Code is in bucket 0, but Terminal matches
         // the title better
         Assert.AreEqual("Terminal Canary", weightedMatches[0].Title, "Terminal should be the top match, title match");
-        Assert.AreEqual("Visual Studio Code", weightedMatches[1].Title, "VsCode does fuzzy match, but is less relevant than Terminal");
+        Assert.AreEqual("Visual Studio Code", weightedMatches[1].Title, "VS Code does fuzzy match, but is less relevant than Terminal");
         Assert.AreEqual("Run commands", weightedMatches[2].Title, "run only matches on the subtitle");
     }
 
@@ -487,12 +487,12 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
         var weightedScores = items.Select(item => MainListPage.ScoreTopLevelItem(q, item, history, fuzzyMatcher)).ToList();
         var weightedMatches = GetMatches(items, weightedScores).ToList();
 
-        Assert.AreEqual(3, weightedMatches.Count, "Find Terminal, VsCode and Run commands");
+        Assert.AreEqual(3, weightedMatches.Count, "Find Terminal, VS Code and Run commands");
 
         // Terminal is in bucket 1, VS Code is in bucket 0, but Terminal matches
         // the title better
         Assert.AreEqual("Terminal Canary", weightedMatches[0].Title, "Terminal should be the top match, title match");
-        Assert.AreEqual("Visual Studio Code", weightedMatches[1].Title, "VsCode does fuzzy match, but is less relevant than Terminal");
+        Assert.AreEqual("Visual Studio Code", weightedMatches[1].Title, "VS Code does fuzzy match, but is less relevant than Terminal");
         Assert.AreEqual("Run commands", weightedMatches[2].Title, "run only matches on the subtitle");
     }
 
@@ -500,7 +500,7 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     public void ValidateUsageDoesNotCrossTierBoundary()
     {
         // "C" is a prefix of "Command Prompt" (Prefix tier) but only a word-boundary
-        // match for "Visual Studio Code" (AcronymWordBoundary tier). Frecency only
+        // match for "Visual Studio Code" (AcronymWordBoundary tier). Usage history only
         // reorders items WITHIN a tier, so no amount of usage may lift a word-boundary
         // match above a prefix match. This is the core "logical ordering" contract.
         var items = CreateMockHistoryItems();

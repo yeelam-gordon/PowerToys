@@ -45,7 +45,6 @@ public sealed partial class MainListPage : DynamicListPage,
     private readonly AliasManager _aliasManager;
     private readonly ISettingsService _settingsService;
     private readonly IAppStateService _appStateService;
-    private readonly ScoringFunction<IListItem> _scoringFunction;
     private readonly ScoringFunction<IListItem> _fallbackScoringFunction;
     private readonly IFuzzyMatcherProvider _fuzzyMatcherProvider;
 
@@ -102,6 +101,7 @@ public sealed partial class MainListPage : DynamicListPage,
     // user invokes a result) to resolve the invoked item's visible rank and ranker tier.
     private IReadOnlyList<IListItem>? _lastSearchViewItems;
     private IReadOnlyList<RoScored<IListItem>>? _lastScoredGlobalFallbacks;
+    private int _lastSearchViewQueryLength;
 
 #if CMDPAL_FF_MAINPAGE_TIME_RAISE_ITEMS
     private DateTimeOffset _last = DateTimeOffset.UtcNow;
@@ -124,7 +124,6 @@ public sealed partial class MainListPage : DynamicListPage,
         _appStateService = appStateService;
         _tlcManager = topLevelCommandManager;
         _fuzzyMatcherProvider = fuzzyMatcherProvider;
-        _scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current, ResolveProviderSearchWeight);
         _fallbackScoringFunction = (in _, item) => ScoreFallbackItem(item, _settingsService.Settings.FallbackRanks);
 
         _tlcManager.PropertyChanged += TlcManager_PropertyChanged;
@@ -290,7 +289,10 @@ public sealed partial class MainListPage : DynamicListPage,
         // fresh score from the same ranker. This runs on the render path and is cheap because
         // there are only a handful of configured global fallbacks. Deterministic command/app
         // results below do not depend on this, so first paint never waits on the (async) fallbacks.
-        var validScoredFallbacks = ScoreDeferredFallbacks(_globalFallbackSources, _globalFallbackQuery, _scoringFunction);
+        var validScoredFallbacks = ScoreDeferredFallbacks(
+            _globalFallbackSources,
+            _globalFallbackQuery,
+            CreateScoringFunction(DateTimeOffset.UtcNow));
 
         var validFallbacks = _fallbackItems?
             .Where(s => !string.IsNullOrWhiteSpace(s.Item.Title))
@@ -310,9 +312,19 @@ public sealed partial class MainListPage : DynamicListPage,
         // plain reference assignments - no extra allocation on the render path.
         _lastSearchViewItems = result;
         _lastScoredGlobalFallbacks = validScoredFallbacks;
+        _lastSearchViewQueryLength = Math.Max(0, _globalFallbackQuery.Original?.Length ?? 0);
 
         return result;
     }
+
+    private ScoringFunction<IListItem> CreateScoringFunction(DateTimeOffset scoringTimestamp)
+        => (in FuzzyQuery query, IListItem item) => ScoreTopLevelItem(
+            in query,
+            item,
+            _appStateService.State.RecentCommands,
+            _fuzzyMatcherProvider.Current,
+            ResolveProviderSearchWeight,
+            scoringTimestamp);
 
     // Scores the current global-fallback snapshot against its query using the supplied ranker,
     // dropping any whose (possibly still unresolved) title is empty. Extracted and made static
@@ -546,6 +558,7 @@ public sealed partial class MainListPage : DynamicListPage,
                 _searchTelemetryDebounce.Cancel();
                 _lastSearchViewItems = null;
                 _lastScoredGlobalFallbacks = null;
+                _lastSearchViewQueryLength = 0;
 
                 var wasAlreadyEmpty = string.IsNullOrWhiteSpace(oldSearch);
                 RequestRefresh(fullRefresh: true, interval: wasAlreadyEmpty ? null : TimeSpan.Zero);
@@ -647,9 +660,10 @@ public sealed partial class MainListPage : DynamicListPage,
             }
 
             var searchQuery = _fuzzyMatcherProvider.Current.PrecomputeQuery(SearchText);
+            var scoringFunction = CreateScoringFunction(DateTimeOffset.UtcNow);
 
             // Produce a list of everything that matches the current filter.
-            _filteredItems = InternalListHelpers.FilterListWithScores(newFilteredItems, searchQuery, _scoringFunction);
+            _filteredItems = InternalListHelpers.FilterListWithScores(newFilteredItems, searchQuery, scoringFunction);
 
             if (token.IsCancellationRequested)
             {
@@ -678,7 +692,7 @@ public sealed partial class MainListPage : DynamicListPage,
             // Produce a list of filtered apps with the appropriate limit
             if (newApps.Any())
             {
-                _filteredApps = InternalListHelpers.FilterListWithScores(newApps, searchQuery, _scoringFunction);
+                _filteredApps = InternalListHelpers.FilterListWithScores(newApps, searchQuery, scoringFunction);
 
                 if (token.IsCancellationRequested)
                 {
@@ -741,7 +755,8 @@ public sealed partial class MainListPage : DynamicListPage,
         IListItem topLevelOrAppItem,
         IRecentCommandsManager history,
         IPrecomputedFuzzyMatcher precomputedFuzzyMatcher,
-        Func<IListItem, ProviderSearchWeight>? providerWeightLookup = null)
+        Func<IListItem, ProviderSearchWeight>? providerWeightLookup = null,
+        DateTimeOffset? historyNow = null)
     {
         var title = topLevelOrAppItem.Title;
         if (string.IsNullOrWhiteSpace(title))
@@ -796,7 +811,7 @@ public sealed partial class MainListPage : DynamicListPage,
 
         var matchedLexically = nameScore > 0 || rawSubtitleScore > 0 || rawExtensionScore > 0;
 
-        // The hard tier decides ordering; frecency and the alias-substring nudge only
+        // The hard tier decides ordering; usage history and the alias-substring nudge only
         // reorder items that already share a tier. ClassifyTier returns None precisely when
         // nothing matched (no lexical, alias, or fallback signal), so this single gate also
         // filters non-matches - no separate pre-check is needed.
@@ -806,7 +821,9 @@ public sealed partial class MainListPage : DynamicListPage,
             return 0;
         }
 
-        var frecencyWeight = history.GetCommandHistoryWeight(id);
+        var historyWeight = historyNow is { } fixedNow
+            ? history.GetCommandHistoryWeight(id, fixedNow)
+            : history.GetCommandHistoryWeight(id);
         var aliasSubstringBonus = isAliasSubstringMatch && !isAliasMatch ? MainListRanker.AliasSubstringBonus : 0.0;
 
         // Per-provider weight is a within-tier nudge only. Resolving it here (rather than in
@@ -816,7 +833,7 @@ public sealed partial class MainListPage : DynamicListPage,
 
         var withinTier = MainListRanker.WithinTierScore(
             lexicalQuality,
-            frecencyWeight,
+            historyWeight,
             aliasSubstringBonus,
             providerBonus: providerBonus);
 
@@ -869,8 +886,8 @@ public sealed partial class MainListPage : DynamicListPage,
     // item is not among the last rendered search results.
     private void EmitSelectionTelemetry(IListItem invoked)
     {
-        var searchText = SearchText;
-        if (string.IsNullOrWhiteSpace(searchText))
+        var queryLength = _lastSearchViewQueryLength;
+        if (queryLength <= 0)
         {
             return;
         }
@@ -891,7 +908,7 @@ public sealed partial class MainListPage : DynamicListPage,
             return;
         }
 
-        WeakReferenceMessenger.Default.Send(BuildSearchSelectedMessage(searchText, index, tier));
+        WeakReferenceMessenger.Default.Send(BuildSearchSelectedMessage(queryLength, index, tier));
     }
 
     // Stores the latest settled-search metrics and (re)arms the debounce. Only the query LENGTH is
@@ -939,7 +956,10 @@ public sealed partial class MainListPage : DynamicListPage,
     // Builds the selection telemetry payload, capturing only the query LENGTH, the selected rank,
     // and the ranker tier. Exposed for tests to prove the raw query text is never carried.
     internal static TelemetrySearchResultSelectedMessage BuildSearchSelectedMessage(string query, int selectedIndex, RankTier selectedTier)
-        => new(query?.Length ?? 0, selectedIndex, selectedTier);
+        => BuildSearchSelectedMessage(query?.Length ?? 0, selectedIndex, selectedTier);
+
+    internal static TelemetrySearchResultSelectedMessage BuildSearchSelectedMessage(int queryLength, int selectedIndex, RankTier selectedTier)
+        => new(Math.Max(queryLength, 0), Math.Max(selectedIndex, 0), selectedTier);
 
     // Zero-based visible rank of an invoked item within the rendered results, skipping the section
     // separators. Returns -1 when the item is not present (e.g. it was invoked from a different view).

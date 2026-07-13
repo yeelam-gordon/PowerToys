@@ -35,7 +35,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
 {
     // A lightweight IListItem stand-in for a top-level command or installed app. Mirrors the
     // mock used by RecentCommandsTests so the harness exercises the same real scoring path,
-    // not a reimplementation. ProviderId lets a test key a per-provider weight lookup.
+    // not a duplicate implementation. ProviderId lets a test key a per-provider weight lookup.
     private sealed partial record ListItemMock(
         string Title,
         string? Subtitle = "",
@@ -185,11 +185,11 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void Golden_ComplaintCase_SingleLetterSurfacesFrecentApp()
+    public void Golden_ComplaintCase_SingleLetterSurfacesFrequentlyUsedApp()
     {
         // "c" prefixes several apps (Calculator, Calendar, Command Prompt, Control Panel). With
         // no signal they tie; a user who keeps opening Calculator should see it at rank 1. This
-        // is the canonical "the thing I want is buried" complaint, fixed by within-tier frecency.
+        // is the canonical "the thing I want is buried" complaint, fixed by within-tier usage history.
         var history = EmptyHistory();
         var calculatorId = Fixture().First(i => i.Title == "Calculator").Id;
         for (var i = 0; i < 5; i++)
@@ -201,7 +201,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void Golden_ComplaintCase_CodeSurfacesVsCode()
+    public void Golden_ComplaintCase_CodeSurfacesVisualStudioCode()
     {
         // Typing "code" should put Visual Studio Code first (word-boundary on "Code").
         AssertRank1("code", "Visual Studio Code");
@@ -215,11 +215,11 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void Golden_FrecencyReordersWithinTierOnly()
+    public void Golden_UsageHistoryReordersWithinTierOnly()
     {
         // Heavy use of Visual Studio Code (a word-boundary match for "co") must NOT lift it over
         // Command Prompt / Control Panel, which are prefix matches a whole tier above it.
-        // Frecency reorders within a tier; it can never cross a tier boundary.
+        // Usage history reorders within a tier; it can never cross a tier boundary.
         var history = EmptyHistory();
         var vsCodeId = Fixture().First(i => i.Title == "Visual Studio Code").Id;
         for (var i = 0; i < 50; i++)
@@ -232,7 +232,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void Golden_FrecencyBreaksTieWithinTier()
+    public void Golden_UsageHistoryBreaksTieWithinTier()
     {
         // "vs" is an acronym match for both Visual Studio Code and Visual Studio 2022 (same
         // tier). With no history they tie; the recently/repeatedly used one should climb to the
@@ -253,7 +253,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     public void Golden_ProviderHigherBreaksAnExactTie()
     {
         // Two providers surface an identically-titled "Settings" command. Everything else being
-        // equal (same tier, same lexical quality, no frecency), a provider marked Higher should
+        // equal (same tier, same lexical quality, no usage history), a provider marked Higher should
         // sort above the Normal one. Provider weight is a within-tier nudge for near-ties only.
         var alpha = new ListItemMock("Settings", "From provider Alpha", ProviderId: "alpha");
         var bravo = new ListItemMock("Settings", "From provider Bravo", ProviderId: "bravo");
@@ -287,12 +287,12 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     {
         // Even marked Higher, a word-boundary match (Visual Studio Code for "co") must stay
         // below a prefix match (Command Prompt). Provider weight is clamped within a tier.
-        Func<IListItem, ProviderSearchWeight> boostVsCode = item =>
+        Func<IListItem, ProviderSearchWeight> boostVisualStudioCode = item =>
             item is ListItemMock m && m.Title == "Visual Studio Code"
                 ? ProviderSearchWeight.Higher
                 : ProviderSearchWeight.Normal;
 
-        AssertRanksAbove("co", "Command Prompt", "Visual Studio Code", providerWeightLookup: boostVsCode);
+        AssertRanksAbove("co", "Command Prompt", "Visual Studio Code", providerWeightLookup: boostVisualStudioCode);
     }
 
     // Per-tier unit tests for MainListRanker.
@@ -380,7 +380,7 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     {
         // The core invariant: a higher tier with the WORST possible within-tier score still
         // outranks a lower tier with the BEST possible within-tier score. This is what makes
-        // "an exact match always beats a fuzzy one" true no matter how much frecency piles up.
+        // "an exact match always beats a fuzzy one" true no matter how much usage history piles up.
         RankTier[] ascending =
         {
             RankTier.FallbackFloor,
@@ -446,17 +446,17 @@ public partial class RelevanceHarnessTests : CommandPaletteUnitTestBase
     public void WithinTierScore_LexicalQualityLeads()
     {
         // More lexical quality raises the within-tier score, all else equal.
-        var lowLexical = MainListRanker.WithinTierScore(lexicalQuality: 5, frecencyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
-        var highLexical = MainListRanker.WithinTierScore(lexicalQuality: 6, frecencyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
+        var lowLexical = MainListRanker.WithinTierScore(lexicalQuality: 5, historyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
+        var highLexical = MainListRanker.WithinTierScore(lexicalQuality: 6, historyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
         Assert.IsTrue(highLexical > lowLexical, "Higher lexical quality should raise the within-tier score");
     }
 
     [TestMethod]
-    public void WithinTierScore_FrecencyBreaksTies()
+    public void WithinTierScore_UsageHistoryBreaksTies()
     {
-        var noFrecency = MainListRanker.WithinTierScore(lexicalQuality: 5, frecencyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
-        var withFrecency = MainListRanker.WithinTierScore(lexicalQuality: 5, frecencyWeight: 3, aliasSubstringBonus: 0, providerBonus: 0);
-        Assert.IsTrue(withFrecency > noFrecency, "Frecency should raise the within-tier score for otherwise-equal items");
+        var noUsageHistory = MainListRanker.WithinTierScore(lexicalQuality: 5, historyWeight: 0, aliasSubstringBonus: 0, providerBonus: 0);
+        var withUsageHistory = MainListRanker.WithinTierScore(lexicalQuality: 5, historyWeight: 3, aliasSubstringBonus: 0, providerBonus: 0);
+        Assert.IsTrue(withUsageHistory > noUsageHistory, "Usage history should raise the within-tier score for otherwise-equal items");
     }
 
     [TestMethod]

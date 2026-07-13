@@ -500,7 +500,7 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     public void ValidateUsageDoesNotCrossTierBoundary()
     {
         // "C" is a prefix of "Command Prompt" (Prefix tier) but only a word-boundary
-        // match for "Visual Studio Code" (AcronymWordBoundary tier). Frecency only
+        // match for "Visual Studio Code" (AcronymWordBoundary tier). Recent usage only
         // reorders items WITHIN a tier, so no amount of usage may lift a word-boundary
         // match above a prefix match. This is the core "logical ordering" contract.
         var items = CreateMockHistoryItems();

@@ -16,8 +16,8 @@ public record RecentCommandsManager : IRecentCommandsManager
     internal const double HalfLifeDays = 3.0;
 
     // Baseline points for a just-used command (recency == 1) before the frequency term. Kept
-    // near the previous top recency bucket so the frecency signal keeps roughly the same
-    // influence in the ranker's within-tier math (MainListRanker.FrecencyScale == 1.0).
+    // near the previous top recency bucket so the recent usage signal keeps roughly the same
+    // influence in the ranker's within-tier math (MainListRanker.RecentUsageScale == 1.0).
     internal const double BaseWeight = 10.0;
 
     // Points added per unit of log2(uses + 1), scaled by recency. log() keeps heavy usage
@@ -26,7 +26,7 @@ public record RecentCommandsManager : IRecentCommandsManager
 
     // Upper bound on the returned weight. Holds the signal in the ~0..70 range the previous
     // implementation produced, so tier ordering is unaffected (the tier always dominates and
-    // frecency only reorders within a tier).
+    // recent usage only reorders within a tier).
     internal const double MaxWeight = 70.0;
 
     // Retain a few hundred commands. Large enough to remember habitual commands across weeks
@@ -54,7 +54,7 @@ public record RecentCommandsManager : IRecentCommandsManager
     [JsonIgnore]
     private Dictionary<string, HistoryItem>? _index;
 
-    // Persisted so recent-command frecency (including the LastUsed timestamps) survives a
+    // Persisted so recent-command recent usage (including the LastUsed timestamps) survives a
     // restart. [JsonInclude] is required because the property is internal; without it the
     // source-generated serializer emits an empty object and history is silently dropped.
     // Old persisted state (an empty object) still deserializes fine - History stays empty.
@@ -104,7 +104,7 @@ public record RecentCommandsManager : IRecentCommandsManager
         => GetCommandHistoryWeight(commandId, DateTimeOffset.UtcNow);
 
     /// <summary>
-    /// Computes the time-decayed frecency weight for a command relative to <paramref name="now"/>.
+    /// Computes the time-decayed recent usage weight for a command relative to <paramref name="now"/>.
     /// Recency uses an exponential half-life decay and frequency uses log(uses); the two are
     /// combined so recency leads while frequency amplifies. The public overload evaluates at
     /// the current time; this overload exists so tests can inject a fixed evaluation time.

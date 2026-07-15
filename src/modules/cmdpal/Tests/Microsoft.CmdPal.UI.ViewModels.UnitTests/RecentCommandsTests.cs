@@ -205,10 +205,9 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     [TestMethod]
     public void ValidateLookupIndexStaysConsistentAcrossChanges()
     {
-        // The commandId lookup is backed by a cached index that must be invalidated whenever
-        // history changes (WithHistoryItem returns a new record, and a 'with' copy carries the
-        // old cached field over). Force the index to build on one instance, then mutate, and
-        // confirm each instance reports exactly its own history.
+        // The commandId lookup is backed by a cached index that must stay scoped to its own
+        // history snapshot. Force the index to build on one instance, then create a new
+        // snapshot, and confirm each instance reports exactly its own history.
         var now = new DateTimeOffset(2025, 6, 1, 0, 0, 0, TimeSpan.Zero);
         var first = new RecentCommandsManager().WithHistoryItem("alpha", now);
 

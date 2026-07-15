@@ -134,8 +134,9 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         // Exponential time decay: recency in (0, 1], halving every HalfLifeDays.
         var recency = Math.Pow(2.0, -ageDays / HalfLifeDays);
 
-        // Frequency via log2 so heavy usage helps but can't outrun recency.
-        var frequency = Math.Log2((double)entry.Uses + 1.0);
+        // Frequency via log2 so heavy usage helps but can't outrun recency. Clamp persisted
+        // negative values to zero so corrupt state cannot produce NaN.
+        var frequency = Math.Log2(Math.Max(0.0, (double)entry.Uses) + 1.0);
 
         var weight = recency * (BaseWeight + (FrequencyWeight * frequency));
 
@@ -167,7 +168,7 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         if (existing is not null)
         {
             newHistory = History.Remove(existing);
-            var updatedUses = existing.Uses == int.MaxValue ? int.MaxValue : existing.Uses + 1;
+            var updatedUses = existing.Uses == int.MaxValue ? int.MaxValue : Math.Max(0, existing.Uses) + 1;
             var updatedLastUsed = existing.LastUsed > now ? existing.LastUsed : now;
             var updated = existing with { Uses = updatedUses, LastUsed = updatedLastUsed };
             newHistory = newHistory.Insert(0, updated);

@@ -306,6 +306,23 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryWeightHandlesNegativeUseCount()
+    {
+        var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager
+        {
+            History = ImmutableList.Create(
+                new HistoryItem { CommandId = "corrupt", Uses = -5, LastUsed = now }),
+        };
+
+        var weight = history.GetCommandHistoryWeight("corrupt", now);
+        var updated = history.WithHistoryItem("corrupt", now.AddMinutes(1));
+
+        Assert.IsTrue(weight >= 0, "Negative persisted use counts should not produce NaN or negative weights");
+        Assert.AreEqual(1, updated.History[0].Uses, "Updating a negative persisted use count should recover from zero");
+    }
+
+    [TestMethod]
     public void ValidateHistoryUpdateDoesNotMoveLastUsedBackwards()
     {
         var newer = new DateTimeOffset(2025, 5, 2, 0, 0, 0, TimeSpan.Zero);

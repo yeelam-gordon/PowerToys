@@ -190,7 +190,7 @@ namespace newplus::utilities
                 hr = shell_windows->Item(v, &shell_window);
                 if (SUCCEEDED(hr) && shell_window)
                 {
-                    hr = shell_window->QueryInterface(&web_browser_app);
+                    hr = shell_window->QueryInterface(IID_PPV_ARGS(&web_browser_app));
                     if (SUCCEEDED(hr))
                     {
                         BSTR folder_view_location;
@@ -218,7 +218,7 @@ namespace newplus::utilities
         }
 
         CComPtr<IServiceProvider> service_provider;
-        if (FAILED(shell_window->QueryInterface(&service_provider)) || !service_provider)
+        if (FAILED(shell_window->QueryInterface(IID_PPV_ARGS(&service_provider))) || !service_provider)
         {
             return false;
         }
@@ -238,7 +238,7 @@ namespace newplus::utilities
         HWND shell_view_window_handle = nullptr;
         shell_view->GetWindow(&shell_view_window_handle);
         CComPtr<IFolderView> folder_view;
-        if (FAILED(shell_view->QueryInterface(&folder_view)) || !folder_view)
+        if (FAILED(shell_view->QueryInterface(IID_PPV_ARGS(&folder_view))) || !folder_view)
         {
             return false;
         }

@@ -124,6 +124,11 @@ namespace Community.PowerToys.Run.Plugin.VSCodeWorkspaces.WorkspacesHelper
 
         private string GetSharedStorageDbPath(VSCodeInstance vscodeInstance)
         {
+            if (string.IsNullOrWhiteSpace(vscodeInstance.AppData))
+            {
+                return string.Empty;
+            }
+
             var appDataDirectoryInfo = new DirectoryInfo(vscodeInstance.AppData);
             var portableDataDirectoryInfo = appDataDirectoryInfo.Parent;
             if (portableDataDirectoryInfo != null &&
@@ -137,6 +142,11 @@ namespace Community.PowerToys.Run.Plugin.VSCodeWorkspaces.WorkspacesHelper
             }
 
             var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            if (string.IsNullOrWhiteSpace(userProfile))
+            {
+                return string.Empty;
+            }
+
             var appDataDirectoryName = Path.GetFileName(Path.TrimEndingDirectorySeparator(vscodeInstance.AppData));
 
             var sharedStorageDirectory = appDataDirectoryName switch

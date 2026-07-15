@@ -335,6 +335,16 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryWeightHandlesInvalidLookupIds()
+    {
+        var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager().WithHistoryItem("valid", now);
+
+        Assert.AreEqual(0, history.GetCommandHistoryWeight(null!, now), "Null lookup ids should not throw");
+        Assert.AreEqual(0, history.GetCommandHistoryWeight(string.Empty, now), "Empty lookup ids should not build the index");
+    }
+
+    [TestMethod]
     public void ValidateHistorySerializationRoundTrips()
     {
         // The persisted history (see SettingsModel's JsonSerializable context) must round-trip,

@@ -114,6 +114,11 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
     /// </summary>
     internal int GetCommandHistoryWeight(string commandId, DateTimeOffset now)
     {
+        if (string.IsNullOrEmpty(commandId))
+        {
+            return 0;
+        }
+
         if (!Index.TryGetValue(commandId, out var entry))
         {
             return 0;

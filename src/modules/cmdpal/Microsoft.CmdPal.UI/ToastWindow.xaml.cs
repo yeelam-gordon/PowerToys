@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Globalization;
 using CommunityToolkit.Mvvm.Messaging;
 using CommunityToolkit.WinUI;
 using Microsoft.CmdPal.UI.Helpers;
@@ -146,10 +147,14 @@ public sealed partial class ToastWindow : TransparentWindow,
 
         try
         {
-            return Registry.GetValue(
-                @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\SystemSettings\ConfirmatorPosition",
-                "PositionIndex",
-                null) switch
+            int positionIndex = Convert.ToInt32(
+                Registry.GetValue(
+                    @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\SystemSettings\ConfirmatorPosition",
+                    "PositionIndex",
+                    null),
+                CultureInfo.InvariantCulture);
+
+            return positionIndex switch
             {
                 3 => ToastPosition.TopCenter,
                 2 => ToastPosition.TopLeft,

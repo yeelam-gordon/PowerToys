@@ -1463,6 +1463,8 @@ static void HandleDragMove(POINT pt)
             g_pendingSnapRect.top,
             g_pendingSnapRect.right - g_pendingSnapRect.left,
             g_pendingSnapRect.bottom - g_pendingSnapRect.top);
+        g_dragStart = pt;
+        GetWindowRect(g_dragTarget, &g_dragWndRect);
         return;
     }
 

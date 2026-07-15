@@ -6164,7 +6164,7 @@ Text uses the current drawing color.</value>
   </data>
   <data name="GrabAndMove_UseScreenEdgeMaximize.Header" xml:space="preserve">
     <value>Maximize windows at the top screen edge while dragging</value>
-    <comment>When enabled, holding the modifier key and dragging a window to the top screen edge maximizes it.</comment>
+    <comment>When enabled, holding the modifier key and dragging a window to the top non-corner screen edge maximizes or restores it; top corners can snap if screen edge snap is enabled.</comment>
   </data>
   <data name="GrabAndMove_UseScreenEdgeMaximize.Description" xml:space="preserve">
     <value>Hold the modifier key and drag to the top of a screen to maximize or restore the window</value>

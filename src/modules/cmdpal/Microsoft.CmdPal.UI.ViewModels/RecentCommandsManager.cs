@@ -7,7 +7,7 @@ using System.Text.Json.Serialization;
 
 namespace Microsoft.CmdPal.UI.ViewModels;
 
-public record RecentCommandsManager : IRecentCommandsManager
+public class RecentCommandsManager : IRecentCommandsManager
 {
     // Recency half-life: a command's recency contribution halves every this many days. Three
     // days balances an interactive launcher's usage rhythm - commands touched in the last few
@@ -67,8 +67,7 @@ public record RecentCommandsManager : IRecentCommandsManager
             _history = value;
 
             // Invalidate the cached lookup so it is rebuilt from the new list on next use.
-            // A record 'with' copy carries over the old field, so this reset is what keeps
-            // the index from going stale after History changes.
+            // This reset keeps the index from going stale after History changes.
             _index = null;
         }
     }
@@ -168,7 +167,7 @@ public record RecentCommandsManager : IRecentCommandsManager
             newHistory = newHistory.RemoveRange(MaxHistoryEntries, newHistory.Count - MaxHistoryEntries);
         }
 
-        return this with { History = newHistory };
+        return new RecentCommandsManager { History = newHistory };
     }
 }
 

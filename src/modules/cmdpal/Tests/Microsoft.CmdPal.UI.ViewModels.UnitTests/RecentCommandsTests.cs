@@ -289,18 +289,20 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
-    public void ValidateHistoryWeightHandlesMaxUseCount()
+    public void ValidateHistoryWeightHandlesMaximumUseCount()
     {
         var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
         var history = new RecentCommandsManager
         {
             History = ImmutableList.Create(
-                new HistoryItem { CommandId = "maxed", Uses = int.MaxValue, LastUsed = now }),
+                new HistoryItem { CommandId = "maximum", Uses = int.MaxValue, LastUsed = now }),
         };
 
-        var weight = history.GetCommandHistoryWeight("maxed", now);
+        var weight = history.GetCommandHistoryWeight("maximum", now);
+        var incremented = history.WithHistoryItem("maximum", now.AddMinutes(1));
 
         Assert.AreEqual(RecentCommandsManager.MaxWeight, weight, "Max use counts should not overflow before log scaling");
+        Assert.AreEqual(int.MaxValue, incremented.History[0].Uses, "Max use counts should saturate when updated");
     }
 
     [TestMethod]

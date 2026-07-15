@@ -125,7 +125,7 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         var recency = Math.Pow(2.0, -ageDays / HalfLifeDays);
 
         // Frequency via log2 so heavy usage helps but can't outrun recency.
-        var frequency = Math.Log((double)entry.Uses + 1.0, 2.0);
+        var frequency = Math.Log2((double)entry.Uses + 1.0);
 
         var weight = recency * (BaseWeight + (FrequencyWeight * frequency));
 
@@ -152,7 +152,8 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         if (existing is not null)
         {
             newHistory = History.Remove(existing);
-            var updated = existing with { Uses = existing.Uses + 1, LastUsed = now };
+            var updatedUses = existing.Uses == int.MaxValue ? int.MaxValue : existing.Uses + 1;
+            var updated = existing with { Uses = updatedUses, LastUsed = now };
             newHistory = newHistory.Insert(0, updated);
         }
         else

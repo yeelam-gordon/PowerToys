@@ -49,11 +49,11 @@ public partial class PowerAccent : IDisposable
         LoadUnicodeInfoCache();
 
         _keyboardListener = new KeyboardListener();
-        _keyboardListener.InitHook();
         _settingService = new SettingsService(_keyboardListener);
         _usageInfo = new CharactersUsageInfo();
 
         SetEvents();
+        _keyboardListener.InitHook();
     }
 
     private void LoadUnicodeInfoCache()

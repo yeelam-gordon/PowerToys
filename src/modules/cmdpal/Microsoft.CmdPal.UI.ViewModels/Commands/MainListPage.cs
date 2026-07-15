@@ -711,8 +711,7 @@ public sealed partial class MainListPage : DynamicListPage,
         var withinTier = MainListRanker.WithinTierScore(
             lexicalQuality,
             frecencyWeight,
-            aliasSubstringBonus,
-            providerBonus: 0.0);
+            aliasSubstringBonus);
 
         return MainListRanker.Pack(tier, withinTier);
     }

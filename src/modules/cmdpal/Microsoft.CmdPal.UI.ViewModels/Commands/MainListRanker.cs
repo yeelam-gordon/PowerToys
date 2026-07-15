@@ -64,7 +64,7 @@ internal static class MainListRanker
 
     /// <summary>
     /// Classifies an item into a relevance tier based purely on the textual relationship
-    /// between the raw query and the title. Frecency/provider signals are intentionally
+    /// between the raw query and the title. Frecency signals are intentionally
     /// not considered here - they only affect the within-tier score.
     /// </summary>
     /// <param name="query">The raw query text.</param>
@@ -133,19 +133,16 @@ internal static class MainListRanker
 
     /// <summary>
     /// Composes the within-tier score from normalized signals. Lexical quality dominates;
-    /// frecency, the alias-substring nudge, and the extension (provider) bonus only
-    /// reorder items that already share a tier.
+    /// frecency and the alias-substring nudge only reorder items that already share a tier.
     /// </summary>
     public static double WithinTierScore(
         double lexicalQuality,
         double frecencyWeight,
-        double aliasSubstringBonus,
-        double providerBonus)
+        double aliasSubstringBonus)
     {
         return (lexicalQuality * LexicalScale)
             + (frecencyWeight * FrecencyScale)
-            + aliasSubstringBonus
-            + providerBonus;
+            + aliasSubstringBonus;
     }
 
     /// <summary>
@@ -224,9 +221,9 @@ internal static class MainListRanker
 /// <summary>
 /// Relevance tiers for main/root page ranking, from worst (lowest value) to best
 /// (highest value). Ranking is <b>lexicographic</b>: an item in a higher tier always
-/// sorts above an item in a lower tier. Signals such as frecency and per-provider
-/// weighting only reorder items <i>within</i> the same tier - they can never promote an
-/// item across a tier boundary. This is what keeps ordering predictable ("an exact match
+/// sorts above an item in a lower tier. Signals such as frecency and alias weighting only
+/// reorder items <i>within</i> the same tier - they can never promote an item across a tier
+/// boundary. This is what keeps ordering predictable ("an exact match
 /// always beats a fuzzy one").
 /// </summary>
 internal enum RankTier

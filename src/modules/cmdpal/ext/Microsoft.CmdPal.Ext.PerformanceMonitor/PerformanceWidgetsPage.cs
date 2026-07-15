@@ -1343,7 +1343,7 @@ internal sealed partial class SystemTemperatureWidgetPage : WidgetPage, IDisposa
                 return;
             }
 
-            ContentData["cpuTemperature"] = $"{stats.CpuTemperatureCelsius:F1} °C";
+            ContentData["cpuTemperature"] = string.Format(CultureInfo.CurrentCulture, "{0:0.#} °C", stats.CpuTemperatureCelsius);
             ContentData["temperatureSource"] = Resources.GetResource("Temperature_Source_Acpi");
         }
         catch (Exception e)

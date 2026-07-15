@@ -438,4 +438,5 @@ actioncenter
 
 # Performance / hardware terms
 ACPI
+Acpi
 PDH

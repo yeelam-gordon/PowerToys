@@ -588,6 +588,9 @@ namespace UpdatingUnitTests
             Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"PowerToysSetup-0.92.0-x64.zip"));
             Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L""));
             Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L".."));
+
+            const std::wstring embeddedNullFilename{ L"PowerToysSetup-0.92.0-x64.exe\0.msi", 34 };
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(embeddedNullFilename));
         }
 
         // Tests BuildStage2Arguments: output contains the stage 2 flag, installer path,

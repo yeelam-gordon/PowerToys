@@ -55,7 +55,7 @@ namespace updating
             return false;
         }
 
-        if (filename.find_first_of(L"\\/:") != std::wstring_view::npos)
+        if (filename.find_first_of(L"\\/:") != std::wstring_view::npos || filename.find(L'\0') != std::wstring_view::npos)
         {
             return false;
         }

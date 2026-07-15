@@ -176,8 +176,11 @@ public sealed partial class ScoringThroughputHarnessTests
         IRecentCommandsManager history,
         IPrecomputedFuzzyMatcher matcher,
         Func<IListItem, ProviderSearchWeight>? providerWeightLookup = null)
-        => (in FuzzyQuery query, IListItem item) =>
-            MainListPage.ScoreTopLevelItem(query, item, history, matcher, providerWeightLookup);
+    {
+        var scoringNow = DateTimeOffset.UtcNow;
+        return (in FuzzyQuery query, IListItem item) =>
+            MainListPage.ScoreTopLevelItem(query, item, history, matcher, providerWeightLookup, scoringNow);
+    }
 
     // Median-of-averaged timing: warm up, then run the action MeasuredIterations times and return
     // the average elapsed milliseconds. Report-only - never asserted against an absolute threshold.

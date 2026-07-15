@@ -45,6 +45,13 @@ public class WorkspaceItemDesignTests : WorkspacesUiAutomationBase
 
         var item = GetFirstWorkspaceItem();
         Assert.IsNotNull(item, "Should have at least one workspace item");
+
+        var itemName = item.GetAttribute("Name") ?? string.Empty;
+        var textBlocks = item.FindAll<TextBlock>(By.ClassName("TextBlock"));
+        bool displaysName = itemName.Contains("DesignTest", System.StringComparison.OrdinalIgnoreCase)
+            || textBlocks.Any(t => (t.GetAttribute("Name") ?? string.Empty).Contains("DesignTest", System.StringComparison.OrdinalIgnoreCase));
+
+        Assert.IsTrue(displaysName, "Workspace item should display the workspace name");
     }
 
     [TestMethod("WorkspaceItem.HasLaunchButton")]

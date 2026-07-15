@@ -88,9 +88,7 @@ public class EditorMainWindowDesignTests : WorkspacesUiAutomationBase
         SendKeys(Key.Tab);
         Task.Delay(500).Wait();
 
-        // At least one focusable element should have focus
-        // This verifies keyboard navigation isn't broken
-        Assert.IsTrue(true, "Tab navigation executed without crash");
+        Assert.Inconclusive("A reliable focused-element assertion is not available in the current UI test harness.");
     }
 
     [TestMethod("MainWindow.Accessibility.CreateButtonHasAutomationName")]

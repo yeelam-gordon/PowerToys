@@ -54,6 +54,14 @@ namespace WorkspacesEditor.ViewModels
         [ObservableProperty]
         private string _emptyWorkspacesViewMessage;
 
+        [ObservableProperty]
+        private string _searchTerm;
+
+        partial void OnSearchTermChanged(string value)
+        {
+            RefreshWorkspacesView();
+        }
+
         public void RefreshWorkspacesView()
         {
             IEnumerable<Project> workspaces = GetFilteredWorkspaces();
@@ -92,7 +100,25 @@ namespace WorkspacesEditor.ViewModels
 
         private IEnumerable<Project> GetFilteredWorkspaces()
         {
-            return Workspaces;
+            if (string.IsNullOrEmpty(SearchTerm))
+            {
+                return Workspaces;
+            }
+
+            return Workspaces.Where(x =>
+            {
+                if (x.Name != null && x.Name.Contains(SearchTerm, StringComparison.InvariantCultureIgnoreCase))
+                {
+                    return true;
+                }
+
+                if (x.Applications == null)
+                {
+                    return false;
+                }
+
+                return x.Applications.Any(app => app.AppName != null && app.AppName.Contains(SearchTerm, StringComparison.InvariantCultureIgnoreCase));
+            });
         }
 
         /// <summary>
@@ -119,7 +145,7 @@ namespace WorkspacesEditor.ViewModels
                         return false;
                     }
 
-                    return x.Applications.Any(app => app.AppName.Contains(query, StringComparison.InvariantCultureIgnoreCase));
+                    return x.Applications.Any(app => app.AppName != null && app.AppName.Contains(query, StringComparison.InvariantCultureIgnoreCase));
                 })
                 .OrderBy(x => x.Name)
                 .ToList();
@@ -174,6 +200,11 @@ namespace WorkspacesEditor.ViewModels
             if (_editedProject == null)
             {
                 return;
+            }
+
+            if (!string.Equals(_editedProject.Name, projectToSave.Name, StringComparison.Ordinal))
+            {
+                RemoveShortcut(_editedProject);
             }
 
             _editedProject.Name = projectToSave.Name;
@@ -271,6 +302,7 @@ namespace WorkspacesEditor.ViewModels
         public void SwitchToMainView()
         {
             StrongReferenceMessenger.Default.Send(new GoBackMessage());
+            SearchTerm = string.Empty;
             _lastUpdatedTimer.Start();
             _editedProject = null;
         }

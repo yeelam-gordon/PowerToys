@@ -13,6 +13,8 @@
     <OutputType>Exe</OutputType>
     <UseWinUI>true</UseWinUI>
     <Platforms>x64;ARM64</Platforms>
+    <CsWinRTIncludes>PowerToys.GPOWrapper;PowerToys.Interop;PowerToys.ZoomItSettingsInterop</CsWinRTIncludes>
+    <NoWarn>$(NoWarn);CS0436</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

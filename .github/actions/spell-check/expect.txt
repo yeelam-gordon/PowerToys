@@ -589,6 +589,8 @@ formatetc
 FORPARSING
 foundrylocal
 framechanged
+frecency
+frecent
 frm
 FROMTOUCH
 fsanitize
@@ -626,6 +628,7 @@ GETSTICKYKEYS
 GETTASKBARPOS
 GETTEXTLENGTH
 GETWORKAREA
+gfb
 gfx
 GHND
 gitmodules
@@ -1535,6 +1538,7 @@ registryroot
 regkey
 regroot
 regsvr
+reimplementation
 REINSTALLMODE
 releaseblog
 reloadable
@@ -2041,6 +2045,7 @@ vpaddlq
 vqsubq
 vreinterpretq
 VSC
+vsc
 VSCBD
 vscdb
 vsconfig

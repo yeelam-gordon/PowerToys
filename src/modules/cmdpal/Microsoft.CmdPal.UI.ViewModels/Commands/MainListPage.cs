@@ -557,6 +557,7 @@ public sealed partial class MainListPage : DynamicListPage,
 
                 // Drop any pending settled-search telemetry so a cleared query never emits.
                 _searchTelemetryDebounce.Cancel();
+                ClearPendingSearchTelemetry();
                 _lastSearchViewItems = null;
                 _lastScoredGlobalFallbacks = null;
 
@@ -667,7 +668,7 @@ public sealed partial class MainListPage : DynamicListPage,
         var settings = _settingsService.Settings;
         var scoringNow = DateTimeOffset.UtcNow;
 
-        var searchQuery = matcher.PrecomputeQuery(SearchText);
+        var searchQuery = matcher.PrecomputeQuery(newSearch);
 
         // Commands resolve their per-provider weight from the captured settings. Every installed app
         // belongs to the well-known AllApps provider, so its weight is constant across the whole apps
@@ -971,6 +972,14 @@ public sealed partial class MainListPage : DynamicListPage,
         }
 
         _searchTelemetryDebounce.Invoke();
+    }
+
+    private void ClearPendingSearchTelemetry()
+    {
+        lock (_searchTelemetryLock)
+        {
+            _pendingSearchTelemetry = default;
+        }
     }
 
     private void EmitSearchResultsTelemetry()

@@ -56,13 +56,13 @@ namespace Microsoft.CmdPal.Ext.TimeDate.UnitTests
 
         [DataTestMethod]
 
-        // US system: the week containing January 1st is always week 1 (Excel WEEKNUM option 1)
+        // US system: the week containing January 1st is always week 1 (Excel week-number option 1)
         [DataRow(2021, 1, 1, 1)] // ISO says 53 here; US says 1
         [DataRow(2016, 1, 1, 1)] // ISO says 53 here; US says 1
         [DataRow(2024, 12, 30, 53)] // ISO says 1 here; US says 53
         [DataRow(2026, 12, 31, 53)]
         [DataRow(2026, 1, 4, 2)] // First Sunday of 2026 starts week 2
-        public void UsSystemMatchesExcelWeeknumOption1(int year, int month, int day, int expectedWeek)
+        public void UsSystemMatchesExcelWeekNumberOption1(int year, int month, int day, int expectedWeek)
         {
             var week = TimeAndDateHelper.GetDockWeekOfYear(new DateTime(year, month, day), UsSettings());
 
@@ -72,10 +72,10 @@ namespace Microsoft.CmdPal.Ext.TimeDate.UnitTests
         [DataTestMethod]
 
         // Custom system with first day Monday and 'week 1 contains January 1st'
-        // (Excel WEEKNUM option 2/11): January 1st is always week 1.
+        // (Excel week-number option 2/11): January 1st is always week 1.
         [DataRow(2021, 1, 1, 1)]
         [DataRow(2016, 1, 1, 1)]
-        public void CustomSystemMatchesExcelWeeknumOption2(int year, int month, int day, int expectedWeek)
+        public void CustomSystemMatchesExcelWeekNumberOption2(int year, int month, int day, int expectedWeek)
         {
             var settings = new Settings(firstWeekOfYear: 0, firstDayOfWeek: 1, clockBandDateMode: 3);
 
@@ -131,15 +131,15 @@ namespace Microsoft.CmdPal.Ext.TimeDate.UnitTests
         }
 
         [TestMethod]
-        public void CustomFormatWoyPlaceholderFollowsTheFirstWeekAndFirstDaySettings()
+        public void CustomFormatWeekOfYearPlaceholderFollowsTheFirstWeekAndFirstDaySettings()
         {
             // WOY in the custom format uses the first week/first day settings, matching
             // the behavior of the 'Custom formats' search results.
-            var settings = new Settings(firstWeekOfYear: 2, firstDayOfWeek: 1, clockBandDateMode: 5, customDateFormatInClockBand: "\\WWOY");
+            var settings = new Settings(firstWeekOfYear: 2, firstDayOfWeek: 1, clockBandDateMode: 5, customDateFormatInClockBand: "\\W WOY");
 
             var line = TimeAndDateHelper.GetClockBandDateLine(new DateTime(2026, 7, 6), settings);
 
-            Assert.AreEqual("W28", line);
+            Assert.AreEqual("W 28", line);
         }
     }
 }

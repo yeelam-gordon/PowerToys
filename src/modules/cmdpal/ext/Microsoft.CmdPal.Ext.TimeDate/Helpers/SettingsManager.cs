@@ -149,7 +149,7 @@ public class SettingsManager : JsonSettingsManager, ISettingsInterface
 
     public int ClockBandDateMode => ParseIntSetting(_clockBandDateMode.Value, 0);
 
-    private static int ParseIntSetting(string value, int fallback)
+    private static int ParseIntSetting(string? value, int fallback)
     {
         if (string.IsNullOrEmpty(value))
         {

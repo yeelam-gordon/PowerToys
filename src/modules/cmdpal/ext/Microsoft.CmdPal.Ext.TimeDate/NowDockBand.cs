@@ -52,7 +52,7 @@ internal sealed partial class NowDockBand : ListItem, IDisposable
             Name = Resources.timedate_show_notification_center_command_name,
             Result = CommandResult.Dismiss(),
         };
-        _noOpCommand = new NoOpCommand() { Id = "com.microsoft.cmdpal.timedate.dockBand", Name = Resources.Microsoft_plugin_timedate_dock_band_title, Icon = null };
+        _noOpCommand = new NoOpCommand() { Id = "com.microsoft.cmdpal.timedate.dockBand", Name = Resources.Microsoft_plugin_timedate_dock_band_title };
         _copyTimeCommand = new CopyTextCommand(string.Empty) { Name = Resources.timedate_copy_time_command_name };
         _copyDateCommand = new CopyTextCommand(string.Empty) { Name = Resources.timedate_copy_date_command_name };
         _copyWeekNumberCommand = new CopyTextCommand(string.Empty) { Name = Resources.timedate_copy_week_number_command_name };
@@ -176,7 +176,7 @@ internal sealed partial class NowDockBand : ListItem, IDisposable
         Subtitle = subtitleString;
 
         _copyTimeCommand.Text = timeString;
-        _copyDateCommand.Text = dateString;
+        _copyDateCommand.Text = subtitleString;
 
         var notificationCenterOnClick = _settings.ClockBandOpensNotificationCenter;
         if (_notificationCenterOnClick != notificationCenterOnClick)

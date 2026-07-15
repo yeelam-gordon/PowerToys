@@ -503,21 +503,19 @@ internal static class TimeAndDateHelper
             {
                 value = dtObject.ToString(value, CultureInfo.CurrentCulture);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Unlike a transient search result, the dock shows this string permanently,
                 // so an invalid format falls back to the plain system date instead of
-                // showing the raw pattern text.
-                Logger.LogWarning($"Invalid custom Clock band format '{formatSyntax}': {ex.Message}");
+                // showing the raw pattern text or emitting repeated timer logs.
                 return false;
             }
 
             result = value;
             return true;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            Logger.LogError($"Failed to format the custom Clock band format '{formatSyntax}': {ex.Message}");
             return false;
         }
     }

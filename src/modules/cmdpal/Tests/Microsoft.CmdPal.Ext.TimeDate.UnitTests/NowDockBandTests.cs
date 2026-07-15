@@ -331,4 +331,14 @@ public class NowDockBandTests
         Assert.IsNotNull(copyWeekCommand);
         Assert.AreEqual(FixedTimeWeek(), copyWeekCommand.Text);
     }
+
+    [TestMethod]
+    public void CopyDateCommandHoldsRenderedDateLine()
+    {
+        var settings = new Settings(clockBandDateMode: 4);
+
+        _band = new NowDockBand(settings, clock: () => FixedTime);
+
+        Assert.AreEqual(_band.Subtitle, _band.CopyDateCommand.Text);
+    }
 }

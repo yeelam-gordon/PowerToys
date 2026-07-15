@@ -246,7 +246,7 @@ internal static class MainListRanker
 /// item across a tier boundary. This is what keeps ordering predictable ("an exact match
 /// always beats a fuzzy one").
 /// </summary>
-public enum RankTier
+internal enum RankTier
 {
     /// <summary>No match. The item should be filtered out.</summary>
     None = 0,

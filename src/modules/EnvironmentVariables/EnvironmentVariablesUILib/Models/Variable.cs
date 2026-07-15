@@ -144,12 +144,14 @@ namespace EnvironmentVariablesUILib.Models
                             {
                                 var variableToRestore = new Variable(clone.Name, backupVariable.Values, backupVariable.ParentType);
 
-                                if (!EnvironmentVariablesHelper.UnsetBackupVariableWithoutNotify(backupVariable))
+                                if (EnvironmentVariablesHelper.SetProfileVariableWithoutNotify(variableToRestore))
                                 {
-                                    LoggerInstance.Logger.LogError("Failed to unset backup variable.");
+                                    if (!EnvironmentVariablesHelper.UnsetBackupVariableWithoutNotify(backupVariable))
+                                    {
+                                        LoggerInstance.Logger.LogError("Failed to unset backup variable.");
+                                    }
                                 }
-
-                                if (!EnvironmentVariablesHelper.SetProfileVariableWithoutNotify(variableToRestore))
+                                else
                                 {
                                     LoggerInstance.Logger.LogError("Failed to restore backup variable.");
                                 }

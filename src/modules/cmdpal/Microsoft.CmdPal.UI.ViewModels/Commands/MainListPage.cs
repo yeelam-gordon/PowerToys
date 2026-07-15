@@ -45,7 +45,6 @@ public sealed partial class MainListPage : DynamicListPage,
     private readonly AliasManager _aliasManager;
     private readonly ISettingsService _settingsService;
     private readonly IAppStateService _appStateService;
-    private readonly ScoringFunction<IListItem> _scoringFunction;
     private readonly ScoringFunction<IListItem> _fallbackScoringFunction;
     private readonly IFuzzyMatcherProvider _fuzzyMatcherProvider;
 
@@ -100,7 +99,6 @@ public sealed partial class MainListPage : DynamicListPage,
         _appStateService = appStateService;
         _tlcManager = topLevelCommandManager;
         _fuzzyMatcherProvider = fuzzyMatcherProvider;
-        _scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current);
         _fallbackScoringFunction = (in _, item) => ScoreFallbackItem(item, _settingsService.Settings.FallbackRanks);
 
         _tlcManager.PropertyChanged += TlcManager_PropertyChanged;
@@ -563,9 +561,11 @@ public sealed partial class MainListPage : DynamicListPage,
             }
 
             var searchQuery = _fuzzyMatcherProvider.Current.PrecomputeQuery(SearchText);
+            var scoreNow = DateTimeOffset.UtcNow;
+            ScoringFunction<IListItem> scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current, scoreNow);
 
             // Produce a list of everything that matches the current filter.
-            _filteredItems = InternalListHelpers.FilterListWithScores(newFilteredItems, searchQuery, _scoringFunction);
+            _filteredItems = InternalListHelpers.FilterListWithScores(newFilteredItems, searchQuery, scoringFunction);
 
             if (token.IsCancellationRequested)
             {
@@ -573,7 +573,7 @@ public sealed partial class MainListPage : DynamicListPage,
             }
 
             IEnumerable<IListItem> newFallbacksForScoring = commands.Where(s => s.IsFallback && configuredGlobalFallbackIds.Contains(s.Id));
-            _scoredFallbackItems = InternalListHelpers.FilterListWithScores(newFallbacksForScoring, searchQuery, _scoringFunction);
+            _scoredFallbackItems = InternalListHelpers.FilterListWithScores(newFallbacksForScoring, searchQuery, scoringFunction);
 
             if (token.IsCancellationRequested)
             {
@@ -590,7 +590,7 @@ public sealed partial class MainListPage : DynamicListPage,
             // Produce a list of filtered apps with the appropriate limit
             if (newApps.Any())
             {
-                _filteredApps = InternalListHelpers.FilterListWithScores(newApps, searchQuery, _scoringFunction);
+                _filteredApps = InternalListHelpers.FilterListWithScores(newApps, searchQuery, scoringFunction);
 
                 if (token.IsCancellationRequested)
                 {
@@ -641,6 +641,14 @@ public sealed partial class MainListPage : DynamicListPage,
         IListItem topLevelOrAppItem,
         IRecentCommandsManager history,
         IPrecomputedFuzzyMatcher precomputedFuzzyMatcher)
+        => ScoreTopLevelItem(in query, topLevelOrAppItem, history, precomputedFuzzyMatcher, DateTimeOffset.UtcNow);
+
+    private static int ScoreTopLevelItem(
+        in FuzzyQuery query,
+        IListItem topLevelOrAppItem,
+        IRecentCommandsManager history,
+        IPrecomputedFuzzyMatcher precomputedFuzzyMatcher,
+        DateTimeOffset now)
     {
         var title = topLevelOrAppItem.Title;
         if (string.IsNullOrWhiteSpace(title))
@@ -705,7 +713,9 @@ public sealed partial class MainListPage : DynamicListPage,
             return 0;
         }
 
-        var frecencyWeight = history.GetCommandHistoryWeight(id);
+        var frecencyWeight = history is RecentCommandsManager manager
+            ? manager.GetCommandHistoryWeight(id, now)
+            : history.GetCommandHistoryWeight(id);
         var aliasSubstringBonus = isAliasSubstringMatch && !isAliasMatch ? MainListRanker.AliasSubstringBonus : 0.0;
 
         var withinTier = MainListRanker.WithinTierScore(

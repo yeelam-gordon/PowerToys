@@ -135,8 +135,8 @@ namespace Peek.Common.UnitTests
 
         /// <summary>
         /// Product code: MathHelper.Modulo(int, int) — zero divisor
-        /// What: Documents that dividing by zero throws DivideByZeroException
-        /// Why: Edge case — callers must handle zero divisor; the method does not guard against it
+        /// What: Documents that dividing by zero throws ArgumentOutOfRangeException
+        /// Why: Edge case — callers must pass a positive divisor because the method rejects zero
         /// </summary>
         [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]

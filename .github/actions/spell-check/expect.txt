@@ -590,6 +590,7 @@ formatetc
 FORPARSING
 foundrylocal
 framechanged
+frecency
 frm
 FROMTOUCH
 fsanitize

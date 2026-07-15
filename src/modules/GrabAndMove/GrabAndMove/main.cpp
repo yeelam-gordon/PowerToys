@@ -309,7 +309,7 @@ static RECT GetWindowRectForVisibleFrame(HWND hwnd, const RECT& desiredFrameRect
     };
 }
 
-static bool SetWindowVisibleFrameToRect(HWND hwnd, const RECT& desiredFrameRect, UINT flags = 0)
+static bool SetWindowVisibleFrameToRect(HWND hwnd, const RECT& desiredFrameRect, UINT flags = SWP_ASYNCWINDOWPOS)
 {
     RECT adjustedRect = GetWindowRectForVisibleFrame(hwnd, desiredFrameRect);
     const int w = adjustedRect.right - adjustedRect.left;

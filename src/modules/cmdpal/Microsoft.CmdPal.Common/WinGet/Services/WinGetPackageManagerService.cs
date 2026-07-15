@@ -531,7 +531,17 @@ public sealed class WinGetPackageManagerService : IWinGetPackageManagerService
         {
             result = await task.ConfigureAwait(false);
         }
-        catch (Exception ex) when (ex is OperationCanceledException or COMException or InvalidOperationException)
+        catch (OperationCanceledException)
+        {
+            ClearCachedCompositeCatalogTask(includeStoreCatalog, searchBehavior, task);
+            throw;
+        }
+        catch (COMException)
+        {
+            ClearCachedCompositeCatalogTask(includeStoreCatalog, searchBehavior, task);
+            throw;
+        }
+        catch (InvalidOperationException)
         {
             ClearCachedCompositeCatalogTask(includeStoreCatalog, searchBehavior, task);
             throw;

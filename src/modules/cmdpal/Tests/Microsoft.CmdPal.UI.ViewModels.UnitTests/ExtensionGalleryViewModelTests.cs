@@ -514,7 +514,7 @@ public class ExtensionGalleryViewModelTests
                 "store-only",
                 "Store Only Extension",
                 "Author",
-                storeId: "9NSTOREONLY"));
+                storeId: "StoreOnlyPackage"));
 
         var extensionService = new Mock<IExtensionService>();
         extensionService
@@ -551,7 +551,7 @@ public class ExtensionGalleryViewModelTests
         Assert.IsTrue(entry.IsInstalledStateKnown);
         winGetService.Verify(
             s => s.GetStorePackagesByIdAsync(
-                It.Is<IEnumerable<string>>(ids => ids.Count() == 1 && ids.Single() == "9NSTOREONLY"),
+                It.Is<IEnumerable<string>>(ids => ids.Count() == 1 && ids.Single() == "StoreOnlyPackage"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

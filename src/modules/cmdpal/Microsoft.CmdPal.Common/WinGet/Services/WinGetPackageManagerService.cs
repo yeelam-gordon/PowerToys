@@ -248,7 +248,7 @@ public sealed class WinGetPackageManagerService : IWinGetPackageManagerService
                         throw new InvalidOperationException($"Microsoft Store package lookup failed for '{id}': {findResult.Status}");
                     }
 
-                    if (findResult.Matches.Count > 0 )
+                    if (findResult.Matches.Count > 0)
                     {
                         var package = findResult.Matches[0].CatalogPackage;
                         return (id, package);
@@ -526,7 +526,17 @@ public sealed class WinGetPackageManagerService : IWinGetPackageManagerService
             }
         }
 
-        var result = await task.ConfigureAwait(false);
+        WinGetQueryResult<PackageCatalog> result;
+        try
+        {
+            result = await task.ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is OperationCanceledException or COMException or InvalidOperationException)
+        {
+            ClearCachedCompositeCatalogTask(includeStoreCatalog, searchBehavior, task);
+            throw;
+        }
+
         if (!result.IsSuccess || result.Value is null)
         {
             ClearCachedCompositeCatalogTask(includeStoreCatalog, searchBehavior, task);

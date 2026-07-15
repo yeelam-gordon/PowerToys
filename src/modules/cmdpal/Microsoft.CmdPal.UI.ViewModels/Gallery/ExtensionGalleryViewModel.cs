@@ -49,6 +49,12 @@ public sealed partial class ExtensionGalleryViewModel : ObservableObject, IDispo
             new EventId(3, nameof(LogCheckWinGetPackageStatusError)),
             "Failed to check WinGet package status");
 
+    private static readonly Action<ILogger, Exception?> LogCheckStorePackageStatusError =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(4, nameof(LogCheckStorePackageStatusError)),
+            "Failed to check Microsoft Store package status");
+
     private readonly IExtensionGalleryService _galleryService;
     private readonly IExtensionService _extensionService;
     private readonly ILogger<ExtensionGalleryViewModel> _logger;
@@ -516,7 +522,7 @@ public sealed partial class ExtensionGalleryViewModel : ObservableObject, IDispo
             }
             catch (Exception ex)
             {
-                LogCheckWinGetPackageStatusError(_logger, ex);
+                LogCheckStorePackageStatusError(_logger, ex);
             }
         }
     }

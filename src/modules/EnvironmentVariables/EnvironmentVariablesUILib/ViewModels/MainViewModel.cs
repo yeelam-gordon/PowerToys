@@ -168,7 +168,15 @@ namespace EnvironmentVariablesUILib.ViewModels
         private void DisableLoadedProfile(ProfileVariablesSet profile, EnvironmentState environmentState)
         {
             EnvironmentState = environmentState;
-            profile.UnApply().GetAwaiter().GetResult();
+            try
+            {
+                profile.UnApply().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Logger.LogError("Failed to unapply disabled profile during profile load.", ex);
+            }
+
             profile.PropertyChanged -= Profile_PropertyChanged;
             profile.IsEnabled = false;
             profile.PropertyChanged += Profile_PropertyChanged;

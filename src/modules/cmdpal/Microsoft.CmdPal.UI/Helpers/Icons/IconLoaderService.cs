@@ -159,6 +159,7 @@ internal sealed partial class IconLoaderService : IIconLoaderService
 
         if (!string.IsNullOrEmpty(iconString))
         {
+            iconString = TryGetPngFallbackPath(iconString) ?? iconString;
             return await _dispatcherQueue
                 .EnqueueAsync(() => GetStringIconSource(iconString, fontFamily, scaledSize), LoadingPriorityOnDispatcher)
                 .ConfigureAwait(false);

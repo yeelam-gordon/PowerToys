@@ -1401,6 +1401,7 @@ POWERTOYNAME
 powertoyssetup
 powertoysusersetup
 Powrprof
+powrprof
 ppenum
 ppidl
 pprm

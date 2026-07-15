@@ -4,6 +4,7 @@
 
 using System;
 using System.Threading;
+using Microsoft.CmdPal.Common;
 using Timer = System.Timers.Timer;
 
 namespace Microsoft.CmdPal.Ext.Power.Helpers;
@@ -18,6 +19,7 @@ internal sealed partial class PowerModeDataManager : IDisposable
     private readonly EventHandler _powerModeChangedHandler;
     private readonly Lock _activateLock = new();
     private int _activateCount;
+    private bool _updateFailureLogged;
 
     internal PowerModeDataManager(
         PowerModeService powerModeService,
@@ -25,13 +27,13 @@ internal sealed partial class PowerModeDataManager : IDisposable
     {
         _powerModeService = powerModeService;
         _updateAction = updateAction;
-        _powerModeChangedHandler = (_, _) => _updateAction();
+        _powerModeChangedHandler = (_, _) => RunUpdateActionSafely();
         _updateTimer = new Timer(OneSecondInMilliseconds)
         {
             AutoReset = true,
             Enabled = false,
         };
-        _updateTimer.Elapsed += (_, _) => _updateAction();
+        _updateTimer.Elapsed += (_, _) => RunUpdateActionSafely();
         _powerModeService.PowerModeChanged += _powerModeChangedHandler;
     }
 
@@ -68,12 +70,35 @@ internal sealed partial class PowerModeDataManager : IDisposable
     private void StartPolling()
     {
         _powerModeService.EnsureSubscribed();
-        _updateAction();
-        _updateTimer.Enabled = true;
+        if (RunUpdateActionSafely())
+        {
+            _updateTimer.Enabled = true;
+        }
     }
 
     private void StopPolling()
     {
         _updateTimer.Enabled = false;
+        _powerModeService.Unsubscribe();
+    }
+
+    private bool RunUpdateActionSafely()
+    {
+        try
+        {
+            _updateAction();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            StopPolling();
+            if (!_updateFailureLogged)
+            {
+                _updateFailureLogged = true;
+                CoreLogger.LogError("Unexpected exception while updating power mode data. Polling stopped.", ex);
+            }
+
+            return false;
+        }
     }
 }

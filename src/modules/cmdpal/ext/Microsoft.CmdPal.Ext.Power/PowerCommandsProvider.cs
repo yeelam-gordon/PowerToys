@@ -76,8 +76,6 @@ public sealed partial class PowerCommandsProvider : CommandProvider, IDisposable
             Title = Resources.power_page_title,
             Icon = Icons.PowerExtensionIcon,
         };
-
-        _dataManager.PushActivate();
     }
 
     public override ICommandItem[] TopLevelCommands() => [_command];
@@ -111,7 +109,6 @@ public sealed partial class PowerCommandsProvider : CommandProvider, IDisposable
 
     public override void Dispose()
     {
-        _dataManager.PopActivate();
         _dataManager.Dispose();
         _powerModeService.Dispose();
         GC.SuppressFinalize(this);

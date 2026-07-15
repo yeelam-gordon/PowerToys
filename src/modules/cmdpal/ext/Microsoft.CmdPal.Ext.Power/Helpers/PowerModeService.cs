@@ -69,7 +69,7 @@ internal sealed partial class PowerModeService : IDisposable
         errorMessage = null;
         if (mode is UserPowerMode.Unknown)
         {
-            errorMessage = "Unknown power mode.";
+            errorMessage = Resources.power_mode_unknown;
             return false;
         }
 

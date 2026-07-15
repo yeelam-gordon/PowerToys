@@ -454,6 +454,17 @@ public sealed class PythonScriptServiceTests
     }
 
     [TestMethod]
+    public void ReadMetadata_FunctionNameOverridesLegacyFormatsTag()
+    {
+        var scriptPath = CreateTempScript("# @advancedpaste:formats any\n\ndef advanced_paste_from_text_to_text(text):\n    return text\n");
+        var metadata = _service.ReadMetadata(scriptPath);
+
+        Assert.IsNotNull(metadata);
+        Assert.AreEqual(Models.ClipboardFormat.Text, metadata.SupportedFormats);
+        File.Delete(scriptPath);
+    }
+
+    [TestMethod]
     public void ReadMetadata_OutputTypeHint_Image()
     {
         var scriptPath = CreateTempScript("def advanced_paste_from_text_to_image(text):\n    return '/path/img.png'\n");

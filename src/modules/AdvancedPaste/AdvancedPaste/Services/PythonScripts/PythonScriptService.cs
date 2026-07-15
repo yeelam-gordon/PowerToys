@@ -720,7 +720,6 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
         var explicitRequirements = new List<PythonRequirement>();
         var allLines = new List<string>();
         var isEnabled = true;
-        bool hasExplicitFormats = false;
         bool hasExplicitPlatform = false;
         ClipboardFormat apDetectedFormats = ClipboardFormat.None;
         int apFunctionCount = 0;
@@ -789,8 +788,6 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
                 tag = ParseTag(trimmed, "@advancedpaste:formats");
                 if (tag != null)
                 {
-                    supportedFormats = ParseFormats(tag);
-                    hasExplicitFormats = true;
                     continue;
                 }
 
@@ -842,11 +839,9 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
             return null;
         }
 
-        // Infer supported formats from advanced_paste_from_* function names.
-        if (!hasExplicitFormats)
-        {
-            supportedFormats = apDetectedFormats;
-        }
+        // The named-function interface declares its input type in the function name.
+        // Legacy @advancedpaste:formats tags must not widen that contract.
+        supportedFormats = apDetectedFormats;
 
         // Determine platform based on user setting (UseWsl) unless script explicitly declares one.
         if (!hasExplicitPlatform)
@@ -1090,37 +1085,6 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
         }
 
         return line[(idx + tag.Length)..].Trim();
-    }
-
-    private static ClipboardFormat ParseFormats(string value)
-    {
-        if (string.Equals(value, "any", StringComparison.OrdinalIgnoreCase))
-        {
-            return ClipboardFormat.Text | ClipboardFormat.Html |
-                   ClipboardFormat.Image | ClipboardFormat.Audio |
-                   ClipboardFormat.Video | ClipboardFormat.File;
-        }
-
-        var result = ClipboardFormat.None;
-        foreach (var token in value.Split(','))
-        {
-            result |= token.Trim().ToLowerInvariant() switch
-            {
-                "text" => ClipboardFormat.Text,
-                "html" => ClipboardFormat.Html,
-                "image" => ClipboardFormat.Image,
-                "audio" => ClipboardFormat.Audio,
-                "video" => ClipboardFormat.Video,
-                "files" or "file" => ClipboardFormat.File,
-                _ => ClipboardFormat.None,
-            };
-        }
-
-        return result == ClipboardFormat.None
-            ? ClipboardFormat.Text | ClipboardFormat.Html |
-              ClipboardFormat.Image | ClipboardFormat.Audio |
-              ClipboardFormat.Video | ClipboardFormat.File
-            : result;
     }
 
     public IReadOnlyList<PythonScriptMetadata> DiscoverScripts(string folderPath)

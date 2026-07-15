@@ -60,9 +60,9 @@ namespace
         return CreateFontIndirectW(&lf);
     }
 
-    void ShowCtl(HWND ctl, bool show)
+    void ShowControl(HWND control, bool show)
     {
-        ShowWindow(ctl, show ? SW_SHOW : SW_HIDE);
+        ShowWindow(control, show ? SW_SHOW : SW_HIDE);
     }
 
     std::wstring GetDesktopPath()
@@ -202,7 +202,7 @@ namespace
 
         st->hPath = CreateWindowExW(0, L"EDIT", L"", WS_CHILD | ES_READONLY | ES_AUTOHSCROLL | WS_TABSTOP, margin, y, contentW, Scale(24, dpi), hwnd, nullptr, inst, nullptr);
         SendMessageW(st->hPath, WM_SETFONT, reinterpret_cast<WPARAM>(st->hFont), TRUE);
-        ShowCtl(st->hPath, false);
+        ShowControl(st->hPath, false);
         y += Scale(34, dpi);
 
         st->hHint = CreateWindowExW(0, L"STATIC", GET_RESOURCE_STRING(IDS_BUGREPORT_GENERATING_HINT).c_str(), WS_CHILD | WS_VISIBLE | SS_LEFT | SS_NOPREFIX, margin, y, contentW, Scale(48, dpi), hwnd, nullptr, inst, nullptr);
@@ -226,9 +226,9 @@ namespace
         SetWindowTextW(st->hStatus, GET_RESOURCE_STRING(IDS_BUGREPORT_DONE_HEADER).c_str());
         SetWindowTextW(st->hPath, st->zipPath.c_str());
         SetWindowTextW(st->hHint, GET_RESOURCE_STRING(IDS_BUGREPORT_DONE_HINT).c_str());
-        ShowCtl(st->hPath, true);
-        ShowCtl(st->hOpenFolder, true);
-        ShowCtl(st->hCreateIssue, true);
+        ShowControl(st->hPath, true);
+        ShowControl(st->hOpenFolder, true);
+        ShowControl(st->hCreateIssue, true);
         SetFocus(st->hCreateIssue);
     }
 
@@ -236,10 +236,10 @@ namespace
     {
         st->done = true;
         SetWindowTextW(st->hStatus, GET_RESOURCE_STRING(IDS_BUGREPORT_FAILED).c_str());
-        ShowCtl(st->hPath, false);
-        ShowCtl(st->hHint, false);
-        ShowCtl(st->hOpenFolder, false);
-        ShowCtl(st->hCreateIssue, false);
+        ShowControl(st->hPath, false);
+        ShowControl(st->hHint, false);
+        ShowControl(st->hOpenFolder, false);
+        ShowControl(st->hCreateIssue, false);
         SetFocus(st->hClose);
     }
 
@@ -396,7 +396,7 @@ void run_bug_report_dialog(const std::wstring& toolPath, const std::function<voi
     {
         // Fall back to running the tool without UI so a report is still produced.
         SHELLEXECUTEINFOW sei{ sizeof(sei) };
-        sei.fMask = SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NO_CONSOLE;
+        sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOASYNC | SEE_MASK_NOCLOSEPROCESS | SEE_MASK_NO_CONSOLE;
         sei.lpFile = toolPath.c_str();
         sei.nShow = SW_HIDE;
         if (ShellExecuteExW(&sei) && sei.hProcess)

@@ -43,9 +43,9 @@ public sealed partial class FastFirstPaintTests
 
         public ICommand Command => new NoOpCommand();
 
-        public IDetails? Details => null;
+        public IDetails Details { get; } = new Details();
 
-        public IIconInfo? Icon => null;
+        public IIconInfo Icon { get; } = new IconInfo(string.Empty);
 
         public string Section => string.Empty;
 

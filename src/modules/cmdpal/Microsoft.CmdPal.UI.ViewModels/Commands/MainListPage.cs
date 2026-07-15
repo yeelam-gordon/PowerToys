@@ -722,7 +722,7 @@ public sealed partial class MainListPage : DynamicListPage,
             {
                 var alias = topLevel.AliasText;
                 isAliasMatch = alias == query.Original;
-                isAliasSubstringMatch = isAliasMatch || alias.StartsWith(query.Original, StringComparison.CurrentCultureIgnoreCase);
+                isAliasSubstringMatch = isAliasMatch || alias.StartsWith(query.Original, StringComparison.OrdinalIgnoreCase);
             }
         }
 

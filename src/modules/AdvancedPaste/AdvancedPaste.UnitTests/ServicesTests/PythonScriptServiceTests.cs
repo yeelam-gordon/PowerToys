@@ -171,6 +171,22 @@ public sealed class PythonScriptServiceTests
     }
 
     [TestMethod]
+    public void SanitizePackageList_AllowsPackageSpecifiers()
+    {
+        var result = PythonScriptService.SanitizePackageList("requests>=2.32 numpy[all] opencv-python~=4.10");
+
+        Assert.AreEqual("requests>=2.32 numpy[all] opencv-python~=4.10", result);
+    }
+
+    [TestMethod]
+    public void SanitizePackageList_RejectsPipOptions()
+    {
+        var result = PythonScriptService.SanitizePackageList("requests --user --upgrade numpy");
+
+        Assert.AreEqual("requests numpy", result);
+    }
+
+    [TestMethod]
     public void ParsePythonError_ModuleNotFoundError()
     {
         var stderr = """

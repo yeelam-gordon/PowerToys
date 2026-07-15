@@ -1305,6 +1305,9 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
                 ResourceLoaderInstance.ResourceLoader.GetString("PythonScriptFailed"),
                 new InvalidOperationException("Failed to start pip."));
 
+        var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+        var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
         int timeoutMs = _userSettings.PythonScriptTimeoutSeconds * 1000;
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeoutCts.CancelAfter(timeoutMs);
@@ -1325,9 +1328,11 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
                 new TimeoutException());
         }
 
+        _ = await stdoutTask;
+        var stderr = await stderrTask;
+
         if (process.ExitCode != 0)
         {
-            var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
             var (summary, _) = ParsePipInstallError(stderr);
             throw new PasteActionException(
                 string.Format(
@@ -1373,6 +1378,9 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
                 continue;
             }
 
+            var stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            var stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
+
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             timeoutCts.CancelAfter(timeoutMs);
 
@@ -1394,10 +1402,13 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
 
             if (process.ExitCode == 0)
             {
+                _ = await stdoutTask;
+                _ = await stderrTask;
                 return;
             }
 
-            var stderr = await process.StandardError.ReadToEndAsync(cancellationToken);
+            _ = await stdoutTask;
+            var stderr = await stderrTask;
 
             // If it failed for a reason OTHER than externally-managed-environment, throw immediately.
             if (!stderr.Contains("externally-managed-environment", StringComparison.OrdinalIgnoreCase))
@@ -1700,9 +1711,9 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
 
     /// <summary>
     /// Sanitizes a space-separated pip package list by rejecting any token containing shell metacharacters.
-    /// Only allows: alphanumeric, hyphen, underscore, dot, square brackets, comparison operators, commas.
+    /// Only allows package specifiers that start with an alphanumeric character, preventing pip option injection.
     /// </summary>
-    private static string SanitizePackageList(string packages)
+    internal static string SanitizePackageList(string packages)
     {
         if (string.IsNullOrWhiteSpace(packages))
         {
@@ -1711,7 +1722,7 @@ public sealed class PythonScriptService(IUserSettings userSettings) : IPythonScr
 
         var safeTokens = packages
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Where(token => System.Text.RegularExpressions.Regex.IsMatch(token, @"^[a-zA-Z0-9\._\-\[\],>=<!=~]+$"))
+            .Where(token => System.Text.RegularExpressions.Regex.IsMatch(token, @"^[a-zA-Z0-9][a-zA-Z0-9\._\-\[\],>=<!=~]*$"))
             .ToArray();
 
         return string.Join(' ', safeTokens);

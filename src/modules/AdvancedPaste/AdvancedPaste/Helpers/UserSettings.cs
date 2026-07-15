@@ -207,7 +207,7 @@ namespace AdvancedPaste.Settings
                                 _pythonScriptActions.Clear();
                                 _pythonScriptActions.AddRange(pythonScripts.Value);
 
-                                UpdateScriptFolderWatcher(PythonScriptsFolder);
+                                UpdateScriptFolderWatcher(IsPythonScriptsEnabled ? PythonScriptsFolder : string.Empty);
 
                                 Changed?.Invoke(this, EventArgs.Empty);
                             }

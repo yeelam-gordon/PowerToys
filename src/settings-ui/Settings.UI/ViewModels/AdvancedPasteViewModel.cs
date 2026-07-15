@@ -475,8 +475,9 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 using var process = System.Diagnostics.Process.Start(psi);
                 if (process != null)
                 {
-                    // WaitForExit first with timeout to avoid blocking indefinitely on ReadToEnd().
-                    // If the process doesn't finish in time, kill it and wait for exit before reading.
+                    var outputTask = process.StandardOutput.ReadToEndAsync();
+
+                    // Drain stdout while waiting so wsl.exe cannot block on a full pipe.
                     if (!process.WaitForExit(5000))
                     {
                         try
@@ -496,7 +497,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                         }
                     }
 
-                    var output = process.StandardOutput.ReadToEnd();
+                    var output = outputTask.GetAwaiter().GetResult();
 
                     var names = output
                         .Split('\n', StringSplitOptions.RemoveEmptyEntries)

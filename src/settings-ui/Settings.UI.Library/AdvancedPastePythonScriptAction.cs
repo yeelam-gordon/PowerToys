@@ -261,8 +261,8 @@ public sealed class AdvancedPastePythonScriptAction : Observable, IAdvancedPaste
                 currentFormats.Remove(format);
             }
 
-            var allFormats = new HashSet<string>(["text", "html", "image", "audio", "video", "files"], StringComparer.OrdinalIgnoreCase);
-            Formats = currentFormats.SetEquals(allFormats) ? "any" : string.Join(", ", currentFormats);
+            var allFormats = new[] { "text", "html", "image", "audio", "video", "files" };
+            Formats = currentFormats.SetEquals(allFormats) ? "any" : string.Join(", ", allFormats.Where(currentFormats.Contains));
 
             OnPropertyChanged(nameof(SupportsText));
             OnPropertyChanged(nameof(SupportsHtml));

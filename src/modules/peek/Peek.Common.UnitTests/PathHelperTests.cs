@@ -150,7 +150,7 @@ namespace Peek.Common.UnitTests
         [TestMethod]
         public void IsUncPath_NullInput_ShouldReturnFalse()
         {
-            Assert.IsFalse(PathHelper.IsUncPath(null));
+            Assert.IsFalse(PathHelper.IsUncPath(null!));
         }
     }
 }

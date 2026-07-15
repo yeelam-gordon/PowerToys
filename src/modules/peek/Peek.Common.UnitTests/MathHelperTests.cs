@@ -145,6 +145,11 @@ namespace Peek.Common.UnitTests
             MathHelper.Modulo(5, 0);
         }
 
+        /// <summary>
+        /// Product code: MathHelper.Modulo(int, int) — negative divisor
+        /// What: Documents that a negative divisor throws ArgumentOutOfRangeException
+        /// Why: Edge case — callers must pass a positive divisor because the method rejects negative values
+        /// </summary>
         [TestMethod]
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void Modulo_NegativeDivisor_ShouldThrow()

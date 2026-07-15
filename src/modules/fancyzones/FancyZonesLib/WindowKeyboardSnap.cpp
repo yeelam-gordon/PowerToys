@@ -50,18 +50,26 @@ bool WindowKeyboardSnap::Snap(HWND window, RECT windowRect, HMONITOR monitor, DW
     else
     {
         // Single monitor environment, or combined multi-monitor environment.
-        success = MoveByDirectionAndPosition(window, windowRect, vkCode, cycle, currentWorkArea.get());        
+        success = MoveByDirectionAndPosition(window, windowRect, vkCode, cycle, currentWorkArea.get());
     }
 
     if (!success && (vkCode == VK_UP || vkCode == VK_DOWN))
     {
         WINDOWPLACEMENT placement{};
-        GetWindowPlacement(window, &placement);
-        if (vkCode == VK_UP)
-            placement.showCmd = SW_SHOWMAXIMIZED;
-        else if (vkCode == VK_DOWN)
-            placement.showCmd = SW_SHOWMINIMIZED;
-        success = SetWindowPlacement(window, &placement);
+        placement.length = sizeof(WINDOWPLACEMENT);
+        if (GetWindowPlacement(window, &placement))
+        {
+            if (vkCode == VK_UP)
+            {
+                placement.showCmd = SW_SHOWMAXIMIZED;
+            }
+            else if (vkCode == VK_DOWN)
+            {
+                placement.showCmd = SW_SHOWMINIMIZED;
+            }
+
+            success = SetWindowPlacement(window, &placement);
+        }
     }
 
     return success;
@@ -84,10 +92,16 @@ bool WindowKeyboardSnap::SnapHotkeyBasedOnZoneNumber(HWND window, DWORD vkCode, 
     // clean previous extension data
     m_extendData.Reset();
 
+    const bool cycle = FancyZonesSettings::settings().cycleThroughAllZones;
     if (current && monitors.size() > 1 && FancyZonesSettings::settings().moveWindowAcrossMonitors)
     {
         // Multi monitor environment.
         auto currMonitor = std::find(std::begin(monitors), std::end(monitors), current);
+        if (currMonitor == std::end(monitors))
+        {
+            return false;
+        }
+
         do
         {
             if (activeWorkAreas.contains(*currMonitor))
@@ -113,6 +127,11 @@ bool WindowKeyboardSnap::SnapHotkeyBasedOnZoneNumber(HWND window, DWORD vkCode, 
                     currMonitor = std::next(currMonitor);
                     if (currMonitor == std::end(monitors))
                     {
+                        if (!cycle)
+                        {
+                            return false;
+                        }
+
                         currMonitor = std::begin(monitors);
                     }
                 }
@@ -120,6 +139,11 @@ bool WindowKeyboardSnap::SnapHotkeyBasedOnZoneNumber(HWND window, DWORD vkCode, 
                 {
                     if (currMonitor == std::begin(monitors))
                     {
+                        if (!cycle)
+                        {
+                            return false;
+                        }
+
                         currMonitor = std::end(monitors);
                     }
                     currMonitor = std::prev(currMonitor);
@@ -132,9 +156,9 @@ bool WindowKeyboardSnap::SnapHotkeyBasedOnZoneNumber(HWND window, DWORD vkCode, 
         if (activeWorkAreas.contains(current))
         {
             const auto& workArea = activeWorkAreas.at(current);
-            bool moved = MoveByDirectionAndIndex(window, vkCode, true /* cycle through zones */, workArea.get());
+            bool moved = MoveByDirectionAndIndex(window, vkCode, cycle, workArea.get());
 
-            if (FancyZonesSettings::settings().restoreSize && !moved)
+            if (FancyZonesSettings::settings().restoreSize && cycle && !moved)
             {
                 FancyZonesWindowUtils::RestoreWindowOrigin(window);
                 FancyZonesWindowUtils::RestoreWindowSize(window);
@@ -207,8 +231,10 @@ bool WindowKeyboardSnap::SnapBasedOnPositionOnAnotherMonitor(HWND window, RECT w
     }
 
     if (!cycle)
+    {
         return false;
-    
+    }
+
     // We reached the end of all monitors.
     // Try again, cycling on all monitors.
     // First, add zones from the origin monitor to zoneRects

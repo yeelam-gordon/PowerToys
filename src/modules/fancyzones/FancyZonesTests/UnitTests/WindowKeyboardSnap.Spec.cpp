@@ -92,6 +92,7 @@ namespace FancyZonesUnitTests
 
         TEST_METHOD_CLEANUP(CleanUp)
         {
+            FancyZonesSettings::instance().SetSettings({});
             std::filesystem::remove(AppliedLayouts::AppliedLayoutsFileName());
             std::filesystem::remove(AppZoneHistory::AppZoneHistoryFileName());
         }
@@ -152,9 +153,7 @@ namespace FancyZonesUnitTests
             const auto window = Mocks::WindowCreate(m_hInst);
             m_workAreaMap.at(m_monitor)->Snap(window, { 3 }, true);
 
-            auto settings = FancyZonesSettings::settings();
-            settings.moveWindowAcrossMonitors = true;
-            FancyZonesSettings::instance().SetSettings(settings);
+            FancyZonesSettings::instance().SetSettings({ .moveWindowAcrossMonitors = true });
             
             Assert::IsTrue(windowKeyboardSnap.Snap(window, m_monitor, VK_RIGHT, m_workAreaMap, { m_monitor }));
 
@@ -212,6 +211,40 @@ namespace FancyZonesUnitTests
             const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
             Assert::IsTrue(ZoneIndexSet{ 3 } == layoutWindows.GetZoneIndexSetFromWindow(window));
             Assert::IsTrue(ZoneIndexSet{ 3 } == AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, layoutId()));
+        }
+
+        TEST_METHOD (MoveNext_CycleThroughAllZonesDisabled)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap.at(m_monitor)->Snap(window, { 3 }, true);
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsFalse(windowKeyboardSnap.Snap(window, m_monitor, VK_RIGHT, m_workAreaMap, { m_monitor }));
+
+            const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 3 } == layoutWindows.GetZoneIndexSetFromWindow(window));
+            Assert::IsTrue(ZoneIndexSet{ 3 } == AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, layoutId()));
+        }
+
+        TEST_METHOD (MovePrev_CycleThroughAllZonesDisabled)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap.at(m_monitor)->Snap(window, { 0 }, true);
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsFalse(windowKeyboardSnap.Snap(window, m_monitor, VK_LEFT, m_workAreaMap, { m_monitor }));
+
+            const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 0 } == layoutWindows.GetZoneIndexSetFromWindow(window));
+            Assert::IsTrue(ZoneIndexSet{ 0 } == AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, layoutId()));
         }
     };
 
@@ -304,6 +337,7 @@ namespace FancyZonesUnitTests
 
         TEST_METHOD_CLEANUP(CleanUp)
         {
+            FancyZonesSettings::instance().SetSettings({});
             std::filesystem::remove(AppliedLayouts::AppliedLayoutsFileName());
             std::filesystem::remove(AppZoneHistory::AppZoneHistoryFileName());
         }
@@ -406,6 +440,50 @@ namespace FancyZonesUnitTests
 
             const auto& layoutWindowsActualWorkArea = m_workAreaMap.at(m_monitors[0])->GetLayoutWindows();
             Assert::IsTrue(ZoneIndexSet{ 0 } == layoutWindowsActualWorkArea.GetZoneIndexSetFromWindow(window));
+        }
+
+        TEST_METHOD (Snap_Left_CycleThroughAllZonesDisabled)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap[m_monitors[0]]->Snap(window, { 0 });
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsFalse(windowKeyboardSnap.Snap(window, m_monitors[0], VK_LEFT, m_workAreaMap, m_monitors));
+
+            const auto& actualAppZoneHistory = AppZoneHistory::instance().GetFullAppZoneHistory();
+            Assert::AreEqual((size_t)1, actualAppZoneHistory.size());
+
+            const auto& layoutWindowsPrevWorkArea = m_workAreaMap.at(m_monitors[0])->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 0 } == layoutWindowsPrevWorkArea.GetZoneIndexSetFromWindow(window));
+
+            const auto& layoutWindowsActualWorkArea = m_workAreaMap.at(m_monitors[1])->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{} == layoutWindowsActualWorkArea.GetZoneIndexSetFromWindow(window));
+        }
+
+        TEST_METHOD (Snap_Right_CycleThroughAllZonesDisabled)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap.at(m_monitors[1])->Snap(window, { 3 });
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsFalse(windowKeyboardSnap.Snap(window, m_monitors[1], VK_RIGHT, m_workAreaMap, m_monitors));
+
+            const auto& actualAppZoneHistory = AppZoneHistory::instance().GetFullAppZoneHistory();
+            Assert::AreEqual((size_t)1, actualAppZoneHistory.size());
+
+            const auto& layoutWindowsPrevWorkArea = m_workAreaMap.at(m_monitors[1])->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 3 } == layoutWindowsPrevWorkArea.GetZoneIndexSetFromWindow(window));
+
+            const auto& layoutWindowsActualWorkArea = m_workAreaMap.at(m_monitors[0])->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{} == layoutWindowsActualWorkArea.GetZoneIndexSetFromWindow(window));
         }
 
         TEST_METHOD (Snap_Left_NoCycle)
@@ -537,6 +615,7 @@ namespace FancyZonesUnitTests
 
         TEST_METHOD_CLEANUP(CleanUp)
         {
+            FancyZonesSettings::instance().SetSettings({});
             std::filesystem::remove(AppliedLayouts::AppliedLayoutsFileName());
             std::filesystem::remove(AppZoneHistory::AppZoneHistoryFileName());
         }
@@ -724,6 +803,50 @@ namespace FancyZonesUnitTests
             const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
             Assert::IsTrue(ZoneIndexSet{ 0 } == layoutWindows.GetZoneIndexSetFromWindow(window));
             Assert::IsTrue(ZoneIndexSet{ 0 } == AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, layoutId()));
+        }
+
+        TEST_METHOD (MoveUp_CycleThroughAllZonesDisabled_MaximizesWindowAtEdge)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap.at(m_monitor)->Snap(window, { 0 }, true);
+            RECT windowRect = GetZoneRect(m_workAreaMap[m_monitor].get(), 0);
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsTrue(windowKeyboardSnap.Snap(window, windowRect, m_monitor, VK_UP, m_workAreaMap, { { m_monitor, m_rect } }));
+
+            WINDOWPLACEMENT placement{};
+            placement.length = sizeof(WINDOWPLACEMENT);
+            Assert::IsTrue(GetWindowPlacement(window, &placement));
+            Assert::AreEqual(static_cast<UINT>(SW_SHOWMAXIMIZED), placement.showCmd);
+
+            const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 0 } == layoutWindows.GetZoneIndexSetFromWindow(window));
+        }
+
+        TEST_METHOD (MoveDown_CycleThroughAllZonesDisabled_MinimizesWindowAtEdge)
+        {
+            WindowKeyboardSnap windowKeyboardSnap;
+            const auto window = Mocks::WindowCreate(m_hInst);
+            m_workAreaMap.at(m_monitor)->Snap(window, { 2 }, true);
+            RECT windowRect = GetZoneRect(m_workAreaMap[m_monitor].get(), 2);
+
+            auto settings = FancyZonesSettings::settings();
+            settings.cycleThroughAllZones = false;
+            FancyZonesSettings::instance().SetSettings(settings);
+
+            Assert::IsTrue(windowKeyboardSnap.Snap(window, windowRect, m_monitor, VK_DOWN, m_workAreaMap, { { m_monitor, m_rect } }));
+
+            WINDOWPLACEMENT placement{};
+            placement.length = sizeof(WINDOWPLACEMENT);
+            Assert::IsTrue(GetWindowPlacement(window, &placement));
+            Assert::AreEqual(static_cast<UINT>(SW_SHOWMINIMIZED), placement.showCmd);
+
+            const auto& layoutWindows = m_workAreaMap.at(m_monitor)->GetLayoutWindows();
+            Assert::IsTrue(ZoneIndexSet{ 2 } == layoutWindows.GetZoneIndexSetFromWindow(window));
         }
     };
 

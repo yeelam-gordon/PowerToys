@@ -86,16 +86,56 @@ namespace PowerDisplay.Common.Drivers.WMI
 
         public string Name => "WMI Monitor Controller";
 
-        public event Action<string, int>? BrightnessChanged;
-
         private readonly object _eventSubscriptionLock = new();
+        private Action<string, int>? _brightnessChanged;
         private WmiConnection? _eventConnection;
         private IDisposable? _brightnessEventSubscription;
+        private bool _brightnessSubscriptionStarting;
         private bool _disposed;
 
-        public WmiController()
+        public event Action<string, int>? BrightnessChanged
         {
-            _ = Task.Run(InitializeBrightnessEventSubscription);
+            add
+            {
+                var shouldStartSubscription = false;
+
+                lock (_eventSubscriptionLock)
+                {
+                    if (_disposed)
+                    {
+                        return;
+                    }
+
+                    var hadHandlers = _brightnessChanged != null;
+                    _brightnessChanged += value;
+                    if (!hadHandlers && !_brightnessSubscriptionStarting && _brightnessEventSubscription == null)
+                    {
+                        _brightnessSubscriptionStarting = true;
+                        shouldStartSubscription = true;
+                    }
+                }
+
+                if (shouldStartSubscription)
+                {
+                    _ = Task.Run(InitializeBrightnessEventSubscription);
+                }
+            }
+
+            remove
+            {
+                var shouldStopSubscription = false;
+
+                lock (_eventSubscriptionLock)
+                {
+                    _brightnessChanged -= value;
+                    shouldStopSubscription = _brightnessChanged == null;
+                }
+
+                if (shouldStopSubscription)
+                {
+                    DisposeBrightnessEventSubscription();
+                }
+            }
         }
 
         private void InitializeBrightnessEventSubscription()
@@ -119,7 +159,13 @@ namespace PowerDisplay.Common.Drivers.WMI
                             }
 
                             var brightness = eventObj.GetPropertyValue<byte>("Brightness");
-                            BrightnessChanged?.Invoke(instanceName, brightness);
+                            Action<string, int>? handler;
+                            lock (_eventSubscriptionLock)
+                            {
+                                handler = _brightnessChanged;
+                            }
+
+                            handler?.Invoke(instanceName, brightness);
                         }
                         catch (Exception ex)
                         {
@@ -129,7 +175,8 @@ namespace PowerDisplay.Common.Drivers.WMI
 
                 lock (_eventSubscriptionLock)
                 {
-                    if (_disposed)
+                    _brightnessSubscriptionStarting = false;
+                    if (_disposed || _brightnessChanged == null)
                     {
                         brightnessEventSubscription.Dispose();
                         eventConnection.Dispose();
@@ -145,7 +192,23 @@ namespace PowerDisplay.Common.Drivers.WMI
             {
                 brightnessEventSubscription?.Dispose();
                 eventConnection?.Dispose();
+                lock (_eventSubscriptionLock)
+                {
+                    _brightnessSubscriptionStarting = false;
+                }
+
                 Logger.LogInfo($"WMI brightness event subscription unavailable: {ex.Message}");
+            }
+        }
+
+        private void DisposeBrightnessEventSubscription()
+        {
+            lock (_eventSubscriptionLock)
+            {
+                _brightnessEventSubscription?.Dispose();
+                _brightnessEventSubscription = null;
+                _eventConnection?.Dispose();
+                _eventConnection = null;
             }
         }
 
@@ -377,6 +440,7 @@ namespace PowerDisplay.Common.Drivers.WMI
                 }
 
                 _disposed = true;
+                _brightnessChanged = null;
                 _brightnessEventSubscription?.Dispose();
                 _eventConnection?.Dispose();
             }

@@ -301,13 +301,13 @@ public partial class MainViewModel
             return;
         }
 
+        MonitorViewModel? matchingMonitor = null;
         var lookupId = MonitorIdentity.FromInstanceName(instanceName);
-        if (string.IsNullOrEmpty(lookupId))
+        if (!string.IsNullOrEmpty(lookupId))
         {
-            return;
+            matchingMonitor = Monitors.FirstOrDefault(m => MonitorIdComparer.Instance.Equals(m.Id, lookupId));
         }
 
-        var matchingMonitor = Monitors.FirstOrDefault(m => MonitorIdComparer.Instance.Equals(m.Id, lookupId));
         if (matchingMonitor == null)
         {
             matchingMonitor = Monitors.FirstOrDefault(m => string.Equals(m.InstanceName, instanceName, StringComparison.OrdinalIgnoreCase));

@@ -59,6 +59,7 @@ public partial class MainViewModel
     partial void OnSyncBrightnessWithInternalDisplayChanged(bool value)
     {
         SaveSyncBrightnessWithInternalDisplay(value);
+        _monitorManager?.SetWmiBrightnessEventsEnabled(value);
     }
 
     private void SaveSyncBrightnessWithInternalDisplay(bool value)

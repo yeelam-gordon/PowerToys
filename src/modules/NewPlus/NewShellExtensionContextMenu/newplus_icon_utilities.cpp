@@ -27,7 +27,7 @@ HICON load_icon_from_resource_spec(std::wstring icon_resource, const int icon_x,
 
     HICON large_icon = nullptr;
     HICON small_icon = nullptr;
-    if (SUCCEEDED(SHDefExtractIconW(icon_resource.c_str(), icon_index, 0, &large_icon, &small_icon, MAKELONG(icon_x, icon_x))))
+    if (SUCCEEDED(SHDefExtractIconW(icon_resource.c_str(), icon_index, 0, &large_icon, &small_icon, MAKELONG(icon_x, icon_y))))
     {
         if (small_icon)
         {

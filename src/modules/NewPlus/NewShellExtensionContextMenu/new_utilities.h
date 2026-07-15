@@ -218,17 +218,36 @@ namespace newplus::utilities
         }
 
         CComPtr<IServiceProvider> service_provider;
-        shell_window->QueryInterface(&service_provider);
+        if (FAILED(shell_window->QueryInterface(&service_provider)) || !service_provider)
+        {
+            return false;
+        }
+
         CComPtr<IShellBrowser> shell_browser;
-        service_provider->QueryService(SID_STopLevelBrowser, IID_PPV_ARGS(&shell_browser));
+        if (FAILED(service_provider->QueryService(SID_STopLevelBrowser, IID_PPV_ARGS(&shell_browser))) || !shell_browser)
+        {
+            return false;
+        }
+
         CComPtr<IShellView> shell_view;
-        shell_browser->QueryActiveShellView(&shell_view);
+        if (FAILED(shell_browser->QueryActiveShellView(&shell_view)) || !shell_view)
+        {
+            return false;
+        }
+
         HWND shell_view_window_handle = nullptr;
         shell_view->GetWindow(&shell_view_window_handle);
         CComPtr<IFolderView> folder_view;
-        shell_view->QueryInterface(&folder_view);
+        if (FAILED(shell_view->QueryInterface(&folder_view)) || !folder_view)
+        {
+            return false;
+        }
+
         CComPtr<IShellFolder> shell_folder;
-        folder_view->GetFolder(IID_PPV_ARGS(&shell_folder));
+        if (FAILED(folder_view->GetFolder(IID_PPV_ARGS(&shell_folder))) || !shell_folder)
+        {
+            return false;
+        }
 
         // Find the newly created object (file or folder)
         // And put object into edit mode (SVSI_EDIT) and if desktop also reposition
@@ -239,7 +258,10 @@ namespace newplus::utilities
         {
             PITEMID_CHILD shell_item_id = nullptr;
 
-            folder_view->Item(i, &shell_item_id);
+            if (FAILED(folder_view->Item(i, &shell_item_id)) || !shell_item_id)
+            {
+                continue;
+            }
 
             STRRET strings_returned;
             WCHAR current_filename_buffer[MAX_PATH * 2] = { 0 };

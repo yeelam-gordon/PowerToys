@@ -58,7 +58,7 @@ extern "C"
             allMappings.push_back(kv);
         }
 
-        if (index < 0 || index >= allMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
         {
             return false;
         }
@@ -104,7 +104,7 @@ extern "C"
             allMappings.push_back(kv);
         }
 
-        if (index < 0 || index >= allMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
         {
             return false;
         }
@@ -143,7 +143,7 @@ extern "C"
     {
         auto mappingConfig = static_cast<MappingConfiguration*>(config);
 
-        if (index < 0 || index >= mappingConfig->singleKeyToTextReMap.size())
+        if (index < 0 || static_cast<size_t>(index) >= mappingConfig->singleKeyToTextReMap.size())
         {
             return false;
         }
@@ -362,7 +362,7 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
             }
         }
 
-        if (index < 0 || index >= filteredMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= filteredMappings.size())
         {
             return false;
         }
@@ -464,7 +464,7 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
             }
         }
 
-        if (index < 0 || index >= allMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
         {
             return false;
         }

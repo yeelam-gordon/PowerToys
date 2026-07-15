@@ -165,7 +165,7 @@ bool MappingConfiguration::LoadSingleKeyRemaps(const json::JsonObject& jsonData)
                     const bool isAloneCondition = (std::wstring(condition) == KeyboardManagerConstants::RemapConditionAlone);
 
                     // Parse the target: a ';'-separated value is a shortcut; otherwise a single key.
-                    const bool remapToShortcut = (std::wstring(newRemapKey).find(L";") != std::string::npos);
+                    const bool remapToShortcut = (std::wstring(newRemapKey).find(L";") != std::wstring::npos);
                     KeyShortcutTextUnion target;
                     if (remapToShortcut)
                     {
@@ -306,7 +306,7 @@ bool MappingConfiguration::LoadAppSpecificShortcutRemaps(const json::JsonObject&
                 if (!newRemapKeys.empty())
                 {
                     // If remapped to a shortcut
-                    if (std::wstring(newRemapKeys).find(L";") != std::string::npos)
+                    if (std::wstring(newRemapKeys).find(L";") != std::wstring::npos)
                     {
                         AddAppSpecificShortcut(targetApp.c_str(), originalShortcut, Shortcut(newRemapKeys.c_str()));
                     }
@@ -400,7 +400,7 @@ bool MappingConfiguration::LoadShortcutRemaps(const json::JsonObject& jsonData, 
                         else if (!newRemapKeys.empty())
                         {
                             // If remapped to a shortcut
-                            if (std::wstring(newRemapKeys).find(L";") != std::string::npos)
+                            if (std::wstring(newRemapKeys).find(L";") != std::wstring::npos)
                             {
                                 AddOSLevelShortcut(originalShortcut, Shortcut(newRemapKeys.c_str()));
                             }

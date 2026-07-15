@@ -3,7 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Threading.Tasks;
+using System.Threading;
 
 using ManagedCommon;
 using Microsoft.CmdPal.Ext.WindowsSettings.Helpers;
@@ -46,9 +46,14 @@ public sealed partial class WindowsSettingsCommandsProvider : CommandProvider
         // the background — shell enumeration must not delay provider startup.
         // Runs after TranslateAllSettings on purpose: shell display names are
         // already localized and must not go through resource translation.
-        var windowsSettings = _windowsSettings;
-        _ = Task.Run(() =>
+        MergeControlPanelTasksOnStaThread(_windowsSettings);
+    }
+
+    private static void MergeControlPanelTasksOnStaThread(WindowsSettings.Classes.WindowsSettings windowsSettings)
+    {
+        var thread = new Thread(() =>
         {
+            var oleInitialized = ShellInterop.OleInitialize(IntPtr.Zero) >= 0;
             try
             {
                 var controlPanelTasks = ControlPanelTasksHelper.GetAllControlPanelTasks();
@@ -58,7 +63,21 @@ public sealed partial class WindowsSettingsCommandsProvider : CommandProvider
             {
                 Logger.LogError("Failed to merge Control Panel tasks into settings search", exception);
             }
-        });
+            finally
+            {
+                if (oleInitialized)
+                {
+                    ShellInterop.OleUninitialize();
+                }
+            }
+        })
+        {
+            IsBackground = true,
+            Name = "Control Panel Tasks Enumerator",
+        };
+
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
     }
 
     public override ICommandItem[] TopLevelCommands()

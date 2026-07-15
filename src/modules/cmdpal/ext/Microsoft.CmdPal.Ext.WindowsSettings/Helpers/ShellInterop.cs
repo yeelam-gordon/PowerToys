@@ -66,6 +66,12 @@ internal static partial class ShellInterop
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool ShellExecuteEx(ref SHELLEXECUTEINFOW lpExecInfo);
 
+    [LibraryImport("ole32.dll")]
+    internal static partial int OleInitialize(IntPtr pvReserved);
+
+    [LibraryImport("ole32.dll")]
+    internal static partial void OleUninitialize();
+
     /// <summary>
     /// Creates an <see cref="IShellItem"/> from a shell parsing name (e.g. "::{CLSID}\...").
     /// Returns null when the item cannot be created.

@@ -42,8 +42,9 @@ foreach ($csprojFile in $csprojFiles) {
 
         # The '*' wildcard matches Import elements regardless of XML namespace.
         foreach ($importNode in $xml.GetElementsByTagName('Import', '*')) {
-            if ($null -ne $importNode.Project) {
-                $importFilename = [System.IO.Path]::GetFileName($importNode.Project)
+            $importProject = $importNode.GetAttribute('Project')
+            if (-not [string]::IsNullOrWhiteSpace($importProject)) {
+                $importFilename = [System.IO.Path]::GetFileName($importProject)
 
                 if ($importFilename -eq 'Common.Dotnet.CsWinRT.props' -or $importFilename -eq 'Common.Dotnet.props') {
                     $importExists = $true

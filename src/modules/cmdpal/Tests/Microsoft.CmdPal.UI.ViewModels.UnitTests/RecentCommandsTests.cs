@@ -345,6 +345,19 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryUpdateIgnoresInvalidCommandIds()
+    {
+        var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager()
+            .WithHistoryItem("valid", now)
+            .WithHistoryItem(string.Empty, now.AddMinutes(1))
+            .WithHistoryItem(null!, now.AddMinutes(2));
+
+        Assert.AreEqual(1, history.History.Count, "Invalid command ids should not be persisted");
+        Assert.AreEqual("valid", history.History[0].CommandId, "Existing valid history should remain intact");
+    }
+
+    [TestMethod]
     public void ValidateHistorySerializationRoundTrips()
     {
         // The persisted history (see SettingsModel's JsonSerializable context) must round-trip,

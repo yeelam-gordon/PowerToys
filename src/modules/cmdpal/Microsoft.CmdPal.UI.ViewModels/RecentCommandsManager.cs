@@ -156,6 +156,11 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
     /// </summary>
     internal RecentCommandsManager WithHistoryItem(string commandId, DateTimeOffset now)
     {
+        if (string.IsNullOrEmpty(commandId))
+        {
+            return this;
+        }
+
         var existing = History.FirstOrDefault(item => item.CommandId == commandId);
         ImmutableList<HistoryItem> newHistory;
 

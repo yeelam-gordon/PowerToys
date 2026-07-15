@@ -103,9 +103,14 @@ namespace KeyboardEventHandlers
 
             std::vector<INPUT> keyEventList;
             Helpers::SetKeyEvent(keyEventList, INPUT_KEYBOARD, static_cast<WORD>(pendingKey), 0, KeyboardManagerConstants::KEYBOARDMANAGER_SINGLEKEY_FLAG);
-            ii.SendVirtualInput(keyEventList);
-
-            state.SetAloneCombination(pendingKey);
+            if (ii.SendVirtualInput(keyEventList))
+            {
+                state.SetAloneCombination(pendingKey);
+            }
+            else
+            {
+                state.ClearAloneKeyState(pendingKey);
+            }
         }
     }
 
@@ -165,8 +170,15 @@ namespace KeyboardEventHandlers
                         // releases the real key and never fires the alone action.
                         std::vector<INPUT> keyEventList;
                         Helpers::SetKeyEvent(keyEventList, INPUT_KEYBOARD, static_cast<WORD>(vk), 0, KeyboardManagerConstants::KEYBOARDMANAGER_SINGLEKEY_FLAG);
-                        ii.SendVirtualInput(keyEventList);
-                        state.SetAloneCombination(vk);
+                        if (ii.SendVirtualInput(keyEventList))
+                        {
+                            state.SetAloneCombination(vk);
+                        }
+                        else
+                        {
+                            state.ClearAloneKeyState(vk);
+                            return 0;
+                        }
                     }
                     else
                     {
@@ -206,9 +218,10 @@ namespace KeyboardEventHandlers
                     }
                     // NOTE: text-valued alone targets are a later phase (no producer yet).
 
-                    if (!keyEventList.empty())
+                    if (!keyEventList.empty() && !ii.SendVirtualInput(keyEventList))
                     {
-                        ii.SendVirtualInput(keyEventList);
+                        state.ClearAloneKeyState(vk);
+                        return 0;
                     }
 
                     state.ClearAloneKeyState(vk);
@@ -220,7 +233,11 @@ namespace KeyboardEventHandlers
                     // Was used in combination: release the real key we injected on its key-down.
                     std::vector<INPUT> keyEventList;
                     Helpers::SetKeyEvent(keyEventList, INPUT_KEYBOARD, static_cast<WORD>(vk), KEYEVENTF_KEYUP, KeyboardManagerConstants::KEYBOARDMANAGER_SINGLEKEY_FLAG);
-                    ii.SendVirtualInput(keyEventList);
+                    if (!ii.SendVirtualInput(keyEventList))
+                    {
+                        state.ClearAloneKeyState(vk);
+                        return 0;
+                    }
 
                     state.ClearAloneKeyState(vk);
                     return 1;

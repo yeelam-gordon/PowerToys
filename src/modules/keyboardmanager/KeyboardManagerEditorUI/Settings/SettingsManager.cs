@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -137,7 +137,7 @@ namespace KeyboardManagerEditorUI.Settings
                 return;
             }
 
-            // Repair any pre-existing duplicate entries first so the store converges on load.
+            // Repair any preexisting duplicate entries first so the store converges on load.
             bool shortcutSettingsChanged = RemoveDuplicateMappings();
 
             // Process all shortcut mappings

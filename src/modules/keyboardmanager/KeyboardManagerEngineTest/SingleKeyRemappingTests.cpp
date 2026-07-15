@@ -591,6 +591,21 @@ namespace RemappingLogicTests
             });
         }
 
+        void FailSingleKeyInjections()
+        {
+            mockedInputHandler.SetSendVirtualInputShouldFail([](const std::vector<INPUT>& inputs) {
+                for (const auto& input : inputs)
+                {
+                    if (input.ki.dwExtraInfo == KeyboardManagerConstants::KEYBOARDMANAGER_SINGLEKEY_FLAG)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
+
     public:
         TEST_METHOD_INITIALIZE(InitializeTestEnv)
         {
@@ -609,10 +624,10 @@ namespace RemappingLogicTests
             testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
             CountImeOnInjections();
 
-            std::vector<INPUT> rctrlDown{
+            std::vector<INPUT> rightCtrlDown{
                 { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } },
             };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
 
             // Nothing injected yet: neither the original Right Ctrl nor the alone action.
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
@@ -627,14 +642,14 @@ namespace RemappingLogicTests
             testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
             CountImeOnInjections();
 
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
 
             // Still nothing on the way down.
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
 
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             // On release the alone action fires as a tap: IME On down + up = 2 injected events.
             Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
@@ -650,8 +665,8 @@ namespace RemappingLogicTests
             CountImeOnInjections();
 
             // Right Ctrl down (held, tap candidate) — not injected yet.
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
 
             // H pressed while Right Ctrl held -> combination: Right Ctrl is now injected as a real
@@ -665,8 +680,8 @@ namespace RemappingLogicTests
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
 
             // Releasing Right Ctrl releases the real modifier; still no alone action.
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
@@ -681,10 +696,10 @@ namespace RemappingLogicTests
             // Count every event that reaches SendVirtualInput.
             mockedInputHandler.SetSendVirtualInputTestHandler([](LowlevelKeyboardEvent*) { return true; });
 
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             // Only the two driving events flowed through; the handler injected nothing extra.
             Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
@@ -697,21 +712,21 @@ namespace RemappingLogicTests
         {
             testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
 
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
             std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
 
             // Cycle 1: combination (Right Ctrl + H) — resolves without firing the alone action.
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
             mockedInputHandler.SendVirtualInput(hDown);
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             // Start counting IME On injections for cycle 2.
             CountImeOnInjections();
 
             // Cycle 2: solo tap — the alone action fires again (down + up = 2 injected events).
-            mockedInputHandler.SendVirtualInput(rctrlDown);
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
             Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
         }
 
@@ -725,8 +740,8 @@ namespace RemappingLogicTests
             CountImeOnInjections();
 
             // Right Ctrl down (held, tap candidate) — nothing injected yet.
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
 
             // A mouse button-down/scroll arrives while Right Ctrl is held: the mouse hook promotes the
@@ -738,8 +753,8 @@ namespace RemappingLogicTests
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
 
             // Releasing Right Ctrl releases the real modifier; still no alone action.
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
@@ -757,10 +772,10 @@ namespace RemappingLogicTests
             CountImeOnInjections();
 
             // Solo tap afterwards still fires the alone action (down + up = 2 injected events).
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
             Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
         }
 
@@ -779,13 +794,13 @@ namespace RemappingLogicTests
                 return data->lParam->vkCode == 0x41;
             });
 
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
             // Lazy: nothing injected on the way down.
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
 
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
 
             // On tap the shortcut's action key is injected as down + up = 2 events (previously the
             // shortcut target was ignored and nothing was injected).
@@ -808,28 +823,117 @@ namespace RemappingLogicTests
             });
 
             // Left Ctrl down (held, tap candidate) — nothing injected yet.
-            std::vector<INPUT> lctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL } } };
-            mockedInputHandler.SendVirtualInput(lctrlDown);
+            std::vector<INPUT> leftCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlDown);
 
             // Right Ctrl down while Left Ctrl is held: both are a combination now. Left Ctrl is promoted
             // to a real modifier and Right Ctrl is injected as a real key too; no alone action fires.
-            std::vector<INPUT> rctrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
-            mockedInputHandler.SendVirtualInput(rctrlDown);
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
             Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
             Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
 
             // Releasing Right Ctrl releases the real key; it must NOT fire IME On (it was not tapped alone).
-            std::vector<INPUT> rctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(rctrlUp);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
 
             // Release Left Ctrl as well.
-            std::vector<INPUT> lctrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
-            mockedInputHandler.SendVirtualInput(lctrlUp);
+            std::vector<INPUT> leftCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlUp);
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
 
             // No alone (IME) action fired at any point.
             Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        TEST_METHOD (AloneRemap_PromotionInjectionFailure_ShouldClearPendingAndPassThroughLaterKeyUp)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            mockedInputHandler.SendVirtualInput(hDown);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(0x48));
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        TEST_METHOD (AloneRemap_PressedInCombinationInjectionFailure_ShouldPassCurrentKeyDownThrough)
+        {
+            testState.AddSingleKeyAloneRemap(VK_LCONTROL, (DWORD)VK_IME_OFF);
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> leftCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlDown);
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        TEST_METHOD (AloneRemap_AloneActionInjectionFailure_ShouldPassKeyUpThroughAndResetState)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            mockedInputHandler.SetSendVirtualInputShouldFail(nullptr);
+            CountImeOnInjections();
+
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        TEST_METHOD (AloneRemap_CombinationKeyUpInjectionFailure_ShouldPassPhysicalKeyUpThrough)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            mockedInputHandler.SendVirtualInput(hDown);
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            mockedInputHandler.SetSendVirtualInputShouldFail(nullptr);
+            CountImeOnInjections();
+
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
         }
     };
 }

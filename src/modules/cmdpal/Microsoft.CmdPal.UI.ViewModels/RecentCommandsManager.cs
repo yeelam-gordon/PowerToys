@@ -153,7 +153,8 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         {
             newHistory = History.Remove(existing);
             var updatedUses = existing.Uses == int.MaxValue ? int.MaxValue : existing.Uses + 1;
-            var updated = existing with { Uses = updatedUses, LastUsed = now };
+            var updatedLastUsed = existing.LastUsed > now ? existing.LastUsed : now;
+            var updated = existing with { Uses = updatedUses, LastUsed = updatedLastUsed };
             newHistory = newHistory.Insert(0, updated);
         }
         else

@@ -306,6 +306,19 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryUpdateDoesNotMoveLastUsedBackwards()
+    {
+        var newer = new DateTimeOffset(2025, 5, 2, 0, 0, 0, TimeSpan.Zero);
+        var older = newer.AddDays(-1);
+        var history = new RecentCommandsManager()
+            .WithHistoryItem("shell", newer)
+            .WithHistoryItem("shell", older);
+
+        Assert.AreEqual(newer, history.History[0].LastUsed, "Updating history should not make LastUsed decrease");
+        Assert.AreEqual(2, history.History[0].Uses, "The use count should still increase when the timestamp is older");
+    }
+
+    [TestMethod]
     public void ValidateHistorySerializationRoundTrips()
     {
         // The persisted history (see SettingsModel's JsonSerializable context) must round-trip,

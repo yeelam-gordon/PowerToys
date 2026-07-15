@@ -130,6 +130,8 @@ namespace MouseWithoutBorders
 #if !MM_HELPER
     public class ClipboardHelper : IClipboardHelper
     {
+        private const int MaxLoggedPathLength = 512;
+
         public void SendLog(string log)
         {
             Logger.LogDebug("FROM HELPER: " + log);
@@ -157,7 +159,7 @@ namespace MouseWithoutBorders
         {
             if (IsRemoteOrUncPath(fileName))
             {
-                Logger.Log("SendDragFile: Rejected non-local path received over IPC: " + fileName);
+                Logger.Log("SendDragFile: Rejected non-local path received over IPC: " + FormatPathForLog(fileName));
                 return;
             }
 
@@ -166,9 +168,10 @@ namespace MouseWithoutBorders
 
         public void SendClipboardData(ByteArrayOrString data, bool isFilePath)
         {
-            if (isFilePath && data.IsString && IsRemoteOrUncPath(data.GetString()))
+            string filePath = data.IsString ? data.GetString() : null;
+            if (isFilePath && data.IsString && IsRemoteOrUncPath(filePath))
             {
-                Logger.Log("SendClipboardData: Rejected non-local file path received over IPC: " + data.GetString());
+                Logger.Log("SendClipboardData: Rejected non-local file path received over IPC: " + FormatPathForLog(filePath));
                 return;
             }
 
@@ -253,6 +256,22 @@ namespace MouseWithoutBorders
             {
                 return true;
             }
+        }
+
+        private static string FormatPathForLog(string path)
+        {
+            if (path == null)
+            {
+                return string.Empty;
+            }
+
+            string sanitizedPath = path.Replace('\r', ' ').Replace('\n', ' ');
+            if (sanitizedPath.Length <= MaxLoggedPathLength)
+            {
+                return sanitizedPath;
+            }
+
+            return string.Concat(sanitizedPath.AsSpan(0, MaxLoggedPathLength), "...");
         }
     }
 #endif

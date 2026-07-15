@@ -1266,6 +1266,7 @@ NResize
 NTAPI
 ntdll
 ntfs
+NTLM
 NTSTATUS
 NTSYSAPI
 nullability

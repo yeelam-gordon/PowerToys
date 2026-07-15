@@ -25,7 +25,7 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code", "Terminal"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code", "Terminal"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge", "Notepad"),
             };
 
@@ -40,7 +40,7 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge"),
             };
 
@@ -56,7 +56,7 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge"),
                 TestHelpers.CreateProject("DesignWork", 0, 0, "Figma"),
             };
@@ -65,7 +65,7 @@ namespace WorkspacesEditor.UnitTests
             var results = vm.WorkspacesView.ToList();
 
             Assert.AreEqual(1, results.Count);
-            Assert.AreEqual("DevelopmentWorkspace", results[0].Name);
+            Assert.AreEqual("Development Workspace", results[0].Name);
         }
 
         [TestMethod]
@@ -75,7 +75,7 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code", "Terminal"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code", "Terminal"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge", "Notepad"),
             };
 
@@ -83,7 +83,7 @@ namespace WorkspacesEditor.UnitTests
             var results = vm.WorkspacesView.ToList();
 
             Assert.AreEqual(1, results.Count);
-            Assert.AreEqual("DevelopmentWorkspace", results[0].Name);
+            Assert.AreEqual("Development Workspace", results[0].Name);
         }
 
         [TestMethod]
@@ -93,11 +93,11 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge"),
             };
 
-            vm.SearchTerm = "developmentworkspace";
+            vm.SearchTerm = "development workspace";
             Assert.AreEqual(1, vm.WorkspacesView.Count);
         }
 
@@ -108,7 +108,7 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace", 0, 0, "VS Code"),
+                TestHelpers.CreateProject("Development Workspace", 0, 0, "VS Code"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge"),
             };
 
@@ -138,8 +138,8 @@ namespace WorkspacesEditor.UnitTests
             var vm = TestHelpers.CreateViewModel();
             vm.Workspaces = new ObservableCollection<Project>
             {
-                TestHelpers.CreateProject("DevelopmentWorkspace1", 0, 0, "VS Code"),
-                TestHelpers.CreateProject("DevelopmentWorkspace2", 0, 0, "Terminal"),
+                TestHelpers.CreateProject("Development Workspace 1", 0, 0, "VS Code"),
+                TestHelpers.CreateProject("Development Workspace 2", 0, 0, "Terminal"),
                 TestHelpers.CreateProject("Browsing", 0, 0, "Edge"),
             };
 

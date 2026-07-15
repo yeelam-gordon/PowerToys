@@ -437,5 +437,5 @@ WIDGETBOARD
 actioncenter
 
 # Performance / hardware terms
-acpi
+ACPI
 PDH

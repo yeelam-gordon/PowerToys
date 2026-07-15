@@ -81,6 +81,11 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
                 var map = new Dictionary<string, HistoryItem>(StringComparer.Ordinal);
                 foreach (var item in History)
                 {
+                    if (string.IsNullOrEmpty(item.CommandId))
+                    {
+                        continue;
+                    }
+
                     // History is most-recent-first and command ids are unique in it, but keep
                     // the first (most recent) occurrence if a duplicate ever slips in so the
                     // lookup matches the old FirstOrDefault behavior.

@@ -319,6 +319,22 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryWeightSkipsInvalidCommandIds()
+    {
+        var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager
+        {
+            History = ImmutableList.Create(
+                new HistoryItem { CommandId = null!, Uses = 10, LastUsed = now },
+                new HistoryItem { CommandId = string.Empty, Uses = 10, LastUsed = now },
+                new HistoryItem { CommandId = "valid", Uses = 1, LastUsed = now }),
+        };
+
+        Assert.AreEqual(0, history.GetCommandHistoryWeight("missing", now), "Invalid persisted ids should not break lookup");
+        Assert.IsTrue(history.GetCommandHistoryWeight("valid", now) > 0, "Valid entries should still be indexed");
+    }
+
+    [TestMethod]
     public void ValidateHistorySerializationRoundTrips()
     {
         // The persisted history (see SettingsModel's JsonSerializable context) must round-trip,

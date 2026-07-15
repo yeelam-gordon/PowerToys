@@ -204,7 +204,7 @@ namespace MouseWithoutBorders
                 }
 
                 string pathRoot = Path.GetPathRoot(fullPath);
-                return IsNetworkDriveRoot(pathRoot);
+                return IsNetworkOrUnavailableDriveRoot(pathRoot);
             }
             catch (ArgumentException)
             {
@@ -233,7 +233,7 @@ namespace MouseWithoutBorders
                 || path.StartsWith("//", StringComparison.Ordinal);
         }
 
-        private static bool IsNetworkDriveRoot(string pathRoot)
+        private static bool IsNetworkOrUnavailableDriveRoot(string pathRoot)
         {
             if (string.IsNullOrEmpty(pathRoot))
             {
@@ -242,7 +242,8 @@ namespace MouseWithoutBorders
 
             try
             {
-                return new DriveInfo(pathRoot).DriveType == DriveType.Network;
+                DriveType driveType = new DriveInfo(pathRoot).DriveType;
+                return driveType == DriveType.Network || driveType == DriveType.NoRootDirectory;
             }
             catch (ArgumentException)
             {

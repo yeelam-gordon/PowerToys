@@ -36,6 +36,23 @@ public sealed class ClipboardHelperTests
         Assert.IsFalse(ClipboardHelper.IsRemoteOrUncPath(path), $"Expected '{path}' to be treated as local.");
     }
 
+    [TestMethod]
+    public void IsRemoteOrUncPath_ReturnsTrue_ForUnavailableDriveRoot()
+    {
+        string[] existingDriveRoots = DriveInfo.GetDrives().Select(drive => drive.Name.ToUpperInvariant()).ToArray();
+        char unusedDriveLetter = Enumerable.Range('D', 'Z' - 'D' + 1)
+            .Select(value => (char)value)
+            .FirstOrDefault(letter => !existingDriveRoots.Contains($@"{letter}:\"));
+
+        if (unusedDriveLetter == default)
+        {
+            Assert.Inconclusive("No unused drive letter is available to validate unavailable drive root rejection.");
+        }
+
+        string unavailableDrivePath = $@"{unusedDriveLetter}:\file.txt";
+        Assert.IsTrue(ClipboardHelper.IsRemoteOrUncPath(unavailableDrivePath), $"Expected '{unavailableDrivePath}' to be rejected.");
+    }
+
     [DataTestMethod]
     [DataRow(null)]
     [DataRow("")]

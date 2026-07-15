@@ -15,7 +15,7 @@ internal static class MainListRanker
 {
     // Each tier occupies a band of this width in the packed score. The within-tier score
     // is clamped to this range so it can never spill into an adjacent tier's band. With a
-    // 10M stride and 6 real tiers the maximum packed value (~63M) is far below int.MaxValue.
+    // 10M stride and 6 real tiers the maximum packed value (~70M) is far below int.MaxValue.
     internal const int TierStride = 10_000_000;
 
     // Scale factors that turn signals into within-tier points. These deliberately mirror
@@ -43,7 +43,7 @@ internal static class MainListRanker
             return 0;
         }
 
-        var within = (int)Math.Round(Math.Clamp(withinTierScore, 0.0, TierStride - 1));
+        var within = (int)Math.Clamp(withinTierScore, 0.0, TierStride - 1);
         return ((int)tier * TierStride) + within;
     }
 

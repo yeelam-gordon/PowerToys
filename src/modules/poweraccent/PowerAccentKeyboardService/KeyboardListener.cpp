@@ -100,17 +100,17 @@ namespace winrt::PowerToys::PowerAccentKeyboardService::implementation
 
     void KeyboardListener::UpdateActivationKey(int32_t activationKey)
     {
-        m_settings.activationKey = static_cast<PowerAccentActivationKey>(activationKey);
+        m_settings.activationKey.store(static_cast<PowerAccentActivationKey>(activationKey));
     }
 
     void KeyboardListener::UpdateDoNotActivateOnGameMode(bool doNotActivateOnGameMode)
     {
-        m_settings.doNotActivateOnGameMode = doNotActivateOnGameMode;
+        m_settings.doNotActivateOnGameMode.store(doNotActivateOnGameMode);
     }
 
     void KeyboardListener::UpdateInputTime(int32_t inputTime)
     {
-        m_settings.inputTime = std::chrono::milliseconds(inputTime);
+        m_settings.inputTime.store(inputTime);
     }
 
     void KeyboardListener::UpdateExcludedApps(std::wstring_view excludedAppsView)
@@ -137,7 +137,7 @@ namespace winrt::PowerToys::PowerAccentKeyboardService::implementation
 
     bool KeyboardListener::IsSuppressedByGameMode()
     {
-        return m_settings.doNotActivateOnGameMode && detect_game_mode();
+        return m_settings.doNotActivateOnGameMode.load() && detect_game_mode();
     }
 
     bool KeyboardListener::IsForegroundAppExcluded()
@@ -207,10 +207,11 @@ namespace winrt::PowerToys::PowerAccentKeyboardService::implementation
             {
                 triggerPressed = info.vkCode;
                 const bool isLetterReleased = (GetAsyncKeyState(static_cast<int>(currentLetterPressed)) & 0x8000) == 0;
+                const auto activationKey = m_settings.activationKey.load();
 
                 if (isLetterReleased ||
-                    (triggerPressed == VK_SPACE && m_settings.activationKey == PowerAccentActivationKey::LeftRightArrow) ||
-                    ((triggerPressed == VK_LEFT || triggerPressed == VK_RIGHT) && m_settings.activationKey == PowerAccentActivationKey::Space))
+                    (triggerPressed == VK_SPACE && activationKey == PowerAccentActivationKey::LeftRightArrow) ||
+                    ((triggerPressed == VK_LEFT || triggerPressed == VK_RIGHT) && activationKey == PowerAccentActivationKey::Space))
                 {
                     Logger::debug(L"Reset trigger key");
                     return false;
@@ -272,7 +273,7 @@ namespace winrt::PowerToys::PowerAccentKeyboardService::implementation
 
             if (m_toolbarVisible)
             {
-                if (m_stopwatch.elapsed() < m_settings.inputTime)
+                if (m_stopwatch.elapsed() < std::chrono::milliseconds(m_settings.inputTime.load()))
                 {
                     Logger::debug(L"Activation too fast. Do nothing.");
 

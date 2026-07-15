@@ -135,8 +135,9 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             MouseButtonLockSettingsConfig = mouseButtonLockSettingsRepository.SettingsConfig;
 
             // Null-safe in case a hand-edited settings.json carries explicit nulls: repair the
-            // property objects to their defaults so both the reads below and the property setters
-            // are safe (mirrors the null-handling the CursorWrap block above uses).
+            // property object and its entries to their defaults so both the reads below and the
+            // property setters are safe (mirrors the null-handling the CursorWrap block above uses).
+            MouseButtonLockSettingsConfig.Properties ??= new MouseButtonLockProperties();
             MouseButtonLockSettingsConfig.Properties.LmbLockEnabled ??= new BoolProperty(false);
             MouseButtonLockSettingsConfig.Properties.RmbLockEnabled ??= new BoolProperty(true);
             MouseButtonLockSettingsConfig.Properties.MmbLockEnabled ??= new BoolProperty(false);
@@ -221,6 +222,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             }
             else
             {
+                _mouseButtonLockEnabledStateIsGPOConfigured = false;
                 _isMouseButtonLockEnabled = GeneralSettingsConfig.Enabled.MouseButtonLock;
             }
         }
@@ -1482,6 +1484,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             OnPropertyChanged(nameof(IsMousePointerCrosshairsEnabled));
             OnPropertyChanged(nameof(IsCursorWrapEnabled));
             OnPropertyChanged(nameof(IsMouseButtonLockEnabled));
+            OnPropertyChanged(nameof(IsMouseButtonLockEnabledGpoConfigured));
         }
 
         private Func<string, int> SendConfigMSG { get; }

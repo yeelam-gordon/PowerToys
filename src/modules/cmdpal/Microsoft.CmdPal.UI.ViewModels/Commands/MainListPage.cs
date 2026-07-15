@@ -128,6 +128,7 @@ public sealed partial class MainListPage : DynamicListPage,
     // user invokes a result) to resolve the invoked item's visible rank and ranker tier.
     private IReadOnlyList<IListItem>? _lastSearchViewItems;
     private IReadOnlyList<RoScored<IListItem>>? _lastScoredGlobalFallbacks;
+    private int _lastRenderedSearchQueryLength;
 
 #if CMDPAL_FF_MAINPAGE_TIME_RAISE_ITEMS
     private DateTimeOffset _last = DateTimeOffset.UtcNow;
@@ -339,9 +340,11 @@ public sealed partial class MainListPage : DynamicListPage,
 
         // Snapshot the rendered order and the (packed-score) global fallbacks so selection
         // telemetry can resolve an invoked item's rank and tier off the hot path. These are
-        // plain reference assignments - no extra allocation on the render path.
+        // paired with the rendered query length so telemetry matches the result list the user
+        // invoked from, not a newer SearchText value that may already be queued for publish.
         _lastSearchViewItems = result;
         _lastScoredGlobalFallbacks = validScoredFallbacks;
+        _lastRenderedSearchQueryLength = _globalFallbackQuery.Original?.Length ?? 0;
 
         return result;
     }
@@ -536,6 +539,9 @@ public sealed partial class MainListPage : DynamicListPage,
         _filteredAppsQueryLength = 0;
         _fallbackItems = null;
         _globalFallbackSources = null;
+        _lastSearchViewItems = null;
+        _lastScoredGlobalFallbacks = null;
+        _lastRenderedSearchQueryLength = 0;
 
         // Reset the paired query too. ScoreDeferredFallbacks already short-circuits on a null
         // source list, so a stale query here is harmless, but clearing both keeps the snapshot
@@ -659,6 +665,7 @@ public sealed partial class MainListPage : DynamicListPage,
                 _searchTelemetryDebounce.Cancel();
                 _lastSearchViewItems = null;
                 _lastScoredGlobalFallbacks = null;
+                _lastRenderedSearchQueryLength = 0;
 
                 var wasAlreadyEmpty = string.IsNullOrWhiteSpace(oldSearch);
                 RequestRefresh(fullRefresh: true, interval: wasAlreadyEmpty ? null : TimeSpan.Zero);
@@ -1041,8 +1048,8 @@ public sealed partial class MainListPage : DynamicListPage,
     // item is not among the last rendered search results.
     private void EmitSelectionTelemetry(IListItem invoked)
     {
-        var searchText = SearchText;
-        if (string.IsNullOrWhiteSpace(searchText))
+        var queryLength = _lastRenderedSearchQueryLength;
+        if (queryLength <= 0)
         {
             return;
         }
@@ -1063,7 +1070,7 @@ public sealed partial class MainListPage : DynamicListPage,
             return;
         }
 
-        WeakReferenceMessenger.Default.Send(BuildSearchSelectedMessage(searchText, index, tier));
+        WeakReferenceMessenger.Default.Send(BuildSearchSelectedMessage(queryLength, index, tier));
     }
 
     // Stores the latest settled-search metrics and (re)arms the debounce. Only the query LENGTH is
@@ -1112,6 +1119,9 @@ public sealed partial class MainListPage : DynamicListPage,
     // and the ranker tier. Exposed for tests to prove the raw query text is never carried.
     internal static TelemetrySearchResultSelectedMessage BuildSearchSelectedMessage(string query, int selectedIndex, RankTier selectedTier)
         => new(query?.Length ?? 0, selectedIndex, selectedTier);
+
+    internal static TelemetrySearchResultSelectedMessage BuildSearchSelectedMessage(int queryLength, int selectedIndex, RankTier selectedTier)
+        => new(Math.Max(queryLength, 0), selectedIndex, selectedTier);
 
     // Zero-based visible rank of an invoked item within the rendered results, skipping the section
     // separators. Returns -1 when the item is not present (e.g. it was invoked from a different view).

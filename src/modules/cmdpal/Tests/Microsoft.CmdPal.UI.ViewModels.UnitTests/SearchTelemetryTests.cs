@@ -112,6 +112,16 @@ public partial class SearchTelemetryTests
     }
 
     [TestMethod]
+    public void SelectedMessage_CapturesPublishedQueryLength()
+    {
+        var message = MainListPage.BuildSearchSelectedMessage(queryLength: 3, selectedIndex: 1, selectedTier: RankTier.Fuzzy);
+
+        Assert.AreEqual(3, message.QueryLength);
+        Assert.AreEqual(1, message.SelectedIndex);
+        Assert.AreEqual(RankTier.Fuzzy, message.SelectedTier);
+    }
+
+    [TestMethod]
     public void SelectedMessage_HasNoStringFields()
     {
         var stringProperties = typeof(TelemetrySearchResultSelectedMessage)

@@ -289,6 +289,21 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
     }
 
     [TestMethod]
+    public void ValidateHistoryWeightHandlesMaxUseCount()
+    {
+        var now = new DateTimeOffset(2025, 5, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager
+        {
+            History = ImmutableList.Create(
+                new HistoryItem { CommandId = "maxed", Uses = int.MaxValue, LastUsed = now }),
+        };
+
+        var weight = history.GetCommandHistoryWeight("maxed", now);
+
+        Assert.AreEqual(RecentCommandsManager.MaxWeight, weight, "Max use counts should not overflow before log scaling");
+    }
+
+    [TestMethod]
     public void ValidateHistorySerializationRoundTrips()
     {
         // The persisted history (see SettingsModel's JsonSerializable context) must round-trip,

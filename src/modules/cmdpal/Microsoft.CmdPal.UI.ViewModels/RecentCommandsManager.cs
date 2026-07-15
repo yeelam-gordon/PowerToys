@@ -125,7 +125,7 @@ public sealed class RecentCommandsManager : IRecentCommandsManager
         var recency = Math.Pow(2.0, -ageDays / HalfLifeDays);
 
         // Frequency via log2 so heavy usage helps but can't outrun recency.
-        var frequency = Math.Log(entry.Uses + 1, 2);
+        var frequency = Math.Log((double)entry.Uses + 1.0, 2.0);
 
         var weight = recency * (BaseWeight + (FrequencyWeight * frequency));
 

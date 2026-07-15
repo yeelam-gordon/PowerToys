@@ -10,7 +10,7 @@ namespace CoreWidgetProvider.Helpers;
 // Reads CPU temperature from the "Thermal Zone Information" PDH category (ACPI thermal zones).
 // Raw counter values are in tenths of Kelvin; we convert to Celsius on read.
 // Not available on all systems (e.g. VMs without ACPI thermal zones) - check IsAvailable first.
-internal sealed partial class TemperatureStats : PerformanceCounterSourceBase
+internal sealed partial class TemperatureStats : PerformanceCounterSourceBase, IDisposable
 {
     private const string CategoryName = "Thermal Zone Information";
     private const string CounterName = "High Precision Temperature";
@@ -19,6 +19,7 @@ internal sealed partial class TemperatureStats : PerformanceCounterSourceBase
     private const double TenthsKelvinOffset = 2731.5;
 
     private readonly PerformanceCounter? _thermalCounter;
+    private bool _initializationFailureLogged;
     private bool _readFailureLogged;
 
     public bool IsAvailable => _thermalCounter is not null;
@@ -34,17 +35,24 @@ internal sealed partial class TemperatureStats : PerformanceCounterSourceBase
             return;
         }
 
-        var instances = category.GetInstanceNames();
-        if (instances.Length == 0)
+        try
         {
-            return;
+            var instances = category.GetInstanceNames();
+            if (instances.Length == 0)
+            {
+                return;
+            }
+
+            // Prefer standard ACPI thermal zone instances (_TZ.*), fall back to the first available.
+            var preferred = Array.Find(instances, n => n.StartsWith("_TZ.", StringComparison.OrdinalIgnoreCase))
+                ?? instances[0];
+
+            _thermalCounter = CreatePerformanceCounter(CategoryName, CounterName, preferred, logFailure: false);
         }
-
-        // Prefer standard ACPI thermal zone instances (_TZ.*), fall back to the first available.
-        var preferred = Array.Find(instances, n => n.StartsWith("_TZ.", StringComparison.OrdinalIgnoreCase))
-            ?? instances[0];
-
-        _thermalCounter = CreatePerformanceCounter(CategoryName, CounterName, preferred, logFailure: false);
+        catch (Exception ex)
+        {
+            LogFailureOnce(ref _initializationFailureLogged, $"Failed to initialize {CategoryName}\\{CounterName}.", ex);
+        }
     }
 
     public void GetData()
@@ -65,5 +73,10 @@ internal sealed partial class TemperatureStats : PerformanceCounterSourceBase
             LogFailureOnce(ref _readFailureLogged, $"Failed to read {CategoryName}\\{CounterName}.", ex);
             CpuTemperatureCelsius = -1;
         }
+    }
+
+    public void Dispose()
+    {
+        _thermalCounter?.Dispose();
     }
 }

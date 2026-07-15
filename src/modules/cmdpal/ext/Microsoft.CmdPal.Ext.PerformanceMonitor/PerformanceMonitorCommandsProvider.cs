@@ -32,6 +32,7 @@ public partial class PerformanceMonitorCommandsProvider : CommandProvider
     private PerformanceWidgetsPage? _networkBandPage;
     private PerformanceWidgetsPage? _gpuBandPage;
     private PerformanceWidgetsPage? _batteryBandPage;
+    private PerformanceWidgetsPage? _temperatureBandPage;
     private bool _softDisabled;
 
     public PerformanceMonitorCommandsProvider(bool softDisabled = false)
@@ -140,13 +141,15 @@ public partial class PerformanceMonitorCommandsProvider : CommandProvider
         _networkBandPage = new PerformanceWidgetsPage(_settingsManager, true, PerformanceMetricKind.Network);
         _gpuBandPage = new PerformanceWidgetsPage(_settingsManager, true, PerformanceMetricKind.Gpu);
         _batteryBandPage = new PerformanceWidgetsPage(_settingsManager, true, PerformanceMetricKind.Battery);
+        _temperatureBandPage = new PerformanceWidgetsPage(_settingsManager, true, PerformanceMetricKind.Temperature);
 
         List<ICommandItem> bands = [
             new CommandItem(_bandPage) { Title = DisplayName },
             new CommandItem(_cpuBandPage) { Title = Resources.GetResource("CPU_Usage_Title") },
             new CommandItem(_memoryBandPage) { Title = Resources.GetResource("Memory_Usage_Title") },
             new CommandItem(_networkBandPage) { Title = Resources.GetResource("Network_Usage_Title") },
-            new CommandItem(_gpuBandPage) { Title = Resources.GetResource("GPU_Usage_Title") }
+            new CommandItem(_gpuBandPage) { Title = Resources.GetResource("GPU_Usage_Title") },
+            new CommandItem(_temperatureBandPage) { Title = Resources.GetResource("Temperature_Usage_Title") },
         ];
         var batteryStats = new BatteryStats();
         batteryStats.GetData();
@@ -190,5 +193,8 @@ public partial class PerformanceMonitorCommandsProvider : CommandProvider
 
         _batteryBandPage?.Dispose();
         _batteryBandPage = null;
+
+        _temperatureBandPage?.Dispose();
+        _temperatureBandPage = null;
     }
 }

@@ -262,12 +262,12 @@ internal sealed partial class PerformanceWidgetsPage : OnLoadStaticListPage, IDi
         {
             return metric switch
             {
-                PerformanceMetricKind.Cpu => new IListItem[] { _cpuItem! },
-                PerformanceMetricKind.Memory => new IListItem[] { _memoryItem! },
-                PerformanceMetricKind.Network => new IListItem[] { _networkItem! },
-                PerformanceMetricKind.Gpu => new IListItem[] { _gpuItem! },
-                PerformanceMetricKind.Battery => new IListItem[] { _batteryItem! },
-                PerformanceMetricKind.Temperature => new IListItem[] { _temperatureItem! },
+                PerformanceMetricKind.Cpu => GetSingleMetricItem(_cpuItem),
+                PerformanceMetricKind.Memory => GetSingleMetricItem(_memoryItem),
+                PerformanceMetricKind.Network => GetSingleMetricItem(_networkItem),
+                PerformanceMetricKind.Gpu => GetSingleMetricItem(_gpuItem),
+                PerformanceMetricKind.Battery => GetSingleMetricItem(_batteryItem),
+                PerformanceMetricKind.Temperature => GetSingleMetricItem(_temperatureItem),
                 _ => Array.Empty<IListItem>(),
             };
         }
@@ -321,6 +321,11 @@ internal sealed partial class PerformanceWidgetsPage : OnLoadStaticListPage, IDi
     private bool IncludesMetric(PerformanceMetricKind metric)
     {
         return _singleMetric is null || _singleMetric == metric;
+    }
+
+    private static IListItem[] GetSingleMetricItem(IListItem? item)
+    {
+        return item is null ? Array.Empty<IListItem>() : new IListItem[] { item };
     }
 
     private static string GetMetricSuffix(PerformanceMetricKind metric)

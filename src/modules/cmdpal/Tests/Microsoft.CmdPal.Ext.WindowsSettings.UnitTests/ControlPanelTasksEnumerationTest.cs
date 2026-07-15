@@ -20,6 +20,7 @@ public class ControlPanelTasksEnumerationTest
     /// </summary>
     private const string PathDelimiterSequence = "\u0020\u0020\u02C3\u0020\u0020"; // = "<space><space><arrow><space><space>"
 
+    [STATestMethod]
     [TestMethod]
     public void EnumerationReturnsWellFormedTasks()
     {

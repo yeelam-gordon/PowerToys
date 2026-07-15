@@ -1362,6 +1362,7 @@ Photoshop
 photoshop
 phwnd
 pici
+pclsid
 pidl
 PIDLIST
 pii
@@ -1416,6 +1417,7 @@ ppsrm
 ppsrree
 ppstm
 ppsz
+ppropvar
 pptal
 ppv
 ppwsz
@@ -1680,6 +1682,7 @@ SHGDN
 SHGDNF
 SHGFI
 SHIL
+SHITEMID
 shinfo
 shk
 shlwapi
@@ -2176,6 +2179,7 @@ WTA
 WTNCA
 wtoi
 WTS
+wtypes
 WTSAT
 Wubi
 WUX

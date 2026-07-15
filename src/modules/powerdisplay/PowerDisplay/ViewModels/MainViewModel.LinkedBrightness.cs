@@ -283,6 +283,11 @@ public partial class MainViewModel
 
     private void MonitorManager_WmiBrightnessChanged(object? sender, WmiBrightnessChangedEventArgs e)
     {
+        if (!SyncBrightnessWithInternalDisplay)
+        {
+            return;
+        }
+
         _dispatcherQueue.TryEnqueue(() =>
         {
             HandleWmiBrightnessChanged(e.InstanceName, e.Brightness);
@@ -312,7 +317,6 @@ public partial class MainViewModel
         {
             if (matchingMonitor.Brightness != brightness)
             {
-                Logger.LogInfo($"[WmiBrightness] Internal monitor brightness changed to {brightness}%. Syncing displays.");
                 matchingMonitor.UpdateBrightnessDisplay(brightness);
 
                 if (LinkedLevelsActive)

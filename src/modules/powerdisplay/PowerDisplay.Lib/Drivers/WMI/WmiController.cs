@@ -88,21 +88,36 @@ namespace PowerDisplay.Common.Drivers.WMI
 
         public event Action<string, int>? BrightnessChanged;
 
+        private readonly object _eventSubscriptionLock = new();
         private WmiConnection? _eventConnection;
         private IDisposable? _brightnessEventSubscription;
+        private bool _disposed;
 
         public WmiController()
         {
+            _ = Task.Run(InitializeBrightnessEventSubscription);
+        }
+
+        private void InitializeBrightnessEventSubscription()
+        {
+            WmiConnection? eventConnection = null;
+            IDisposable? brightnessEventSubscription = null;
+
             try
             {
-                _eventConnection = new WmiConnection(WmiNamespace);
-                _brightnessEventSubscription = _eventConnection.CreateEventSubscription(
+                eventConnection = new WmiConnection(WmiNamespace);
+                brightnessEventSubscription = eventConnection.CreateEventSubscription(
                     "SELECT * FROM WmiMonitorBrightnessEvent",
                     eventObj =>
                     {
                         try
                         {
-                            var instanceName = eventObj.GetPropertyValue<string>("InstanceName");
+                            var instanceName = eventObj.GetPropertyValue<string>("InstanceName") ?? string.Empty;
+                            if (string.IsNullOrEmpty(instanceName))
+                            {
+                                return;
+                            }
+
                             var brightness = eventObj.GetPropertyValue<byte>("Brightness");
                             BrightnessChanged?.Invoke(instanceName, brightness);
                         }
@@ -111,9 +126,25 @@ namespace PowerDisplay.Common.Drivers.WMI
                             Logger.LogWarning($"Error handling WMI brightness event: {ex.Message}");
                         }
                     });
+
+                lock (_eventSubscriptionLock)
+                {
+                    if (_disposed)
+                    {
+                        brightnessEventSubscription.Dispose();
+                        eventConnection.Dispose();
+                    }
+                    else
+                    {
+                        _eventConnection = eventConnection;
+                        _brightnessEventSubscription = brightnessEventSubscription;
+                    }
+                }
             }
             catch (Exception ex)
             {
+                brightnessEventSubscription?.Dispose();
+                eventConnection?.Dispose();
                 Logger.LogInfo($"WMI brightness event subscription unavailable: {ex.Message}");
             }
         }
@@ -338,8 +369,18 @@ namespace PowerDisplay.Common.Drivers.WMI
 
         public void Dispose()
         {
-            _brightnessEventSubscription?.Dispose();
-            _eventConnection?.Dispose();
+            lock (_eventSubscriptionLock)
+            {
+                if (_disposed)
+                {
+                    return;
+                }
+
+                _disposed = true;
+                _brightnessEventSubscription?.Dispose();
+                _eventConnection?.Dispose();
+            }
+
             GC.SuppressFinalize(this);
         }
     }

@@ -81,7 +81,7 @@ namespace Peek.Common.UnitTests
         /// <summary>
         /// Product code: MathHelper.Modulo(int, int)
         /// What: Verifies n mod 1 = 0 for positive n
-        /// Why: Divisor of 1 always yields 0 — guards against divide-by-zero edge case
+        /// Why: Divisor of 1 is the smallest valid divisor and always yields 0
         /// </summary>
         [TestMethod]
         public void Modulo_PositiveDividend_DivisorOne_ShouldReturnZero()

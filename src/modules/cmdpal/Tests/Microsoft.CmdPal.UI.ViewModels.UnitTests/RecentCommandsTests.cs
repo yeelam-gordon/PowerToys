@@ -537,4 +537,20 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
             matchedLexically: false);
         Assert.AreEqual(RankTier.None, nothing, "With neither a lexical nor an alias match the item is None");
     }
+
+    [TestMethod]
+    public void FallbackItemsStayAtFloorTier()
+    {
+        // Fallback items should stay below direct command and app matches even when their
+        // dynamic titles match the query strongly.
+        var exactFallback = MainListRanker.ClassifyTier(
+            query: "Remote Desktop",
+            title: "Remote Desktop",
+            isFallback: true,
+            isAliasExact: false,
+            isAliasSubstringMatch: false,
+            matchedLexically: true);
+
+        Assert.AreEqual(RankTier.FallbackFloor, exactFallback, "Fallback title matches must remain at the floor tier");
+    }
 }

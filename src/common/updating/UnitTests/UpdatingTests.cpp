@@ -569,6 +569,27 @@ namespace UpdatingUnitTests
     TEST_CLASS(UpdateLifecycleTests)
     {
     public:
+        TEST_METHOD(SafeDownloadedInstallerFilenameAcceptsBareInstallerNames)
+        {
+            Assert::IsTrue(updating::is_safe_downloaded_installer_filename(L"PowerToysSetup-0.92.0-x64.exe"));
+            Assert::IsTrue(updating::is_safe_downloaded_installer_filename(L"PowerToysUserSetup-0.92.0-arm64.msi"));
+        }
+
+        TEST_METHOD(SafeDownloadedInstallerFilenameRejectsPathTraversalAndAbsolutePaths)
+        {
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"..\\PowerToysSetup-0.92.0-x64.exe"));
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"C:\\Users\\test\\PowerToysSetup-0.92.0-x64.exe"));
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"subdir/PowerToysSetup-0.92.0-x64.exe"));
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"PowerToysSetup-0.92.0-x64.exe:ads"));
+        }
+
+        TEST_METHOD(SafeDownloadedInstallerFilenameRejectsNonInstallers)
+        {
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L"PowerToysSetup-0.92.0-x64.zip"));
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L""));
+            Assert::IsFalse(updating::is_safe_downloaded_installer_filename(L".."));
+        }
+
         // Tests BuildStage2Arguments: output contains the stage 2 flag, installer path,
         // and install directory — all three components needed for Stage 2.
         // Covers: updateLifecycle.h BuildStage2Arguments — concatenation logic.

@@ -107,6 +107,12 @@ std::optional<fs::path> ObtainInstaller(bool& isUpToDate)
     // so we don't need a GitHub API call (which may fail if offline).
     if (state.state == UpdateState::readyToInstall)
     {
+        if (!updating::is_safe_downloaded_installer_filename(state.downloadedInstallerFilename))
+        {
+            Logger::error(L"Refusing update state with unsafe downloaded installer filename '{}'", state.downloadedInstallerFilename);
+            return std::nullopt;
+        }
+
         fs::path installer{ get_pending_updates_path() / state.downloadedInstallerFilename };
         if (fs::is_regular_file(installer))
         {
@@ -257,6 +263,12 @@ bool InstallNewVersionStage2(std::wstring installer_path)
         sei.lpParameters = parameters.c_str();
 
         success = ShellExecuteExW(&sei) == TRUE;
+        if (success)
+        {
+            // The process has been created from the verified file. Release our lock before
+            // waiting so the bootstrapper can clean up or replace its own file if needed.
+            installerFile.reset();
+        }
 
         // Wait for the install completion
         if (success)

@@ -4,8 +4,11 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cwctype>
 #include <filesystem>
 #include <string>
+#include <string_view>
 
 namespace updating
 {
@@ -39,9 +42,33 @@ namespace updating
 
     // Determine whether Stage 2 has enough information to relaunch PT.
     // Returns true if the install directory argument was provided.
-    inline bool CanRelaunchAfterUpdate(int argCount)
+    constexpr inline bool CanRelaunchAfterUpdate(int argCount)
     {
         // args[0]=exe, args[1]=action, args[2]=installer, args[3]=installDir
         return argCount >= 4;
+    }
+
+    inline bool is_safe_downloaded_installer_filename(std::wstring_view filename)
+    {
+        if (filename.empty() || filename == L"." || filename == L"..")
+        {
+            return false;
+        }
+
+        if (filename.find_first_of(L"\\/:") != std::wstring_view::npos)
+        {
+            return false;
+        }
+
+        const fs::path filename_path{ std::wstring{ filename } };
+        if (filename_path.has_parent_path() || filename_path.has_root_name() || filename_path.has_root_directory())
+        {
+            return false;
+        }
+
+        std::wstring filename_lower{ filename };
+        std::transform(filename_lower.begin(), filename_lower.end(), filename_lower.begin(), ::towlower);
+
+        return filename_lower.ends_with(L".exe") || filename_lower.ends_with(L".msi");
     }
 }

@@ -6,6 +6,7 @@
 #include <common/version/helper.h>
 
 #include "updating.h"
+#include "updateLifecycle.h"
 
 #include <common/SettingsAPI/settings_helpers.h>
 #include <common/utils/json.h>
@@ -67,7 +68,7 @@ namespace updating
                 const bool extension_matched = filename_lower.ends_with(asset_extension);
                 const bool architecture_matched = filename_lower.find(required_architecture) != std::wstring::npos;
                 const bool filename_matched = filename_lower.find(required_filename_pattern) != std::wstring::npos;
-                const bool asset_matched = extension_matched && architecture_matched && filename_matched;
+                const bool asset_matched = extension_matched && architecture_matched && filename_matched && is_safe_downloaded_installer_filename(filename_lower);
                 if (asset_matched)
                 {
                     return std::make_pair(Uri{ asset.GetNamedString(L"browser_download_url") }, std::move(filename_lower));
@@ -160,6 +161,12 @@ namespace updating
 
     wil::task<std::optional<std::filesystem::path>> download_new_version_async(new_version_download_info new_version)
     {
+        if (!is_safe_downloaded_installer_filename(new_version.installer_filename))
+        {
+            Logger::error(L"Refusing to download update installer with unsafe filename '{}'", new_version.installer_filename);
+            co_return std::nullopt;
+        }
+
         auto installer_download_path = create_download_path();
         if (!installer_download_path)
         {

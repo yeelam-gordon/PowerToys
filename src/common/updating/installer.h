@@ -3,6 +3,7 @@
 #include <string>
 #include <optional>
 
+#include <Windows.h>
 #include <winrt/Windows.Foundation.h>
 #include <common/version/helper.h>
 
@@ -19,9 +20,9 @@ namespace updating
     // installer to prevent a local attacker from swapping in a malicious installer (TOCTOU)
     // and gaining elevation.
     //
-    // verifiedFileHandle, when non-null, must be a HANDLE opened with sharing that denies
+    // verifiedFileHandle, when non-null, must be opened with sharing that denies
     // write/delete to other processes; it is passed to WinVerifyTrust so the exact bytes that
     // were verified are the bytes that get executed, fully closing the time-of-check /
     // time-of-use window.
-    bool verify_installer_trust(const std::wstring& installerPath, void* verifiedFileHandle = nullptr);
+    bool verify_installer_trust(const std::wstring& installerPath, HANDLE verifiedFileHandle = nullptr);
 }

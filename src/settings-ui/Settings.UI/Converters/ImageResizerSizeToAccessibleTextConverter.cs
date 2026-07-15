@@ -26,6 +26,7 @@ public sealed partial class ImageResizerSizeToAccessibleTextConverter : IValueCo
     private static readonly Dictionary<string, string> AccessibilityFormats = new()
     {
         { "Edit", Helpers.ResourceLoaderInstance.ResourceLoader.GetString("ImageResizer_EditButton_Accessibility_Name") },
+        { "Delete", Helpers.ResourceLoaderInstance.ResourceLoader.GetString("ImageResizer_DeleteMenuItem_Accessibility_Name") },
     };
 
     private readonly ImageResizerFitToStringConverter _fitConverter = new();

@@ -117,6 +117,8 @@
                                             <MenuFlyout>
                                                 <MenuFlyoutItem
                                                     x:Uid="RemoveItem"
+                                                    AutomationProperties.FullDescription="{x:Bind AccessibleTextHelper, Mode=OneWay, Converter={StaticResource ImageResizerSizeToAccessibleTextConverter}, ConverterParameter='Delete'}"
+                                                    AutomationProperties.Name="{x:Bind Name, Mode=OneWay, Converter={StaticResource ImageResizerSizeToAccessibleTextConverter}, ConverterParameter='Delete'}"
                                                     Click="DeleteCustomSize"
                                                     CommandParameter="{x:Bind}"
                                                     Icon="{ui:FontIcon Glyph=&#xE74D;}" />

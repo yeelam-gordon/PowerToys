@@ -2409,6 +2409,10 @@ From there, simply click on one of the supported files in the File Explorer and 
     <value>Edit the {0} preset</value>
     <comment>Expands to the AutomationProperties.Name value for the Edit button. Example: "Edit the Small preset".</comment>
   </data>
+  <data name="ImageResizer_DeleteMenuItem_Accessibility_Name" xml:space="preserve">
+    <value>Delete the {0} preset</value>
+    <comment>Expands to the AutomationProperties.Name value for the Delete menu item. Example: "Delete the Large preset".</comment>
+  </data>
   <data name="No" xml:space="preserve">
     <value>No</value>
     <comment>Label of a cancel button</comment>

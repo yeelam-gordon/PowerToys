@@ -78,7 +78,7 @@ namespace EnvironmentVariablesUILib.ViewModels
                     // we still want to treat it as profile-applied for display purposes.
                     bool isDirectlyApplied = AppliedProfile.Variables.Any(x =>
                         EnvironmentVariableComparisonHelper.NamesEqual(x.Name, variable.Name)
-                        && x.Values.Equals(variable.Values, StringComparison.OrdinalIgnoreCase));
+                        && string.Equals(x.Values, variable.Values, StringComparison.OrdinalIgnoreCase));
 
                     // When a profile overrides an existing user variable, the original user entry
                     // is renamed to "<name>_PowerToys_<profileName>" and kept as a backup. Detect

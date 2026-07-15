@@ -372,13 +372,18 @@ public partial class ImageResizerViewModel : Observable
         // don't each trigger a save; persist once at the end instead.
         original.PropertyChanged -= SizePropertyChanged;
 
-        original.Name = updated.Name;
-        original.Fit = updated.Fit;
-        original.Width = updated.Width;
-        original.Height = updated.Height;
-        original.Unit = updated.Unit;
-
-        original.PropertyChanged += SizePropertyChanged;
+        try
+        {
+            original.Name = updated.Name;
+            original.Fit = updated.Fit;
+            original.Width = updated.Width;
+            original.Height = updated.Height;
+            original.Unit = updated.Unit;
+        }
+        finally
+        {
+            original.PropertyChanged += SizePropertyChanged;
+        }
 
         SaveImageSizes();
     }

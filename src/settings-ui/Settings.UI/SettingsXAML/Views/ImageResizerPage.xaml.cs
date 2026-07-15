@@ -61,7 +61,7 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             DataContext = ViewModel;
         }
 
-        public async void DeleteCustomSize(object sender, RoutedEventArgs e)
+        private async void DeleteCustomSize(object sender, RoutedEventArgs e)
         {
             if (sender is not MenuFlyoutItem menuItem || menuItem.CommandParameter is not ImageSize size)
             {

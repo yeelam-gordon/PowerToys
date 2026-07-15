@@ -534,14 +534,17 @@ public partial class RecentCommandsTests : CommandPaletteUnitTestBase
             new("Visual Studio Code", GivenId: "vscode"),
         };
 
-        var history = CreateHistory(items.Reverse<ListItemMock>().ToList());
+        var now = new DateTimeOffset(2025, 2, 1, 0, 0, 0, TimeSpan.Zero);
+        var history = new RecentCommandsManager()
+            .WithHistoryItem("vs2022", now)
+            .WithHistoryItem("vscode", now);
         var fuzzyMatcher = CreateMatcher();
         var q = fuzzyMatcher.PrecomputeQuery("studio");
 
-        // Both are equal word-boundary matches; give Code many uses so it climbs.
+        // Both are equal word-boundary matches at equal recency; give Code many uses so it climbs.
         for (var i = 0; i < 10; i++)
         {
-            history = history.WithHistoryItem("vscode");
+            history = history.WithHistoryItem("vscode", now);
         }
 
         var scores = items.Select(item => MainListPage.ScoreTopLevelItem(q, item, history, fuzzyMatcher)).ToList();

@@ -12,6 +12,7 @@
 #include "MouseButtonLockCore.h"
 
 #include <atomic>
+#include <cmath>
 #include <thread>
 
 // Mouse Button Lock
@@ -330,9 +331,14 @@ void MouseButtonLock::parse_settings(PowerToysSettings::PowerToyValues& settings
         }
         try
         {
-            // GetNamedNumber yields a double; clamp into range BEFORE the cast so an out-of-range
-            // or non-finite value can't produce an undefined double-to-int conversion.
+            // GetNamedNumber yields a double; validate/clamp BEFORE the cast so invalid input
+            // can't produce an undefined double-to-int conversion.
             double raw = properties.GetNamedObject(key).GetNamedNumber(JSON_KEY_VALUE);
+            if (!std::isfinite(raw))
+            {
+                Logger::warn(L"Failed to read int setting; keeping previous value.");
+                return;
+            }
             if (raw < minValue)
             {
                 raw = minValue;

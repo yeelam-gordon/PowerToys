@@ -266,6 +266,7 @@ compmgmt
 COMPOSITIONDISABLED
 COMPOSITIONFULL
 CONFIGW
+Confirmator
 CONFLICTINGMODIFIERKEY
 CONFLICTINGMODIFIERSHORTCUT
 CONOUT
@@ -1022,6 +1023,7 @@ maximizebox
 MAXSHORTCUTSIZE
 maxversiontested
 mber
+mbl
 MBM
 MBR
 Mbuttondown
@@ -1163,6 +1165,7 @@ NEEDDISPATCH
 netcoreapp
 netcpl
 netframework
+NETSDK
 netsetup
 netsh
 NEWDIALOGSTYLE
@@ -2118,6 +2121,7 @@ wingetpkgs
 Winhook
 WINL
 winlogon
+WINM
 winmd
 winml
 WINNT

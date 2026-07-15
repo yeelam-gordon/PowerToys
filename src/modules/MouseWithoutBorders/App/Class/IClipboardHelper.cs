@@ -190,7 +190,7 @@ namespace MouseWithoutBorders
                 return false;
             }
 
-            if (StartsWithPathSeparatorPrefix(path))
+            if (StartsWithRemotePathPrefix(path))
             {
                 return true;
             }
@@ -198,12 +198,12 @@ namespace MouseWithoutBorders
             try
             {
                 string fullPath = Path.GetFullPath(path);
-                if (StartsWithPathSeparatorPrefix(fullPath))
+                if (StartsWithRemotePathPrefix(fullPath))
                 {
                     return true;
                 }
 
-                string pathRoot = Path.GetPathRoot(fullPath);
+                string pathRoot = NormalizeExtendedLengthDriveRoot(Path.GetPathRoot(fullPath));
                 return IsNetworkOrUnavailableDriveRoot(pathRoot);
             }
             catch (ArgumentException)
@@ -225,12 +225,54 @@ namespace MouseWithoutBorders
             }
         }
 
-        private static bool StartsWithPathSeparatorPrefix(string path)
+        private static bool StartsWithRemotePathPrefix(string path)
         {
-            // Catches UNC (\\server\share, //server/share) and device-namespace paths
-            // (\\?\UNC\..., \\.\...) that can be coerced into remote authentication.
-            return path.StartsWith(@"\\", StringComparison.Ordinal)
-                || path.StartsWith("//", StringComparison.Ordinal);
+            if (path.StartsWith("//", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (!path.StartsWith(@"\\", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (IsExtendedLengthDrivePath(path))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static string NormalizeExtendedLengthDriveRoot(string pathRoot)
+        {
+            return IsExtendedLengthDriveRoot(pathRoot) ? pathRoot.Substring(@"\\?\".Length) : pathRoot;
+        }
+
+        private static bool IsExtendedLengthDriveRoot(string pathRoot)
+        {
+            return pathRoot?.Length == 7
+                && IsExtendedLengthDrivePath(pathRoot);
+        }
+
+        private static bool IsExtendedLengthDrivePath(string path)
+        {
+            return path?.Length >= 7
+                && path.StartsWith(@"\\?\", StringComparison.Ordinal)
+                && IsDriveLetter(path[4])
+                && path[5] == ':'
+                && IsDirectorySeparator(path[6]);
+        }
+
+        private static bool IsDriveLetter(char value)
+        {
+            return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
+        }
+
+        private static bool IsDirectorySeparator(char value)
+        {
+            return value == '\\' || value == '/';
         }
 
         private static bool IsNetworkOrUnavailableDriveRoot(string pathRoot)

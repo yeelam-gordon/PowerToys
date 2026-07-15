@@ -29,6 +29,7 @@ public sealed class ClipboardHelperTests
     [DataRow(@"C:\Users\test\file.txt")]
     [DataRow(@"C:\temp")]
     [DataRow(@"C:/Users/test/file.txt")]
+    [DataRow(@"\\?\C:\Users\test\file.txt")]
     [DataRow(@"relative\file.txt")]
     [DataRow(@"file.txt")]
     public void IsRemoteOrUncPath_ReturnsFalse_ForLocalPaths(string path)
@@ -51,6 +52,9 @@ public sealed class ClipboardHelperTests
 
         string unavailableDrivePath = $@"{unusedDriveLetter}:\file.txt";
         Assert.IsTrue(ClipboardHelper.IsRemoteOrUncPath(unavailableDrivePath), $"Expected '{unavailableDrivePath}' to be rejected.");
+
+        string unavailableExtendedLengthDrivePath = $@"\\?\{unusedDriveLetter}:\file.txt";
+        Assert.IsTrue(ClipboardHelper.IsRemoteOrUncPath(unavailableExtendedLengthDrivePath), $"Expected '{unavailableExtendedLengthDrivePath}' to be rejected.");
     }
 
     [DataTestMethod]

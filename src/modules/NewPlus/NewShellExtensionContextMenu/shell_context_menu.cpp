@@ -77,7 +77,10 @@ IFACEMETHODIMP shell_context_menu::EnumSubCommands(_COM_Outptr_ IEnumExplorerCom
         POINT cursor_position = { -1, -1 };
         const DPI_AWARENESS_CONTEXT prev_dpi_ctx = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         GetCursorPos(&cursor_position);
-        SetThreadDpiAwarenessContext(prev_dpi_ctx);
+        if (prev_dpi_ctx)
+        {
+            SetThreadDpiAwarenessContext(prev_dpi_ctx);
+        }
 
         auto e = Make<shell_context_sub_menu>(site_of_folder, cursor_position);
         return e->QueryInterface(IID_PPV_ARGS(returned_enum_commands));

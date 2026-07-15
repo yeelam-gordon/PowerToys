@@ -196,6 +196,12 @@ void template_item::enter_rename_mode(const std::filesystem::path target_fullpat
 
 void template_item::rename_on_other_thread_workaround(const std::filesystem::path target_fullpath, const POINT mouse_position_at_invoke)
 {
+    package::ComInitializer com_initializer(COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+    if (!com_initializer.Succeeded())
+    {
+        return;
+    }
+
     // Have been unable to have Windows Explorer Shell enter rename mode from the main thread.
     // Poll until the item appears in the folder view so icon is positioned and rename mode is entered
     // without a jump in the positioning

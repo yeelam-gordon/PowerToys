@@ -10,6 +10,7 @@
 #include "template_item.h"
 #include "trace.h"
 #include "helpers_variables.h"
+#include <atlbase.h>
 #include <shellscalingapi.h>
 
 #pragma comment(lib, "Shcore.lib")
@@ -222,8 +223,12 @@ namespace newplus::utilities
         service_provider->QueryService(SID_STopLevelBrowser, IID_PPV_ARGS(&shell_browser));
         CComPtr<IShellView> shell_view;
         shell_browser->QueryActiveShellView(&shell_view);
+        HWND shell_view_window_handle = nullptr;
+        shell_view->GetWindow(&shell_view_window_handle);
         CComPtr<IFolderView> folder_view;
         shell_view->QueryInterface(&folder_view);
+        CComPtr<IShellFolder> shell_folder;
+        folder_view->GetFolder(IID_PPV_ARGS(&shell_folder));
 
         // Find the newly created object (file or folder)
         // And put object into edit mode (SVSI_EDIT) and if desktop also reposition
@@ -236,14 +241,16 @@ namespace newplus::utilities
 
             folder_view->Item(i, &shell_item_id);
 
-            wchar_t path_buffer[MAX_PATH * 2] = { 0 };
-            if (!SHGetPathFromIDListW(reinterpret_cast<PCIDLIST_ABSOLUTE>(shell_item_id), path_buffer))
+            STRRET strings_returned;
+            WCHAR current_filename_buffer[MAX_PATH * 2] = { 0 };
+            if (FAILED(shell_folder->GetDisplayNameOf(shell_item_id, SHGDN_INFOLDER | SHGDN_FORPARSING, &strings_returned)) ||
+                FAILED(StrRetToBufW(&strings_returned, shell_item_id, current_filename_buffer, ARRAYSIZE(current_filename_buffer))))
             {
                 CoTaskMemFree(shell_item_id);
                 continue;
             }
 
-            const std::wstring current_filename = std::filesystem::path(path_buffer).filename();
+            const std::wstring current_filename = std::filesystem::path(current_filename_buffer).filename();
 
             if (newplus::utilities::wstring_same_when_comparing_ignore_case(new_file_or_dir_without_path, current_filename))
             {
@@ -278,12 +285,15 @@ namespace newplus::utilities
                     }
 
                     // Convert physical screen coordinates to the desktop ListView's client coordinates.
-                    if (desktop_window_handle)
+                    if (shell_view_window_handle)
                     {
-                        ::ScreenToClient(reinterpret_cast<HWND>(static_cast<LONG_PTR>(desktop_window_handle)), &screen_point);
+                        ::ScreenToClient(shell_view_window_handle, &screen_point);
                     }
 
-                    SetThreadDpiAwarenessContext(prev_ctx);
+                    if (prev_ctx)
+                    {
+                        SetThreadDpiAwarenessContext(prev_ctx);
+                    }
 
                     // Keep icon clear of the screen edge: ~30 logical pixels scaled to the invoke monitor's DPI.
                     const LONG min_margin = ::MulDiv(30, static_cast<int>(invoke_dpi_x), 96);

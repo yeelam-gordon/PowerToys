@@ -46,10 +46,13 @@ IFACEMETHODIMP shell_context_menu_win10::QueryContextMenu(HMENU menu_handle, UIN
     try
     {
         // Capture mouse position now (at menu-open time) for more accurate desktop icon placement later
-        mouse_position_at_time_of_invoke = { 0, 0 };
+        mouse_position_at_time_of_invoke = { -1, -1 };
         const DPI_AWARENESS_CONTEXT prev_dpi_ctx = SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         GetCursorPos(&mouse_position_at_time_of_invoke);
-        SetThreadDpiAwarenessContext(prev_dpi_ctx);
+        if (prev_dpi_ctx)
+        {
+            SetThreadDpiAwarenessContext(prev_dpi_ctx);
+        }
 
         // Create the initial context popup menu containing the list of templates and open templates action
         int menu_id = menu_first_cmd_id;
@@ -282,4 +285,3 @@ IFACEMETHODIMP shell_context_menu_win10::GetSite(_In_ REFIID riid, _COM_Outptr_ 
     return this->site_of_folder.CopyTo(riid, returned_site);
 }
 #pragma endregion
-

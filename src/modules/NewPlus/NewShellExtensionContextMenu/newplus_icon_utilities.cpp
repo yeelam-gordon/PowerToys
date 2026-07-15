@@ -1,12 +1,52 @@
 #include "pch.h"
 // pch.h first
 #include "newplus_icon_utilities.h"
+#include <mutex>
 #include <unordered_map>
 
 #pragma comment(lib, "Shlwapi.lib")
 
 namespace newplus::icon_utilities
 {
+
+HICON load_icon_from_resource_spec(std::wstring icon_resource, const int icon_x, const int icon_y)
+{
+    if (icon_resource.empty())
+    {
+        return nullptr;
+    }
+
+    WCHAR expanded_icon_resource[MAX_PATH] = { 0 };
+    const DWORD expanded_length = ExpandEnvironmentStringsW(icon_resource.c_str(), expanded_icon_resource, ARRAYSIZE(expanded_icon_resource));
+    if (expanded_length > 0 && expanded_length <= ARRAYSIZE(expanded_icon_resource))
+    {
+        icon_resource = expanded_icon_resource;
+    }
+
+    const int icon_index = PathParseIconLocationW(icon_resource.data());
+
+    HICON large_icon = nullptr;
+    HICON small_icon = nullptr;
+    if (SUCCEEDED(SHDefExtractIconW(icon_resource.c_str(), icon_index, 0, &large_icon, &small_icon, MAKELONG(icon_x, icon_x))))
+    {
+        if (small_icon)
+        {
+            if (large_icon)
+            {
+                DestroyIcon(large_icon);
+            }
+
+            return small_icon;
+        }
+
+        if (large_icon)
+        {
+            return large_icon;
+        }
+    }
+
+    return static_cast<HICON>(LoadImageW(nullptr, icon_resource.c_str(), IMAGE_ICON, icon_x, icon_y, LR_LOADFROMFILE));
+}
 
 std::wstring get_explorer_icon(std::filesystem::path path, bool is_directory)
 {
@@ -15,6 +55,8 @@ std::wstring get_explorer_icon(std::filesystem::path path, bool is_directory)
     if (!is_directory)
     {
         static std::unordered_map<std::wstring, std::wstring> s_icon_cache;
+        static std::mutex s_icon_cache_mutex;
+        std::lock_guard lock(s_icon_cache_mutex);
         const std::wstring key = path.extension().wstring();
         const auto it = s_icon_cache.find(key);
         if (it != s_icon_cache.end())
@@ -75,7 +117,7 @@ HICON get_explorer_icon_handle(std::filesystem::path path)
     const std::wstring icon_resource = icon_resource_specifier;
     const auto icon_x = GetSystemMetrics(SM_CXSMICON);
     const auto icon_y = GetSystemMetrics(SM_CYSMICON);
-    return static_cast<HICON>(LoadImage(NULL, icon_resource.c_str(), IMAGE_ICON, icon_x, icon_y, LR_LOADFROMFILE));
+    return load_icon_from_resource_spec(icon_resource, icon_x, icon_y);
 }
 
 }

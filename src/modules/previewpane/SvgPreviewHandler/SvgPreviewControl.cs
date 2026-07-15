@@ -2,6 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Globalization;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
@@ -253,22 +254,19 @@ namespace Microsoft.PowerToys.PreviewHandler.Svg
                     _browser.CoreWebView2.WebResourceRequested += CoreWebView2_BlockExternalResources;
 
                     var cacheKey = SvgPreviewCacheHelper.BuildCacheKey(
-                        "v1",
+                        SvgPreviewCacheHelper.CacheVersion,
                         VirtualHostName,
                         svgData,
-                        _settings.ColorMode.ToString(),
-                        _settings.ThemeColor.ToArgb().ToString(),
-                        _settings.SolidColor.ToArgb().ToString(),
-                        _settings.CheckeredShade.ToString());
+                        Convert.ToString(_settings.ColorMode, CultureInfo.InvariantCulture),
+                        _settings.ThemeColor.ToArgb().ToString(CultureInfo.InvariantCulture),
+                        _settings.SolidColor.ToArgb().ToString(CultureInfo.InvariantCulture),
+                        Convert.ToString(_settings.CheckeredShade, CultureInfo.InvariantCulture));
 
                     var cacheFolder = Path.Combine(_webView2UserDataFolder, "Cache");
-                    var cacheFilePath = SvgPreviewCacheHelper.GetCacheFilePath(cacheFolder, cacheKey);
-
-                    if (!File.Exists(cacheFilePath) || new FileInfo(cacheFilePath).Length == 0)
-                    {
-                        string generatedPreview = _previewGenerator.GeneratePreview(svgData);
-                        File.WriteAllText(cacheFilePath, generatedPreview);
-                    }
+                    var cacheFilePath = SvgPreviewCacheHelper.GetOrCreateCacheFilePath(
+                        cacheFolder,
+                        cacheKey,
+                        () => _previewGenerator.GeneratePreview(svgData));
 
                     _localFileURI = new Uri(cacheFilePath);
                     _browser.Source = _localFileURI;
@@ -321,7 +319,7 @@ namespace Microsoft.PowerToys.PreviewHandler.Svg
         }
 
         /// <summary>
-        /// Cleanup the previously created tmp html files from svg files bigger than 2MB.
+        /// Ensures the WebView2 user data folder exists.
         /// </summary>
         private void EnsureWebView2UserDataFolder()
         {

@@ -184,14 +184,9 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
                         return;
                     }
 
-                    var cacheKey = SvgPreviewCacheHelper.BuildCacheKey("v1", VirtualHostName, SvgContents);
+                    var cacheKey = SvgPreviewCacheHelper.BuildCacheKey(SvgPreviewCacheHelper.CacheVersion, VirtualHostName, SvgContents);
                     var cacheFolder = Path.Combine(_webView2UserDataFolder, "Cache");
-                    var cacheFilePath = SvgPreviewCacheHelper.GetCacheFilePath(cacheFolder, cacheKey);
-
-                    if (!File.Exists(cacheFilePath) || new FileInfo(cacheFilePath).Length == 0)
-                    {
-                        File.WriteAllText(cacheFilePath, SvgContents);
-                    }
+                    var cacheFilePath = SvgPreviewCacheHelper.GetOrCreateCacheFilePath(cacheFolder, cacheKey, () => SvgContents);
 
                     _localFileURI = new Uri(cacheFilePath);
                     _browser.Source = _localFileURI;
@@ -339,7 +334,7 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
         }
 
         /// <summary>
-        /// Cleanup the previously created tmp html files from svg files bigger than 2MB.
+        /// Ensures the WebView2 user data folder exists.
         /// </summary>
         private void EnsureWebView2UserDataFolder()
         {

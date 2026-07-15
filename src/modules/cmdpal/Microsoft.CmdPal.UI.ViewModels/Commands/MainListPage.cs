@@ -560,9 +560,10 @@ public sealed partial class MainListPage : DynamicListPage,
                 }
             }
 
-            var searchQuery = _fuzzyMatcherProvider.Current.PrecomputeQuery(SearchText);
+            var fuzzyMatcher = _fuzzyMatcherProvider.Current;
+            var searchQuery = fuzzyMatcher.PrecomputeQuery(SearchText);
             var scoreNow = DateTimeOffset.UtcNow;
-            ScoringFunction<IListItem> scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current, scoreNow);
+            ScoringFunction<IListItem> scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, fuzzyMatcher, scoreNow);
 
             // Produce a list of everything that matches the current filter.
             _filteredItems = InternalListHelpers.FilterListWithScores(newFilteredItems, searchQuery, scoringFunction);

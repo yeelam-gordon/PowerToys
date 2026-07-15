@@ -76,7 +76,8 @@ public class RecentCommandsManager : IRecentCommandsManager
     {
         get
         {
-            if (_index is null)
+            var index = _index;
+            if (index is null)
             {
                 // Ordinal to match the string '==' comparison the previous linear scan used.
                 var map = new Dictionary<string, HistoryItem>(StringComparer.Ordinal);
@@ -88,10 +89,10 @@ public class RecentCommandsManager : IRecentCommandsManager
                     map.TryAdd(item.CommandId, item);
                 }
 
-                _index = map;
+                index = System.Threading.Interlocked.CompareExchange(ref _index, map, null) ?? map;
             }
 
-            return _index;
+            return index;
         }
     }
 

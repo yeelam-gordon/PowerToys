@@ -195,9 +195,27 @@ namespace MouseWithoutBorders
             try
             {
                 string fullPath = Path.GetFullPath(path);
-                return StartsWithPathSeparatorPrefix(fullPath);
+                if (StartsWithPathSeparatorPrefix(fullPath))
+                {
+                    return true;
+                }
+
+                string pathRoot = Path.GetPathRoot(fullPath);
+                return IsNetworkDriveRoot(pathRoot);
             }
-            catch (Exception)
+            catch (ArgumentException)
+            {
+                return true;
+            }
+            catch (NotSupportedException)
+            {
+                return true;
+            }
+            catch (PathTooLongException)
+            {
+                return true;
+            }
+            catch (IOException)
             {
                 // Malformed paths cannot be trusted; treat them as remote/invalid and reject.
                 return true;
@@ -210,6 +228,31 @@ namespace MouseWithoutBorders
             // (\\?\UNC\..., \\.\...) that can be coerced into remote authentication.
             return path.StartsWith(@"\\", StringComparison.Ordinal)
                 || path.StartsWith("//", StringComparison.Ordinal);
+        }
+
+        private static bool IsNetworkDriveRoot(string pathRoot)
+        {
+            if (string.IsNullOrEmpty(pathRoot))
+            {
+                return false;
+            }
+
+            try
+            {
+                return new DriveInfo(pathRoot).DriveType == DriveType.Network;
+            }
+            catch (ArgumentException)
+            {
+                return true;
+            }
+            catch (IOException)
+            {
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return true;
+            }
         }
     }
 #endif

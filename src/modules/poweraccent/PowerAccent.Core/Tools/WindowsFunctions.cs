@@ -55,11 +55,7 @@ internal static class WindowsFunctions
                     },
                 };
 
-                uint backSent = PInvoke.SendInput(inputsBack, Marshal.SizeOf<INPUT>());
-                if (backSent != (uint)inputsBack.Length)
-                {
-                    Logger.LogError($"SendInput backspace failed: sent {backSent}/{inputsBack.Length}");
-                }
+                LogSendInputResult("backspace", PInvoke.SendInput(inputsBack, Marshal.SizeOf<INPUT>()), inputsBack.Length);
 
                 Thread.Sleep(1); // Some apps, like Terminal, need a little wait to process the sent backspace or they'll ignore it.
             }
@@ -97,13 +93,25 @@ internal static class WindowsFunctions
                     };
                 }
 
-                uint charSent = PInvoke.SendInput(inputsInsert, Marshal.SizeOf<INPUT>());
-                if (charSent != (uint)inputsInsert.Length)
-                {
-                    Logger.LogError($"SendInput character failed: sent {charSent}/{inputsInsert.Length}");
-                }
+                LogSendInputResult("character", PInvoke.SendInput(inputsInsert, Marshal.SizeOf<INPUT>()), inputsInsert.Length);
             }
         }
+    }
+
+    private static void LogSendInputResult(string inputDescription, uint sent, int expected)
+    {
+        if (sent == (uint)expected)
+        {
+            return;
+        }
+
+        if (sent == 0)
+        {
+            Logger.LogError($"SendInput {inputDescription} failed: sent 0/{expected}, error={Marshal.GetLastWin32Error()}");
+            return;
+        }
+
+        Logger.LogError($"SendInput {inputDescription} partially failed: sent {sent}/{expected}");
     }
 
     public static (Point Location, Size Size, double Dpi) GetActiveDisplay()
@@ -174,11 +182,7 @@ internal static class WindowsFunctions
                 },
             };
 
-            uint arrowSent = PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>());
-            if (arrowSent != (uint)inputs.Length)
-            {
-                Logger.LogError($"SendInput arrow key failed: sent {arrowSent}/{inputs.Length}");
-            }
+            LogSendInputResult("arrow key", PInvoke.SendInput(inputs, Marshal.SizeOf<INPUT>()), inputs.Length);
         }
     }
 }

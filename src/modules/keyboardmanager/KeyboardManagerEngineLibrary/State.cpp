@@ -26,6 +26,12 @@ std::optional<std::wstring> State::GetSingleKeyToTextRemapEvent(const DWORD orig
     }
 }
 
+bool State::LoadSettings()
+{
+    ClearAllAloneKeyState();
+    return MappingConfiguration::LoadSettings();
+}
+
 // Function to get the iterator of an "Alone" single key remap given the source key. Returns nullopt if it isn't remapped
 std::optional<SingleKeyRemapTable::iterator> State::GetSingleKeyAloneRemap(const DWORD& originalKey)
 {
@@ -64,6 +70,12 @@ void State::ClearAloneKeyState(const DWORD key)
 {
     alonePendingKeys.erase(key);
     aloneCombinationKeys.erase(key);
+}
+
+void State::ClearAllAloneKeyState()
+{
+    alonePendingKeys.clear();
+    aloneCombinationKeys.clear();
 }
 
 std::vector<DWORD> State::GetPendingAloneKeys() const

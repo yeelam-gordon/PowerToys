@@ -935,5 +935,17 @@ namespace RemappingLogicTests
 
             Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
         }
+
+        TEST_METHOD (AloneRemap_ClearAllState_ShouldForgetPendingAndCombinationKeys)
+        {
+            testState.SetAlonePending(VK_RCONTROL);
+            testState.SetAloneCombination(VK_LCONTROL);
+
+            testState.ClearAllAloneKeyState();
+
+            Assert::AreEqual(false, testState.HasPendingAloneKeys());
+            Assert::AreEqual(false, testState.IsAloneCombination(VK_LCONTROL));
+            Assert::AreEqual(false, testState.HasOtherHeldAloneKey(0));
+        }
     };
 }

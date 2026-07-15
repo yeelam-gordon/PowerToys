@@ -146,7 +146,7 @@ namespace KeyboardEventHandlers
         // are now being used in combination. Flush them by injecting their original key-down as a real
         // key/modifier so the in-combination behavior (e.g. Right Ctrl acting as Ctrl) works. (A click
         // or scroll does the same via the mouse hook; see PromotePendingAloneKeysToCombination.)
-        if (isKeyDown)
+        if (isKeyDown && state.HasPendingAloneKeys())
         {
             PromotePendingAloneKeysToCombination(ii, state, vk);
         }

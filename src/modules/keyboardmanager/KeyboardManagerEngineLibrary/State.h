@@ -29,6 +29,9 @@ public:
     // Function to get a unicode string remap given the source key. Returns nullopt if it isn't remapped
     std::optional<std::wstring> GetSingleKeyToTextRemapEvent(const DWORD originalKey) const;
 
+    // Clears transient hook state before reloading persisted remaps.
+    bool LoadSettings();
+
     // Function to get the iterator of an "Alone" single key remap given the source key. Returns nullopt if it isn't remapped
     std::optional<SingleKeyRemapTable::iterator> GetSingleKeyAloneRemap(const DWORD& originalKey);
 
@@ -41,6 +44,8 @@ public:
     bool IsAloneCombination(const DWORD key) const;
     // Forget all alone runtime state for a key (on its key-up, once resolved).
     void ClearAloneKeyState(const DWORD key);
+    // Forget all transient alone runtime state, e.g. when settings are reloaded.
+    void ClearAllAloneKeyState();
     // Snapshot of currently pending (tap-candidate) alone keys, for flushing when another key arrives.
     std::vector<DWORD> GetPendingAloneKeys() const;
     // Cheap check for whether any alone key is currently held as a tap candidate. Used by the mouse

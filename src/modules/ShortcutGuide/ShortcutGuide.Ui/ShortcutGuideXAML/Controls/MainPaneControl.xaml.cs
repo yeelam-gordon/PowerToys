@@ -65,8 +65,7 @@ namespace ShortcutGuide.Controls
             _getAppIdsTask = Task.Run(() =>
             {
                 Program.CopyAndIndexGenerationThread.Join();
-                _currentApplicationIds = ManifestInterpreter.GetAllCurrentApplicationIds(Program.ForegroundWindowHandle);
-                return _currentApplicationIds;
+                return ManifestInterpreter.GetAllCurrentApplicationIds(Program.ForegroundWindowHandle);
             });
 
             await InitializeNavItemsAsync();

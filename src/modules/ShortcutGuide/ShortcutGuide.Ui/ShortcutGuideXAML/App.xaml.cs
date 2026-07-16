@@ -37,7 +37,7 @@ namespace ShortcutGuide
         /// </summary>
         internal static OverlayWindow OverlayWindow { get; private set; } = null!;
 
-        private static readonly UIntPtr _ignoreKeyEventFlag = 0x5557;
+        private static readonly nuint _ignoreKeyEventFlag = 0x5557;
 
         private HotkeySettingsControlHook _winKeyUpKeyboardHook = null!;
 

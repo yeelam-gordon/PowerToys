@@ -366,6 +366,7 @@ namespace ShortcutGuide
         /// </summary>
         public void ShowOverlay()
         {
+            _closeTimer?.Stop();
             _isClosing = false;
             _closeType = "Unknown";
             _sessionStopwatch.Restart();

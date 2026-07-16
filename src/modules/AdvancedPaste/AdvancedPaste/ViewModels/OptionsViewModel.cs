@@ -91,6 +91,7 @@ namespace AdvancedPaste.ViewModels
 
         private bool _pasteFormatsDirty;
         private bool _pythonScriptDiscoveryRunning;
+        private int _pythonScriptDiscoveryVersion;
         private string _cachedPythonScriptsFolder;
         private IReadOnlyList<PythonScriptMetadata> _cachedPythonScriptMetadata = [];
 
@@ -320,6 +321,7 @@ namespace AdvancedPaste.ViewModels
 
         private void UserSettings_Changed(object sender, EventArgs e)
         {
+            InvalidatePythonScriptDiscovery();
             UpdateAIProviderActiveFlags();
             OnPropertyChanged(nameof(IsCustomAIServiceEnabled));
             OnPropertyChanged(nameof(ClipboardHasDataForCustomAI));
@@ -481,10 +483,17 @@ namespace AdvancedPaste.ViewModels
             }
 
             _pythonScriptDiscoveryRunning = true;
-            _ = DiscoverPythonScriptsAsync(folder);
+            _ = DiscoverPythonScriptsAsync(folder, _pythonScriptDiscoveryVersion);
         }
 
-        private async Task DiscoverPythonScriptsAsync(string folder)
+        private void InvalidatePythonScriptDiscovery()
+        {
+            _pythonScriptDiscoveryVersion++;
+            _cachedPythonScriptMetadata = [];
+            _cachedPythonScriptsFolder = null;
+        }
+
+        private async Task DiscoverPythonScriptsAsync(string folder, int discoveryVersion)
         {
             IReadOnlyList<PythonScriptMetadata> discoveredScripts = [];
 
@@ -501,7 +510,9 @@ namespace AdvancedPaste.ViewModels
             {
                 _pythonScriptDiscoveryRunning = false;
 
-                if (!_userSettings.IsPythonScriptsEnabled || !string.Equals(_userSettings.PythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
+                if (discoveryVersion != _pythonScriptDiscoveryVersion ||
+                    !_userSettings.IsPythonScriptsEnabled ||
+                    !string.Equals(_userSettings.PythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
                 {
                     EnqueueRefreshPasteFormats();
                     return;

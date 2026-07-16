@@ -14,11 +14,9 @@ using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Telemetry;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Input;
 using PowerToys.Interop;
 using ShortcutGuide.Models;
 using ShortcutGuide.Telemetry;
-using KeyEventHandler = Microsoft.UI.Xaml.Input.KeyEventHandler;
 
 namespace ShortcutGuide
 {
@@ -127,7 +125,7 @@ namespace ShortcutGuide
                     }
                 },
                 () => true,
-                (int key, nuint specialFlags) => key == 91 && specialFlags != _ignoreKeyEventFlag);
+                (int key, nuint specialFlags) => (key == 0x5B || key == 0x5C) && specialFlags != _ignoreKeyEventFlag);
             }
             catch (Exception ex)
             {
@@ -236,12 +234,14 @@ namespace ShortcutGuide
 
             try
             {
-                // VK_LWIN long-press shows only the taskbar pane.
+                // Win-key long-press shows only the taskbar pane.
                 // Use the Win32 key state directly: WPF's
                 // System.Windows.Input.Keyboard is not initialized
                 // on the WinUI UI thread.
                 const int VK_LWIN = 0x5B;
-                bool winKeyDown = (NativeMethods.GetAsyncKeyState(VK_LWIN) & 0x8000) != 0;
+                const int VK_RWIN = 0x5C;
+                bool winKeyDown = (NativeMethods.GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+                    (NativeMethods.GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
 
                 if (winKeyDown)
                 {

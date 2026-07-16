@@ -653,7 +653,11 @@ FancyZones::OnKeyDown(PKBDLLHOOKSTRUCT info) noexcept
             if (!m_pendingMonitorRotationReverse.has_value())
             {
                 const bool reverse = info->vkCode == VK_LEFT;
-                PostMessageW(m_window, WM_PRIV_MONITOR_ROTATION_PREVIEW_ROTATE, static_cast<WPARAM>(reverse), 0);
+                m_pendingMonitorRotationReverse = reverse;
+                if (!PostMessageW(m_window, WM_PRIV_MONITOR_ROTATION_PREVIEW_ROTATE, static_cast<WPARAM>(reverse), 0))
+                {
+                    m_pendingMonitorRotationReverse.reset();
+                }
             }
             return true;
         }
@@ -978,7 +982,7 @@ LRESULT FancyZones::WndProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         }
         else if (message == WM_PRIV_MONITOR_ROTATION_PREVIEW_SHOW)
         {
-            if (IsMonitorRotationChordDown())
+            if (!m_monitorRotationPreviewActive && IsMonitorRotationChordDown())
             {
                 ShowMonitorRotationPreview();
             }

@@ -212,7 +212,7 @@ ZonesOverlay::RenderResult ZonesOverlay::Render()
 
     m_renderTarget->BeginDraw();
 
-    const auto renderNow = std::chrono::steady_clock().now();
+    const auto renderNow = std::chrono::steady_clock::now();
     float rotationPulse = 0.f;
     float rotationProgress = 0.f;
     if (m_rotationPulseStart)

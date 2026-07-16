@@ -116,11 +116,10 @@ namespace
 
     bool IsTextReplacementShortcutModifierPressed(KeyboardManagerInput::InputInterface& ii)
     {
-        return IsModifierPressed(ii, VK_CONTROL, VK_LCONTROL, VK_RCONTROL) ||
-               IsModifierPressed(ii, VK_MENU, VK_LMENU, VK_RMENU) ||
-               ii.GetVirtualKeyState(VK_LWIN) ||
-               ii.GetVirtualKeyState(VK_RWIN) ||
-               ii.GetVirtualKeyState(CommonSharedConstants::VK_WIN_BOTH);
+        return         IsModifierPressed(ii, VK_CONTROL, VK_LCONTROL, VK_RCONTROL) ||
+        IsModifierPressed(ii, VK_MENU, VK_LMENU, VK_RMENU) ||
+        ii.GetVirtualKeyState(VK_LWIN) ||
+        ii.GetVirtualKeyState(VK_RWIN);
     }
 
     HWND GetTextReplacementWindow()
@@ -260,7 +259,6 @@ namespace
         SendModifierInput(ii, pressedShiftKeys, KEYEVENTF_KEYUP);
         SendBackspaceInput(ii, backspaceCount);
         Helpers::SendTextInput(replacement, ii);
-        SendModifierInput(ii, pressedShiftKeys, 0);
     }
 
 }

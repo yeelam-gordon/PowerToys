@@ -622,5 +622,22 @@ namespace RemappingLogicTests
             Assert::AreEqual(0, static_cast<int>(result));
             Assert::AreEqual(std::wstring(), testState.textReplacementBuffer);
         }
+
+        TEST_METHOD (HandleTextReplacementEvent_ShouldNotRepressShiftAfterReplacement)
+        {
+            testState.AddTextReplacement(L" ", L"hello");
+            mockedInputHandler.SetKeyboardState(VK_LSHIFT, true);
+
+            KBDLLHOOKSTRUCT lParam{};
+            lParam.vkCode = VK_SPACE;
+            LowlevelKeyboardEvent keyEvent{};
+            keyEvent.wParam = WM_KEYDOWN;
+            keyEvent.lParam = &lParam;
+
+            intptr_t result = KeyboardEventHandlers::HandleTextReplacementEvent(mockedInputHandler, &keyEvent, testState);
+
+            Assert::AreEqual(1, static_cast<int>(result));
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LSHIFT));
+        }
     };
 }

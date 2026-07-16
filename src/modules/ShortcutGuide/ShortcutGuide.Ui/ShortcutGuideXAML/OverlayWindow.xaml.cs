@@ -70,6 +70,8 @@ namespace ShortcutGuide
 
         internal TaskbarPaneControl TaskbarPaneControl => this.TaskbarPane;
 
+        internal event EventHandler? SessionCompleted;
+
         public OverlayWindow()
         {
             this.InitializeComponent();
@@ -320,6 +322,7 @@ namespace ShortcutGuide
             this.MainPane.Hide();
 
             this.AppWindow.Hide();
+            SessionCompleted?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -364,6 +367,8 @@ namespace ShortcutGuide
         public void ShowOverlay()
         {
             _isClosing = false;
+            _closeType = "Unknown";
+            _sessionStopwatch.Restart();
 
             RepositionToCursorMonitor();
             ApplyMainPaneAlignment();

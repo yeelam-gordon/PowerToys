@@ -37,6 +37,8 @@ namespace ShortcutGuide
         /// </summary>
         internal static OverlayWindow OverlayWindow { get; private set; } = null!;
 
+        private static readonly UIntPtr _ignoreKeyEventFlag = 0x5557;
+
         private HotkeySettingsControlHook _winKeyUpKeyboardHook = null!;
 
         internal static string CurrentAppName { get; set; } = string.Empty;
@@ -45,7 +47,7 @@ namespace ShortcutGuide
 
         private Thread? _listenForLaunchedEventThread;
 
-        private static readonly UIntPtr _ignoreKeyEventFlag = 0x5557;
+        private static int _isHandlingTrigger;
 
         public App()
         {
@@ -227,6 +229,11 @@ namespace ShortcutGuide
 
         private static async Task HandleTriggerAsync()
         {
+            if (Interlocked.Exchange(ref _isHandlingTrigger, 1) == 1)
+            {
+                return;
+            }
+
             try
             {
                 // VK_LWIN long-press shows only the taskbar pane.
@@ -268,6 +275,10 @@ namespace ShortcutGuide
             catch (Exception ex)
             {
                 Logger.LogError("Failed to handle Shortcut Guide trigger event.", ex);
+            }
+            finally
+            {
+                Volatile.Write(ref _isHandlingTrigger, 0);
             }
         }
 

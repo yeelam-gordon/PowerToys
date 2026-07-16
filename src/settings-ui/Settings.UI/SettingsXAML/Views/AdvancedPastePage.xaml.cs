@@ -335,10 +335,12 @@ namespace Microsoft.PowerToys.Settings.UI.Views
 
             if (System.IO.File.Exists(action.ScriptPath))
             {
-                var startInfo = new System.Diagnostics.ProcessStartInfo(action.ScriptPath)
+                var startInfo = new System.Diagnostics.ProcessStartInfo("explorer.exe")
                 {
-                    UseShellExecute = true,
+                    UseShellExecute = false,
                 };
+
+                startInfo.ArgumentList.Add($"/select,{action.ScriptPath}");
                 System.Diagnostics.Process.Start(startInfo);
             }
         }

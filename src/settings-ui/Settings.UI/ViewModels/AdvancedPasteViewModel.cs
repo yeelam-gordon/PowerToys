@@ -12,6 +12,7 @@ using System.IO.Abstractions;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Text.Json;
+using System.Threading.Tasks;
 
 using global::PowerToys.GPOWrapper;
 using Microsoft.PowerToys.Settings.UI.Helpers;
@@ -460,6 +461,30 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
         /// </summary>
         public void RefreshWslDistros()
         {
+            _ = RefreshWslDistrosAsync();
+        }
+
+        private async Task RefreshWslDistrosAsync()
+        {
+            var distros = await Task.Run(GetWslDistros).ConfigureAwait(false);
+
+            void ApplyDistros()
+            {
+                AvailableWslDistros = distros;
+            }
+
+            if (_dispatcherQueue is not null && !_dispatcherQueue.HasThreadAccess)
+            {
+                _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, ApplyDistros);
+            }
+            else
+            {
+                ApplyDistros();
+            }
+        }
+
+        private static List<string> GetWslDistros()
+        {
             var distros = new List<string> { string.Empty }; // first = system default
 
             try
@@ -492,8 +517,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                         // If it still hasn't exited, skip reading but still update with default-only list.
                         if (!process.WaitForExit(2000))
                         {
-                            AvailableWslDistros = distros;
-                            return;
+                            return distros;
                         }
                     }
 
@@ -515,7 +539,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 // WSL not available — just show the default option
             }
 
-            AvailableWslDistros = distros;
+            return distros;
         }
 
         public string ScriptsFolder

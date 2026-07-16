@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -48,7 +48,7 @@ internal static partial class NativeMethods
     internal static partial bool GetMonitorInfoW(IntPtr hMonitor, ref MONITORINFO lpmi);
 
     [LibraryImport("Shcore.dll")]
-    internal static partial long GetDpiForMonitor(IntPtr hmonitor, int dpiType, ref int dpiX, ref int dpiY);
+    internal static partial long GetDpiForMonitor(IntPtr monitorHandle, int dpiType, ref int dpiX, ref int dpiY);
 
     [LibraryImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
@@ -94,20 +94,20 @@ internal static partial class NativeMethods
 
     internal delegate bool MonitorEnumDelegate(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
 
-    [LibraryImport("user32.dll")]
-    internal static partial void CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, LPARAM lParam);
+    [LibraryImport("user32.dll", SetLastError = true)]
+    internal static partial IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, LPARAM lParam);
 
-    [DllImport("user32.dll")]
-    internal static extern void SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
+    [DllImport("user32.dll", SetLastError = true)]
+    internal static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
 
     internal struct INPUT
     {
         public uint Type;
-        public MOUSEKEYBDHARDWAREINPUT Data;
+        public MouseKeyboardHardwareInput Data;
     }
 
     [StructLayout(LayoutKind.Explicit)]
-    internal struct MOUSEKEYBDHARDWAREINPUT
+    internal struct MouseKeyboardHardwareInput
     {
         [FieldOffset(0)]
         public MOUSEINPUT Mouse;
@@ -131,7 +131,7 @@ internal static partial class NativeMethods
     [StructLayout(LayoutKind.Sequential)]
     internal struct KEYBDINPUT
     {
-        public ushort WVk;
+        public ushort VKey;
         public ushort WScan;
         public uint DwFlags;
         public uint Time;

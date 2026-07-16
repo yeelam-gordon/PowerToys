@@ -52,7 +52,6 @@ namespace ShortcutGuide.Controls
         public MainPaneControl()
         {
             this.InitializeComponent();
-            Program.CopyAndIndexGenerationThread.Join();
             this.TitleTextBlock.Text = ResourceLoaderInstance.ResourceLoader.GetString("Title");
 
             this.Unloaded += OnUnloaded;
@@ -63,8 +62,9 @@ namespace ShortcutGuide.Controls
             // Same background work the original MainWindow ran in its
             // constructor: wait for the index-generation thread to finish
             // and then enumerate the apps to populate the nav list.
-            _getAppIdsTask = Task.Run(async () =>
+            _getAppIdsTask = Task.Run(() =>
             {
+                Program.CopyAndIndexGenerationThread.Join();
                 _currentApplicationIds = ManifestInterpreter.GetAllCurrentApplicationIds(Program.ForegroundWindowHandle);
                 return _currentApplicationIds;
             });
@@ -95,7 +95,6 @@ namespace ShortcutGuide.Controls
             _shortcutFile = null;
             _currentApplicationIds.Clear();
 
-            _getAppIdsTask?.Dispose();
             _getAppIdsTask = null;
         }
 
@@ -103,7 +102,7 @@ namespace ShortcutGuide.Controls
 
         private void OnUnloaded(object sender, RoutedEventArgs e)
         {
-            _getAppIdsTask?.Dispose();
+            _getAppIdsTask = null;
         }
 
         /// <summary>

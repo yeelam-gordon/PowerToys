@@ -91,7 +91,7 @@ namespace ShortcutGuide
 
             // Install the message hook BEFORE the first MoveAndResize so the
             // WM_DPICHANGED suppression is in place from the very first
-            // cross-monitor move. Otherwise the constructor's initial
+            // cross-monitor move. Otherwise, the constructor's initial
             // RepositionToCursorMonitor() lets the default WndProc auto-
             // resize the window by (newDpi/oldDpi) and we get a 1.5×
             // overlay on the laptop screen. Also disable
@@ -424,10 +424,10 @@ namespace ShortcutGuide
                 return;
             }
 
-            IntPtr hmon = NativeMethods.MonitorFromPoint(
+            IntPtr monitorHandle = NativeMethods.MonitorFromPoint(
                 cursor,
                 (int)NativeMethods.MonitorFromWindowDwFlags.MONITOR_DEFAULTTONEAREST);
-            if (hmon == IntPtr.Zero)
+            if (monitorHandle == IntPtr.Zero)
             {
                 return;
             }
@@ -436,7 +436,7 @@ namespace ShortcutGuide
             {
                 CbSize = (uint)Marshal.SizeOf<NativeMethods.MONITORINFO>(),
             };
-            if (!NativeMethods.GetMonitorInfoW(hmon, ref mi))
+            if (!NativeMethods.GetMonitorInfoW(monitorHandle, ref mi))
             {
                 return;
             }

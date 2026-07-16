@@ -109,6 +109,8 @@ public:
             {
                 TerminateProcess(m_hProcess, 0);
             }
+
+            CloseProcessHandle();
         }
         else
         {
@@ -124,13 +126,16 @@ public:
     virtual void destroy() override
     {
         this->disable();
+        CloseProcessHandle();
         if (exitEvent)
         {
             CloseHandle(exitEvent);
+            exitEvent = nullptr;
         }
         if (triggerEvent)
         {
             CloseHandle(triggerEvent);
+            triggerEvent = nullptr;
         }
 
         delete this;
@@ -150,12 +155,25 @@ public:
             return;
         }
 
-        if (!IsProcessActive())
+        if (!triggerEvent)
         {
-            StartProcess();
+            Logger::error("Shortcut Guide trigger event is not initialized.");
+            return;
         }
 
-        SetEvent(triggerEvent);
+        if (!IsProcessActive())
+        {
+            if (!StartProcess())
+            {
+                Logger::error("Failed to start Shortcut Guide before signaling the trigger event.");
+                return;
+            }
+        }
+
+        if (!SetEvent(triggerEvent))
+        {
+            Logger::error(L"Failed to signal Shortcut Guide trigger event. {}", get_last_error_or_default(GetLastError()));
+        }
     }
 
     virtual void send_settings_telemetry() override
@@ -185,8 +203,8 @@ private:
     UINT m_millisecondsWinKeyPressTimeForGlobalWindowsShortcuts = DEFAULT_MILLISECONDS_WIN_KEY_PRESS_TIME_FOR_GLOBAL_WINDOWS_SHORTCUTS;
     UINT m_millisecondsWinKeyPressTimeForTaskbarIconShortcuts = DEFAULT_MILLISECONDS_WIN_KEY_PRESS_TIME_FOR_TASKBAR_ICON_SHORTCUTS;
 
-    HANDLE triggerEvent;
-    HANDLE exitEvent;
+    HANDLE triggerEvent = nullptr;
+    HANDLE exitEvent = nullptr;
 
     bool StartProcess(std::wstring args = L"")
     {
@@ -227,8 +245,26 @@ private:
         }
 
         Logger::trace(L"Started SG process with pid={}", GetProcessId(sei.hProcess));
-        m_hProcess = sei.hProcess;
+        if (args.empty())
+        {
+            CloseProcessHandle();
+            m_hProcess = sei.hProcess;
+        }
+        else
+        {
+            CloseHandle(sei.hProcess);
+        }
+
         return true;
+    }
+
+    void CloseProcessHandle()
+    {
+        if (m_hProcess)
+        {
+            CloseHandle(m_hProcess);
+            m_hProcess = nullptr;
+        }
     }
 
     bool IsProcessActive()
@@ -242,6 +278,11 @@ private:
         {
             Logger::error("Failed to wait for SG process.");
         }
+        else if (result != WAIT_TIMEOUT)
+        {
+            CloseProcessHandle();
+        }
+
         return result == WAIT_TIMEOUT;
     }
 
@@ -312,14 +353,6 @@ private:
             Logger::info("Shortcut Guide is going to use default shortcut");
             m_hotkey.modifiersMask = MOD_SHIFT | MOD_WIN;
             m_hotkey.vkCode = VK_OEM_2;
-        }
-    }
-
-    void WindowsKeyPressBehavior()
-    {
-        if (IsProcessActive())
-        {
-            TerminateProcess(m_hProcess, 0);
         }
     }
 };

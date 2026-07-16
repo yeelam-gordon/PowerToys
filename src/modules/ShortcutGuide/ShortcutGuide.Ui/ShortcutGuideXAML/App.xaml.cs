@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
@@ -112,7 +112,7 @@ namespace ShortcutGuide
                             OverlayWindow.CloseAnimated();
                         });
 
-                        NativeMethods.SendInput(1, [new() { Type = 1, Data = new() { Keyboard = new NativeMethods.KEYBDINPUT { WVk = 0xFF, DwFlags = 0x2 } } }], Marshal.SizeOf<NativeMethods.INPUT>());
+                        SendKeyboardInput(new NativeMethods.INPUT { Type = 1, Data = new() { Keyboard = new NativeMethods.KEYBDINPUT { VKey = 0xFF, DwFlags = 0x2 } } });
                         SendSingleKeyboardInput((short)key, 0x2); // key up
                     }
                     else
@@ -159,11 +159,11 @@ namespace ShortcutGuide
             NativeMethods.INPUT input = new()
             {
                 Type = 0x1, // INPUT_KEYBOARD
-                Data = new NativeMethods.MOUSEKEYBDHARDWAREINPUT
+                Data = new NativeMethods.MouseKeyboardHardwareInput
                 {
                     Keyboard = new NativeMethods.KEYBDINPUT
                     {
-                        WVk = (ushort)keyCode,
+                        VKey = (ushort)keyCode,
                         DwFlags = keyStatus,
                         DwExtraInfo = (nint)_ignoreKeyEventFlag,
                     },
@@ -172,7 +172,21 @@ namespace ShortcutGuide
 
             NativeMethods.INPUT[] inputs = [input];
 
-            NativeMethods.SendInput(1, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            SendKeyboardInputs(inputs);
+        }
+
+        private static void SendKeyboardInput(NativeMethods.INPUT input)
+        {
+            SendKeyboardInputs([input]);
+        }
+
+        private static void SendKeyboardInputs(NativeMethods.INPUT[] inputs)
+        {
+            uint sent = NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            if (sent != (uint)inputs.Length)
+            {
+                Logger.LogError($"SendInput sent {sent} of {inputs.Length} keyboard inputs. LastError={Marshal.GetLastWin32Error()}");
+            }
         }
 
         private void ListenForLaunchedEvents()

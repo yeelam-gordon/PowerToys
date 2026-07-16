@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8" ?>
-<commonwin:TransparentWindow
+<commonWindow:TransparentWindow
     x:Class="ShortcutGuide.OverlayWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:commonwin="using:Microsoft.PowerToys.Common.UI.Controls.Window"
+    xmlns:commonWindow="using:Microsoft.PowerToys.Common.UI.Controls.Window"
     xmlns:controls="using:ShortcutGuide.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -56,4 +56,4 @@
             <controls:TaskbarPaneControl x:Name="TaskbarPane" Visibility="Collapsed" />
         </Canvas>
     </Grid>
-</commonwin:TransparentWindow>
+</commonWindow:TransparentWindow>

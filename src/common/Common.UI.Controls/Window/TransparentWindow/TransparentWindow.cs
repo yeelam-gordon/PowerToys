@@ -59,7 +59,7 @@ public partial class TransparentWindow : WinUIEx.WindowEx
     private const int DwmwaWindowCornerPreference = 33;
     private const int DwmwaBorderColor = 34;
     private const int DwmwcpDoNotRound = 1;
-    private const int DwmncrpDisabled = 2;
+    private const int DwmNcRenderingPolicyDisabled = 2;
 
     private const int GwlExStyle = -20;
     private const int WsExDlgModalFrame = 0x00000001;
@@ -126,7 +126,7 @@ public partial class TransparentWindow : WinUIEx.WindowEx
     /// <summary>
     /// Opt-in, aggressive frame elimination for <b>full-monitor / edge-to-edge</b>
     /// overlays (e.g. Shortcut Guide), layered on top of
-    /// <see cref="ApplyTransparentChrome"/>. On such a window the HWND edge
+    /// <see cref="ApplyTransparentChrome"/>. For full-monitor overlays, the HWND edge
     /// coincides with the screen edge, so any residual 1-pixel DWM seam shows as
     /// a faint full-screen outline; this removes it by dropping the 3-D edge
     /// extended styles, disabling non-client rendering, and extending the frame
@@ -159,8 +159,8 @@ public partial class TransparentWindow : WinUIEx.WindowEx
         {
             // Disable non-client rendering entirely so the DWM doesn't draw ANY
             // frame/border chrome (not even a 1-px line).
-            int ncrpDisabled = DwmncrpDisabled;
-            _ = DwmSetWindowAttribute(_hwnd, DwmwaNcRenderingPolicy, &ncrpDisabled, sizeof(int));
+            int ncRenderingPolicyDisabled = DwmNcRenderingPolicyDisabled;
+            _ = DwmSetWindowAttribute(_hwnd, DwmwaNcRenderingPolicy, &ncRenderingPolicyDisabled, sizeof(int));
         }
 
         // Extend the frame into the entire client area. With a transparent

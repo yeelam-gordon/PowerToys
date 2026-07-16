@@ -120,6 +120,11 @@ internal sealed partial class DiskStats : PerformanceCounterSourceBase, IDisposa
 
     public string CreateDiskImageUrl(int diskChartIndex)
     {
+        if (diskChartIndex < 0 || DiskChartValues.Count <= diskChartIndex)
+        {
+            return ChartHelper.CreateImageUrl([], ChartHelper.ChartType.Dis);
+        }
+
         return ChartHelper.CreateImageUrl(DiskChartValues.ElementAt(diskChartIndex).Value, ChartHelper.ChartType.Dis);
     }
 

@@ -208,12 +208,12 @@ private:
 
     bool StartProcess(std::wstring args = L"")
     {
-        if (exitEvent)
+        if (args.empty() && exitEvent)
         {
             ResetEvent(exitEvent);
         }
 
-        if (triggerEvent)
+        if (args.empty() && triggerEvent)
         {
             ResetEvent(triggerEvent);
         }

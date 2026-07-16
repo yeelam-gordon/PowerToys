@@ -38,12 +38,6 @@ namespace ShortcutGuide.Controls
 
             this.OuterItemsControl.ItemsSource = null;
 
-            if (this.RootGrid.ContextFlyout is MenuFlyout flyout)
-            {
-                flyout.Opening -= PinFlyout_Opening!;
-            }
-
-            this.RootGrid.ContextFlyout = null;
             this.ClearValue(ShortcutProperty);
         }
 

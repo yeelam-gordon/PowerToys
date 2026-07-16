@@ -84,6 +84,10 @@ public sealed partial class TaskbarIndicator : UserControl
 
         RootGrid.RowDefinitions.Clear();
         RootGrid.ColumnDefinitions.Clear();
+        Grid.SetRow(Tail, 0);
+        Grid.SetRow(IndicatorRectangle, 0);
+        Grid.SetColumn(Tail, 0);
+        Grid.SetColumn(IndicatorRectangle, 0);
 
         // The tail is a 12x6 triangle whose two diagonal edges are stroked and
         // whose base (the side touching the body) is left open; a 1px negative

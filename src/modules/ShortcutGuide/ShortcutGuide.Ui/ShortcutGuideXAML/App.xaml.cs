@@ -82,6 +82,7 @@ namespace ShortcutGuide
                     // alive, holds the AppInstance single-instance lock, and
                     // blocks the next launch (the well-known "every other
                     // long-press works" bug).
+                    Dispose();
                     Current.Exit();
                 };
 
@@ -337,9 +338,12 @@ namespace ShortcutGuide
         public void Dispose()
         {
             _launchedEvent?.Dispose();
+            _launchedEvent = null;
+            _winKeyUpKeyboardHook?.Dispose();
 
             if (_listenForLaunchedEventThread == null)
             {
+                GC.SuppressFinalize(this);
                 return;
             }
 

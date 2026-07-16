@@ -82,8 +82,12 @@ internal abstract partial class OnLoadBasePage : Page
             InternalItemsChanged -= value;
             lock (_loadLock)
             {
+                if (_loadCount == 0)
+                {
+                    return;
+                }
+
                 _loadCount--;
-                _loadCount = Math.Max(0, _loadCount);
                 if (_loadCount == 0)
                 {
                     Unloaded();

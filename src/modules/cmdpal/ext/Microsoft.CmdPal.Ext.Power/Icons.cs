@@ -6,7 +6,6 @@ using System;
 using Microsoft.CmdPal.Ext.Power.Classes;
 using Microsoft.CmdPal.Ext.Power.Constants;
 using Microsoft.CmdPal.Ext.Power.Enumerations;
-using Microsoft.CmdPal.Ext.Power.Helpers;
 using Microsoft.CommandPalette.Extensions.Toolkit;
 
 namespace Microsoft.CmdPal.Ext.Power;

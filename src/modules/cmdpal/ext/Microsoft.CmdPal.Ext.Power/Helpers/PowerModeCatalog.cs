@@ -30,6 +30,12 @@ internal static class PowerModeCatalog
         Resources.power_mode_best_performance,
         Resources.power_mode_best_performance_short);
 
+    internal static readonly PowerModeDefinition Unknown = new(
+        UserPowerMode.Unknown,
+        new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+        Resources.power_mode_unknown,
+        Resources.power_mode_unknown_short);
+
     internal static IEnumerable<PowerModeDefinition> All =>
     [
         BestEfficiency,
@@ -63,6 +69,6 @@ internal static class PowerModeCatalog
         UserPowerMode.BestEfficiency => BestEfficiency,
         UserPowerMode.Balanced => Balanced,
         UserPowerMode.BestPerformance => BestPerformance,
-        _ => BestEfficiency with { Mode = UserPowerMode.Unknown, Label = Resources.power_mode_unknown, ShortLabel = Resources.power_mode_unknown_short },
+        _ => Unknown,
     };
 }

@@ -114,7 +114,7 @@ internal sealed partial class PowerPlanService
             return false;
         }
 
-        var buffer = new byte[bufferSize];
+        var buffer = new byte[checked((int)bufferSize)];
         result = PInvoke.PowerEnumerate(
             null,
             null,
@@ -177,7 +177,7 @@ internal sealed partial class PowerPlanService
             return false;
         }
 
-        var buffer = new byte[bufferSize];
+        var buffer = new byte[checked((int)bufferSize)];
         result = PInvoke.PowerReadFriendlyName(
             null,
             schemeGuid,
@@ -191,7 +191,7 @@ internal sealed partial class PowerPlanService
             return false;
         }
 
-        friendlyName = Encoding.Unicode.GetString(buffer.AsSpan(0, (int)bufferSize)).TrimEnd('\0');
+        friendlyName = Encoding.Unicode.GetString(buffer.AsSpan(0, checked((int)bufferSize))).TrimEnd('\0');
         return friendlyName.Length > 0;
     }
 

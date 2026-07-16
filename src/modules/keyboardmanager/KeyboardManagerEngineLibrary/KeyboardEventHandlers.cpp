@@ -116,10 +116,10 @@ namespace
 
     bool IsTextReplacementShortcutModifierPressed(KeyboardManagerInput::InputInterface& ii)
     {
-        return         IsModifierPressed(ii, VK_CONTROL, VK_LCONTROL, VK_RCONTROL) ||
-        IsModifierPressed(ii, VK_MENU, VK_LMENU, VK_RMENU) ||
-        ii.GetVirtualKeyState(VK_LWIN) ||
-        ii.GetVirtualKeyState(VK_RWIN);
+        return IsModifierPressed(ii, VK_CONTROL, VK_LCONTROL, VK_RCONTROL) ||
+               IsModifierPressed(ii, VK_MENU, VK_LMENU, VK_RMENU) ||
+               ii.GetVirtualKeyState(VK_LWIN) ||
+               ii.GetVirtualKeyState(VK_RWIN);
     }
 
     HWND GetTextReplacementWindow()

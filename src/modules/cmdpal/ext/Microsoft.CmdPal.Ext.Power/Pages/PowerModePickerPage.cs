@@ -57,6 +57,13 @@ internal sealed partial class PowerModePickerPage : OnLoadStaticListPage
 
     internal void HandleLiveStateChanged()
     {
+        var shouldHaveItems = _powerModeService.SupportsPowerModeControl();
+        if ((_items.Length > 0) != shouldHaveItems)
+        {
+            RebuildItems();
+            RaiseItemsChanged(_items.Length);
+        }
+
         RefreshPresentation();
     }
 
@@ -64,6 +71,9 @@ internal sealed partial class PowerModePickerPage : OnLoadStaticListPage
     {
         if (!_powerModeService.SupportsPowerModeControl())
         {
+            _efficiencyItem = null;
+            _balancedItem = null;
+            _performanceItem = null;
             _items = [];
             return;
         }

@@ -88,7 +88,7 @@ internal sealed partial class PowerPlanPickerPage : OnLoadStaticListPage
             return;
         }
 
-        var structureChanged = _cachedPlanGuids.Count > 0 && !_cachedPlanGuids.SequenceEqual(planGuids);
+        var structureChanged = !force && !_cachedPlanGuids.SequenceEqual(planGuids);
         _cachedPlanGuids = planGuids;
         _planItems = snapshot.AvailablePlans
             .Select(plan => _itemBuilder.CreatePlanItem(plan, snapshot, _onChanged, dismissOnSuccess: true))

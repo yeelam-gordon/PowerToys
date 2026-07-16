@@ -90,6 +90,9 @@ namespace AdvancedPaste.ViewModels
         private string _query = string.Empty;
 
         private bool _pasteFormatsDirty;
+        private bool _pythonScriptDiscoveryRunning;
+        private string _cachedPythonScriptsFolder;
+        private IReadOnlyList<PythonScriptMetadata> _cachedPythonScriptMetadata = [];
 
         [ObservableProperty]
         private bool _isBusy;
@@ -435,16 +438,21 @@ namespace AdvancedPaste.ViewModels
         {
             if (!_userSettings.IsPythonScriptsEnabled)
             {
+                _cachedPythonScriptMetadata = [];
+                _cachedPythonScriptsFolder = null;
                 yield break;
             }
 
             var folder = _userSettings.PythonScriptsFolder;
             if (string.IsNullOrWhiteSpace(folder))
             {
+                _cachedPythonScriptMetadata = [];
+                _cachedPythonScriptsFolder = null;
                 yield break;
             }
 
-            var discoveredScripts = _pythonScriptService.DiscoverScripts(folder);
+            EnsurePythonScriptDiscovery(folder);
+            IReadOnlyList<PythonScriptMetadata> discoveredScripts = string.Equals(_cachedPythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase) ? _cachedPythonScriptMetadata : [];
             var scriptActions = _userSettings.PythonScriptActions;
 
             // Use metadata from discovered scripts, but apply IsShown from saved settings.
@@ -463,6 +471,46 @@ namespace AdvancedPaste.ViewModels
                 var filteredFormats = AvailableClipboardFormats & meta.SupportedFormats;
                 yield return PasteFormat.CreatePythonScriptFormat(meta.Name, meta.ScriptPath, filteredFormats);
             }
+        }
+
+        private void EnsurePythonScriptDiscovery(string folder)
+        {
+            if (_pythonScriptDiscoveryRunning || string.Equals(_cachedPythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _pythonScriptDiscoveryRunning = true;
+            _ = DiscoverPythonScriptsAsync(folder);
+        }
+
+        private async Task DiscoverPythonScriptsAsync(string folder)
+        {
+            IReadOnlyList<PythonScriptMetadata> discoveredScripts = [];
+
+            try
+            {
+                discoveredScripts = await Task.Run(() => _pythonScriptService.DiscoverScripts(folder)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to discover Python scripts in {folder}", ex);
+            }
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _pythonScriptDiscoveryRunning = false;
+
+                if (!_userSettings.IsPythonScriptsEnabled || !string.Equals(_userSettings.PythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
+                {
+                    EnqueueRefreshPasteFormats();
+                    return;
+                }
+
+                _cachedPythonScriptMetadata = discoveredScripts;
+                _cachedPythonScriptsFolder = folder;
+                RefreshPasteFormats();
+            });
         }
 
         public void Dispose()

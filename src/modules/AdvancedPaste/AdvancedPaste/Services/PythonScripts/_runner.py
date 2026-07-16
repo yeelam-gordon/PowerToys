@@ -3,7 +3,7 @@
 # See the LICENSE file in the project root for more information.
 
 """
-Advanced Paste – Script Runner (V3 Named Function Interface)
+Advanced Paste – Script Runner (V2 Named Function Interface)
 
 This runner is shipped with PowerToys and is NOT user-editable.
 It loads a user script, discovers the single advanced_paste_from_<input>_to_<output>

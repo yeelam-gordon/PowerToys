@@ -84,7 +84,7 @@ public sealed class PythonScriptTrustService(IUserSettings userSettings) : IPyth
     {
         using var stream = File.OpenRead(scriptPath);
         var hashBytes = SHA256.HashData(stream);
-        return Convert.ToHexStringLower(hashBytes);
+        return Convert.ToHexString(hashBytes).ToLowerInvariant();
     }
 
     public async Task<bool> RequestInstallAsync(string scriptName, IReadOnlyList<PythonRequirement> missingPackages)

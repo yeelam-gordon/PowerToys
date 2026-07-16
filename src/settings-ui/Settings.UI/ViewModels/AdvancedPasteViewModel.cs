@@ -625,14 +625,41 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             OnPropertyChanged(nameof(ScriptsDiscovered));
 
             var folder = ScriptsFolder;
+            var savedActions = _advancedPasteSettings.Properties.PythonScripts?.Value is { } actions ? [.. actions] : new List<AdvancedPastePythonScriptAction>();
+            _ = RefreshPythonScriptsAsync(folder, savedActions);
+        }
+
+        private async Task RefreshPythonScriptsAsync(
+            string folder,
+            List<AdvancedPastePythonScriptAction> savedActions)
+        {
+            var scripts = await Task.Run(() => DiscoverPythonScripts(folder, savedActions)).ConfigureAwait(false);
+
+            void ApplyScripts()
+            {
+                PythonScriptActions = scripts;
+            }
+
+            if (_dispatcherQueue is not null && !_dispatcherQueue.HasThreadAccess)
+            {
+                _dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Normal, ApplyScripts);
+            }
+            else
+            {
+                ApplyScripts();
+            }
+        }
+
+        private static ObservableCollection<AdvancedPastePythonScriptAction> DiscoverPythonScripts(
+            string folder,
+            List<AdvancedPastePythonScriptAction> savedActions)
+        {
             if (string.IsNullOrWhiteSpace(folder) || !System.IO.Directory.Exists(folder))
             {
-                PythonScriptActions = [];
-                return;
+                return [];
             }
 
             var scripts = new ObservableCollection<AdvancedPastePythonScriptAction>();
-            var savedActions = _advancedPasteSettings.Properties.PythonScripts?.Value ?? [];
 
             foreach (var file in System.IO.Directory.EnumerateFiles(folder, "*.py", System.IO.SearchOption.TopDirectoryOnly))
             {
@@ -655,7 +682,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                 }
             }
 
-            PythonScriptActions = scripts;
+            return scripts;
         }
 
         private static AdvancedPastePythonScriptAction CreateActionFromScript(

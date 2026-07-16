@@ -94,7 +94,11 @@ public sealed class PasteFormatExecutor(
 
         if (metadata is null)
         {
-            throw new InvalidOperationException($"Script '{scriptPath}' does not define a valid advanced_paste_from_*_to_*() function.");
+            var details = $"Script '{scriptPath}' does not define a valid advanced_paste_from_*_to_*() function.";
+            throw new PasteActionException(
+                ResourceLoaderInstance.ResourceLoader.GetString("PythonScriptFailed"),
+                new InvalidOperationException(details),
+                aiServiceMessage: details);
         }
 
         // Pre-flight: check for missing packages and offer to install them.

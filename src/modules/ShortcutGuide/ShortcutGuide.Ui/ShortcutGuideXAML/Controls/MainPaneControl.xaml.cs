@@ -260,8 +260,13 @@ namespace ShortcutGuide.Controls
 
         private ShortcutsPage NavigateToShortcutsPage()
         {
-            this.ContentFrame.Navigate(typeof(ShortcutsPage));
-            return (ShortcutsPage)this.ContentFrame.Content;
+            if (!this.ContentFrame.Navigate(typeof(ShortcutsPage)) ||
+                this.ContentFrame.Content is not ShortcutsPage page)
+            {
+                throw new InvalidOperationException("Failed to navigate to the Shortcut Guide shortcuts page.");
+            }
+
+            return page;
         }
 
         private void Settings_Tapped(object sender, TappedRoutedEventArgs e)

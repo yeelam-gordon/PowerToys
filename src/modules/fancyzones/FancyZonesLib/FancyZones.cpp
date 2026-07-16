@@ -978,7 +978,10 @@ LRESULT FancyZones::WndProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         }
         else if (message == WM_PRIV_MONITOR_ROTATION_PREVIEW_SHOW)
         {
-            ShowMonitorRotationPreview();
+            if (IsMonitorRotationChordDown())
+            {
+                ShowMonitorRotationPreview();
+            }
         }
         else if (message == WM_PRIV_MONITOR_ROTATION_PREVIEW_HIDE)
         {
@@ -988,7 +991,10 @@ LRESULT FancyZones::WndProc(HWND window, UINT message, WPARAM wparam, LPARAM lpa
         {
             const bool reverse = static_cast<bool>(wparam);
             m_pendingMonitorRotationReverse = reverse;
-            ShowMonitorRotationPreview(reverse, true);
+            if (IsMonitorRotationChordDown())
+            {
+                ShowMonitorRotationPreview(reverse, true);
+            }
             SetTimer(m_window, MonitorRotationCommitTimerId, MonitorRotationCommitDelayMillis, nullptr);
         }
         else if (message == WM_TIMER && wparam == MonitorRotationCommitTimerId)

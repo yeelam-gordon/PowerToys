@@ -2,6 +2,7 @@
 #include "ZonesOverlay.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <map>
 #include <string>
@@ -216,7 +217,7 @@ ZonesOverlay::RenderResult ZonesOverlay::Render()
     float rotationProgress = 0.f;
     if (m_rotationPulseStart)
     {
-        const auto pulseMillis = (renderNow - *m_rotationPulseStart).count() / 1e6f;
+        const auto pulseMillis = std::chrono::duration_cast<std::chrono::duration<float, std::milli>>(renderNow - *m_rotationPulseStart).count();
         if (pulseMillis < RotationPulseDurationMillis)
         {
             rotationProgress = std::clamp(pulseMillis / RotationPulseDurationMillis, 0.f, 1.f);

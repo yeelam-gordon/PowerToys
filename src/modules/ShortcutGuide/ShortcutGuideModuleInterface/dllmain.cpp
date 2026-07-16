@@ -276,7 +276,8 @@ private:
         auto result = WaitForSingleObject(m_hProcess, 0);
         if (result == WAIT_FAILED)
         {
-            Logger::error("Failed to wait for SG process.");
+            Logger::error(L"Failed to wait for SG process. {}", get_last_error_or_default(GetLastError()));
+            CloseProcessHandle();
         }
         else if (result != WAIT_TIMEOUT)
         {

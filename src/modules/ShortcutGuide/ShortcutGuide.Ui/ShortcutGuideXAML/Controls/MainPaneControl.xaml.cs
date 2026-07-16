@@ -110,14 +110,21 @@ namespace ShortcutGuide.Controls
         /// </summary>
         private async Task InitializeNavItemsAsync()
         {
-            if (_getAppIdsTask == null)
+            Task<Dictionary<string, string?>>? getAppIdsTask = _getAppIdsTask;
+            if (getAppIdsTask == null)
             {
                 return;
             }
 
             try
             {
-                _currentApplicationIds = await _getAppIdsTask.ConfigureAwait(true);
+                Dictionary<string, string?> applicationIds = await getAppIdsTask.ConfigureAwait(true);
+                if (!ReferenceEquals(_getAppIdsTask, getAppIdsTask))
+                {
+                    return;
+                }
+
+                _currentApplicationIds = applicationIds;
                 this.SetNavItems();
             }
             catch (Exception ex)

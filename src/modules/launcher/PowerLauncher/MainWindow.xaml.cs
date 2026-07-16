@@ -816,10 +816,7 @@ namespace PowerLauncher
         {
             if (Visibility == Visibility.Visible)
             {
-                if (_settings.EnableAudibleFeedback)
-                {
-                    PlayAudibleFeedback(_settings.OpeningSound);
-                }
+                PlayAudibleFeedback(_settings.OpeningSound);
 
                 _deletePressed = false;
                 if (_firstDeleteTimer != null)
@@ -851,10 +848,7 @@ namespace PowerLauncher
             }
             else
             {
-                if (_settings.EnableAudibleFeedback)
-                {
-                    PlayAudibleFeedback(_settings.ClosingSound);
-                }
+                PlayAudibleFeedback(_settings.ClosingSound);
 
                 if (_firstDeleteTimer != null)
                 {

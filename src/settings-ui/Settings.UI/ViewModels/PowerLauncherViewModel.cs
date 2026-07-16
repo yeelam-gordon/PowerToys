@@ -683,7 +683,8 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
             try
             {
                 var loader = Helpers.ResourceLoaderInstance.ResourceLoader;
-                return loader.GetString($"PowerLauncher_Sound_{soundKey}");
+                var localizedSoundName = loader.GetString($"PowerLauncher_Sound_{soundKey}");
+                return string.IsNullOrEmpty(localizedSoundName) ? soundKey : localizedSoundName;
             }
             catch (Exception ex)
             {

@@ -8,7 +8,7 @@ paths the PR actually touches.
 - [ ] **Key-down guards accept both `WM_KEYDOWN` and `WM_SYSKEYDOWN`.** Alt-held delivers the SYS
       variant; a `WM_KEYDOWN`-only check silently drops the remap. (PR #48571, #47192)
 - [ ] **Every `SendVirtualInput` call is empty-safe.** Either the input is guaranteed non-empty, or
-      the empty early-return in `Input.h` covers it. `SendInput(0,…)` returns 0 = false "blocked". (PR #48571)
+      the empty early-return in `common/Input.h` covers it. `SendInput(0,…)` returns 0 = false "blocked". (PR #48571)
 - [ ] **Injection-failure passthrough is complete.** On failure `return 0` (pass original through) AND
       record the key-down so the matching key-up passes through (`State::ConsumeSingleKeyRemapInjectionFailed`). (PR #48571)
 - [ ] **Modifier state reset before injecting a non-modifier target** (suppress-flag key-up) to avoid
@@ -37,10 +37,10 @@ paths the PR actually touches.
 - [ ] Disabled sentinel uses the shared constant, not scattered `0x100`/`"256"` literals. (PR #46377)
 - [ ] `Process` objects from `GetProcessesByName` are disposed (timer handle leak). (PR #46377)
 - [ ] Editing surface degrades to read-only when the native mapping service is unavailable. (PR #46377)
-- [ ] User-facing strings are localized (from `Resources.resw`), not hard-coded. (PR #46377)
+- [ ] User-facing strings are localized (from `KeyboardManagerEditorUI/Strings/en-US/Resources.resw`), not hard-coded. (PR #46377)
 
 ## Cross-cutting
 
-- [ ] If engine behavior changed, the legacy editor validation (`BufferValidationHelpers`) and the new
+- [ ] If engine behavior changed, the legacy editor validation (`KeyboardManagerEditorLibrary/BufferValidationHelpers.cpp`) and the new
       editor stay consistent.
 - [ ] No new bare relative paths in project files; new deps go through central package management.

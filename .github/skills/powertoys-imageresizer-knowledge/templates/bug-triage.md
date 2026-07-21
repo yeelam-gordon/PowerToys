@@ -25,7 +25,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Bad/duplicate output filename, reserved name | `ResizeOperation.cs` `GetDestinationPath` (`_avoidFilenames`) | Filename sanitize | Reserved filename |
 | Overwrite loses original / no backup | `ResizeOperation.cs` `ExecuteAsync` (`File.Replace`), `GetBackupPath` | Replace path | (Module Map) |
 | Context menu missing after update / Win11 | `dll/dllmain.cpp` enable/UpdateRegistration; `RuntimeRegistration.h`; `ContextMenuHandler.cpp` | Registration lifecycle | Context menu |
-| Editor stalls / hangs opening picker | `ui/ImageResizerXAML/MainWindow.xaml.cs`; ViewModels | UI-thread block / async void | Review Rules |
+| Editor stalls / hangs opening picker | `ui/ImageResizerXAML/MainWindow.xaml.cs`; `ui/ViewModels/*` | UI-thread block / async void | Review Rules |
 | Settings change while editor open ignored | `Settings.cs` `InitializeWatcher`/`Reload` | Watcher/dispatcher | Review Rules |
 | CLI telemetry wrong / missing | `ImageResizerCLI/Program.cs`; `ui/Cli/*` | Telemetry placement | Review Rules |
 | Files skipped in batch | `ResizeBatch.cs` `IsValidImagePath`, `ValidImageExtensions` | Input validation | (Module Map) |

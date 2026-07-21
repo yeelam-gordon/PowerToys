@@ -34,7 +34,7 @@ Native code lives in `FancyZonesLib/`; the editor is C#/WPF under `editor/FancyZ
 | Host process / hook dispatch (mouse, keyboard, WinEvent) | `FancyZonesLib/FancyZones.cpp` `HandleWinHookEvent`, `WndProc`, `OnKeyDown` |
 | Module DLL interface (enable/disable, settings, GPO, hotkeys) | `FancyZonesLib/FancyZones.cpp`; `FancyZonesModuleInterface/dllmain.cpp` |
 | Drag start/update/end orchestration | `FancyZones.cpp` `MoveSizeStart` / `MoveSizeUpdate` / `MoveSizeEnd` |
-| Mouse drag-to-snap (overlay, highlight, transparency) | `FancyZonesLib/WindowMouseSnap.cpp` `Create`, `MoveSizeStart/Update/End`, `Abort`, `GetDraggedWindow` |
+| Mouse drag-to-snap (overlay, highlight, transparency) | `FancyZonesLib/WindowMouseSnap.cpp` `Create`, `MoveSizeStart/Update/End`, `Abort`; `FancyZonesLib/WindowMouseSnap.h` `GetDraggedWindow` |
 | Keyboard snap (Win+arrow cycle, by-position, extend) | `FancyZonesLib/WindowKeyboardSnap.cpp` `Snap`, `Extend`, `MoveByDirectionAndIndex`, `SnapBasedOnPositionOnAnotherMonitor` |
 | Dragging state (Shift/Ctrl toggle, active flag) | `FancyZonesLib/DraggingState.cpp` `Enable`, `Disable`, `UpdateDraggingState`, `IsDragging` |
 | Override Windows Snap (Win+arrow interception) | `FancyZones.cpp` `ShouldProcessSnapHotkey` + `Settings.overrideSnapHotkeys` |
@@ -45,9 +45,9 @@ Native code lives in `FancyZonesLib/`; the editor is C#/WPF under `editor/FancyZ
 | Zone geometry / layout model | `FancyZonesLib/Zone.cpp`, `Layout.cpp`, `LayoutConfigurator.cpp`, `LayoutAssignedWindows.cpp` |
 | Background worker (serialized tasks, teardown) | `FancyZonesLib/OnThreadExecutor.cpp` `submit`, `cancel`, `worker_thread`, dtor |
 | Applied layouts (monitor→layout binding, JSON) | `FancyZonesLib/FancyZonesData/AppliedLayouts.cpp` |
-| Custom / default / template layouts (JSON) | `FancyZonesData/CustomLayouts.cpp`, `DefaultLayouts.cpp`, `LayoutTemplates.cpp` |
-| Per-app zone history / last-known-zone restore | `FancyZonesData/AppZoneHistory.cpp` `GetAppLastZoneIndexSet`, `SyncVirtualDesktops`, `AdjustWorkAreaIds` |
-| Layout hotkeys (digit→layout) | `FancyZonesData/LayoutHotkeys.cpp` |
+| Custom / default / template layouts (JSON) | `FancyZonesLib/FancyZonesData/CustomLayouts.cpp`, `DefaultLayouts.cpp`, `LayoutTemplates.cpp` |
+| Per-app zone history / last-known-zone restore | `FancyZonesLib/FancyZonesData/AppZoneHistory.cpp` `GetAppLastZoneIndexSet`, `SyncVirtualDesktops`, `AdjustWorkAreaIds` |
+| Layout hotkeys (digit→layout) | `FancyZonesLib/FancyZonesData/LayoutHotkeys.cpp` |
 | Monitor identification / DPI / span-across | `FancyZonesLib/MonitorUtils.cpp` (`namespace WMI`, `Display`) `IdentifyMonitors`; `Settings.spanZonesAcrossMonitors` |
 | Virtual desktop id resolution (registry) | `FancyZonesLib/VirtualDesktop.cpp` `GetCurrentVirtualDesktopIdFromRegistry`, `GetVirtualDesktopIdsFromRegistry`; `LastUsedVirtualDesktop.cpp` |
 | Window eligibility / processing rules | `FancyZonesLib/FancyZonesWindowProcessing.cpp`, `WindowUtils.cpp` |
@@ -118,7 +118,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### "Move to last known zone" collapses all app windows into one zone
 - **Symptom:** with last-known-zone restore on, all windows of the same app pile into one zone; some
   apps (Adobe Illustrator/AE) open blank/black on multi-monitor.
-- **Where:** `FancyZonesData/AppZoneHistory.cpp::GetAppLastZoneIndexSet`; consumers in
+- **Where:** `FancyZonesLib/FancyZonesData/AppZoneHistory.cpp::GetAppLastZoneIndexSet`; consumers in
   `FancyZones.cpp` new-window handling.
 - **Root cause:** zone history is keyed per app (+ work-area id + layout id); multiple windows of one
   process resolve to the same saved index set, and multi-monitor work-area id resolution can misroute.
@@ -131,7 +131,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### Layouts don't bind per virtual desktop / applied-layouts.json access denied
 - **Symptom:** different layouts per Windows 11 "desktop" stop working after an update; or
   `Error applying layout: Access to the path 'applied-layouts.json' is denied`.
-- **Where:** `FancyZonesData/AppliedLayouts.cpp` (JSON read/write); `VirtualDesktop.cpp` registry id
+- **Where:** `FancyZonesLib/FancyZonesData/AppliedLayouts.cpp` (JSON read/write); `VirtualDesktop.cpp` registry id
   resolution; `AppZoneHistory::SyncVirtualDesktops`.
 - **Root cause:** virtual-desktop GUIDs are read from the registry and can change/relocate across OS
   builds; concurrent/locked writes to the shared JSON cause access-denied.

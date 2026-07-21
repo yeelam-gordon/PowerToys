@@ -15,7 +15,7 @@ source before relying on a claim.
 - **Evidence:** [#46693](https://github.com/microsoft/PowerToys/issues/46693) → [PR #46672](https://github.com/microsoft/PowerToys/pull/46672).
 
 ### 2. Modifier → non-modifier injected as WM_SYSKEYDOWN
-- **Files:** `KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`).
+- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`).
 - **Root cause:** `SendInput` runs in the hook while the source modifier is still down, so the OS
   stamps the injected key with Alt/system context. E.g. LAlt → Backspace deletes whole words.
 - **Guardrail:** inject a `KEYEVENTF_KEYUP` with `KEYBOARDMANAGER_SUPPRESS_FLAG` to reset modifier
@@ -23,7 +23,7 @@ source before relying on a claim.
 - **Evidence:** [#47191](https://github.com/microsoft/PowerToys/issues/47191) → [PR #47192](https://github.com/microsoft/PowerToys/pull/47192).
 
 ### 3. WM_SYSKEYDOWN dropped while Alt held; stuck modifiers on key-to-text
-- **Files:** `KeyboardEventHandlers.cpp` (`HandleSingleKeyToTextRemapEvent`), `common/Input.h`, `common/Helpers.cpp`.
+- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyToTextRemapEvent`), `common/Input.h`, `common/Helpers.cpp`.
 - **Root cause(s):** (a) key-down guard accepted only `WM_KEYDOWN`; (b) lone Win/Alt key-up release
   triggered Start Menu / menu bar; (c) re-pressing released modifiers could strand them down.
 - **Guardrail:** accept `WM_SYSKEYDOWN` too; precede modifier releases with a dummy key event and
@@ -43,7 +43,7 @@ source before relying on a claim.
 - **Evidence:** [PR #48571](https://github.com/microsoft/PowerToys/pull/48571) review (@MuyuanMS).
 
 ### 5. UIPI injection failure → key stranded DOWN / eaten
-- **Files:** `KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`), `State.cpp` (`ConsumeSingleKeyRemapInjectionFailed`).
+- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`), `KeyboardManagerEngineLibrary/State.cpp` (`ConsumeSingleKeyRemapInjectionFailed`).
 - **Root cause:** when injection into a higher-integrity foreground window failed, the original key
   was still swallowed.
 - **Guardrail:** on failure `return 0` to pass the original through; record the failed key-down so
@@ -60,12 +60,16 @@ source before relying on a claim.
   [#46366](https://github.com/microsoft/PowerToys/issues/46366).
 
 ### 7. New WinUI editor manual-key-selection hardening
-- **Files:** `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`, `Controls/UnifiedMappingControl.xaml.cs`,
-  `Controls/KeyDropDownButton.xaml.cs`, `Helpers/ServiceStatusHelper.cs`, `Settings/SettingsManager.cs`,
-  `Helpers/KeyboardHookHelper.cs`.
+- **Files:** `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`,
+  `KeyboardManagerEditorUI/Controls/UnifiedMappingControl.xaml.cs`,
+  `KeyboardManagerEditorUI/Controls/KeyDropDownButton.xaml.cs`,
+  `KeyboardManagerEditorUI/Helpers/ServiceStatusHelper.cs`,
+  `KeyboardManagerEditorUI/Settings/SettingsManager.cs`,
+  `KeyboardManagerEditorUI/Helpers/KeyboardHookHelper.cs`.
 - **Fixes:** filter synthetic `None`/keycode 0 from the picker; `ValidateDropDownSelection` skips
   empty placeholder slots; dedicated `ValidateDisableMapping`; centralized `VK_DISABLED`
-  (`0x100`/`"256"`); binding-safe revert via `ObservableCollection.RemoveAt`+`Insert` (not setting the
+  (`src/common/interop/shared_constants.h`) plus WinUI `VkDisabled`/`VkDisabledString`
+  (`KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`); binding-safe revert via `ObservableCollection.RemoveAt`+`Insert` (not setting the
   bound DP); dispose `Process` handles from the 3s polling timer; read-only mode when the native
   service is down; localized dialog titles; broadened hook-init `catch`; select ComboBox item by Tag
   (not hard-coded index).

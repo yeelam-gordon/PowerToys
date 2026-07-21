@@ -34,29 +34,29 @@ Source root: `src/modules/LightSwitch/`.
 
 | Sub-feature | Implementation (file · function) |
 |---|---|
-| Module entry / Settings page glue / hotkey registration | `LightSwitchModuleInterface/dllmain.cpp` `LightSwitchInterface` (`enable`, `disable`, `get_hotkeys`, `on_hotkey`, `parse_hotkey`, `set_config`) |
-| Launch the background service | `dllmain.cpp::enable` — `CreateProcessW` on `LightSwitchService\PowerToys.LightSwitchService.exe --pid <pid>` |
+| Module entry / Settings page glue / hotkey registration | `src/modules/LightSwitch/LightSwitchModuleInterface/dllmain.cpp` `LightSwitchInterface` (`enable`, `disable`, `get_hotkeys`, `on_hotkey`, `parse_hotkey`, `set_config`) |
+| Launch the background service | `dllmain.cpp::enable` — `CreateProcessW` for `PowerToys.LightSwitchService.exe --pid <pid>` (built from `src/modules/LightSwitch/LightSwitchService/LightSwitchService.vcxproj`) |
 | Manual toggle hotkey (default Win+Ctrl+Shift+D) | `dllmain.cpp` `m_toggle_theme_hotkey`, `on_hotkey`, `LightSwitchInterface::ToggleTheme` |
 | Manual-override signaling to service | named event `POWERTOYS_LIGHTSWITCH_MANUAL_OVERRIDE` (`dllmain.cpp` `ToggleTheme` `SetEvent`; consumed in service worker loop) |
-| GPO enable/disable gate | `LightSwitchService.cpp::wWinMain` via `powertoys_gpo::getConfiguredLightSwitchEnabledValue()`; policy `ConfigureEnabledUtilityLightSwitch` (`common/utils/gpo.h`) |
-| Windows service host / worker loop / minute tick | `LightSwitchService/LightSwitchService.cpp` `_tmain`, `ServiceMain`, `ServiceWorkerThread` (waits on stop/parent/override/settings events + per-minute timeout) |
+| GPO enable/disable gate | `LightSwitchService.cpp::wWinMain` via `powertoys_gpo::getConfiguredLightSwitchEnabledValue()`; policy `ConfigureEnabledUtilityLightSwitch` (`src/common/utils/gpo.h`) |
+| Windows service host / worker loop / minute tick | `src/modules/LightSwitch/LightSwitchService/LightSwitchService.cpp` `_tmain`, `ServiceMain`, `ServiceWorkerThread` (waits on stop/parent/override/settings events + per-minute timeout) |
 | External-theme-change detection (user flips theme in Settings) | `LightSwitchService.cpp::DetectAndHandleExternalThemeChange` → triggers `OnManualOverride` |
 | Apply theme to registry (the actual switch) | `LightSwitchService.cpp::ApplyTheme` → `SetSystemTheme` / `SetAppsTheme` |
-| Theme registry read/write (Personalize keys) | `LightSwitchLib/ThemeHelper.cpp` `SetSystemTheme`, `SetAppsTheme`, `GetCurrentSystemTheme`, `GetCurrentAppsTheme`, `ResetColorPrevalence` |
+| Theme registry read/write (Personalize keys) | `src/modules/LightSwitch/LightSwitchLib/ThemeHelper.cpp` `SetSystemTheme`, `SetAppsTheme`, `GetCurrentSystemTheme`, `GetCurrentAppsTheme`, `ResetColorPrevalence` |
 | Night Light detection (read) | `ThemeHelper.cpp::IsNightLightEnabled` (parses `Data` blob bytes 23/24 under CloudStore bluelightreduction key) |
-| Night Light change watcher | `LightSwitchService/NightLightRegistryObserver.h` (`RegNotifyChangeKeyValue` thread; header-only impl) |
-| Decide/apply theme (the brain) | `LightSwitchService/LightSwitchStateManager.cpp` `EvaluateAndApplyIfNeeded`, `OnTick`, `OnSettingsChanged`, `OnManualOverride`, `OnNightLightChange`, `SyncInitialThemeState` |
+| Night Light change watcher | `src/modules/LightSwitch/LightSwitchService/NightLightRegistryObserver.h` (`RegNotifyChangeKeyValue` thread; header-only impl) |
+| Decide/apply theme (the brain) | `src/modules/LightSwitch/LightSwitchService/LightSwitchStateManager.cpp` `EvaluateAndApplyIfNeeded`, `OnTick`, `OnSettingsChanged`, `OnManualOverride`, `OnNightLightChange`, `SyncInitialThemeState` |
 | Runtime-only state (not persisted) | `LightSwitchStateManager.h` `struct LightSwitchState` |
-| Schedule decision (is it light-time now?) | `LightSwitchService/LightSwitchUtils.h` `ShouldBeLight` (handles midnight wrap), `GetNowMinutes` |
-| Sunrise/sunset computation | `LightSwitchService/ThemeScheduler.cpp` `CalculateSunriseSunset` (+ `deg2rad`/`rad2deg` in `.h`) |
+| Schedule decision (is it light-time now?) | `src/modules/LightSwitch/LightSwitchService/LightSwitchUtils.h` `ShouldBeLight` (handles midnight wrap), `GetNowMinutes` |
+| Sunrise/sunset computation | `src/modules/LightSwitch/LightSwitchService/ThemeScheduler.cpp` `CalculateSunriseSunset` (+ `deg2rad`/`rad2deg` in `.h`) |
 | Coordinate validation | `LightSwitchStateManager.cpp::CoordinatesAreValid`; sun-time recompute in `update_sun_times` |
-| Settings load / schema / defaults | `LightSwitchService/LightSwitchSettings.cpp` `LoadSettings`, `struct LightSwitchConfig`, `enum ScheduleMode`, `FromString`/`ToString` |
+| Settings load / schema / defaults | `src/modules/LightSwitch/LightSwitchService/LightSwitchSettings.cpp` `LoadSettings`; `src/modules/LightSwitch/LightSwitchService/LightSwitchSettings.h` `struct LightSwitchConfig`, `enum class ScheduleMode`, `FromString`/`ToString` |
 | Settings file-watcher + debounce (3 s) | `LightSwitchSettings.cpp::InitFileWatcher` (`FileWatcher` + `std::jthread` debounce → `m_settingsChangedEvent`) |
-| Settings observer registration IDs | `LightSwitchService/SettingsConstants.h` `enum class SettingId`; `SettingsObserver.h` |
+| Settings observer registration IDs | `src/modules/LightSwitch/LightSwitchService/SettingsConstants.h` `enum class SettingId`; `SettingsObserver.h` |
 | PowerDisplay profile notify (light/dark events) | `LightSwitchStateManager.cpp::NotifyPowerDisplay` → `CommonSharedConstants::LIGHT_SWITCH_LIGHT_THEME_EVENT` / `..._DARK_THEME_EVENT` |
-| Telemetry | `LightSwitchModuleInterface/trace.cpp`, `LightSwitchService/trace.cpp` (`ScheduleModeToggled`, `ThemeTargetChanged`, `ShortcutInvoked`, `Enable`) |
+| Telemetry | `src/modules/LightSwitch/LightSwitchModuleInterface/trace.cpp` (`ShortcutInvoked`, `Enable`); `src/modules/LightSwitch/LightSwitchService/trace.cpp` (`ScheduleModeToggled`, `ThemeTargetChanged`) |
 | Settings UI view-model (C#) | `src/settings-ui/Settings.UI/ViewModels/LightSwitchViewModel.cs` (+ page/XAML) |
-| UI tests | `LightSwitch/Tests/LightSwitch.UITests/` (`TestGeolocation`, `TestOffset`, `TestShortcut`, `TestUpdateManualTime`, `TestUserSelectedLocation`) |
+| UI tests | `src/modules/LightSwitch/Tests/LightSwitch.UITests/` (`TestGeolocation`, `TestOffset`, `TestShortcut`, `TestUpdateManualTime`, `TestUserSelectedLocation`) |
 
 **Two theme axes, two registry values.** LightSwitch controls **System** theme
 (`SystemUsesLightTheme`) and **Apps** theme (`AppsUseLightTheme`) *independently*, gated by
@@ -99,7 +99,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 ### PowerDisplay reads registry before LightSwitch finished writing (race)
 - **Symptom:** wrong monitor profile applied because PowerDisplay read `AppsUseLightTheme` mid-write.
-- **Where:** `NotifyPowerDisplay` event names; `CommonSharedConstants` in `common/interop/shared_constants.h`.
+- **Where:** `NotifyPowerDisplay` event names; `CommonSharedConstants` in `src/common/interop/shared_constants.h`.
 - **Root cause:** a single "theme changed" event forced the consumer to re-read the registry.
 - **Guardrail:** signal **separate** light vs dark named events (`LIGHT_SWITCH_LIGHT_THEME_EVENT` /
   `LIGHT_SWITCH_DARK_THEME_EVENT`) that carry the direction, so PowerDisplay never has to read the

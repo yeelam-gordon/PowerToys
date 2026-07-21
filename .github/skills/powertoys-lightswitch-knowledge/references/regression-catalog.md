@@ -28,7 +28,7 @@ rests only on an issue **title** (issue bodies were unavailable at distill time)
   #46160; (2) made `NotifyPowerDisplay` fire on *every* hotkey override (was gated on
   `isManualOverride` `false→true`, dropping every even press). Uses separate
   `LIGHT_SWITCH_LIGHT_THEME_EVENT` / `LIGHT_SWITCH_DARK_THEME_EVENT` (in
-  `common/interop/shared_constants.h`) so PowerDisplay never reads a half-written registry.
+  `src/common/interop/shared_constants.h`) so PowerDisplay never reads a half-written registry.
 
 - **Repo-wide build conventions apply here too.** Project references use `$(RepoRoot)` and deps go
   through `Directory.Packages.props` ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639));

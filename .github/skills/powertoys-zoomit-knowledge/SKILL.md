@@ -61,7 +61,7 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 | Multi-monitor targeting | `MonitorFromPoint(MONITOR_DEFAULTTONEAREST)` + `GetMonitorInfo` (~`Zoomit.cpp:2258`) |
 | Registry-backed settings model | `ZoomItSettings.h` `REG_SETTING RegSettings[]`; `Registry.h` |
 | Settings reload from PowerToys | `MainWndProc` `WM_USER_RELOAD_SETTINGS` (~`Zoomit.cpp:10356`) |
-| Settings UI (WinUI 3) | `src/settings-ui/Settings.UI/ViewModels/ZoomItViewModel.cs`, `.../Views/ZoomItPage.xaml`; native bridge `ZoomItSettingsInterop/ZoomItSettings.cpp/.idl` |
+| Settings UI (WinUI 3) | `src/settings-ui/Settings.UI/ViewModels/ZoomItViewModel.cs`, `.../SettingsXAML/Views/ZoomItPage.xaml` (was `.../Views/ZoomItPage.xaml`); native bridge `ZoomItSettingsInterop/ZoomItSettings.cpp/.idl` |
 | Telemetry | `ZoomItModuleInterface/trace.cpp` |
 
 **Hotkey model (critical):** ZoomIt registers global hotkeys via Win32 `RegisterHotKey`. Several

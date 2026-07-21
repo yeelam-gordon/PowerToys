@@ -33,20 +33,20 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Engine host process entry | `KeyboardManagerEngine/main.cpp` |
 | DLL module interface (enable/disable, settings, GPO) | `dll/dllmain.cpp` |
 | Low-level hook install + callback | `KeyboardManagerEngineLibrary/KeyboardManager.cpp` `HookProc` (`SetWindowsHookEx(WH_KEYBOARD_LL,…)`) |
-| Hook dispatch order (priority chain) | `KeyboardManager.cpp` `HandleKeyboardHookEvent` |
-| Single-key remap (key→key / key→shortcut / disable) | `KeyboardEventHandlers.cpp` `HandleSingleKeyRemapEvent` |
-| Shortcut remap (incl. AltGr, chords, run-program/URI) | `KeyboardEventHandlers.cpp` `HandleShortcutRemapEvent` |
-| App-specific shortcut remap | `KeyboardEventHandlers.cpp` `HandleAppSpecificShortcutRemapEvent` |
-| Single-key → text remap | `KeyboardEventHandlers.cpp` `HandleSingleKeyToTextRemapEvent` |
-| OS-level (global) shortcut remap wrapper | `KeyboardEventHandlers.cpp` `HandleOSLevelShortcutRemapEvent` |
-| KBM re-entrancy guard (skip our own injected events) | `KeyboardEventHandlers.cpp` `GeneratedByKBM`; `dwExtraInfo` flags in `common/KeyboardManagerConstants.h` (`KEYBOARDMANAGER_SINGLEKEY_FLAG`, `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`) |
+| Hook dispatch order (priority chain) | `KeyboardManagerEngineLibrary/KeyboardManager.cpp` `HandleKeyboardHookEvent` |
+| Single-key remap (key→key / key→shortcut / disable) | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleSingleKeyRemapEvent` |
+| Shortcut remap (incl. AltGr, chords, run-program/URI) | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleShortcutRemapEvent` |
+| App-specific shortcut remap | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleAppSpecificShortcutRemapEvent` |
+| Single-key → text remap | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleSingleKeyToTextRemapEvent` |
+| OS-level (global) shortcut remap wrapper | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleOSLevelShortcutRemapEvent` |
+| KBM re-entrancy guard (skip our own injected events) | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `GeneratedByKBM`; `dwExtraInfo` flags in `common/KeyboardManagerConstants.h` (`KEYBOARDMANAGER_SINGLEKEY_FLAG`, `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`) |
 | Input injection (batched `SendInput`) | `common/Input.h` `SendVirtualInput`; `common/Helpers.cpp` `SetKeyEvent`, `SetDummyKeyEvent`, `SetModifierKeyEvents`, `SendTextInput` |
-| Runtime remap state (invoked shortcuts, injection-failed passthrough) | `KeyboardManagerEngineLibrary/State.cpp/.h` (`ConsumeSingleKeyRemapInjectionFailed`, `CheckShortcutRemapInvoked`) |
+| Runtime remap state (invoked shortcuts, injection-failed passthrough) | `KeyboardManagerEngineLibrary/State.cpp` / `KeyboardManagerEngineLibrary/State.h` (`ConsumeSingleKeyRemapInjectionFailed`, `CheckShortcutRemapInvoked`) |
 | Mapping model / serialization (JSON load+save) | `common/MappingConfiguration.cpp` `LoadSettings`, `SaveSettingsToFile`, `LoadSingleKeyRemaps`, `LoadShortcutRemaps`, `LoadSingleKeyToTextRemaps`, `LoadAppSpecificShortcutRemaps` |
-| Shortcut / modifier model | `common/Shortcut.cpp/.h` (`CheckModifiersKeyboardState`), `common/Modifiers.h`, `common/ModifierKey.h`, `common/RemapShortcut.h` |
-| Disabled-key sentinel | `CommonSharedConstants::VK_DISABLED` (`0x100` / `"256"` string form) |
+| Shortcut / modifier model | `common/Shortcut.cpp` / `common/Shortcut.h` (`CheckModifiersKeyboardState`), `common/Modifiers.h`, `common/ModifierKey.h`, `common/RemapShortcut.h` |
+| Disabled-key sentinel | `src/common/interop/shared_constants.h` `CommonSharedConstants::VK_DISABLED` (`0x100`); WinUI serialization constants in `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs` (`VkDisabled`, `VkDisabledString`) |
 | Legacy editor (XAML islands) | `KeyboardManagerEditorLibrary/` `EditKeyboardWindow.cpp`, `EditShortcutsWindow.cpp`, `SingleKeyRemapControl.cpp`, `ShortcutControl.cpp`, `KeyDropDownControl.cpp`, `BufferValidationHelpers.cpp`, `LoadingAndSavingRemappingHelper.cpp`, `Dialog.cpp` |
-| New WinUI 3 editor (default) | `KeyboardManagerEditorUI/` `Pages/MainPage.xaml.cs`, `Controls/UnifiedMappingControl.xaml.cs`, `Controls/KeyDropDownButton.xaml.cs`, `Helpers/KeyboardHookHelper.cs`, `Helpers/ServiceStatusHelper.cs`, `Settings/SettingsManager.cs` |
+| New WinUI 3 editor (default) | `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`, `KeyboardManagerEditorUI/Controls/UnifiedMappingControl.xaml.cs`, `KeyboardManagerEditorUI/Controls/KeyDropDownButton.xaml.cs`, `KeyboardManagerEditorUI/Helpers/KeyboardHookHelper.cs`, `KeyboardManagerEditorUI/Helpers/ServiceStatusHelper.cs`, `KeyboardManagerEditorUI/Settings/SettingsManager.cs` |
 | Engine unit tests | `KeyboardManagerEngineTest/` (project **KeyboardManager.Engine.UnitTests**) |
 | Editor unit tests | `KeyboardManagerEditorTest/` |
 
@@ -65,7 +65,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### Stale AltGr flag → sticky Ctrl
 - **Symptom:** after pressing/releasing AltGr (Right Alt) **without** triggering any shortcut, LCtrl
   becomes permanently stuck for any shortcut remap that uses LCtrl.
-- **Where:** `KeyboardEventHandlers.cpp::HandleShortcutRemapEvent`, `static bool isAltRightKeyInvoked`.
+- **Where:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp::HandleShortcutRemapEvent`, `static bool isAltRightKeyInvoked`.
 - **Root cause:** the flag was set on AltGr (RAlt + LCtrl) but only reset inside a branch that
   required a shortcut to be actively invoked, so a bare AltGr press/release left it `true`
   permanently — blocking modifier restoration at ~13 sites and `break`-ing on LCtrl key-up.
@@ -77,7 +77,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### Modifier → non-modifier injected as WM_SYSKEYDOWN
 - **Symptom:** remapping e.g. Left Alt → Backspace deletes whole **words** instead of characters —
   apps see `Alt+Backspace` because the injected key arrives as `WM_SYSKEYDOWN`, not `WM_KEYDOWN`.
-- **Where:** `KeyboardEventHandlers.cpp::HandleSingleKeyRemapEvent` (modifier-state reset before injection).
+- **Where:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp::HandleSingleKeyRemapEvent` (modifier-state reset before injection).
 - **Root cause:** `SendInput` is called inside the hook callback while the original modifier is still
   down, so the OS stamps the injected key with the Alt/system context.
 - **Guardrail:** inject a `KEYEVENTF_KEYUP` with `KEYBOARDMANAGER_SUPPRESS_FLAG` to reset the modifier
@@ -88,7 +88,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### WM_SYSKEYDOWN dropped while Alt held (stuck modifiers / dropped key-to-text)
 - **Symptom:** a single-key→text (or single-key) remap silently does nothing whenever Alt is down;
   modifiers can get stuck.
-- **Where:** `KeyboardEventHandlers.cpp::HandleSingleKeyToTextRemapEvent` (and the single-key path).
+- **Where:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp::HandleSingleKeyToTextRemapEvent` (and the single-key path).
 - **Root cause:** the key-down guard accepted only `WM_KEYDOWN`; while Alt is held the OS delivers
   `WM_SYSKEYDOWN`, so the remap was skipped.
 - **Guardrail:** accept **both** `WM_KEYDOWN` and `WM_SYSKEYDOWN` for key-down; before text injection,
@@ -108,7 +108,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### UIPI injection failure → key stranded DOWN / eaten
 - **Symptom:** against an elevated foreground window, a remapped key produces nothing or leaves the
   physical key stuck down (its down reached the app, its up got swallowed).
-- **Where:** `KeyboardEventHandlers.cpp::HandleSingleKeyRemapEvent`; `State.cpp`
+- **Where:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp::HandleSingleKeyRemapEvent`; `KeyboardManagerEngineLibrary/State.cpp`
   `ConsumeSingleKeyRemapInjectionFailed`.
 - **Root cause:** when `SendVirtualInput` fails (UIPI blocks injection into a higher-integrity
   window) the handler still ate the original key.
@@ -130,8 +130,8 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Symptom:** the manual key picker can save an invalid mapping containing keycode `0` (`"None"`),
   or the disable action persists unvalidated trigger keys.
 - **Where:** `KeyboardManagerEditorUI/Controls/KeyDropDownButton.xaml.cs` `GetKeyList`;
-  `Controls/UnifiedMappingControl.xaml.cs` (`*KeyDown_KeyChanged`, `ValidateDropDownSelection`);
-  `Pages/MainPage.xaml.cs` (`SaveDisableMapping`, VK_DISABLED handling).
+  `KeyboardManagerEditorUI/Controls/UnifiedMappingControl.xaml.cs` (`*KeyDown_KeyChanged`, `ValidateDropDownSelection`);
+  `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs` (`SaveDisableMapping`, VK_DISABLED handling).
 - **Root cause:** `LayoutMap` injects a synthetic `None` (keycode 0) entry for shortcut lists;
   selecting it, or leaving empty placeholder slots, bypassed validation.
 - **Guardrail:** filter `KeyCode == 0` out of the picker; skip empty placeholder slots when

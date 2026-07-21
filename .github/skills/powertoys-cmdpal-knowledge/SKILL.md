@@ -36,7 +36,7 @@ below were added by the July 2026 PRs cited).
 | Sub-feature | Implementation (project · file · symbol) |
 |---|---|
 | App bootstrap + **built-in command-provider registration (DI)** | `Microsoft.CmdPal.UI/App.xaml.cs` `AddBuiltInCommands` (registers every `ICommandProvider`; `IRootPageService` → `PowerToysRootPageService`) |
-| Root page / home service | `Microsoft.CmdPal.UI.ViewModels/IRootPageService.cs`, `IRootPageAccessor.cs`; `Microsoft.CmdPal.UI/DeferredRootPageAccessor.cs` |
+| Root page / home service | `Microsoft.CmdPal.UI.ViewModels/IRootPageService.cs`; `Microsoft.CmdPal.UI/PowerToysRootPageService.cs`. Deferred-accessor split — `Microsoft.CmdPal.UI.ViewModels/IRootPageAccessor.cs`, `Microsoft.CmdPal.UI/DeferredRootPageAccessor.cs` (added by [PR #49095](https://github.com/microsoft/PowerToys/pull/49095)) |
 | Built-in "utility" commands provider (quit/settings/dock home) | `Microsoft.CmdPal.UI.ViewModels/Commands/BuiltInsCommandProvider.cs`; `Commands/GoHomeDockCommand.cs` |
 | Main host window + HWND frame (compact) | `Microsoft.CmdPal.UI/MainWindow.xaml.cs`, `NativeMethods.txt` (P/Invoke incl. `RedrawWindow`) |
 | **ShellPage** — search box, key handling, **Compact/collapsed mode** | `Microsoft.CmdPal.UI/Pages/ShellPage.xaml.cs` `UpdateCompactModeForCurrentPage`, `HandleExpandCompactOnUiThread`, `ShellPage_OnPreviewKeyDown`, `Receive(ExpandCompactModeMessage)`; XAML `Pages/ShellPage.xaml` |
@@ -103,8 +103,11 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### DI circular dependency (command providers ↔ root page)
 - **Symptom:** startup DI resolution fails or is refactored around a cycle between
   `BuiltInsCommandProvider` and `IRootPageService`.
-- **Where:** `App.xaml.cs::AddBuiltInCommands`; `BuiltInsCommandProvider.cs`; `IRootPageAccessor.cs`,
-  `DeferredRootPageAccessor.cs`.
+- **Where:** `App.xaml.cs::AddBuiltInCommands`; `BuiltInsCommandProvider.cs`;
+  `Microsoft.CmdPal.UI.ViewModels/IRootPageAccessor.cs`,
+  `Microsoft.CmdPal.UI/DeferredRootPageAccessor.cs` (the deferred-accessor pair, added by
+  [PR #49095](https://github.com/microsoft/PowerToys/pull/49095); the DI seam is
+  `IRootPageService.cs` → `PowerToysRootPageService.cs`).
 - **Root cause:** a provider needed the root page *only* to open the palette, creating a cycle with
   the service that builds providers.
 - **Guardrail:** break provider→root-page cycles with a **deferred accessor** (`IRootPageAccessor` /

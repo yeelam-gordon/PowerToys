@@ -10,7 +10,9 @@ treat them as areas, not diagnoses.
 - **Deferred accessor to break DI cycles.** `BuiltInsCommandProvider` must not depend on
   `IRootPageService` directly (cycle). Use `IRootPageAccessor` / `DeferredRootPageAccessor`
   (lazy `Func<>`). Reviewer also noted: if the accessor is registered in DI, let the container
-  inject it rather than re-wrapping the factory. — PR #49095 (r3538570672).
+  inject it rather than re-wrapping the factory. — PR #49095 (r3538570672). Files:
+  `Microsoft.CmdPal.UI.ViewModels/IRootPageAccessor.cs`, `Microsoft.CmdPal.UI/DeferredRootPageAccessor.cs`
+  (DI seam: `IRootPageService` → `PowerToysRootPageService`).
 - **Dock summon requires a page command.** `DockControl.InvokeItem` only opens the palette when
   `IsPageCommand` is true; an invokable command returning `CommandResult.GoHome()` won't. A dock
   "home/open" item must therefore be a page command. — PR #49095, #49089.
@@ -48,7 +50,7 @@ treat them as areas, not diagnoses.
 |---|---|---|
 | #49089 → PR #49095 | Open-Command-Palette dock button dead | `Dock/DockControl.xaml.cs` |
 | #49168 *(closed)* | Dock reloads on every settings change | `Dock/` settings handlers |
-| #49309 (PR, merged) | clock band showed unwanted OpenLink icon after primary command added | `ext/...TimeDate/NowDockBand.cs` |
+| #49309 (PR, merged) | clock band showed unwanted OpenLink icon after primary command added | `src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.TimeDate/NowDockBand.cs` |
 | #49295 *(open)* | reports display 1 as display 2 | `Services/MonitorService.cs` — verify |
 | #49264 *(open)* | palette opened from Dock has offset | Dock summon geometry — verify |
 | #49205 *(open)* | pin-to-dock pins to a hidden dock | Dock pin flow — verify |

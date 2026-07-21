@@ -52,7 +52,7 @@ below). All paths under `src/modules/GrabAndMove/`.
 | Settings load + hot-reload watcher thread | `main.cpp` `LoadSettingsFromFile`, `SettingsWatcherThread`; keys: `shouldAbsorbAlt`, `showGeometry`, `doNotActivateOnGameMode`, `useAltResize`, `modifierKey`, `excluded_apps` |
 | Tray icon + menu | `main.cpp` `AddTrayIcon`, `RemoveTrayIcon`, `ShowTrayMenu` |
 | Telemetry | `main.cpp::TraceShortcutUse`; `GrabAndMoveModuleInterface/trace.cpp` |
-| Settings UI (view model + properties) | `src/settings-ui/Settings.UI/ViewModels/GrabAndMoveViewModel.cs`, `Settings.UI.Library/GrabAndMoveProperties.cs`, `GrabAndMoveSettings.cs` |
+| Settings UI (view model + properties) | `src/settings-ui/Settings.UI/ViewModels/GrabAndMoveViewModel.cs`, `src/settings-ui/Settings.UI.Library/GrabAndMoveProperties.cs`, `src/settings-ui/Settings.UI.Library/GrabAndMoveSettings.cs` |
 | CppWinRT NuGet pin (build) | `GrabAndMove/GrabAndMove.vcxproj` imports `packages\Microsoft.Windows.CppWinRT.2.0.250303.1\...` |
 
 **Modifier value mapping (keep C++ and C# in sync):** the native side is
@@ -214,7 +214,7 @@ Enforce these when reviewing or authoring GrabAndMove changes:
   ([review on PR #47052](https://github.com/microsoft/PowerToys/pull/47052)).
 - **New native `.vcxproj` mirrors the canonical CppWinRT NuGet wiring** (see the CI playbook).
 - **Prefer vcpkg + a patch file over vendored shim headers.** A maintainer called the
-  `deps/spdlog-msvc-fix` shim "slightly absurd"; toolset-compat fixes belong in the dependency, not a
+  `deps/spdlog-msvc-fix` shim (historical — path as of #47910; not in current tree) "slightly absurd"; toolset-compat fixes belong in the dependency, not a
   bespoke header ([review on PR #47910](https://github.com/microsoft/PowerToys/pull/47910)).
 - **Plain comments.** A maintainer repeatedly pushed back on hyphenated compound-noun comments and
   "flowery" wording ("warning-gold", "literal equivalent"); keep code comments plain and factual.

@@ -52,7 +52,7 @@ your change touches; confirm each claim in source before acting. Symptoms map to
 | Two-button | Unmatched button-up reaches target | `MouseProc` pending-press logic | Guard against overwriting an existing pending drag/resize when both buttons used | review on [#49121](https://github.com/microsoft/PowerToys/pull/49121) |
 | Build | `LNK2038 'C++/WinRT version'` breaks CI | `GrabAndMove.vcxproj` | Missing CppWinRT NuGet import → mirror canonical pinned wiring | [#47910](https://github.com/microsoft/PowerToys/pull/47910) |
 | Build hygiene | Fragile transitive include | `pch.h` | `std::atomic` used but `<atomic>` not included → include STL headers explicitly | review on [#47052](https://github.com/microsoft/PowerToys/pull/47052) |
-| OOBE/assets | Missing OOBE + icons | settings-ui assets | Wire OOBE + module assets for the new module | [#47033](https://github.com/microsoft/PowerToys/pull/47033) |
+| OOBE/assets | Missing OOBE + icons | `src/settings-ui/Settings.UI/Assets/Settings/Icons/GrabAndMove.png`; `src/settings-ui/Settings.UI/Assets/Settings/Modules/GrabAndMove.png`; `src/settings-ui/Settings.UI/Assets/Settings/Modules/OOBE/GrabAndMove.gif` | Wire OOBE + module assets for the new module | [#47033](https://github.com/microsoft/PowerToys/pull/47033) |
 
 ## Open symptom clusters (verify before acting — not yet root-caused here)
 

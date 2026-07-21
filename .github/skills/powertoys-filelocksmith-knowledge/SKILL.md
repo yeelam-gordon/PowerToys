@@ -50,7 +50,7 @@ below). Root: `src/modules/FileLocksmith/`.
 | Enable SeDebugPrivilege (see system handles) | `NativeMethods.cpp::SetDebugPrivilege` (`AdjustTokenPrivileges`, `SE_DEBUG_NAME`) |
 | Context-menu IPC writer (`last-run.log`) | `FileLocksmithLib/IPC.cpp::Writer` (`start`/`add_path`/`finish`; `std::ios::binary`) |
 | Constants (paths, package name, UI exe) | `FileLocksmithLib/Constants.h` (`PowerToyName`, `LastRunPath`, `ContextMenuPackageName`, `FileNameUIExe`) |
-| Settings (enabled / extended-menu-only) | `FileLocksmithLib/Settings.cpp` (`GetEnabled`, `GetShowInExtendedContextMenu`) |
+| Settings (enabled / extended-menu-only) | `FileLocksmithLib/Settings.h` (`GetEnabled`, `GetShowInExtendedContextMenu`) |
 | Classic (Win10) shell ext: menu + launch UI | `FileLocksmithExt/ExplorerCommand.cpp` (`QueryContextMenu`, `GetState`, `InvokeCommand`, `LaunchUI`) |
 | Classic runtime registry registration | `FileLocksmithExt/RuntimeRegistration.h` (`AllFileSystemObjects`, `Drive` ContextMenuHandlers) |
 | Module interface enable/disable + Win11 sparse pkg | `FileLocksmithExt/PowerToysModule.cpp::enable` (`package::IsWin11OrGreater` → `RegisterSparsePackage`) |

@@ -35,7 +35,7 @@ files/areas the PR actually touches.
 - [ ] No undocumented internal Windows APIs (wallpaper feature was reverted for this). (#44588)
 - [ ] `IsNightLightEnabled` blob-offset parsing changes are justified and defensive.
 - [ ] Project files use `$(RepoRoot)`, deps via `Directory.Packages.props`. (#44639)
-- [ ] End-user strings localizable; UI-test coverage under `Tests/LightSwitch.UITests` where relevant.
+- [ ] End-user strings localizable; UI-test coverage under `src/modules/LightSwitch/Tests/LightSwitch.UITests/` where relevant.
 
 ## Tests
 - [ ] A test accompanies the fix (unit or `LightSwitch.UITests`), especially for schedule boundaries,

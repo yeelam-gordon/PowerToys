@@ -13,7 +13,7 @@ re-encodes (JPEG/PNG/BMP/TIFF/GIF/JXR), preserves or strips metadata, and writes
 using a `%`-token name format. Use this to localize code fast, avoid known regression traps, and
 enforce conventions the maintainers already established.
 
-The C# UI/model layer is **forked from Brice Lambson's ImageResizer** (MIT) — many `Models/`
+The C# UI/model layer is **forked from Brice Lambson's ImageResizer** (MIT) — many `ui/Models/`
 files carry that header; keep that lineage in mind when reasoning about design.
 
 ## When to Use This Skill
@@ -193,7 +193,7 @@ Enforce these when reviewing or authoring ImageResizer changes:
 - **Keep the WinUIEx dependency** for windowing — maintainers standardize on it across utilities;
   don't strip it for "standard WinUI" (PR #45288, niels9001).
 - **CLI telemetry must reflect the real operation and run before process exit.** Don't hardcode the
-  command name or log after an `Exit(...)` that terminates the process (PR #46872).
+  command name or log after returning/terminating the process (PR #46872).
 - **Ship a test with every fix.** Suites live in `src/modules/imageresizer/tests`
   (`ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, CLI tests).
 

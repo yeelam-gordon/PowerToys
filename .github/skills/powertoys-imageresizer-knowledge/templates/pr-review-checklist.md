@@ -6,7 +6,7 @@ links to the Regression Playbook / Review Rule it enforces.
 ## General (any ImageResizer PR)
 - [ ] Diff read cold first; concerns formed before consulting this checklist (anti-anchoring).
 - [ ] A unit test accompanies each behavior change (`src/modules/imageresizer/tests`).
-- [ ] MIT "forked from Brice Lambson" header preserved on touched `Models/` files.
+- [ ] MIT "forked from Brice Lambson" header preserved on touched `ui/Models/` files.
 
 ## Resize / encode core (`ResizeOperation.cs`)
 - [ ] Correct encode path chosen: transcode only when same codec + keep-metadata + not `forceFresh`.
@@ -37,7 +37,7 @@ links to the Regression Playbook / Review Rule it enforces.
 - [ ] Watcher reload debounced and marshalled to UI dispatcher (`ReloadCore`).
 
 ## CLI (`ui/Cli/*`, `ImageResizerCLI/Program.cs`)
-- [ ] Telemetry command name reflects real op (help/config/resize), logged before any process `Exit`.
+- [ ] Telemetry command name reflects real op (help/config/resize), logged before process exit/return.
 - [ ] Input validation via `ResizeBatch.IsValidImagePath` (extension + existence).
 
 ## WinUI editor / a11y (`ui/ImageResizerXAML/*`, `ui/ViewModels/*`)

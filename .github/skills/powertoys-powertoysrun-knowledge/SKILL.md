@@ -47,8 +47,8 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 |---|---|
 | Plugin host / registry (static) | `PowerLauncher/Plugin/PluginManager.cs` `InitializePlugins`, `QueryForPlugin`, `GetPluginsForInterface<T>` |
 | Parallel plugin init (fault-isolated) | `PluginManager.InitializePlugins` → `Parallel.ForEach(AllPlugins, ...)` with per-plugin `try/catch` |
-| Assembly isolation per plugin | `Wox.Plugin/PluginLoadContext.cs` : `AssemblyLoadContext`; `PluginConfig.cs`, `PluginsLoader` |
-| Plugin contracts | `Wox.Plugin/IPlugin.cs`, `IDelayedExecutionPlugin.cs`, `IContextMenu.cs`, `ISettingProvider.cs`, `IReloadable.cs` |
+| Assembly isolation per plugin | `Wox.Plugin/PluginLoadContext.cs` : `AssemblyLoadContext`; `PowerLauncher/Plugin/PluginConfig.cs`; `PluginsLoader` (historical — was `PowerLauncher/Plugin/PluginsLoader.cs`, removed in #10515; plugin loading now in `PluginManager`) |
+| Plugin contracts | `Wox.Plugin/IPlugin.cs`, `IDelayedExecutionPlugin.cs`, `IContextMenu.cs`, `ISettingProvider.cs`, `Wox.Plugin/Interfaces/IReloadable.cs` |
 | Global vs action-keyword plugins | `PluginManager.GlobalPlugins` / `NonGlobalPlugins`; `PluginMetadata.cs` (`ActionKeyword`, `IsGlobal`) |
 | Query parsing (keyword split) | `PowerLauncher/Plugin/QueryBuilder.cs`; `Wox.Plugin/Query.cs` |
 | Public API surface for plugins | `PowerLauncher/PublicAPIInstance.cs`; `Wox.Plugin/IPublicAPI.cs` |

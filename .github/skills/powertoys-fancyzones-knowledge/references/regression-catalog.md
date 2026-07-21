@@ -17,7 +17,7 @@ claim in source before acting. Symptoms map to `src/modules/fancyzones/`.
 - **Drag state is explicit and must never strand.** `DraggingState` tracks the active flag / Shift /
   Ctrl; `MoveSizeEnd()` always disables it. A stuck flag steals number keys via quick-layout
   switching (PR #48569).
-- **Layouts, hotkeys, and per-app zone history persist as JSON** under `FancyZonesData/`
+- **Layouts, hotkeys, and per-app zone history persist as JSON** under `FancyZonesLib/FancyZonesData/`
   (`AppliedLayouts`, `CustomLayouts`, `DefaultLayouts`, `LayoutTemplates`, `LayoutHotkeys`,
   `AppZoneHistory`). These are shared on disk — writes need error handling (#48374).
 - **Virtual-desktop ids are read from the registry** (`VirtualDesktop.cpp`) and synced into zone
@@ -50,7 +50,7 @@ claim in source before acting. Symptoms map to `src/modules/fancyzones/`.
 - **Subscribe before you dispatch.** Register the `EVENT_*` for any `WM_PRIV_*` you handle.
 - **Defensive monitor/VD id resolution.** Registry-sourced VD ids and multi-monitor work-area ids
   drive layout binding and zone-history lookup; mismatches misroute windows silently (#49057, #47010).
-- **Guarded JSON persistence.** Shared data files under `FancyZonesData/` must serialize and
+- **Guarded JSON persistence.** Shared data files under `FancyZonesLib/FancyZonesData/` must serialize and
   error-handle writes (#48374).
 - **Localize editor strings with translator context** (PR #47226).
 - **Testing.** Use `FancyZonesTests` / `FancyZonesEditor.UnitTests` / `*.UITests` where a harness

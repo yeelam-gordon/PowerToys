@@ -31,8 +31,8 @@ claim in source before acting. Symptoms map to `src/modules/imageresizer/`.
   composite `{0..5}` format; `%1`=original name, `%2`=size name, `%3/%4`=selected W/H, `%5/%6`=output
   W/H. Output is sanitized for illegal/reserved names.
 - **CLI + telemetry.** [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) added CLI
-  telemetry; command name must reflect the real op and be logged before any process-terminating
-  `Exit`. Migrated toward MTP test tooling ([PR #37651](https://github.com/microsoft/PowerToys/pull/37651), closed stale).
+  telemetry; command name must reflect the real op and be logged before returning/terminating the
+  process. Migrated toward MTP test tooling ([PR #37651](https://github.com/microsoft/PowerToys/pull/37651), closed stale).
 
 ## Regression Table
 
@@ -46,8 +46,8 @@ claim in source before acting. Symptoms map to `src/modules/imageresizer/`.
 | HEIC/WebP | HEIC/WebP won't save or falls back | `CodecHelper.cs` `GetEncoderIdForDecoder`/`CanEncode` | No built-in WIC encoder without Store codec | Extend codec maps together; degrade gracefully | [#47840](https://github.com/microsoft/PowerToys/issues/47840), [#45474](https://github.com/microsoft/PowerToys/issues/45474), [#46665](https://github.com/microsoft/PowerToys/issues/46665) |
 | Context menu | Entry missing after update / Win11 | `dll/dllmain.cpp` enable/UpdateRegistration; `RuntimeRegistration.h`; `ContextMenuHandler.cpp` | Sparse-MSIX version-check/registration lifecycle | Idempotent, version-aware register; honor GPO/enabled at ctor | [#45521](https://github.com/microsoft/PowerToys/issues/45521), [#43782](https://github.com/microsoft/PowerToys/issues/43782), [#45458](https://github.com/microsoft/PowerToys/issues/45458) |
 | Reserved filename | Bad/duplicate output name | `ResizeOperation.cs` `GetDestinationPath` (`_avoidFilenames`) | User-controlled tokens → reserved/illegal names | Sanitize chars→`_`, append `_` for reserved, uniquify `(n)` | (source-verified; [naming a file](https://learn.microsoft.com/windows/win32/fileio/naming-a-file)) |
-| UI-thread / a11y | Editor stalls; icon buttons unnamed; hardcoded sizes | `ui/ImageResizerXAML/*`, ViewModels | Blocking picker call; missing `AutomationProperties.Name`; non-ThemeResource colors | Async view contract; add automation names; ThemeResource | [PR #45288](https://github.com/microsoft/PowerToys/pull/45288), [PR #47752](https://github.com/microsoft/PowerToys/pull/47752) |
-| CLI telemetry | Wrong/missing telemetry command | `ImageResizerCLI/Program.cs`; `ui/Cli/*` | Hardcoded `"resize"`; logged after `Exit` | Derive command from parsed options; log before exit | [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) |
+| UI-thread / a11y | Editor stalls; icon buttons unnamed; hardcoded sizes | `ui/ImageResizerXAML/*`, `ui/ViewModels/*` | Blocking picker call; missing `AutomationProperties.Name`; non-ThemeResource colors | Async view contract; add automation names; ThemeResource | [PR #45288](https://github.com/microsoft/PowerToys/pull/45288), [PR #47752](https://github.com/microsoft/PowerToys/pull/47752) |
+| CLI telemetry | Wrong/missing telemetry command | `ImageResizerCLI/Program.cs`; `ui/Cli/*` | Hardcoded `"resize"`; logged after process return/termination | Derive command from parsed options; log before exit | [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) |
 
 ## Common Practices (enforced in review)
 
@@ -62,7 +62,7 @@ claim in source before acting. Symptoms map to `src/modules/imageresizer/`.
 - **Build hygiene.** On CppWinRT/.NET bumps attach clean-build evidence (x64+ARM64, Debug+Release);
   quote MSBuild PowerShell path args; don't blanket-suppress script warnings (PR #45420, #41280, #46729).
 - **Testing.** Regressions ship with tests in `src/modules/imageresizer/tests`
-  (`ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, `Cli/*`).
+  (`ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, `tests/Cli/*`).
 
 ## Anti-anchoring note (source-verified)
 

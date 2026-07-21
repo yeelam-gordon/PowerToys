@@ -28,7 +28,7 @@ links to the Regression Playbook / Review Rule it enforces.
 - [ ] Quick-layout digit switch gated behind Win+Ctrl+Alt (both dragging and idle).
 - [ ] Override-Windows-Snap swallow decision matches the actual snap action and honors the setting.
 
-## Multi-monitor / virtual desktop / data (`MonitorUtils.cpp`, `VirtualDesktop.cpp`, `FancyZonesData/`)
+## Multi-monitor / virtual desktop / data (`MonitorUtils.cpp`, `VirtualDesktop.cpp`, `FancyZonesLib/FancyZonesData/`)
 - [ ] Virtual-desktop id resolved defensively (registry layout varies by OS build).
 - [ ] Work-area/layout id used for zone-history lookup matches the target monitor.
 - [ ] JSON writes (`applied-layouts.json`, `app-zone-history.json`, layouts) serialized + error-handled.

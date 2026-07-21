@@ -133,7 +133,7 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
   and the C# Settings UI (single click ⇒ single effect; see [PR #48232](https://github.com/microsoft/PowerToys/pull/48232)).
 
 ### Find My Mouse opacity slider missing → solid black screen
-- **Symptom:** after an update the opacity slider disappears and the overlay dims to full black /
+- **Symptom:** after an update, the opacity slider disappears and the overlay dims to full black /
   solid spotlight instead of a soft dim. Evidence:
   [#45321](https://github.com/microsoft/PowerToys/issues/45321).
 - **Where:** `FindMyMouse/dllmain.cpp` `parse_settings` + `LegacyOpacityToAlpha`; defaults in

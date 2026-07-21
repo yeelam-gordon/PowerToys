@@ -133,7 +133,7 @@ acting — several mined issue bodies were sparse (non-English or terse), so ent
   ([#45420](https://github.com/microsoft/PowerToys/pull/45420)), VS 2026 support
   ([#44304](https://github.com/microsoft/PowerToys/pull/44304)); the `$(RepoRoot)` path convention
   ([#44639](https://github.com/microsoft/PowerToys/pull/44639)) is captured as a one-line Review Rule.
-- Pure style/formatting nits (e.g. SA1513 blank-line, spell-check `, otherwise`), "LGTM", and
+- Pure style/formatting nits (e.g. SA1513 blank-line, spell-check punctuation rules), "LGTM", and
   release-label/versioning chatter.
 - Duplicate / non-actionable user reports ("Peek not working", "Peek issue") lacking a reproducible,
   generalizable lesson.

@@ -176,7 +176,7 @@ Enforce these when reviewing or authoring Awake changes:
 - **Re-apply state on power events.** Any new mode must survive resume — verify `ReapplyAwakeState`
   covers it and the `WM_POWERBROADCAST` handler stays wired. Evidence: #44642 / PR #44795.
 - **Validate CLI options at parse time, not during execution.** `--pid` must reject non-integers,
-  non-positive values, and non-existent processes (immediate feedback); `--expire-at` must parse a
+  non-positive values, and nonexistent processes (immediate feedback); `--expire-at` must parse a
   date; `--time-limit` bounds. Don't simplify validators to a bare `int.TryParse`. Evidence:
   [PR #41774 review](https://github.com/microsoft/PowerToys/pull/41774).
 - **Prefer `await InvokeAsync` over `.Result` on System.CommandLine.** Blocking on `.Result` inside an

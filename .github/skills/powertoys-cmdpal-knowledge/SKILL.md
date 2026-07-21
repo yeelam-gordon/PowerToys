@@ -10,7 +10,7 @@ Grounded engineering knowledge for the PowerToys **Command Palette** module (`sr
 — a WinUI 3 keyboard launcher with a host app, a pinnable **Dock**, **toast** notifications, a
 **Compact/collapsed** display mode, a **Settings** window, an out-of-proc **extension SDK**, and a
 large set of first-party command providers under `ext/`. Use it to localize code fast, avoid known
-regression traps, and enforce the conventions the maintainers already established.
+regression traps, and enforce the conventions that the maintainers already established.
 
 > **Data honesty:** this file is distilled from a **lean, recent slice** of history (a handful of
 > merged PRs from July 2026 plus their review threads, and the current open/closed bug list). The

@@ -147,7 +147,7 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
 - **Symptom:** `EnableModule.ps1` errors calling `Enable-ExperimentalFeature` for a feature the
   installed PowerShell doesn't have.
 - **Where:** `EnableModule.ps1` top — `PSFeedbackProvider` / `PSCommandNotFoundSuggestion`.
-- **Root cause:** feature names differ across PS versions; enabling a non-existent feature throws.
+- **Root cause:** feature names differ across PS versions; enabling a nonexistent feature throws.
 - **Guardrail:** guard every `Enable-ExperimentalFeature` with a
   `Get-ExperimentalFeature | … -contains` check (present in current source). Evidence:
   [PR #37690](https://github.com/microsoft/PowerToys/pull/37690).

@@ -140,7 +140,7 @@ Enforce these when reviewing or authoring Environment Variables changes:
   one explicit `NotifyEnvironmentChange`. Don't reintroduce the Environment API on these paths
   (`EnvironmentVariablesHelper.cs`).
 - **Preserve `%VAR%` values as `REG_EXPAND_SZ`.** A value containing `%` must be written with
-  `RegistryValueKind.ExpandString`, otherwise `%PATH%`-style references are stored literally and stop
+  `RegistryValueKind.ExpandString`; otherwise `%PATH%`-style references are stored literally and stop
   expanding — matches the Windows editor. Keep the `%` branch in
   `SetEnvironmentVariableFromRegistryWithoutNotify`.
 - **Profile writes are always user-scope.** Route profile apply/unapply through

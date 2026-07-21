@@ -1,7 +1,7 @@
 # CmdPal PR Review Checklist
 
 Apply to a PR touching `src/modules/cmdpal/`. **Read the diff cold first** (see anti-anchoring in
-SKILL.md), then use this as a checklist for the areas the diff actually touches.
+SKILL.md), then use this as a checklist for the areas that the diff actually touches.
 
 ## Always
 - [ ] All new user-facing strings are in `Strings/en-us/Resources.resw` (no inline literals).

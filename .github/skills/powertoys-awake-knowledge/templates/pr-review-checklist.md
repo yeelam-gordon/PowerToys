@@ -18,7 +18,7 @@ code paths the PR actually touches.
 - [ ] `CompleteExit` teardown order preserved (revert passive → StopMonitor → dispose timer → remove tray icon → destroy window).
 
 ## CLI (`Awake/Program.cs`)
-- [ ] `--pid` validator rejects non-integer, non-positive, and non-existent PIDs at parse time; can't bind to self.
+- [ ] `--pid` validator rejects non-integer, non-positive, and nonexistent PIDs at parse time; can't bind to self.
 - [ ] `--expire-at` parses a date; `--time-limit` bounded.
 - [ ] Help/error printed and early-returned **before** tray/monitor setup; console attach/free path correct.
 - [ ] `await InvokeAsync` used (no `.Result` blocking).

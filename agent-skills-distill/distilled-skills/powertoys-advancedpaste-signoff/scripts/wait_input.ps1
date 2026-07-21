@@ -5,6 +5,7 @@ param([int]$Minutes = 10, [int]$IntervalSec = 15)
 if (-not [Environment]::Is64BitProcess) {
     throw "wait_input.ps1 requires a 64-bit PowerShell host: the INPUT struct layout (Size=40, FieldOffset(8)) is x64-only. Re-run under 64-bit PowerShell."
 }
+if (-not ('Pr' -as [type])) {
 Add-Type @'
 using System;using System.Runtime.InteropServices;
 public class Pr{
@@ -17,6 +18,7 @@ public class Pr{
  public static uint Probe(){ INPUT[] a=new INPUT[2]; a[0].type=1; a[0].ki.wVk=0x10; a[1].type=1; a[1].ki.wVk=0x10; a[1].ki.dwFlags=2; uint r=SendInput(2,a,Marshal.SizeOf(typeof(INPUT))); LastErr=GetLastError(); Fg=(long)GetForegroundWindow(); return r; }
 }
 '@
+}
 $deadline = (Get-Date).AddMinutes($Minutes)
 while ((Get-Date) -lt $deadline) {
   $r = [Pr]::Probe()

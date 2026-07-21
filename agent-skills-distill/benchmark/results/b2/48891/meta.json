@@ -1,0 +1,6 @@
+{
+  "repo": "microsoft/PowerToys",
+  "pr": 48891,
+  "ground_truth_count": 10,
+  "title": "[Quick Accent] Migrate UI to WinUI 3"
+}

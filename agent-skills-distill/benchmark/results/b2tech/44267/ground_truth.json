@@ -1,0 +1,42 @@
+[
+  {
+    "id": 2616684364,
+    "author": "github-advanced-security[bot]",
+    "path": "src/modules/powerrename/lib/Helpers.cpp",
+    "line": 457,
+    "body": "## Unrecognized Spelling\n\n[ESCRIPTION](#security-tab) is not a recognized word. \\(unrecognized-spelling\\)\n\n[Show more details](https://github.com/microsoft/PowerToys/security/code-scanning/41909)",
+    "url": "https://github.com/microsoft/PowerToys/pull/44267#discussion_r2616684364"
+  },
+  {
+    "id": 2616684366,
+    "author": "github-advanced-security[bot]",
+    "path": "src/modules/powerrename/lib/Helpers.cpp",
+    "line": 457,
+    "body": "## Unrecognized Spelling\n\n[OCUMENT](#security-tab) is not a recognized word. \\(unrecognized-spelling\\)\n\n[Show more details](https://github.com/microsoft/PowerToys/security/code-scanning/41911)",
+    "url": "https://github.com/microsoft/PowerToys/pull/44267#discussion_r2616684366"
+  },
+  {
+    "id": 2616684367,
+    "author": "github-advanced-security[bot]",
+    "path": "src/modules/powerrename/unittests/HelpersTests.cpp",
+    "line": 788,
+    "body": "## Unrecognized Spelling\n\n[YYYYA](#security-tab) is not a recognized word. \\(unrecognized-spelling\\)\n\n[Show more details](https://github.com/microsoft/PowerToys/security/code-scanning/41912)",
+    "url": "https://github.com/microsoft/PowerToys/pull/44267#discussion_r2616684367"
+  },
+  {
+    "id": 2616684368,
+    "author": "github-advanced-security[bot]",
+    "path": "src/modules/powerrename/unittests/HelpersTests.cpp",
+    "line": 791,
+    "body": "## Unrecognized Spelling\n\n[YYYYA](#security-tab) is not a recognized word. \\(unrecognized-spelling\\)\n\n[Show more details](https://github.com/microsoft/PowerToys/security/code-scanning/41913)",
+    "url": "https://github.com/microsoft/PowerToys/pull/44267#discussion_r2616684368"
+  },
+  {
+    "id": 2616684369,
+    "author": "github-advanced-security[bot]",
+    "path": "src/modules/powerrename/unittests/HelpersTests.cpp",
+    "line": 791,
+    "body": "## Unrecognized Spelling\n\n[MMB](#security-tab) is not a recognized word. \\(unrecognized-spelling\\)\n\n[Show more details](https://github.com/microsoft/PowerToys/security/code-scanning/41910)",
+    "url": "https://github.com/microsoft/PowerToys/pull/44267#discussion_r2616684369"
+  }
+]

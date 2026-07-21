@@ -1,0 +1,32 @@
+{
+  "skill": "powertoys-powerrename",
+  "grounding": {
+    "checked": 16,
+    "bad": []
+  },
+  "discoverability": {
+    "has_what_when_keywords": true,
+    "positive_match": true,
+    "negative_control_ok": true
+  },
+  "usefulness": {
+    "cases": [
+      {
+        "symptom": "$YYYYABC drops the token; date token directly followed by a capital letter fails",
+        "skill_points_to": "Helpers.cpp::GetDatedFileName",
+        "correct": true
+      },
+      {
+        "symptom": "Enumeration counter stalls when the rename result equals the original filename",
+        "skill_points_to": "PowerRenameRegEx.cpp::Replace (shouldIncrementCounter) + Enumerating.cpp::parseEnumOptions",
+        "correct": true
+      }
+    ]
+  },
+  "consistency_issues": [
+    "Minor: pr-review-checklist.md groups PutFileTime under a section header labeled 'PowerRenameItem.cpp', but PutFileTime actually lives in PowerRenameRegEx.cpp (correctly attributed in regression-catalog.md). Not a contradiction of the Module Map; both functions exist."
+  ],
+  "verdict": "PASS",
+  "open_issues": 1,
+  "confidence": "high"
+}

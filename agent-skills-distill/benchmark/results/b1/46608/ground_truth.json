@@ -1,0 +1,11 @@
+{
+  "issue": 46608,
+  "module": "keyboardmanager",
+  "fix_commit": "a2218b3c3b725c8b8a61246feaf4b0451264f4d0",
+  "parent_commit": "47335149f3f8da68ddb39b7bb04d7990fa102fae",
+  "changed_files": [
+    "src/modules/keyboardmanager/KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp",
+    "src/modules/keyboardmanager/KeyboardManagerEngineTest/OSLevelShortcutRemappingTests.cpp"
+  ],
+  "commit_subject": "[KeyboardManager] Fix sticky Ctrl caused by stale AltGr flag (#46672)"
+}

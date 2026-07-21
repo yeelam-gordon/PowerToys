@@ -1,0 +1,138 @@
+{
+  "acceptance_test": "PowerToys AdvancedPaste winappcli sign-off - fault injection",
+  "timestamp": "2026-07-05T22:11:38",
+  "detection_rate": "10/10",
+  "caught": 10,
+  "total": 10,
+  "verification_method": "Real winappcli-driven execution of the AdvancedPaste window (ShowUI pipe summon, clipboard input, winapp ui invoke of the real paste-format action, real AP-window screenshot). Transform output verified by reading the clipboard AdvancedPaste writes (the exact bytes it would paste) because the workstation is locked and SendInput is denied (ERROR_ACCESS_DENIED). UIA checks (CHK-07/08/09) verified via get-property/search.",
+  "environment": {
+    "winappcli": "v0.4.0",
+    "powertoys_build": "C:\\s\\PowerToys\\x64\\Release",
+    "synthetic_input": "LOCKED - SendInput returns 0 with GetLastError=5 (ERROR_ACCESS_DENIED); GetForegroundWindow()==0; session Active but on the secure/locked desktop. Not elevated, cannot unlock. Polled >10 min, no recovery."
+  },
+  "baseline": "baseline_clip.json (10/10 PASS on clean build)",
+  "clean_final": "clean_final.json (10/10 PASS after all reverts)",
+  "git_status_powertoys": "clean",
+  "injections": [
+    {
+      "id": "I1",
+      "check": "CHK-01",
+      "priority": "P0",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\TransformHelpers.cs",
+      "code_change": "ToPlainTextAsync appends '_INJ' to the plain-text output",
+      "caught": true,
+      "expected": "equals \"BoldHello\"",
+      "produced_actual": "BoldHello_INJ",
+      "signoff_json": "inj-I1.json",
+      "screenshot_dir": "screenshots\\inj-I1"
+    },
+    {
+      "id": "I2",
+      "check": "CHK-02",
+      "priority": "P0",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\MarkdownHelper.cs",
+      "code_change": "ToMarkdownAsync returns raw HTML instead of converting to Markdown",
+      "caught": true,
+      "expected": "contains '# Title'",
+      "produced_actual": "<h1>Title</h1><p><b>bold</b></p>",
+      "signoff_json": "inj-I2.json",
+      "screenshot_dir": "screenshots\\inj-I2"
+    },
+    {
+      "id": "I3",
+      "check": "CHK-03",
+      "priority": "P0",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\JsonHelper.cs",
+      "code_change": "CSV cell processing returns constant 'X' for every cell",
+      "caught": true,
+      "expected": "array containing \"name\" and \"Alice\"",
+      "produced_actual": "[   [     \"X\",     \"X\"   ],   [     \"X\",     \"X\"   ] ]",
+      "signoff_json": "inj-I3.json",
+      "screenshot_dir": "screenshots\\inj-I3"
+    },
+    {
+      "id": "I4",
+      "check": "CHK-04",
+      "priority": "P1",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\JsonHelper.cs",
+      "code_change": "XML-to-JSON branch produces no output (XML conversion disabled)",
+      "caught": true,
+      "expected": "contains \"note\": key and Tove",
+      "produced_actual": "[   \"<note><to>Tove</to><from>Jani</from></note>\" ]",
+      "signoff_json": "inj-I4.json",
+      "screenshot_dir": "screenshots\\inj-I4"
+    },
+    {
+      "id": "I5",
+      "check": "CHK-05",
+      "priority": "P1",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\JsonHelper.cs",
+      "code_change": "IsJson always returns false (valid-JSON passthrough broken)",
+      "caught": true,
+      "expected": "equals {\"k\":123}",
+      "produced_actual": "[   \"{\\\"k\\\":123}\" ]",
+      "signoff_json": "inj-I5.json",
+      "screenshot_dir": "screenshots\\inj-I5"
+    },
+    {
+      "id": "I6",
+      "check": "CHK-06",
+      "priority": "P1",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\JsonHelper.cs",
+      "code_change": "Plain-text JSON fallback drops all lines (never-throws guard broken)",
+      "caught": true,
+      "expected": "array containing \"hello world\",\"second line\"",
+      "produced_actual": "[]",
+      "signoff_json": "inj-I6.json",
+      "screenshot_dir": "screenshots\\inj-I6"
+    },
+    {
+      "id": "I7",
+      "check": "CHK-07",
+      "priority": "P1",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\ViewModels\\OptionsViewModel.cs",
+      "code_change": "AI gating guard returns true instead of false (AI box enabled when it should be gated)",
+      "caught": true,
+      "expected": "InputTxtBox IsEnabled=False",
+      "produced_actual": "IsEnabled=True",
+      "signoff_json": "inj-I7.json",
+      "screenshot_dir": "screenshots\\inj-I7"
+    },
+    {
+      "id": "I8",
+      "check": "CHK-08",
+      "priority": "P2",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\ClipboardItemHelper.cs",
+      "code_change": "Clipboard preview Content hard-coded to '__CORRUPT__'",
+      "caught": true,
+      "expected": "preview shows 'PREVIEW_CHECK_555'",
+      "produced_actual": "found=False",
+      "signoff_json": "inj-I8.json",
+      "screenshot_dir": "screenshots\\inj-I8"
+    },
+    {
+      "id": "I9",
+      "check": "CHK-09",
+      "priority": "P2",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Models\\PasteFormats.cs",
+      "code_change": "Markdown format flagged non-core (drops from the default action list)",
+      "caught": true,
+      "expected": "all three core ListItems present",
+      "produced_actual": "plain=True md=False json=True",
+      "signoff_json": "inj-I9.json",
+      "screenshot_dir": "screenshots\\inj-I9"
+    },
+    {
+      "id": "I10",
+      "check": "CHK-10",
+      "priority": "P2",
+      "file": "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\MarkdownHelper.cs",
+      "code_change": "Markdown conversion strips all '*' (bold emphasis lost)",
+      "caught": true,
+      "expected": "contains '**bold**'",
+      "produced_actual": "# Title  bold",
+      "signoff_json": "inj-I10.json",
+      "screenshot_dir": "screenshots\\inj-I10"
+    }
+  ]
+}

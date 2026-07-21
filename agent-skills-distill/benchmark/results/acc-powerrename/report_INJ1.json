@@ -1,0 +1,431 @@
+{
+  "generated": "2026-07-05T11:24:19.504201+00:00",
+  "app": "PowerToys PowerRename",
+  "target": {
+    "window": "per-check",
+    "app": "PowerToys.PowerRename"
+  },
+  "gate": "FAIL",
+  "gate_rule": "all P0 checks must PASS",
+  "summary": {
+    "total": 10,
+    "passed": 7,
+    "failed": 3
+  },
+  "by_priority": {
+    "P0": {
+      "total": 2,
+      "passed": 1,
+      "failed": 1
+    },
+    "P1": {
+      "total": 3,
+      "passed": 1,
+      "failed": 2
+    },
+    "P2": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "checks": [
+    {
+      "id": "p0-literal-replace-multi",
+      "priority": "P0",
+      "description": "Literal (non-regex) search/replace renames every matched file and the preview + renamed-count label update: 'testCase' -> 'Renamed' yields Renamed1.txt, Renamed2.txt and the renamed counter (2).",
+      "status": "FAIL",
+      "fail_reason": "step 2 (search Renamed1.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'Renamed1.txt': NO",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "set-value",
+          "selector": "txt-textbox-3427",
+          "value": "testCase",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-3427"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-3432",
+          "value": "Renamed",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-3432"
+        },
+        {
+          "index": 2,
+          "verb": "search",
+          "selector": "Renamed1.txt",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'Renamed1.txt': NO"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p0-literal-replace-multi.png"
+    },
+    {
+      "id": "p0-regex-replace",
+      "priority": "P0",
+      "description": "Regex vs literal dispatch: '^test.*\\.txt$' -> 'matched.txt'. Literal mode matches nothing (renamed count (0)); enabling 'Use regular expressions' matches both testCase*.txt (matched.txt appears, renamed count (2)).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "set-value",
+          "selector": "txt-textbox-fa21",
+          "value": "^test.*\\.txt$",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-fa21"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-fa2c",
+          "value": "matched.txt",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-fa2c"
+        },
+        {
+          "index": 2,
+          "verb": "search",
+          "selector": "(0)",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"(0)\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1758, \"y\": 299, \"width\": 34, \"height\": 38, \"selector\": \"lbl-0-fa02\", \"isInvokable\": false}]}' | contains '(0)': yes"
+        },
+        {
+          "index": 3,
+          "verb": "invoke",
+          "selector": "checkBox_regex",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=chk-checkboxregex-fa24"
+        },
+        {
+          "index": 4,
+          "verb": "search",
+          "selector": "matched.txt",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"matched.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1628, \"y\": 488, \"width\": 662, \"height\": 32, \"selector\": \"lbl-matchedtxt-fa95\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"matched.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1628, \"y\": 546, \"width\": 662, \"height\": 32, \"selector\": \"lbl-matchedtxt-fa9b\", \"isInvokable\": false}]}' | contains 'matched.txt': yes"
+        },
+        {
+          "index": 5,
+          "verb": "search",
+          "selector": "(2)",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"(2)\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1758, \"y\": 299, \"width\": 34, \"height\": 38, \"selector\": \"lbl-2-fa02\", \"isInvokable\": false}]}' | contains '(2)': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p0-regex-replace.png"
+    },
+    {
+      "id": "p1-case-sensitive-toggle",
+      "priority": "P1",
+      "description": "Case sensitivity: 'testcase1' -> 'match1'. By default (case-insensitive) it matches testCase1.txt (match1.txt appears, renamed count (1)); enabling 'Case sensitive' stops the match (renamed count (0)). Absence asserted positively via the count label.",
+      "status": "FAIL",
+      "fail_reason": "step 2 (search match1.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'match1.txt': NO",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "set-value",
+          "selector": "txt-textbox-2b95",
+          "value": "testcase1",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-2b95"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-2ba0",
+          "value": "match1",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-2ba0"
+        },
+        {
+          "index": 2,
+          "verb": "search",
+          "selector": "match1.txt",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'match1.txt': NO"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p1-case-sensitive-toggle.png"
+    },
+    {
+      "id": "p1-match-all-occurrences",
+      "priority": "P1",
+      "description": "Match all occurrences: literal 't' -> 'f'. By DEFAULT only the first occurrence is replaced (festCase1.txt); enabling 'Match all occurrences' replaces every occurrence (fesfCase1.fxf). Verifies the default first-only path AND the flag.",
+      "status": "FAIL",
+      "fail_reason": "step 2 (search festCase1.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'festCase1.txt': NO",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "set-value",
+          "selector": "txt-textbox-6c37",
+          "value": "t",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-6c37"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-6c42",
+          "value": "f",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-6c42"
+        },
+        {
+          "index": 2,
+          "verb": "search",
+          "selector": "festCase1.txt",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'festCase1.txt': NO"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p1-match-all-occurrences.png"
+    },
+    {
+      "id": "p1-enumerate-counter-padding",
+      "priority": "P1",
+      "description": "Enumeration counter token: regex '^testCase.*\\.txt$' -> 'img_${padding=2}' produces the zero-padded, per-item incrementing counter img_00 and img_01. Catches both a broken counter increment and broken padding parsing.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "checkBox_regex",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=chk-checkboxregex-fa24"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-fa21",
+          "value": "^testCase.*\\.txt$",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-fa21"
+        },
+        {
+          "index": 2,
+          "verb": "set-value",
+          "selector": "txt-textbox-fa2c",
+          "value": "img_${padding=2}",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-fa2c"
+        },
+        {
+          "index": 3,
+          "verb": "search",
+          "selector": "img_00",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"img_00\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1775, \"y\": 635, \"width\": 662, \"height\": 32, \"selector\": \"lbl-img00-fa95\", \"isInvokable\": false}]}' | contains 'img_00': yes"
+        },
+        {
+          "index": 4,
+          "verb": "search",
+          "selector": "img_01",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"img_01\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1775, \"y\": 693, \"width\": 662, \"height\": 32, \"selector\": \"lbl-img01-fa9b\", \"isInvokable\": false}]}' | contains 'img_01': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p1-enumerate-counter-padding.png"
+    },
+    {
+      "id": "p2-capture-groups",
+      "priority": "P2",
+      "description": "Regex capture-group rewrite: '^(testCase)(\\d)\\.txt$' -> '$2_$1' transposes the groups to 1_testCase and 2_testCase.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "checkBox_regex",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=chk-checkboxregex-eecc"
+        },
+        {
+          "index": 1,
+          "verb": "set-value",
+          "selector": "txt-textbox-eec9",
+          "value": "^(testCase)(\\d)\\.txt$",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-eec9"
+        },
+        {
+          "index": 2,
+          "verb": "set-value",
+          "selector": "txt-textbox-eed4",
+          "value": "$2_$1",
+          "ok": true,
+          "exit_code": 0,
+          "detail": "elementId=txt-textbox-eed4"
+        },
+        {
+          "index": 3,
+          "verb": "search",
+          "selector": "1_testCase",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"1_testCase\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1481, \"y\": 341, \"width\": 662, \"height\": 32, \"selector\": \"lbl-1testcase-ef3d\", \"isInvokable\": false}]}' | contains '1_testCase': yes"
+        },
+        {
+          "index": 4,
+          "verb": "search",
+          "selector": "2_testCase",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"2_testCase\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1481, \"y\": 399, \"width\": 662, \"height\": 32, \"selector\": \"lbl-2testcase-ef43\", \"isInvokable\": false}]}' | contains '2_testCase': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p2-capture-groups.png"
+    },
+    {
+      "id": "p2-uppercase-transform",
+      "priority": "P2",
+      "description": "Uppercase text-formatting toggle uppercases the whole file name with no search term needed: testCase1.txt -> TESTCASE1.TXT (asserted case-exact via ci:false).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "toggleButton_upperCase",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=btn-togglebuttonupp-fa3c"
+        },
+        {
+          "index": 1,
+          "verb": "search",
+          "selector": "TESTCASE1.TXT",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 3, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"testCase1.txt\", \"automationId\": \"2\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 871, \"y\": 386, \"width\": 56, \"height\": 40, \"selector\": \"2\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"testCase1.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 979, \"y\": 390, \"width\": 135, \"height\": 32, \"selector\": \"lbl-testcase1txt-fa63\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"TESTCASE1.TXT\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1530, \"y\": 390, \"width\": 662, \"height\": 32, \"selector\": \"lbl-testcase1txt-fa64\", \"isInvokable\": false}]}' | contains 'TESTCASE1.TXT': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p2-uppercase-transform.png"
+    },
+    {
+      "id": "p2-lowercase-transform",
+      "priority": "P2",
+      "description": "Lowercase text-formatting toggle lowercases the whole file name: SpecialCase.txt -> specialcase.txt (asserted case-exact via ci:false; the mixed-case original does not satisfy it).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "toggleButton_lowerCase",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=btn-togglebuttonlow-6c50"
+        },
+        {
+          "index": 1,
+          "verb": "search",
+          "selector": "specialcase.txt",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 3, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"SpecialCase.txt\", \"automationId\": \"1\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 920, \"y\": 377, \"width\": 56, \"height\": 40, \"selector\": \"1\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"SpecialCase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1028, \"y\": 381, \"width\": 161, \"height\": 32, \"selector\": \"lbl-specialcasetxt-6c73\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"specialcase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1579, \"y\": 381, \"width\": 662, \"height\": 32, \"selector\": \"lbl-specialcasetxt-6c74\", \"isInvokable\": false}]}' | contains 'specialcase.txt': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p2-lowercase-transform.png"
+    },
+    {
+      "id": "p2-titlecase-transform",
+      "priority": "P2",
+      "description": "Title-case text-formatting toggle capitalizes the first letter of each word: report_2020.log -> Report_2020.log (asserted case-exact via ci:false).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "toggleButton_titleCase",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=btn-togglebuttontit-fa3e"
+        },
+        {
+          "index": 1,
+          "verb": "search",
+          "selector": "Report_2020.log",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 3, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"report_2020.log\", \"automationId\": \"0\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 969, \"y\": 368, \"width\": 56, \"height\": 40, \"selector\": \"0\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"report_2020.log\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1077, \"y\": 372, \"width\": 171, \"height\": 32, \"selector\": \"lbl-report2020log-fa57\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"Report_2020.log\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1628, \"y\": 372, \"width\": 662, \"height\": 32, \"selector\": \"lbl-report2020log-fa58\", \"isInvokable\": false}]}' | contains 'Report_2020.log': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p2-titlecase-transform.png"
+    },
+    {
+      "id": "p2-capitalize-transform",
+      "priority": "P2",
+      "description": "Capitalize-each-word text-formatting toggle capitalizes the first letter and lowercases the rest of each word: SpecialCase.txt -> Specialcase.txt (asserted case-exact via ci:false; the mixed-case original does not satisfy it).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "toggleButton_capitalize",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=TogglePattern; elementId=btn-togglebuttoncap-eee8"
+        },
+        {
+          "index": 1,
+          "verb": "search",
+          "selector": "Specialcase.txt",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 3, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"SpecialCase.txt\", \"automationId\": \"1\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1018, \"y\": 475, \"width\": 56, \"height\": 40, \"selector\": \"1\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"SpecialCase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1126, \"y\": 479, \"width\": 161, \"height\": 32, \"selector\": \"lbl-specialcasetxt-ef05\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"Specialcase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1677, \"y\": 479, \"width\": 662, \"height\": 32, \"selector\": \"lbl-specialcasetxt-ef06\", \"isInvokable\": false}]}' | contains 'Specialcase.txt': yes"
+        }
+      ],
+      "screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p2-capitalize-transform.png"
+    }
+  ]
+}

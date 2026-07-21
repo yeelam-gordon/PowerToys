@@ -1,0 +1,194 @@
+{
+  "benchmark": "B3 regression-injection",
+  "skill": "app-signoff-uia (Skill 2: UI sign-off via winappcli)",
+  "target_module": "PowerToys Environment Variables (PowerToys.EnvironmentVariables, WinUI 3)",
+  "target_exe": "C:\\s\\PowerToys\\x64\\Release\\WinUI3Apps\\PowerToys.EnvironmentVariables.exe",
+  "build_project": "src\\modules\\EnvironmentVariables\\EnvironmentVariablesUILib\\EnvironmentVariablesUILib.csproj",
+  "winappcli_version": "0.4.0",
+  "spec_file": "envvars.spec.json",
+  "num_checks": 7,
+  "check_ids": [
+    "user-var-name-shown",
+    "user-var-value-shown",
+    "system-var-os-shown",
+    "value-expansion-works",
+    "path-user-merge-works",
+    "system-var-arch-shown",
+    "extra-user-var-shown"
+  ],
+  "green_baseline_confirmed": true,
+  "clean_runs": [
+    {
+      "run": "clean_rebuild",
+      "gate": "PASS",
+      "passed": 7,
+      "total": 7,
+      "failed_checks": []
+    },
+    {
+      "run": "clean_final_1",
+      "gate": "PASS",
+      "passed": 7,
+      "total": 7,
+      "failed_checks": []
+    },
+    {
+      "run": "clean_final_2",
+      "gate": "PASS",
+      "passed": 7,
+      "total": 7,
+      "failed_checks": []
+    }
+  ],
+  "false_positive_check_failures_on_clean_build": 0,
+  "regressions_injected": 10,
+  "regressions_detected": 10,
+  "detection_rate": "10/10",
+  "results": [
+    {
+      "id": "R01",
+      "file": "MainViewModel.cs",
+      "method": "LoadDefaultVariables",
+      "regression": "User env variables not loaded into the Applied Variables list (User GetVariables call redirected to a discarded set)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-name-shown",
+        "user-var-value-shown",
+        "value-expansion-works",
+        "path-user-merge-works",
+        "extra-user-var-shown"
+      ],
+      "num_flipped": 5,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R02",
+      "file": "MainViewModel.cs",
+      "method": "LoadDefaultVariables",
+      "regression": "System env variables not loaded (System GetVariables call redirected to a discarded set)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "system-var-os-shown",
+        "system-var-arch-shown"
+      ],
+      "num_flipped": 2,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R03",
+      "file": "EnvironmentVariablesHelper.cs",
+      "method": "GetVariables",
+      "regression": "All variable values read as empty string",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-value-shown",
+        "system-var-os-shown",
+        "value-expansion-works",
+        "path-user-merge-works",
+        "system-var-arch-shown",
+        "extra-user-var-shown"
+      ],
+      "num_flipped": 6,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R04",
+      "file": "MainViewModel.cs",
+      "method": "PopulateAppliedVariables",
+      "regression": "%VAR% expansion disabled for the User set (shows literal %NAME%)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "value-expansion-works"
+      ],
+      "num_flipped": 1,
+      "gate_after_injection": "PASS"
+    },
+    {
+      "id": "R05",
+      "file": "MainViewModel.cs",
+      "method": "PopulateAppliedVariables",
+      "regression": "User PATH not appended to the merged System PATH",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "path-user-merge-works"
+      ],
+      "num_flipped": 1,
+      "gate_after_injection": "PASS"
+    },
+    {
+      "id": "R06",
+      "file": "MainViewModel.cs",
+      "method": "PopulateAppliedVariables",
+      "regression": "AppliedVariables collection left empty",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-name-shown",
+        "user-var-value-shown",
+        "system-var-os-shown",
+        "value-expansion-works",
+        "path-user-merge-works",
+        "system-var-arch-shown",
+        "extra-user-var-shown"
+      ],
+      "num_flipped": 7,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R07",
+      "file": "EnvironmentVariablesHelper.cs",
+      "method": "GetVariables",
+      "regression": "Variable name corrupted (underscore replaced with dash)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-name-shown"
+      ],
+      "num_flipped": 1,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R08",
+      "file": "EnvironmentVariablesHelper.cs",
+      "method": "GetVariables",
+      "regression": "Variable values truncated to 4 characters",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-value-shown",
+        "system-var-os-shown",
+        "value-expansion-works",
+        "path-user-merge-works",
+        "system-var-arch-shown",
+        "extra-user-var-shown"
+      ],
+      "num_flipped": 6,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R09",
+      "file": "MainViewModel.cs",
+      "method": "PopulateAppliedVariables",
+      "regression": "System values blanked (system-only value display bug)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "system-var-os-shown",
+        "system-var-arch-shown"
+      ],
+      "num_flipped": 2,
+      "gate_after_injection": "FAIL"
+    },
+    {
+      "id": "R10",
+      "file": "MainViewModel.cs",
+      "method": "PopulateAppliedVariables",
+      "regression": "User value shows the variable NAME instead of its value (copy-paste bug)",
+      "detected": true,
+      "checks_flipped_pass_to_fail": [
+        "user-var-value-shown",
+        "value-expansion-works",
+        "path-user-merge-works",
+        "extra-user-var-shown"
+      ],
+      "num_flipped": 4,
+      "gate_after_injection": "FAIL"
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "module": "mousewithoutborders",
+  "symbols_checked": 15,
+  "symbols_missing": [],
+  "links_checked": 16,
+  "links_bad": [],
+  "fabrication_suspected": [],
+  "security_claims_ok": true,
+  "verdict": "PASS",
+  "open_issues": 5,
+  "confidence": "high"
+}

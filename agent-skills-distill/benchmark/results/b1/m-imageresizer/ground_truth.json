@@ -1,0 +1,19 @@
+{
+  "case_id": "m-imageresizer",
+  "module": "imageresizer",
+  "fix_commit": "94b7e3eea2d8b199b99efec94b189cd9a81f4eb1",
+  "parent_commit": "c334f1d9973166e4dec0b9b62c191bcd6089dff2",
+  "changed_files": [
+    "src/common/ManagedCommon/IdRecoveryHelper.cs",
+    "src/modules/imageresizer/tests/Properties/SettingsTests.cs",
+    "src/modules/imageresizer/ui/ImageResizerXAML/MainWindow.xaml.cs",
+    "src/modules/imageresizer/ui/Properties/Settings.cs",
+    "src/modules/imageresizer/ui/ViewModels/InputViewModel.cs",
+    "src/settings-ui/Settings.UI/ViewModels/ImageResizerViewModel.cs"
+  ],
+  "sparse_dirs": [
+    "src/common/ManagedCommon",
+    "src/modules/imageresizer",
+    "src/settings-ui/Settings.UI"
+  ]
+}

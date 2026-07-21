@@ -1,0 +1,14 @@
+{
+  "case_id": "m-lightswitch",
+  "module": "lightswitch",
+  "fix_commit": "b3e7c9d22752429caa9f6103e43b845676c3e3a9",
+  "parent_commit": "49cc504d94f65651efeb81d2f324e4d46e3bb838",
+  "changed_files": [
+    "src/modules/LightSwitch/LightSwitchService/LightSwitchService.cpp",
+    "src/modules/LightSwitch/LightSwitchService/LightSwitchStateManager.cpp",
+    "src/modules/LightSwitch/LightSwitchService/LightSwitchStateManager.h"
+  ],
+  "sparse_dirs": [
+    "src/modules/LightSwitch"
+  ]
+}

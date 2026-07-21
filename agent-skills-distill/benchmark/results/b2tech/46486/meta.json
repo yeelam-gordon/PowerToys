@@ -1,0 +1,6 @@
+{
+  "repo": "microsoft/PowerToys",
+  "pr": 46486,
+  "ground_truth_count": 0,
+  "title": "Fix AdvancedPaste auto-copy failing on Electron/Chromium apps"
+}

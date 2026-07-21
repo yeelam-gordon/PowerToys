@@ -1,0 +1,12 @@
+{
+  "case_id": "m-grabandmove",
+  "module": "grabandmove",
+  "fix_commit": "215dfaf236d9a7608427468a6f9eb499435b7c8b",
+  "parent_commit": "f5a294bb6650fa35189ddfa1a98239553397b234",
+  "changed_files": [
+    "src/modules/GrabAndMove/GrabAndMove/main.cpp"
+  ],
+  "sparse_dirs": [
+    "src/modules/GrabAndMove"
+  ]
+}

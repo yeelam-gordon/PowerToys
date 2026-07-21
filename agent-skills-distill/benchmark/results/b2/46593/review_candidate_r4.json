@@ -1,0 +1,95 @@
+{
+  "reviewer": "candidate_r4",
+  "comments": [
+    {
+      "id": 1,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "Switching IsShiftState from GetKeyState to GetAsyncKeyState changes shift detection semantics for every caller, risking stuck-Shift / spurious reverse-navigation regressions.",
+      "detail": "GetAsyncKeyState reads real-time physical key state (including keys pressed outside this thread's message queue and possibly during the module's own SendInput injection), whereas GetKeyState reflects the processed message stream. IsShiftState feeds both _initialShiftState and the ProcessNextChar hardware fallback, and shift is overloaded (capitals + reverse nav). The distilled history flags SHIFT-lock (#45936) and CTRL-C-stays-active (#47034) classes here; verify async state cannot be read mid-injection or across a fast release/re-press so it doesn't reintroduce stuck-Shift or misread backward navigation."
+    },
+    {
+      "id": 2,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "TriggerKey.Space now honors shiftPressed (last vs 0) and takes precedence over StartSelectionFromTheLeft, a behavior change that can start selection from the right during Shift use.",
+      "detail": "Previously Space always selected index 0; now Space+Shift selects _characters.Length-1 and the Space branch is evaluated before the StartSelectionFromTheLeft branch, so a user with StartSelectionFromTheLeft enabled who presses Shift+Space gets right-anchored selection instead of left. Given the hook only tracks Shift after the toolbar is visible plus the new hardware fallback, confirm this interacts correctly with uppercase-accent entry and with StartSelectionFromTheLeft, and that it matches the intended UX."
+    },
+    {
+      "id": 3,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "Only Space respects shiftPressed for the initial index; Left/Right arrow triggers ignore it, making the shift-reverse behavior inconsistent across trigger keys.",
+      "detail": "ProcessNextChar computes the hardware-Shift fallback and ORs it into shiftPressed, but the Left/Right branches set a fixed middle index regardless of shiftPressed. If Shift is meant to reverse direction (shiftPressed ? last : first per module convention), arrow-key summons won't reflect it. Verify whether reverse-navigation for arrows is handled later in the stepping logic or is an unintended gap."
+    },
+    {
+      "id": 4,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "GetDisplayCoordinates now returns physical/raw pixels while GetDisplayMaxWidth returns logical DIPs, giving the same class two conflicting coordinate contracts.",
+      "detail": "Removing '/ activeDisplay.Dpi' from GetDisplayCoordinates is required for the new SetWindowPos (physical) path, but GetDisplayMaxWidth was changed to divide by DPI to feed WPF MaxWidth (DIPs). Mixing raw-px and DIP return values on adjacent public methods is error-prone; the codebase already had DPI-space bugs (#43314, #40079). Document each method's coordinate space clearly and ensure no remaining caller assumes the old DIP contract of GetDisplayCoordinates."
+    },
+    {
+      "id": 5,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "In OnChangeDisplay the description text is indexed by _selectedIndex but bounds-checked against chars.Length rather than CharacterDescriptions.Length, risking IndexOutOfRange.",
+      "detail": "The block does `if (_selectedIndex >= 0 && _selectedIndex < chars.Length) characterName.Text = _powerAccent.CharacterDescriptions[_selectedIndex];`. If CharacterDescriptions is shorter than chars (e.g., descriptions not prepared for press-and-hold lazy build), this throws. OnSelectionCharacter correctly checks against CharacterDescriptions.Length — make the two checks consistent."
+    },
+    {
+      "id": 6,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "The off-screen hide offset (SM_XVIRTUALSCREEN - 1000) may not fully hide a wide toolbar, so part of it can flash on-screen before repositioning.",
+      "detail": "The popup width can approach the full monitor width (the very bug this PR fixes), which can exceed 1000px. Placing the window's left edge only 1000px left of the virtual screen leaves its right portion potentially visible during the Show()/UpdateLayout phase, defeating the anti-flicker intent. Offset by at least the window width (or a much larger constant) below SM_XVIRTUALSCREEN."
+    },
+    {
+      "id": 7,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "The new Window_SizeChanged handler calls SetWindowPosition during SizeToContent layout while the window is already shown, which can move the still-measuring window on-screen and reintroduce flicker.",
+      "detail": "OnChangeDisplay now calls Show() (off-screen) before final layout; because SizeToContent='WidthAndHeight' triggers SizeChanged as content is measured and the handler only guards on Visibility==Visible, the window can be repositioned to its final on-screen coordinates at an intermediate size before UpdateLayout completes. Confirm this doesn't cause a visible mid-layout paint on the target monitor and that repeated SetWindowPosition calls are harmless."
+    },
+    {
+      "id": 8,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "concern": "ScrollViewer.HorizontalScrollBarVisibility='Auto' on a ListBox with IsHitTestVisible=False/Focusable=False shows a non-interactive scrollbar and can add layout height.",
+      "detail": "With hit-testing disabled the user cannot drag the scrollbar; an Auto horizontal scrollbar appearing when content overflows both looks broken and steals vertical space (possible layout shift / trimming of the character glyphs). Since navigation relies on programmatic ScrollIntoView, consider HorizontalScrollBarVisibility='Hidden' (still scrolls programmatically) or 'Disabled', rather than 'Auto'."
+    },
+    {
+      "id": 9,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "concern": "Replacing VirtualizingStackPanel with a plain StackPanel disables UI virtualization for the character list.",
+      "detail": "All items are now realized eagerly. Accent sets are usually small so this is likely acceptable and even helps ScrollIntoView measurement, but for the largest mapping sets it increases layout cost on the render path (the module already has fast-typing lag history, #39852/#42821). Confirm this is intentional and measured; note the prior template used IsItemsHost='False' which was itself unusual."
+    },
+    {
+      "id": 10,
+      "file": "src/modules/poweraccent/PowerAccent.UI/PowerAccent.UI.csproj",
+      "concern": "New Microsoft.Windows.CsWin32 PackageReference has no Version and pulls native-interop tooling into the UI project; needs central-version confirmation and multi-arch build evidence.",
+      "detail": "PackageReference without a Version relies on Central Package Management (Directory.Packages.props); if CsWin32 isn't pinned there, restore fails. Adding source-generated Win32 interop (SetWindowPos/GetSystemMetrics) to a shipping project affects all architectures — per module convention, attach clean x64 + ARM64, Debug + Release build evidence (cf. CppWinRT-bump guidance #45420)."
+    },
+    {
+      "id": 11,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "GetActiveDisplay now uses GetDpiForMonitor(res, MDT_EFFECTIVE_DPI); verify the monitor handle/fallback path when there is no active window.",
+      "detail": "Switching from GetDpiForWindow(hwndActive) to per-monitor DPI is the right direction for multi-monitor correctness (#47347/#44980/#40498), but confirm 'res' from MonitorFromWindow is valid when hwndActive is null (which flag: MONITOR_DEFAULTTONEAREST/PRIMARY), and that comparing the HRESULT to 0 (rather than S_OK) with a 96-DPI fallback matches behavior on failure. Also ensure GetDpiForWindow's removal from NativeMethods.txt leaves no other caller."
+    },
+    {
+      "id": 12,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "SetWindowPosition does nothing when the HWND is IntPtr.Zero, unlike the off-screen path which falls back to Left/Top, so the window could remain off-screen.",
+      "detail": "The off-screen move has an else branch setting this.Left/Top, but SetWindowPosition (final placement) silently skips positioning if the handle isn't created yet. Since Show() precedes it the handle should exist, but adding the same DIP fallback avoids a stuck off-screen window in edge cases. Also note the off-screen else branch assigns physical virtual-screen coordinates to WPF Left/Top (DIPs) — harmless while off-screen but inconsistent."
+    },
+    {
+      "id": 13,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "_initialShiftState is captured in ShowToolbar for all trigger modes, but press-and-hold builds characters lazily; confirm the shift snapshot and eager selection stay consistent with the generation-id/lazy-build design.",
+      "detail": "ShowToolbar prepares characters eagerly for Space/arrow modes but defers for press-and-hold (#48937/#48944). _initialShiftState is read once at summon; verify that any delayed render still re-checks _visible and the generation id before selection/positioning, and that the hardware-Shift fallback in ProcessNextChar uses a snapshot consistent with when characters actually exist (avoids the stale-summon stuck-toolbar class #44482/#43200)."
+    },
+    {
+      "id": 14,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "OnDpiChanged recomputes size/position only when already Visible; ensure GetActiveDisplay reflects the new monitor during the DPI-change transition.",
+      "detail": "Handling OnDpiChanged (re-run SetWindowsSize + SetWindowPosition) is a good multi-monitor fix, but during a monitor-to-monitor drag the active display/DPI reported by GetActiveDisplay (which keys off the active window's monitor) may lag the WPF DpiScale in newDpi. Verify the recomputation converges to the correct monitor rather than the source monitor, given the mixed-DPI positioning history."
+    },
+    {
+      "id": 15,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "Batched SendInput sends each UTF-16 code unit as an independent keydown/keyup pair; confirm multi-code-unit (surrogate/combining) insertions still inject atomically.",
+      "detail": "The rewrite builds one INPUT[s.Length*2] array which is more efficient, but each element still carries wScan = s[i] (a single UTF-16 unit). For characters outside the BMP or combining sequences, splitting into separate down/up events per unit can be reordered/eaten by some apps (the module has double/leaked-letter history #40541/#40373). Accent variants are BMP so this is likely fine, but confirm no regression for surrogate-pair or combining outputs and that the single SendInput call preserves ordering."
+    }
+  ]
+}

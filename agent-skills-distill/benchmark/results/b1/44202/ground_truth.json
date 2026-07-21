@@ -1,0 +1,11 @@
+{
+  "issue": 44202,
+  "module": "PowerRename",
+  "fix_commit": "17668047b",
+  "parent_commit": "7b0b284d40a1f6b938695b4eee3cd0f09e668b22",
+  "changed_files": [
+    "src/modules/powerrename/lib/Helpers.cpp",
+    "src/modules/powerrename/unittests/HelpersTests.cpp"
+  ],
+  "commit_subject": "[PowerRename] Fix date replacement tokens failing if followed by a capital letter (#44267)"
+}

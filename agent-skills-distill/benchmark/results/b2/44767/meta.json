@@ -1,0 +1,6 @@
+{
+  "repo": "microsoft/PowerToys",
+  "pr": 44767,
+  "ground_truth_count": 3,
+  "title": "feat(advancedpaste): add auto-copy selection for custom action hotkeys"
+}

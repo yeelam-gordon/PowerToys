@@ -1,0 +1,12 @@
+{
+  "candidate": {
+    "located_area": 0.5,
+    "fix_matches": 0.5,
+    "found_fix_ref": 0.0
+  },
+  "baseline": {
+    "located_area": 0.5,
+    "fix_matches": 0.5,
+    "found_fix_ref": 0.0
+  }
+}

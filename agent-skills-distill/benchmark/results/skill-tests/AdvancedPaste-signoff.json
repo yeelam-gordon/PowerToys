@@ -1,0 +1,20 @@
+{
+  "skill": "powertoys-advancedpaste-signoff",
+  "grounding_ok": true,
+  "unsupported_claims": [],
+  "spec_consistent": true,
+  "spec_issues": [],
+  "runner_ok": true,
+  "runner_issues": [
+    "signoff_harness.py could not be exercised with py_compile (no Python runtime on this host: 'python'/'python3' are Store aliases, 'py' absent); validated by manual review instead — uses `from __future__ import annotations` so `dict|None`/`list[str]` hints are fine, TRX/winapp/argparse logic is syntactically sound."
+  ],
+  "coverage_honest": true,
+  "discoverability": {
+    "what_when_keywords": true,
+    "positive": true,
+    "negative_control_ok": true
+  },
+  "verdict": "PASS",
+  "open_issues": 0,
+  "confidence": "high"
+}

@@ -1,0 +1,5 @@
+{
+  "PowerRename":   { "paths": ["src/modules/powerrename/"],  "labels": ["Product-PowerRename"] },
+  "PowerAccent":   { "paths": ["src/modules/poweraccent/"],  "labels": ["Product-Quick Accent"] },
+  "AdvancedPaste": { "paths": ["src/modules/AdvancedPaste/"], "labels": ["Product-Advanced Paste"] }
+}

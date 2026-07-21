@@ -1,0 +1,26 @@
+# Evidence — powertoys-keyboardmanager-knowledge finds a real issue
+
+This skill is checked in with proof it surfaces a **real, historical** PowerToys bug in its
+module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](../../../../benchmark/ISSUE-BENCHMARK.md)
+(scored blind, baseline vs with-skill, same model).
+
+## The real bug (cited)
+- **Symptom:** After AltGr, Ctrl becomes sticky (behaves as permanently held).
+- **Real fix PR:** [#46672](https://github.com/microsoft/PowerToys/pull/46672)
+- **Ground-truth changed file(s):** src/modules/keyboardmanager/KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp, src/modules/keyboardmanager/KeyboardManagerEngineTest/OSLevelShortcutRemappingTests.cpp
+
+## What happened when an agent used THIS skill (vs cold)
+
+| | Cold baseline | With this skill |
+|---|---|---|
+| Case score (mean of 3 axes) | 0.67 | **1.00** |
+| Recovered the real fix PR #46672? | no | **yes** |
+
+With the skill, the agent localized: `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (stale `isAltRightKeyInvoked` flag).
+
+**Lift: +0.33.** With the skill, the agent localized the correct culprit area (perfect 1.00 vs 0.67 cold) AND recovered the exact fix PR #46672.
+
+## Raw artifacts (auditable)
+- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/46608/ground_truth.diff)
+- Task prompt: [`candidate_task.md`](../../../../benchmark/results/b1/46608/candidate_task.md)
+- Blind judge scores: [`judge.json`](../../../../benchmark/results/b1/46608/judge.json)

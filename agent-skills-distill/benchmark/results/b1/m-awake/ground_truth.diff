@@ -1,0 +1,13 @@
+diff --git a/src/modules/awake/Awake/Core/Manager.cs b/src/modules/awake/Awake/Core/Manager.cs
+index ad4c417b3..c6aa1c2ef 100644
+--- a/src/modules/awake/Awake/Core/Manager.cs
++++ b/src/modules/awake/Awake/Core/Manager.cs
+@@ -350,7 +350,7 @@ namespace Awake.Core
+                             TrayHelper.TimedIcon,
+                             TrayIconAction.Update);
+                     },
+-                    _ => HandleTimerCompletion("timed"),
++                    () => HandleTimerCompletion("timed"),
+                     _tokenSource.Token);
+         }
+ 

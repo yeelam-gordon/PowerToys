@@ -1,0 +1,585 @@
+{
+  "generated": "2026-07-05T07:48:45.513854+00:00",
+  "app": "PowerAccent (Quick Accent)",
+  "target": {
+    "app": "PowerAccent (Quick Accent)",
+    "exe": "C:\\s\\powertoys\\x64\\Release\\WinUI3Apps\\PowerToys.PowerAccent.exe",
+    "common_dll": "C:\\s\\powertoys\\x64\\Release\\tests\\PowerAccent.Common.UnitTests\\PowerToys.PowerAccent.Common.UnitTests.dll",
+    "core_dll": "C:\\s\\powertoys\\x64\\Release\\tests\\PowerAccent.Core.UnitTests\\PowerToys.PowerAccent.Core.UnitTests.dll"
+  },
+  "gate": "PASS",
+  "gate_rule": "all P0 checks must PASS",
+  "summary": {
+    "total": 20,
+    "passed": 18,
+    "failed": 2
+  },
+  "by_priority": {
+    "P0": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0
+    },
+    "P1": {
+      "total": 11,
+      "passed": 11,
+      "failed": 0
+    },
+    "P2": {
+      "total": 4,
+      "passed": 2,
+      "failed": 2
+    }
+  },
+  "checks": [
+    {
+      "id": "candidates-populated",
+      "priority": "P0",
+      "description": "Holding an accent-capable letter yields a non-empty candidate list; unmapped keys / no languages yield nothing (the data the overlay renders).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetCharacters_AllLanguages_ReturnsNonEmptyForCommonKey",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_AllLanguages_ReturnsNonEmptyForCommonKey=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "GetCharacters_UnmappedKey_ReturnsEmpty",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_UnmappedKey_ReturnsEmpty=Passed"
+        },
+        {
+          "index": 3,
+          "verb": "mstest",
+          "selector": "GetCharacters_EmptyLanguages_ReturnsEmpty",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_EmptyLanguages_ReturnsEmpty=Passed"
+        }
+      ]
+    },
+    {
+      "id": "glyph-fr-a-exact",
+      "priority": "P0",
+      "description": "French 'a' overlay shows exactly [a-grave, a-circumflex, a-acute, a-diaeresis, a-tilde, ae] in order.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "glyph",
+          "selector": "glyph-fr-a-exact",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "expected=[à,â,á,ä,ã,æ] actual=[à,â,á,ä,ã,æ]"
+        }
+      ]
+    },
+    {
+      "id": "glyph-fr-e-exact",
+      "priority": "P0",
+      "description": "French 'e' overlay shows exactly [e-acute, e-grave, e-circumflex, e-diaeresis, euro] in order.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "glyph",
+          "selector": "glyph-fr-e-exact",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "expected=[é,è,ê,ë,€] actual=[é,è,ê,ë,€]"
+        }
+      ]
+    },
+    {
+      "id": "glyph-fr-c-exact",
+      "priority": "P0",
+      "description": "French 'c' overlay shows exactly [c-cedilla].",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "glyph",
+          "selector": "glyph-fr-c-exact",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "expected=[ç] actual=[ç]"
+        }
+      ]
+    },
+    {
+      "id": "lifecycle-launch-enable",
+      "priority": "P0",
+      "description": "Enabling Quick Accent launches PowerToys.PowerAccent.exe, which stays resident and materializes its settings (module initialized).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "launch",
+          "selector": "PowerToys.PowerAccent.exe",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pid=32932 alive=True"
+        },
+        {
+          "index": 2,
+          "verb": "assert",
+          "selector": "settings.json materialized",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "exists=True path=C:\\Users\\yeelam\\AppData\\Local\\Microsoft\\PowerToys\\QuickAccent\\settings.json"
+        }
+      ]
+    },
+    {
+      "id": "candidates-dedup",
+      "priority": "P1",
+      "description": "When multiple selected languages map the same glyph, the overlay shows it once (no duplicate candidates).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetCharacters_DeduplicatesCharactersAcrossLanguages",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_DeduplicatesCharactersAcrossLanguages=Passed"
+        }
+      ]
+    },
+    {
+      "id": "candidates-ordering",
+      "priority": "P1",
+      "description": "Candidates are ordered by language DisplayOrder; a single selected language yields only that language's glyphs.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetCharacters_SortsOutput_AccordingToDisplayOrder",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_SortsOutput_AccordingToDisplayOrder=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "GetCharacters_SingleLanguage_ReturnsOnlyThatLanguagesCharacters",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_SingleLanguage_ReturnsOnlyThatLanguagesCharacters=Passed"
+        }
+      ]
+    },
+    {
+      "id": "charset-all-expansion",
+      "priority": "P1",
+      "description": "'ALL' language setting expands to every language exactly once and returns a stable cached union.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetCharacters_AllLanguagesCachedResult_IsConsistent",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_AllLanguagesCachedResult_IsConsistent=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "All_ContainsEveryLanguageEnumValue_ExactlyOnce",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_ContainsEveryLanguageEnumValue_ExactlyOnce=Passed"
+        }
+      ]
+    },
+    {
+      "id": "enum-lockstep-native-managed",
+      "priority": "P1",
+      "description": "The managed LetterKey enum stays in lockstep (names + values) with the native WinRT keyboard-hook enum, so the right key triggers the right candidates.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "ManagedLetterKey_MatchesWinRtLetterKey_AllNamesPresent",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "ManagedLetterKey_MatchesWinRtLetterKey_AllNamesPresent=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "ManagedLetterKey_MatchesWinRtLetterKey_ValuesMatch",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "ManagedLetterKey_MatchesWinRtLetterKey_ValuesMatch=Passed"
+        }
+      ]
+    },
+    {
+      "id": "language-metadata-integrity",
+      "priority": "P1",
+      "description": "Every language entry is well-formed (non-empty id, non-null glyphs, present in display/group order maps) so the language picker and overlay never break.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "All_EveryEntry_HasNonEmptyIdentifier",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_EveryEntry_HasNonEmptyIdentifier=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "All_EveryEntry_HasNonNullCharacters",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_EveryEntry_HasNonNullCharacters=Passed"
+        },
+        {
+          "index": 3,
+          "verb": "mstest",
+          "selector": "All_Characters_ContainsNoNullOrEmptyEntries",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_Characters_ContainsNoNullOrEmptyEntries=Passed"
+        },
+        {
+          "index": 4,
+          "verb": "mstest",
+          "selector": "All_EveryEntry_ExistsInDisplayOrder",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_EveryEntry_ExistsInDisplayOrder=Passed"
+        },
+        {
+          "index": 5,
+          "verb": "mstest",
+          "selector": "All_EveryLanguageGroupValue_IsUsedAtLeastOnce",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "All_EveryLanguageGroupValue_IsUsedAtLeastOnce=Passed"
+        },
+        {
+          "index": 6,
+          "verb": "mstest",
+          "selector": "DisplayOrder_ContainsEveryLanguageEnumValue_ExactlyOnce",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "DisplayOrder_ContainsEveryLanguageEnumValue_ExactlyOnce=Passed"
+        },
+        {
+          "index": 7,
+          "verb": "mstest",
+          "selector": "GroupDisplayOrder_ContainsEveryLanguageGroupValue_ExactlyOnce",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GroupDisplayOrder_ContainsEveryLanguageGroupValue_ExactlyOnce=Passed"
+        },
+        {
+          "index": 8,
+          "verb": "mstest",
+          "selector": "LanguageLookup_ContainsEveryLanguageEnumValue",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "LanguageLookup_ContainsEveryLanguageEnumValue=Passed"
+        }
+      ]
+    },
+    {
+      "id": "language-alphabetical",
+      "priority": "P1",
+      "description": "Spoken languages are listed alphabetically by display name in the settings language picker.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "DisplayOrder_SpokenLanguages_AreSortedAlphabeticallyByDisplayName",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "DisplayOrder_SpokenLanguages_AreSortedAlphabeticallyByDisplayName=Passed"
+        }
+      ]
+    },
+    {
+      "id": "unknown-language-throws",
+      "priority": "P1",
+      "description": "An unknown/unsupported language identifier fails fast instead of returning silent-wrong candidates.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetCharacters_UnknownLanguage_ThrowsKeyNotFoundException",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetCharacters_UnknownLanguage_ThrowsKeyNotFoundException=Passed"
+        }
+      ]
+    },
+    {
+      "id": "glyph-cur-e-euro",
+      "priority": "P1",
+      "description": "Currency-only language maps 'e' to exactly the euro sign.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "glyph",
+          "selector": "glyph-cur-e-euro",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "expected=[€] actual=[€]"
+        }
+      ]
+    },
+    {
+      "id": "glyph-all-a-contains-common",
+      "priority": "P1",
+      "description": "With all languages enabled, 'a' candidates include the common Latin accents (a-grave/acute/circumflex/diaeresis/tilde).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "glyph",
+          "selector": "glyph-all-a-contains-common",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "all present in [à,á,â,ä,å,æ,α,ά,ã,שׂ,שׁ,ְ,ą,ā,ǎ,ɑ,ɑ̄,ɑ́,ɑ̌,ɑ̀,ª,ă,ả,ạ,ằ,ẳ,ẵ,ắ,ặ,ầ,ẩ,ẫ,ấ,ậ,ἀ,ἁ,ὰ,ᾶ,ᾱ,ᾰ,ἂ,ἃ,ἄ,ἅ,ἆ,ἇ,ᾳ,ᾀ,ᾁ,ᾴ,ᾲ,ᾷ,ᾄ,ᾅ,ᾂ,ᾃ,ᾆ,ᾇ,ɒ,ɐ,ȧ,ǽ,∀,ᵃ,ₐ]"
+        }
+      ]
+    },
+    {
+      "id": "lifecycle-single-instance",
+      "priority": "P1",
+      "description": "A second Quick Accent instance detects the 'QuickAccent' mutex and exits, leaving exactly one resident owner of the keyboard hook.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "precondition",
+          "selector": "first instance resident",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "first_pid=32932 alive=True"
+        },
+        {
+          "index": 2,
+          "verb": "assert",
+          "selector": "second instance self-exits (mutex)",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "second_pid=21828 exited=True code=0"
+        },
+        {
+          "index": 3,
+          "verb": "assert",
+          "selector": "first instance still resident",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "first alive=True"
+        }
+      ]
+    },
+    {
+      "id": "lifecycle-clean-exit",
+      "priority": "P1",
+      "description": "Disabling Quick Accent signals POWERACCENT_EXIT_EVENT and the process shuts down cleanly (uninstalls the global hook).",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "precondition",
+          "selector": "instance resident",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "alive=True"
+        },
+        {
+          "index": 2,
+          "verb": "signal",
+          "selector": "POWERACCENT_EXIT_EVENT",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "OpenEvent+SetEvent ok=True"
+        },
+        {
+          "index": 3,
+          "verb": "assert",
+          "selector": "process exits on event",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "exit_code=0 exited=True"
+        }
+      ]
+    },
+    {
+      "id": "positioning-dpi1",
+      "priority": "P2",
+      "description": "At 100% DPI the overlay anchors (TopLeft..BottomRight/Center) land at the expected screen coordinates.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor (TopRight,1696,24)=Passed, GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor (TopLeft,24,24)=Passed, GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor (Left,24,514)=Passed, GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor (Center,860,514)=Passed, GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor (BottomRight,1696,1004)=Passed, "
+        }
+      ]
+    },
+    {
+      "id": "positioning-dpi-scaling",
+      "priority": "P2",
+      "description": "At 150% DPI the overlay footprint scales so it stays on-screen at high-DPI.",
+      "status": "FAIL",
+      "fail_reason": "step 1 (mstest GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint): GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (TopLeft,24,24)=Passed, GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (BottomRight,1596,978)=Passed, GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (Center,810,501)=Failed",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (TopLeft,24,24)=Passed, GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (BottomRight,1596,978)=Passed, GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint (Center,810,501)=Failed"
+        }
+      ]
+    },
+    {
+      "id": "positioning-multimonitor",
+      "priority": "P2",
+      "description": "The overlay honors the active monitor's origin (including offset and negative-origin monitors).",
+      "status": "FAIL",
+      "fail_reason": "step 1 (mstest GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin): GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (Center,3000,668)=Failed, GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (BottomRight,4056,1312)=Passed, GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (TopLeft,1944,24)=Passed",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (Center,3000,668)=Failed, GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (BottomRight,4056,1312)=Passed, GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin (TopLeft,1944,24)=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromPosition_OnNegativeOriginMonitor_OffsetsFromScreenEdge",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromPosition_OnNegativeOriginMonitor_OffsetsFromScreenEdge=Passed"
+        }
+      ]
+    },
+    {
+      "id": "caret-placement",
+      "priority": "P2",
+      "description": "In caret-follow mode the overlay centers above the caret, clamps at screen edges, and flips below when there's no room above.",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 1,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromCaret_WithRoom_CentersAboveCaret",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromCaret_WithRoom_CentersAboveCaret=Passed"
+        },
+        {
+          "index": 2,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromCaret_NearLeftEdge_ClampsToScreenLeft",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromCaret_NearLeftEdge_ClampsToScreenLeft=Passed"
+        },
+        {
+          "index": 3,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromCaret_NearRightEdge_ClampsToScreenRight",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromCaret_NearRightEdge_ClampsToScreenRight=Passed"
+        },
+        {
+          "index": 4,
+          "verb": "mstest",
+          "selector": "GetRawCoordinatesFromCaret_NoRoomAbove_FlipsBelowCaret",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "GetRawCoordinatesFromCaret_NoRoomAbove_FlipsBelowCaret=Passed"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,158 @@
+{
+  "advancedpaste": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "alwaysontop": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "awake": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "cmdnotfound": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "cmdpal": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "colorpicker": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "cropandlock": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "environmentvariables": {
+    "b_loc": 0.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "filelocksmith": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "grabandmove": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "imageresizer": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "lightswitch": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "mouseutils": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "mousewithoutborders": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "newplus": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "peek": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "poweraccent": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "powerdisplay": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "powerrename": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "previewpane": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "registrypreview": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "screenruler": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "shortcutguide": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "workspaces": {
+    "b_loc": 0.5,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "zoomit": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  },
+  "textextractor": {
+    "b_loc": 1.0,
+    "c_loc": 1.0,
+    "b_ref": 0.0,
+    "c_ref": 1.0
+  }
+}

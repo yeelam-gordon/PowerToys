@@ -1,0 +1,72 @@
+# Distilled PowerToys Skills
+
+Installable Agent Skills distilled from the PowerToys GitHub history and running app.
+Two generic generators produced these (see `.github/skills/`):
+
+- **`repo-history-distill`** → per-module **knowledge** skills (issues/PRs/history)
+- **`app-signoff-uia`** → per-module **sign-off** skills (winappcli UI regression gates)
+
+Both generators are app-agnostic; PowerToys is the worked example. Drop any skill folder into
+a target repo's `.github/skills/` for auto-discovery.
+
+## Knowledge skills (30 modules — all real end-user modules)
+
+Fully benchmark-proven (hand-crafted + tested): PowerRename, PowerAccent, AdvancedPaste.
+Batch-distilled + validated + sampled-grounding-verified: the remaining 27.
+
+| Module | Skill |
+|--------|-------|
+| PowerRename | `distilled-skills/powertoys-powerrename-knowledge` |
+| PowerAccent (Quick Accent) | `distilled-skills/powertoys-poweraccent-knowledge` |
+| AdvancedPaste | `distilled-skills/powertoys-advancedpaste-knowledge` |
+| AlwaysOnTop | `distilled_all/microsoft-PowerToys/skills/powertoys-alwaysontop-knowledge` |
+| Awake | `.../powertoys-awake-knowledge` |
+| CmdNotFound | `.../powertoys-cmdnotfound-knowledge` |
+| CmdPal (Command Palette) | `.../powertoys-cmdpal-knowledge` |
+| ColorPicker | `.../powertoys-colorpicker-knowledge` |
+| CropAndLock | `.../powertoys-cropandlock-knowledge` |
+| EnvironmentVariables | `.../powertoys-environmentvariables-knowledge` |
+| FancyZones | `.../powertoys-fancyzones-knowledge` |
+| FileLocksmith | `.../powertoys-filelocksmith-knowledge` |
+| GrabAndMove | `.../powertoys-grabandmove-knowledge` |
+| Hosts (Hosts File Editor) | `.../powertoys-hosts-knowledge` |
+| ImageResizer | `.../powertoys-imageresizer-knowledge` |
+| KeyboardManager | `.../powertoys-keyboardmanager-knowledge` |
+| LightSwitch | `.../powertoys-lightswitch-knowledge` |
+| MouseUtils | `.../powertoys-mouseutils-knowledge` |
+| MouseWithoutBorders | `.../powertoys-mousewithoutborders-knowledge` |
+| NewPlus (New+) | `.../powertoys-newplus-knowledge` |
+| Peek | `.../powertoys-peek-knowledge` |
+| PowerDisplay | `.../powertoys-powerdisplay-knowledge` |
+| PowerToys Run (launcher) | `.../powertoys-powertoysrun-knowledge` |
+| PreviewPane | `.../powertoys-previewpane-knowledge` |
+| RegistryPreview | `.../powertoys-registrypreview-knowledge` |
+| ScreenRuler (Measure Tool) | `.../powertoys-screenruler-knowledge` |
+| ShortcutGuide | `.../powertoys-shortcutguide-knowledge` |
+| TextExtractor (PowerOCR) | `.../powertoys-textextractor-knowledge` |
+| Workspaces | `.../powertoys-workspaces-knowledge` |
+| ZoomIt | `.../powertoys-zoomit-knowledge` |
+
+Each knowledge skill contains: `SKILL.md` (discovery frontmatter, feature→file Module Map,
+Regression Playbooks, Review Rules, Gotchas, anti-anchoring PR-review guidance),
+`templates/pr-review-checklist.md`, `templates/bug-triage.md`,
+`references/regression-catalog.md`, `LICENSE.txt`.
+
+## Sign-off skills (winappcli UI regression gates)
+
+| Module | Skill | Proven |
+|--------|-------|--------|
+| PowerRename | `distilled-skills/powertoys-powerrename-signoff` | 10/10 injected bugs caught via winappcli |
+| AdvancedPaste | `distilled-skills/powertoys-advancedpaste-signoff` | 10/10 (transform via UI action) |
+| PowerAccent | `distilled-skills/powertoys-poweraccent-signoff` | behavioral+lifecycle; overlay needs unlocked input-owning session |
+
+Each sign-off skill contains a declarative `signoff-checklist.md` (Check / Drive via winappcli /
+Verify + screenshot), the app-specific winappcli launch/drive logic, an optional machine-runnable
+spec, and honest coverage/limits.
+
+## Evidence
+
+- Mechanical validation: `benchmark/validate_skills.py` (27/27 batch PASS).
+- Sampled grounding verification: `benchmark/results/verify-all/` (zero fabrication).
+- Sign-off proofs: `benchmark/results/acc-powerrename/`, `acc-advancedpaste/`.
+- Benchmark methodology + scorecards: `benchmark/results/SCORECARD.md`, `benchmark/README.md`.

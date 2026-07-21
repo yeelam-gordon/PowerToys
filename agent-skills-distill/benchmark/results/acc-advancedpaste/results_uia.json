@@ -1,0 +1,39 @@
+﻿{
+    "timestamp":  "2026-07-05T21:10:53",
+    "scope":  "input-independent UIA checks (CHK-07/08/09)",
+    "total":  3,
+    "caught":  3,
+    "detection_rate":  "3/3",
+    "injections":  [
+                       {
+                           "id":  "I7",
+                           "check":  "CHK-07",
+                           "desc":  "AI gating guard returns true instead of false (AI box enabled when it should be gated)",
+                           "file":  "src\\modules\\AdvancedPaste\\AdvancedPaste\\ViewModels\\OptionsViewModel.cs",
+                           "caught":  true,
+                           "mapped_result":  "FAIL (caught)",
+                           "actual":  "InputTxtBox IsEnabled=True (expect False)",
+                           "screenshot":  "screenshots\\uia-injections\\inj-I7.png"
+                       },
+                       {
+                           "id":  "I8",
+                           "check":  "CHK-08",
+                           "desc":  "Clipboard preview Content hard-coded to \u0027__CORRUPT__\u0027",
+                           "file":  "src\\modules\\AdvancedPaste\\AdvancedPaste\\Helpers\\ClipboardItemHelper.cs",
+                           "caught":  true,
+                           "mapped_result":  "FAIL (caught)",
+                           "actual":  "preview shows PREVIEW_CHECK_555 = False (expect True)",
+                           "screenshot":  "screenshots\\uia-injections\\inj-I8.png"
+                       },
+                       {
+                           "id":  "I9",
+                           "check":  "CHK-09",
+                           "desc":  "Markdown format flagged non-core (drops from the default action list)",
+                           "file":  "src\\modules\\AdvancedPaste\\AdvancedPaste\\Models\\PasteFormats.cs",
+                           "caught":  true,
+                           "mapped_result":  "FAIL (caught)",
+                           "actual":  "plain=True markdown=False json=True (expect all True)",
+                           "screenshot":  "screenshots\\uia-injections\\inj-I9.png"
+                       }
+                   ]
+}

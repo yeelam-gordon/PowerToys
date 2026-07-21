@@ -1,0 +1,40 @@
+diff --git a/src/modules/FileLocksmith/FileLocksmithLib/IPC.cpp b/src/modules/FileLocksmith/FileLocksmithLib/IPC.cpp
+index c99a3c353..c9c9f1e05 100644
+--- a/src/modules/FileLocksmith/FileLocksmithLib/IPC.cpp
++++ b/src/modules/FileLocksmith/FileLocksmithLib/IPC.cpp
+@@ -28,7 +28,12 @@ namespace ipc
+ 
+         try
+         {
+-            m_stream = std::ofstream(path);
++            m_stream = std::ofstream(path, std::ios::binary);
++            if (!m_stream.is_open())
++            {
++                return E_FAIL;
++            }
++
+             return S_OK;
+         }
+         catch (...)
+diff --git a/src/modules/FileLocksmith/FileLocksmithLibInterop/NativeMethods.cpp b/src/modules/FileLocksmith/FileLocksmithLibInterop/NativeMethods.cpp
+index 55875626e..331e66ff0 100644
+--- a/src/modules/FileLocksmith/FileLocksmithLibInterop/NativeMethods.cpp
++++ b/src/modules/FileLocksmith/FileLocksmithLibInterop/NativeMethods.cpp
+@@ -61,7 +61,7 @@ namespace winrt::PowerToys::FileLocksmithLib::Interop::implementation
+ 
+     com_array<hstring> NativeMethods::ReadPathsFromFile()
+     {
+-        std::ifstream stream(paths_file());
++        std::ifstream stream(paths_file(), std::ios::binary);
+ 
+         std::vector<std::wstring> result_cpp;
+         std::wstring line;
+@@ -98,7 +98,7 @@ namespace winrt::PowerToys::FileLocksmithLib::Interop::implementation
+  
+     bool NativeMethods::StartAsElevated(array_view<hstring const> paths)
+     {
+-        std::ofstream stream(paths_file());
++        std::ofstream stream(paths_file(), std::ios::binary);
+         const WCHAR newline = L'\n';
+ 
+         for (uint32_t i = 0; i < paths.size(); i++)

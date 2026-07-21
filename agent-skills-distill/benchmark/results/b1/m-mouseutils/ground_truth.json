@@ -1,0 +1,22 @@
+{
+  "case_id": "m-mouseutils",
+  "module": "mouseutils",
+  "fix_commit": "6dd1ce5dd1bfd133a05c7940e5611e7811ad109f",
+  "parent_commit": "9ea30ec52301f5802d3d59a1abdacdbc5fca6a1a",
+  "changed_files": [
+    ".github/actions/spell-check/expect.txt",
+    "src/modules/MouseUtils/MouseHighlighter/MouseHighlighter.cpp",
+    "src/modules/MouseUtils/MouseHighlighter/MouseHighlighter.h",
+    "src/modules/MouseUtils/MouseHighlighter/dllmain.cpp",
+    "src/settings-ui/Settings.UI.Library/MouseHighlighterProperties.cs",
+    "src/settings-ui/Settings.UI/SettingsXAML/Views/MouseUtilsPage.xaml",
+    "src/settings-ui/Settings.UI/Strings/en-us/Resources.resw",
+    "src/settings-ui/Settings.UI/ViewModels/MouseUtilsViewModel.cs"
+  ],
+  "sparse_dirs": [
+    ".github/actions/spell-check",
+    "src/modules/MouseUtils",
+    "src/settings-ui/Settings.UI",
+    "src/settings-ui/Settings.UI.Library"
+  ]
+}

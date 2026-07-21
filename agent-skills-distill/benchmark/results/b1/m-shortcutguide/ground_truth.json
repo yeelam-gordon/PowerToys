@@ -1,0 +1,15 @@
+{
+  "case_id": "m-shortcutguide",
+  "module": "shortcutguide",
+  "fix_commit": "502dc40aa457585182a4dda7f253f2c016b263ec",
+  "parent_commit": "b5bd626d708f000c459546dd4cc8b659dc105904",
+  "changed_files": [
+    "src/modules/ShortcutGuide/ShortcutGuide.Ui/Helpers/PinnedShortcutsHelper.cs",
+    "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/App.xaml.cs",
+    "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/MainWindow.xaml.cs",
+    "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/TaskbarWindow.xaml.cs"
+  ],
+  "sparse_dirs": [
+    "src/modules/ShortcutGuide"
+  ]
+}

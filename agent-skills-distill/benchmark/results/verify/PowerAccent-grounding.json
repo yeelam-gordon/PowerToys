@@ -1,0 +1,16 @@
+{
+  "module": "PowerAccent",
+  "angle": "grounding",
+  "links_checked": 19,
+  "links_bad": [],
+  "symbols_checked": 27,
+  "symbols_missing": [],
+  "map_issues": [
+    "Important PR Comments cites test name 'CharacterMappingsTests.DisplayOrder_SpokenLanguages_AreSortedAlphabeticallyByEnumName' but the actual test method is 'DisplayOrder_SpokenLanguages_AreSortedAlphabeticallyByDisplayName' (CharacterMappingsTests.cs:288). The source comment does say 'by their enum names', so the invariant is real; only the method-name suffix is imprecise.",
+    "PR comment describes 'CharacterMappings.All' as an 'outer dict ... IReadOnlyDictionary'. In current source 'All' is 'IReadOnlyList<LanguageInfo>' (CharacterMappings.cs:36); the IReadOnlyDictionary is 'LanguageLookup' (line 694). Likely reflects PR-time (#47211) state; the underlying 'mutable inner string[]' concern remains valid."
+  ],
+  "fabrication_suspected": [],
+  "verdict": "PASS",
+  "open_issues": 2,
+  "confidence": "high"
+}

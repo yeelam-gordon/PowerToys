@@ -1,0 +1,130 @@
+diff --git a/src/modules/colorPicker/ColorPickerUI/Helpers/AppStateHandler.cs b/src/modules/colorPicker/ColorPickerUI/Helpers/AppStateHandler.cs
+index 72c874d83..4ab70e1ad 100644
+--- a/src/modules/colorPicker/ColorPickerUI/Helpers/AppStateHandler.cs
++++ b/src/modules/colorPicker/ColorPickerUI/Helpers/AppStateHandler.cs
+@@ -243,5 +243,7 @@ namespace ColorPicker.Helpers
+             lpPoint.Y += yOffset;
+             SetCursorPos(lpPoint.X, lpPoint.Y);
+         }
++
++        internal IntPtr GetMainWindowHandle() => _hwndSource?.Handle ?? IntPtr.Zero;
+     }
+ }
+diff --git a/src/modules/colorPicker/ColorPickerUI/Helpers/WindowCaptureExclusionHelper.cs b/src/modules/colorPicker/ColorPickerUI/Helpers/WindowCaptureExclusionHelper.cs
+new file mode 100644
+index 000000000..2b895c4f0
+--- /dev/null
++++ b/src/modules/colorPicker/ColorPickerUI/Helpers/WindowCaptureExclusionHelper.cs
+@@ -0,0 +1,51 @@
++﻿// Copyright (c) Microsoft Corporation
++// The Microsoft Corporation licenses this file to you under the MIT license.
++// See the LICENSE file in the project root for more information.
++
++using System;
++using System.Runtime.InteropServices;
++using ManagedCommon;
++
++namespace ColorPicker.Helpers;
++
++internal static class WindowCaptureExclusionHelper
++{
++    // Windows 10 version 2004 (build 19041) is the minimum supported version. PowerToys
++    // itself requires the same version, so this check is not strictly required, but is
++    // useful as a safeguard.
++    private static readonly bool IsSupported =
++        Environment.OSVersion.Version >= new Version(10, 0, 19041);
++
++    // Only logging once per session to avoid repeated identical warnings, as the zoom
++    // window may be used very often.
++    private static bool hasLoggedFailure;
++
++    internal static bool Exclude(IntPtr hwnd) =>
++        SetWindowAffinity(hwnd, NativeMethods.WDA_EXCLUDEFROMCAPTURE);
++
++    internal static bool Include(IntPtr hwnd) =>
++        SetWindowAffinity(hwnd, NativeMethods.WDA_NONE);
++
++    private static bool SetWindowAffinity(nint hwnd, uint affinity)
++    {
++        if (!IsSupported)
++        {
++            return false;
++        }
++
++        bool success = NativeMethods.SetWindowDisplayAffinity(hwnd, affinity);
++
++        if (!success)
++        {
++            int errorCode = Marshal.GetLastWin32Error();
++            if (!hasLoggedFailure)
++            {
++                Logger.LogWarning(
++                    $"Failed to set window display affinity. Error code: {errorCode}");
++                hasLoggedFailure = true;
++            }
++        }
++
++        return success;
++    }
++}
+diff --git a/src/modules/colorPicker/ColorPickerUI/Helpers/ZoomWindowHelper.cs b/src/modules/colorPicker/ColorPickerUI/Helpers/ZoomWindowHelper.cs
+index 6e418580e..862879af5 100644
+--- a/src/modules/colorPicker/ColorPickerUI/Helpers/ZoomWindowHelper.cs
++++ b/src/modules/colorPicker/ColorPickerUI/Helpers/ZoomWindowHelper.cs
+@@ -79,12 +79,30 @@ namespace ColorPicker.Helpers
+             // we just started zooming, copy screen area
+             if (_previousZoomLevel == 0)
+             {
+-                var x = (int)point.X - (BaseZoomImageSize / 2);
+-                var y = (int)point.Y - (BaseZoomImageSize / 2);
++                // First, exclude the color picker window from the capture; otherwise its
++                // corner will be included in the zoomed-in image.
++                var mainWindowHandle = _appStateHandler.GetMainWindowHandle();
++                bool exclusionSuccess =
++                    WindowCaptureExclusionHelper.Exclude(mainWindowHandle);
+ 
+-                _graphics.CopyFromScreen(x, y, 0, 0, _bmp.Size, CopyPixelOperation.SourceCopy);
++                try
++                {
++                    var x = (int)point.X - (BaseZoomImageSize / 2);
++                    var y = (int)point.Y - (BaseZoomImageSize / 2);
++
++                    _graphics.CopyFromScreen(x, y, 0, 0, _bmp.Size, CopyPixelOperation.SourceCopy);
+ 
+-                _zoomViewModel.ZoomArea = BitmapToImageSource(_bmp);
++                    _zoomViewModel.ZoomArea = BitmapToImageSource(_bmp);
++                }
++                finally
++                {
++                    // Restore the color picker window to normal display affinity so that
++                    // it can be captured again.
++                    if (exclusionSuccess)
++                    {
++                        WindowCaptureExclusionHelper.Include(mainWindowHandle);
++                    }
++                }
+             }
+ 
+             _zoomViewModel.ZoomFactor = Math.Pow(ZoomFactor, _currentZoomLevel - 1);
+diff --git a/src/modules/colorPicker/ColorPickerUI/NativeMethods.cs b/src/modules/colorPicker/ColorPickerUI/NativeMethods.cs
+index e2f277a8b..bf43847bf 100644
+--- a/src/modules/colorPicker/ColorPickerUI/NativeMethods.cs
++++ b/src/modules/colorPicker/ColorPickerUI/NativeMethods.cs
+@@ -231,5 +231,17 @@ namespace ColorPicker
+             var hwnd = new WindowInteropHelper(win).Handle;
+             _ = SetWindowLong(hwnd, GWL_EX_STYLE, GetWindowLong(hwnd, GWL_EX_STYLE) | WS_EX_TOOLWINDOW);
+         }
++
++        /// <summary>
++        /// Sets the display affinity of a window, which controls how the window is
++        /// displayed on a monitor. Used to exclude the picker window from ZoomWindow's
++        /// source bitmap.
++        /// </summary>
++        [DllImport("user32.dll", SetLastError = true)]
++        [return: MarshalAs(UnmanagedType.Bool)]
++        internal static extern bool SetWindowDisplayAffinity(IntPtr hwnd, uint dwAffinity);
++
++        internal const uint WDA_NONE = 0x00000000;
++        internal const uint WDA_EXCLUDEFROMCAPTURE = 0x00000011;
+     }
+ }

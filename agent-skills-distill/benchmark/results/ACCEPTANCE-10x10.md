@@ -1,0 +1,48 @@
+# Acceptance Proof — Inject 10 Regressions, Catch All 10 (winappcli sign-off)
+
+**Bar:** inject 10 independent regressions into a fresh build; the declarative winappcli sign-off must
+**detect** each. **Catch = at least one checklist item flips to FAIL vs. the clean baseline.** The P0
+release *gate* is stricter (only P0 items trip it), so a caught P1/P2 regression can leave `gate=PASS`
+while still being detected — detection, not the gate, is the acceptance bar.
+
+**False-positive control (clean build must be all-green):**
+
+- AdvancedPaste clean baseline — gate=PASS, failed=NONE ✅
+- PowerRename clean baseline — gate=PASS, failed=NONE ✅
+
+## AdvancedPaste — 10/10 caught
+
+| Injection | Detected checklist failure(s) | P0 gate | Result |
+|---|---|---|---|
+| I1 | CHK-01 | FAIL | ✅ CAUGHT |
+| I2 | CHK-02, CHK-10 | FAIL | ✅ CAUGHT |
+| I3 | CHK-03 | FAIL | ✅ CAUGHT |
+| I4 | CHK-04 | PASS | ✅ CAUGHT |
+| I5 | CHK-05 | PASS | ✅ CAUGHT |
+| I6 | CHK-06 | PASS | ✅ CAUGHT |
+| I7 | CHK-07 | PASS | ✅ CAUGHT |
+| I8 | CHK-08 | PASS | ✅ CAUGHT |
+| I9 | CHK-02, CHK-09, CHK-10 | FAIL | ✅ CAUGHT |
+| I10 | CHK-10 | PASS | ✅ CAUGHT |
+
+## PowerRename — 10/10 caught
+
+| Injection | Detected checklist failure(s) | P0 gate | Result |
+|---|---|---|---|
+| INJ1 | p0-literal-replace-multi, p1-case-sensitive-toggle, p1-match-all-occurrences | FAIL | ✅ CAUGHT |
+| INJ2 | p1-case-sensitive-toggle | PASS | ✅ CAUGHT |
+| INJ3 | p1-match-all-occurrences | PASS | ✅ CAUGHT |
+| INJ4 | p2-capture-groups | PASS | ✅ CAUGHT |
+| INJ5 | p0-regex-replace, p1-enumerate-counter-padding, p2-capture-groups | FAIL | ✅ CAUGHT |
+| INJ6 | p1-enumerate-counter-padding | PASS | ✅ CAUGHT |
+| INJ7 | p2-uppercase-transform | PASS | ✅ CAUGHT |
+| INJ8 | p2-lowercase-transform | PASS | ✅ CAUGHT |
+| INJ9 | p2-titlecase-transform | PASS | ✅ CAUGHT |
+| INJ10 | p2-capitalize-transform | PASS | ✅ CAUGHT |
+
+## Overall
+- **AdvancedPaste: 10/10 caught**
+- **PowerRename: 10/10 caught**
+- PowerAccent: overlay needs an unlocked input-owning session (RDP-locked at test time); partial regression examples under `signoff-poweraccent/examples/`.
+
+Per-injection reports + screenshots: `acc-advancedpaste/inj-I*.{json,md,png}`, `acc-powerrename/report_INJ*.{json,md}`.

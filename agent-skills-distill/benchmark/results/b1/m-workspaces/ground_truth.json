@@ -1,0 +1,16 @@
+{
+  "case_id": "m-workspaces",
+  "module": "workspaces",
+  "fix_commit": "c5d4f992c17224df24a3b702f2c7694720d735f7",
+  "parent_commit": "11b406feeea6e8dfd82da1da00ed4081af271d3c",
+  "changed_files": [
+    ".github/actions/spell-check/expect.txt",
+    "src/modules/Workspaces/WorkspacesEditor/OverlayWindow.xaml.cs",
+    "src/modules/Workspaces/WorkspacesEditor/Utils/NativeMethods.cs",
+    "src/modules/Workspaces/WorkspacesEditor/ViewModels/MainViewModel.cs"
+  ],
+  "sparse_dirs": [
+    ".github/actions/spell-check",
+    "src/modules/Workspaces"
+  ]
+}

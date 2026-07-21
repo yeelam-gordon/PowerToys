@@ -1,0 +1,59 @@
+[
+  {
+    "module": "fancyzones",
+    "fix_pr": 48569,
+    "issue": 48542,
+    "condition": "CITED",
+    "symptom": "Dragging a window: drag state gets stuck and subsequent keystrokes are swallowed after using FancyZones",
+    "merged": true,
+    "merge_sha": "dd26d86580168d2e368701f7b0c4d629dc9cd9ac",
+    "files": [
+      ".github/actions/spell-check/expect.txt",
+      "src/modules/fancyzones/FancyZones/FancyZonesApp.cpp",
+      "src/modules/fancyzones/FancyZonesLib/FancyZones.cpp",
+      "src/modules/fancyzones/FancyZonesLib/FancyZonesWinHookEventIDs.cpp",
+      "src/modules/fancyzones/FancyZonesLib/FancyZonesWinHookEventIDs.h",
+      "src/modules/fancyzones/FancyZonesLib/WindowMouseSnap.cpp",
+      "src/modules/fancyzones/FancyZonesLib/WindowMouseSnap.h",
+      "src/modules/fancyzones/FancyZonesLib/util.cpp"
+    ]
+  },
+  {
+    "module": "keyboardmanager",
+    "fix_pr": 46672,
+    "issue": 46608,
+    "condition": "CITED",
+    "symptom": "After using AltGr, Ctrl becomes sticky \u2014 Ctrl appears held down permanently until you press it again",
+    "merged": true,
+    "merge_sha": "a2218b3c3b725c8b8a61246feaf4b0451264f4d0",
+    "files": [
+      "src/modules/keyboardmanager/KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp",
+      "src/modules/keyboardmanager/KeyboardManagerEngineTest/OSLevelShortcutRemappingTests.cpp"
+    ]
+  },
+  {
+    "module": "powertoysrun",
+    "fix_pr": 48922,
+    "issue": 48472,
+    "condition": "CITED",
+    "symptom": "VS Code Workspaces plugin: UNC (network) workspace paths are not opened / recent workspaces missing",
+    "merged": true,
+    "merge_sha": "d983dbc2855b05e35d913a677c9d1fc2d723cba0",
+    "files": [
+      "src/modules/launcher/Plugins/Community.PowerToys.Run.Plugin.VSCodeWorkspaces/WorkspacesHelper/VSCodeWorkspacesApi.cs"
+    ]
+  },
+  {
+    "module": "hosts",
+    "fix_pr": 32788,
+    "issue": 32704,
+    "condition": "HELD-OUT",
+    "symptom": "Hosts File Editor: the IP address column is enormously wide and cannot be resized; layout unusable",
+    "merged": true,
+    "merge_sha": "92e8b060687432ef9cf807b2aee13b2d8135c897",
+    "files": [
+      "src/modules/Hosts/Hosts/HostsXAML/MainWindow.xaml",
+      "src/modules/Hosts/HostsUILib/HostsMainPage.xaml"
+    ]
+  }
+]

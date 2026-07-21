@@ -1,0 +1,30 @@
+{
+  "skill": "powertoys-poweraccent",
+  "grounding": {
+    "checked": 8,
+    "bad": []
+  },
+  "discoverability": {
+    "has_what_when_keywords": true,
+    "positive_match": true,
+    "negative_control_ok": true
+  },
+  "usefulness": {
+    "cases": [
+      {
+        "symptom": "Quick Accent popup shows on the wrong monitor / mis-scaled",
+        "skill_points_to": "WindowsFunctions.GetActiveDisplay + Calculation.GetRawCoordinatesFromPosition(..., dpi) + MainWindow.xaml.cs::GetDisplayMaxWidth",
+        "correct": true
+      },
+      {
+        "symptom": "Menu flashes early / lags on fast typing (stale summon)",
+        "skill_points_to": "PowerAccent.cs::ShowToolbar deferred render; re-check generation == _showGeneration && _visible",
+        "correct": true
+      }
+    ]
+  },
+  "consistency_issues": [],
+  "verdict": "PASS",
+  "open_issues": 0,
+  "confidence": "high"
+}

@@ -1,0 +1,160 @@
+{
+  "generated": "2026-07-04T14:50:32.426304+00:00",
+  "app": "PowerToys Environment Variables",
+  "target": {
+    "app": "PowerToys.EnvironmentVariables",
+    "window": "11275266"
+  },
+  "gate": "FAIL",
+  "gate_rule": "all P0 checks must PASS",
+  "summary": {
+    "total": 7,
+    "passed": 0,
+    "failed": 7
+  },
+  "by_priority": {
+    "P0": {
+      "total": 3,
+      "passed": 0,
+      "failed": 3
+    },
+    "P1": {
+      "total": 3,
+      "passed": 0,
+      "failed": 3
+    },
+    "P2": {
+      "total": 1,
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "checks": [
+    {
+      "id": "user-var-name-shown",
+      "priority": "P0",
+      "description": "User variable B3_SIGNOFF appears in the Applied Variables list",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search B3_SIGNOFF): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'B3_SIGNOFF': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "B3_SIGNOFF",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'B3_SIGNOFF': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "user-var-value-shown",
+      "priority": "P0",
+      "description": "User variable value HelloB3Value is displayed (value column populated)",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search HelloB3Value): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'HelloB3Value': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "HelloB3Value",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'HelloB3Value': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "system-var-os-shown",
+      "priority": "P0",
+      "description": "System variable OS value Windows_NT is displayed",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search Windows_NT): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'Windows_NT': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "Windows_NT",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'Windows_NT': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "value-expansion-works",
+      "priority": "P1",
+      "description": "%NUMBER_OF_PROCESSORS% is expanded in the Applied view (B3_EXPAND -> 16_cores)",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search 16_cores): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains '16_cores': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "16_cores",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains '16_cores': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "path-user-merge-works",
+      "priority": "P1",
+      "description": "Merged PATH includes the USER PATH segment (ZZUSERPATHZZ appended to System PATH)",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search ZZUSERPATHZZ): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'ZZUSERPATHZZ': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "ZZUSERPATHZZ",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'ZZUSERPATHZZ': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "system-var-arch-shown",
+      "priority": "P1",
+      "description": "System variable PROCESSOR_ARCHITECTURE value AMD64 is displayed",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search AMD64): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'AMD64': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "AMD64",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'AMD64': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "extra-user-var-shown",
+      "priority": "P2",
+      "description": "Second user variable value AlphaUniqueVal is displayed",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search AlphaUniqueVal): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'AlphaUniqueVal': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "AlphaUniqueVal",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'AlphaUniqueVal': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    }
+  ]
+}

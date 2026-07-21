@@ -1,0 +1,19 @@
+{
+  "real_changed_files": [
+    ".github/actions/spell-check/allow/code.txt",
+    "src/modules/powerrename/lib/PowerRenameRegEx.cpp",
+    "src/modules/powerrename/unittests/CommonRegExTests.h"
+  ],
+  "real_fix_mechanism": "Added static SanitizeAndNormalize() helper in PowerRenameRegEx.cpp that replaces NBSP (U+00A0) with regular space and calls NormalizeString(NormalizationC, ...) to precompose to NFC; routed searchTerm, replaceTerm, and source through it in PutSearchTerm, PutReplaceTerm, and Replace (storing normalized values). Added NFD/NBSP unit tests for both regex and simple-search engines.",
+  "candidate": {
+    "located_area": 1.0,
+    "fix_matches": 1.0,
+    "found_fix_ref": null
+  },
+  "baseline": {
+    "located_area": 1.0,
+    "fix_matches": 0.5,
+    "found_fix_ref": null
+  },
+  "notes": "Candidate was markedly more precise: it named the exact culprit file (PowerRenameRegEx.cpp), all three changed functions (PutSearchTerm, PutReplaceTerm, Replace), even predicted the exact helper name SanitizeAndNormalize, described NBSP->space + NormalizeString NFC applied consistently before matching, and anticipated the unittest additions for both engines - a near-verbatim match to the diff. Distilled knowledge clearly helped. Baseline correctly identified the file and the Replace function and the core NormalizeString NFC + NBSP mechanism, but localized the fix only to Replace, missed the Put* normalization/storage, included an unrelated function (_OnEnumerateItemsChanged), and proposed an incorrect 'map results back to original bytes' design that diverges from the real fix (which stores normalized terms). Both flagged the .h though only the .cpp/tests were changed."
+}

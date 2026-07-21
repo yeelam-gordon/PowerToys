@@ -1,0 +1,16 @@
+{
+  "module": "fancyzones",
+  "symbols_checked": 24,
+  "symbols_missing": [],
+  "links_checked": 19,
+  "links_bad": [],
+  "fabrication_suspected": [
+    "Minor misattribution (not fabrication): Module Map places window-pool funcs 'NewZonesOverlayWindow'/'FreeZonesOverlayWindow' under ZonesOverlay.cpp, but they actually live in WorkArea.cpp. Symbols are real.",
+    "Minor misattribution (not fabrication): 'GetDraggedWindow' attributed to WindowMouseSnap.cpp is declared/defined inline in WindowMouseSnap.h (used in FancyZones.cpp). Symbol is real.",
+    "Minor context drift (not fabrication): issue #49209 title is about 'move to current active monitor', grouped under the last-known-zone playbook which is a related but distinct setting.",
+    "Minor wording drift: PR #48473 title says 'three shutdown races' while SKILL enumerates four distinct root causes (4th = WindowMouseSnap dangling WorkArea*). Both refer to the same real, merged PR."
+  ],
+  "verdict": "PASS",
+  "open_issues": 13,
+  "confidence": "high"
+}

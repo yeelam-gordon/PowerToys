@@ -1,0 +1,110 @@
+﻿{
+    "basename":  "baseline",
+    "gate":  "FAIL",
+    "passed":  4,
+    "total":  10,
+    "p0_failed":  2,
+    "timestamp":  "2026-07-05T20:43:33",
+    "checks":  [
+                   {
+                       "id":  "CHK-01",
+                       "priority":  "P0",
+                       "description":  "Paste as plain text returns clipboard text, strips HTML tags",
+                       "pass":  true,
+                       "expected":  "equals \"BoldHello\"",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk01-plaintext.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk01-plaintext-result.png"
+                   },
+                   {
+                       "id":  "CHK-02",
+                       "priority":  "P0",
+                       "description":  "Paste as markdown converts HTML \u003ch1\u003e heading to \u0027# Title\u0027",
+                       "pass":  false,
+                       "expected":  "contains \u0027# Title\u0027",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk02-markdown-heading.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk02-markdown-heading-result.png"
+                   },
+                   {
+                       "id":  "CHK-03",
+                       "priority":  "P0",
+                       "description":  "Paste as JSON converts CSV to JSON array (values preserved)",
+                       "pass":  false,
+                       "expected":  "array containing \"name\" and \"Alice\"",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk03-json-csv.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk03-json-csv-result.png"
+                   },
+                   {
+                       "id":  "CHK-04",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON converts XML to JSON object with element keys",
+                       "pass":  false,
+                       "expected":  "contains \u0027\\",
+                       "actual":  "note\\:\u0027 object and \u0027Tove\u0027",
+                       "screenshot":  "BoldHello",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk04-json-xml.png"
+                   },
+                   {
+                       "id":  "CHK-05",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON returns already-valid JSON unchanged (passthrough)",
+                       "pass":  false,
+                       "expected":  "equals {\"k\":123}",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk05-json-passthrough.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk05-json-passthrough-result.png"
+                   },
+                   {
+                       "id":  "CHK-06",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON falls back to JSON array-of-lines for non-tabular text (never-throws guard)",
+                       "pass":  false,
+                       "expected":  "array containing \"hello world\",\"second line\"",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk06-json-fallback.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk06-json-fallback-result.png"
+                   },
+                   {
+                       "id":  "CHK-07",
+                       "priority":  "P1",
+                       "description":  "AI prompt box (InputTxtBox) is disabled when no AI provider is configured (AI gating)",
+                       "pass":  true,
+                       "expected":  "InputTxtBox IsEnabled=False",
+                       "actual":  "IsEnabled=False",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk07-ai-gating.png",
+                       "result_screenshot":  ""
+                   },
+                   {
+                       "id":  "CHK-08",
+                       "priority":  "P2",
+                       "description":  "Window clipboard preview shows the current clipboard content",
+                       "pass":  true,
+                       "expected":  "preview shows \u0027PREVIEW_CHECK_555\u0027",
+                       "actual":  "found=True",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk08-clipboard-preview.png",
+                       "result_screenshot":  ""
+                   },
+                   {
+                       "id":  "CHK-09",
+                       "priority":  "P2",
+                       "description":  "Core paste-format list shows plain text, markdown and JSON actions",
+                       "pass":  true,
+                       "expected":  "all three core ListItems present",
+                       "actual":  "plain=True md=True json=True",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk09-format-list.png",
+                       "result_screenshot":  ""
+                   },
+                   {
+                       "id":  "CHK-10",
+                       "priority":  "P2",
+                       "description":  "Paste as markdown converts \u003cb\u003ebold\u003c/b\u003e to \u0027**bold**\u0027 emphasis",
+                       "pass":  false,
+                       "expected":  "contains \u0027**bold**\u0027",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk10-markdown-bold.png",
+                       "result_screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\baseline\\chk10-markdown-bold-result.png"
+                   }
+               ]
+}

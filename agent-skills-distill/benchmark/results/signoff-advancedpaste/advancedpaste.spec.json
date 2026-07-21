@@ -1,0 +1,76 @@
+{
+  "name": "AdvancedPaste",
+  "module": "src/modules/AdvancedPaste",
+  "description": "Sign-off suite for PowerToys AdvancedPaste. Core value = clipboard FORMAT TRANSFORMS (paste as plain text / markdown / json), driven at the behavioral layer against REAL product code (TransformHelpers/JsonHelper/MarkdownHelper/PasteFormats), plus a live UIA smoke of the real Advanced Paste window (summoned via its named-pipe ShowUI message, no global hotkey).",
+  "gate_rule": "all P0 checks must PASS",
+  "checks": [
+    {
+      "id": "cap-plaintext-strips",
+      "priority": "P0",
+      "kind": "vstest",
+      "description": "Paste-as-plain-text returns the plain text payload and strips HTML rich formatting (TransformHelpers.ToPlainTextAsync -> GetTextOrEmptyAsync).",
+      "tests": ["PlainText_StripsHtmlFormatting"]
+    },
+    {
+      "id": "cap-markdown-transform",
+      "priority": "P0",
+      "kind": "vstest",
+      "description": "Paste-as-markdown converts clipboard HTML into Markdown (heading + bold) (MarkdownHelper.ToMarkdownAsync).",
+      "tests": ["Markdown_ConvertsHtmlHeadingAndBold"]
+    },
+    {
+      "id": "cap-json-csv",
+      "priority": "P0",
+      "kind": "vstest",
+      "description": "Paste-as-json converts CSV clipboard text into a JSON array-of-arrays (JsonHelper.ToJsonFromXmlOrCsvAsync).",
+      "tests": ["Json_ConvertsCsv"]
+    },
+    {
+      "id": "cap-json-xml",
+      "priority": "P1",
+      "kind": "vstest",
+      "description": "Paste-as-json converts XML clipboard text into JSON (SerializeXmlNode path).",
+      "tests": ["Json_ConvertsXml"]
+    },
+    {
+      "id": "cap-json-passthrough",
+      "priority": "P1",
+      "kind": "vstest",
+      "description": "Paste-as-json returns already-valid JSON unchanged (IsJson short-circuit).",
+      "tests": ["Json_PassesThroughExistingJson"]
+    },
+    {
+      "id": "cap-json-never-throws",
+      "priority": "P1",
+      "kind": "vstest",
+      "description": "Reliability contract: Json transform returns empty string (never throws) when the clipboard has no text (PR #48124 guardrail).",
+      "tests": ["Json_NoTextReturnsEmpty"]
+    },
+    {
+      "id": "cap-window-uia",
+      "priority": "P1",
+      "kind": "uia",
+      "description": "The REAL Advanced Paste window (summoned via named-pipe ShowUI, no global hotkey) exposes the three core paste-format actions and gates the AI prompt box when AI is not configured.",
+      "assertions": [
+        {"search": "Paste as plain text", "min_count": 1},
+        {"search": "Paste as markdown", "min_count": 1},
+        {"search": "Paste as JSON", "min_count": 1},
+        {"get_property": "InputTxtBox", "property": "IsEnabled", "equals": "False"}
+      ]
+    },
+    {
+      "id": "cap-format-metadata",
+      "priority": "P2",
+      "kind": "vstest",
+      "description": "PasteFormats metadata is the source of truth for AI gating: PlainText/Markdown/Json are core & non-AI; KernelQuery/CustomTextTransformation require AI.",
+      "tests": ["Metadata_CoreVsAiGating"]
+    },
+    {
+      "id": "cap-hexcolor",
+      "priority": "P2",
+      "kind": "vstest",
+      "description": "Clipboard hex-color detection for history-item preview (ClipboardItemHelper.IsRgbHexColor).",
+      "tests": ["TestIsRgbHexColor"]
+    }
+  ]
+}

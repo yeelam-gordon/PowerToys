@@ -1,0 +1,77 @@
+{
+  "reviewer": "candidate_r5",
+  "comments": [
+    {
+      "id": 1,
+      "file": "PowerAccent.Core/PowerAccent.cs",
+      "concern": "GetDisplayCoordinates now divides by DPI but lacks explicit coordinate-space documentation.",
+      "detail": "The distilled knowledge emphasizes: 'DPI parameters must be documented; DPI is a scale factor, not pixels... how it affects the coordinate calculations. Any positioning change should state its coordinate space (DIPs vs raw px).' The new code divides by DPI on line 20 with an explanatory comment, but GetDisplayCoordinates() should document that it returns raw (physical) pixel coordinates suitable for Win32 SetWindowPos (per the new docstring), not logical/WPF pixels. This distinction is critical because SetWindowPos expects physical pixels. Ensure consistency throughout the coordinate transformation pipeline."
+    },
+    {
+      "id": 2,
+      "file": "PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "DPI retrieval fallback to 96 (100%) may mask environment issues.",
+      "detail": "The code sets dpiRaw = 96 as default when GetDpiForMonitor fails, but per the distilled concern about multi-monitor/DPI positioning bugs (#47347, #44980, #43247), silently falling back to 96 DPI when GetDpiForMonitor fails could position the toolbar incorrectly if the monitor actually has a different DPI. Consider logging or raising a diagnostic event if the API fails, or validate the retrieved DPI against GetDpiForWindow as a sanity check to catch monitor-detection failures early."
+    },
+    {
+      "id": 3,
+      "file": "PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "Shift key detection changed from GetKeyState to GetAsyncKeyState—may miss rapid release.",
+      "detail": "IsShiftState() now uses GetAsyncKeyState instead of GetKeyState. Per distilled history, 'the hook can miss a fast Shift' (noted in #47034 and #45936 stuck-Shift issues). GetAsyncKeyState samples the global key state at the moment of the call, which could also miss a rapidly-released Shift key. The _initialShiftState guard in ProcessNextChar mitigates false-positive backward navigation, but verify on integration that a user pressing Shift for a capital accent, then immediately releasing it, doesn't produce spurious 'next character' navigation instead of the capital variant."
+    },
+    {
+      "id": 4,
+      "file": "PowerAccent.Core/PowerAccent.cs",
+      "concern": "ProcessNextChar logic for Shift-based selection may not handle all trigger-key modes equally.",
+      "detail": "The new logic sets _selectedIndex based on shiftPressed and triggerKey, but the distilled knowledge states 'Shift is overloaded: it produces capitals AND reverses navigation direction.' The order of conditions (Space first, then StartSelectionFromTheLeft, then Left/Right) differs from the original, which checked Left and Right first. Verify that the new sequence doesn't change behavior when StartSelectionFromTheLeft is true and a Left/Right trigger is used—e.g., if Left is pressed and StartSelectionFromTheLeft is true, should Left be treated as a navigation key (middle position) or ignored?"
+    },
+    {
+      "id": 5,
+      "file": "PowerAccent.UI/Selector.xaml.cs",
+      "concern": "SetWindowPos called directly without validating _showGeneration guard.",
+      "detail": "Per distilled knowledge: 'Any new delayed/async UI action must re-check both _visible and the generation before touching the toolbar.' SetWindowPosition() is called from OnChangeDisplay (which is marshalled from the hook), but there is no check of _visible or _powerAccent._showGeneration before executing SetWindowPos. If a stale OnChangeDisplay event fires after the toolbar is hidden, it could re-position a hidden window off-screen. Verify that OnChangeDisplay is only called while _visible is true, or add an explicit generation/visibility guard at the start of SetWindowPosition."
+    },
+    {
+      "id": 6,
+      "file": "PowerAccent.UI/Selector.xaml",
+      "concern": "VirtualizingStackPanel replaced with StackPanel; verify performance with many characters.",
+      "detail": "The distilled history flags slow popup/freeze issues (#39852, #42821, #39564) when typing fast. VirtualizingStackPanel recycles UI elements to reduce memory; StackPanel creates all items upfront. If a language adds many accented variants (e.g. 50+), this could regress on older machines. Test on a low-end device with a character-heavy language (e.g. combining diacritics) to confirm frame rate remains acceptable during rapid keystroke navigation."
+    },
+    {
+      "id": 7,
+      "file": "PowerAccent.UI/Selector.xaml.cs",
+      "concern": "Window moved off-screen before Show() for flicker prevention, but timing is subtle.",
+      "detail": "Moving the window off-screen (lines 85-87) before Show() is correct to prevent flashing on the wrong monitor. However, if the application is paused or under heavy load, SetWindowPos may not complete before Show(), leaving the window visible at the old position briefly. Verify that SetWindowPos is not asynchronous or queued (it should be synchronous), and test on slow systems with multiple monitors to confirm flicker is eliminated, not just reduced."
+    },
+    {
+      "id": 8,
+      "file": "PowerAccent.UI/Selector.xaml.cs",
+      "concern": "OnDpiChanged called during visible display; coordinate recalculation may cause jitter.",
+      "detail": "The OnDpiChanged override recalculates position and size when the window's DPI changes (e.g., user moves window to a higher-DPI monitor). This recalculation is necessary but, per distilled knowledge on multi-monitor positioning bugs, could introduce jitter if the monitor rect or active window changes concurrently. Verify that GetActiveDisplay is called again (not cached) in SetWindowPosition, and test the scenario: toolbar visible on 100% DPI, user moves monitor to 125% DPI while toolbar is open—confirm position remains visually consistent."
+    },
+    {
+      "id": 9,
+      "file": "PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "SendInput array pre-allocation changes character encoding loop; verify correctness for multi-byte characters.",
+      "detail": "The Insert method pre-allocates an INPUT array of size s.Length * 2 and populates it in a loop. Each character is sent as two KEY events (DOWN + UP). Verify that s[i] (a C# char) correctly maps to wScan for multi-byte Unicode characters (e.g., emoji, combining marks). If s is a string with surrogate pairs, s.Length counts each surrogate separately, which would double-count emoji and cause incorrect behavior. Check whether GetCharacters returns a string or a char[] and whether combining diacritics are represented as single chars or surrogate sequences."
+    },
+    {
+      "id": 10,
+      "file": "PowerAccent.UI/Selector.xaml",
+      "concern": "ListBoxItem changed from fixed Width=48 to MinWidth=48; verify no off-screen rendering.",
+      "detail": "Per distilled history, accents running off-screen and not scrolling into view (#44332, #42442) was due to width clamping issues. Changing from fixed Width=48 to MinWidth=48 allows items to grow if the character is wider (e.g. composed combining marks). The new grid also has MaxWidth=ActualWidth of the characters ListBox, which should prevent overflow. However, verify that if a single character (with combining marks) is wider than the clamped ListBox width, it still remains selectable and doesn't extend off-screen without triggering the horizontal scrollbar."
+    },
+    {
+      "id": 11,
+      "file": "PowerAccent.UI/Selector.xaml.cs",
+      "concern": "Resetting _selectedIndex to -1 before dynamic assignment may skip generation-id check.",
+      "detail": "Lines 104-105 reset SelectedIndex to -1 to avoid flashing, then set it to _selectedIndex. This is good for preventing visual artifacts, but if another ShowToolbar event fires (with a new _showGeneration) between this Hide and the next Show, the window could render the old character set with incorrect selection state. Verify that OnChangeDisplay (which calls this) holds a generation id from when it was marshalled, and early-exit if that generation no longer matches _showGeneration (per the distilled guardrail: 'any new delayed/async UI action must re-check both _visible and the generation')."
+    },
+    {
+      "id": 12,
+      "file": "PowerAccent.UI/NativeMethods.txt & PowerAccent.UI.csproj",
+      "concern": "Added CsWin32 dependency to UI project; verify cross-architecture build.",
+      "detail": "Per distilled knowledge: 'when bumping shared native tooling, attach multi-arch build evidence.' The PR adds Microsoft.Windows.CsWin32 to PowerAccent.UI.csproj. The parent PowerAccent.Core already uses CsWin32 (implied by PInvoke usage), but adding it to UI is a new dependency on generated native interop. Verify that the solution builds cleanly on both x64 and ARM64 (Debug and Release). Check that NativeMethods.txt (SetWindowPos, GetSystemMetrics) generates without conflicts if the same symbols are already generated in PowerAccent.Core.NativeMethods."
+    }
+  ]
+}

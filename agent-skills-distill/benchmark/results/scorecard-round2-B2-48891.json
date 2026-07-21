@@ -1,0 +1,52 @@
+{
+  "ground_truth_count": 10,
+  "candidate": {
+    "total_comments": 14,
+    "matched_gt_ids": [0, 2],
+    "matched_count": 2,
+    "matches": [
+      {
+        "gt_id": 0,
+        "review_id": 11,
+        "gt_concern": "Should we enable AOT for the PowerAccent utility (PowerAccent.UI.csproj)?",
+        "why_match": "Review flags PublishAot=true on PowerAccent.UI.csproj and raises the same AOT-enablement topic for this utility."
+      },
+      {
+        "gt_id": 2,
+        "review_id": 11,
+        "gt_concern": "AOT publish is not currently feasible for this utility.",
+        "why_match": "Review asks to confirm an AOT publish actually succeeds end-to-end given the dependency chain (UnicodeInformation, CsWinRT, telemetry, JSON) may not be trim/AOT-safe - directly the AOT-publish feasibility concern."
+      }
+    ]
+  },
+  "baseline": {
+    "total_comments": 14,
+    "matched_gt_ids": [0, 2],
+    "matched_count": 2,
+    "matches": [
+      {
+        "gt_id": 0,
+        "review_id": 11,
+        "gt_concern": "Should we enable AOT for the PowerAccent utility (PowerAccent.UI.csproj)?",
+        "why_match": "Review flags PublishAot=true newly enabled for Quick Accent UI on the same csproj, raising the AOT-enablement topic."
+      },
+      {
+        "gt_id": 2,
+        "review_id": 11,
+        "gt_concern": "AOT publish is not currently feasible for this utility.",
+        "why_match": "Review asks to confirm a Release/AOT-published build actually starts (reflection in telemetry/JSON/WinUIEx may fail at runtime under AOT) - the same AOT-publish feasibility doubt."
+      }
+    ]
+  },
+  "unmatched_gt": [
+    {"gt_id": 1, "concern": "Do we still need ThemeListener on WinUI 3; is {ThemeResource} enough?", "missed_by": "both"},
+    {"gt_id": 3, "concern": "xaml/presentation namespace should not be used in a WinUI 3 app (App.xaml).", "missed_by": "both"},
+    {"gt_id": 4, "concern": "Go back to basics and let the control handle selection UI (MainWindow.xaml).", "missed_by": "both"},
+    {"gt_id": 5, "concern": "Agreement that native UI looks good enough (reply to selection-UI thread).", "missed_by": "both"},
+    {"gt_id": 6, "concern": "Reply: it's a valid WinUI 3 namespace (App.xaml namespace thread).", "missed_by": "both"},
+    {"gt_id": 7, "concern": "Revert UX changes; keep existing Quick Accent UI, migrate to WinUI without redesigning.", "missed_by": "both"},
+    {"gt_id": 8, "concern": "Dislike manual binding updates; try moving everything into a Page/UserControl to keep x:Bind.", "missed_by": "both"},
+    {"gt_id": 9, "concern": "Reply: replaced with UserControl, it works.", "missed_by": "both"}
+  ],
+  "notes": "Both reviews are near-identical in recall: each recovered only the AOT-enablement thread (GT 0/2) via their respective comment #11 on PowerAccent.UI.csproj. Neither review captured the conversational/design-oriented maintainer concerns that dominate the ground truth: the ThemeListener necessity question (GT 1), the xaml/presentation namespace debate (GT 3/6), the 'don't UX-redesign, just migrate / let the control handle selection UI / revert' discussion (GT 4/5/7), or the x:Bind manual-binding -> UserControl refactor (GT 8/9). Baseline #6 touches theme behavior (hidden-window {ThemeResource} retint) but concerns a different file/behavior than GT 1's 'do we need ThemeListener' and was not counted for either side under strict matching. Both AI reviews instead spent their budget on deep technical concerns (DPI mixing, threading/hook ordering, layout magic numbers, deleted geometry operators, signing/output-dir layout, dead caret tests) that have no ground-truth counterpart. Net: a tie at 2/10 recall; the distilled-knowledge (candidate) review offered no unique ground-truth recovery over baseline, and vice versa."
+}

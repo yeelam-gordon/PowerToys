@@ -1,0 +1,35 @@
+{
+  "ground_truth_count": 16,
+  "distinct_concern_clusters": [
+    "shift-state (IsShiftState/GetAsyncKeyState treating held Shift-for-uppercase as backward navigation)",
+    "off-screen-offset (fixed -10000/1000px pre-position may still land on-screen on large multi-monitor layouts)",
+    "scrollbar (ScrollViewer.HorizontalScrollBarVisibility=Auto on non-interactive ListBox shows a non-functional scrollbar; use Hidden)",
+    "selection-state-stale-text (characterName.Text left stale/placeholder when _selectedIndex is -1)",
+    "cswin32-bump (repo-wide Microsoft.Windows.CsWin32 version bump in Directory.Packages.props / new UI dependency; blast radius, justify or isolate)",
+    "unused-parameter-rename (PowerAccent_OnSelectionCharacter 'character' parameter now unused; rename to _)"
+  ],
+  "raw": {
+    "candidate_matched": 1,
+    "baseline_matched": 3,
+    "candidate_matched_gt_ids": [0],
+    "baseline_matched_gt_ids": [0, 2, 4]
+  },
+  "distinct": {
+    "candidate_clusters_hit": [
+      "shift-state (IsShiftState/GetAsyncKeyState treating held Shift-for-uppercase as backward navigation)"
+    ],
+    "baseline_clusters_hit": [
+      "shift-state (IsShiftState/GetAsyncKeyState treating held Shift-for-uppercase as backward navigation)",
+      "scrollbar (ScrollViewer.HorizontalScrollBarVisibility=Auto on non-interactive ListBox shows a non-functional scrollbar; use Hidden)",
+      "cswin32-bump (repo-wide Microsoft.Windows.CsWin32 version bump in Directory.Packages.props / new UI dependency; blast radius, justify or isolate)"
+    ],
+    "candidate_count": 1,
+    "baseline_count": 3
+  },
+  "candidate_unique_clusters": [],
+  "baseline_unique_clusters": [
+    "scrollbar (ScrollViewer.HorizontalScrollBarVisibility=Auto on non-interactive ListBox shows a non-functional scrollbar; use Hidden)",
+    "cswin32-bump (repo-wide Microsoft.Windows.CsWin32 version bump in Directory.Packages.props / new UI dependency; blast radius, justify or isolate)"
+  ],
+  "notes": "The distilled cheat-sheet did NOT lift the junior reviewer on this PR; it appears to have hurt recall. Both reviews caught the shift-state concern (candidate #3, baseline #1 -> GT 0). Beyond that, the DISTILLED (candidate) review anchored heavily on cheat-sheet themes it repeatedly cites verbatim (DPI coordinate-space docs, _showGeneration/visibility guards, surrogate-pair SendInput, VirtualizingStackPanel perf, multi-arch build evidence). Those are plausible-sounding but map to concerns the REAL reviewers never raised, and the anchoring crowded out simpler concrete issues the human/Copilot reviewers actually flagged. As a result it MISSED two clusters the baseline caught: (1) the Auto horizontal scrollbar being non-interactive (GT 2/7/12/14) and (2) the CsWin32 dependency/version justification (GT 4/13) -- baseline #14 explicitly asks to justify/document why CsWin32 is needed, mirroring GT, whereas candidate #12 only reframed CsWin32 as a multi-arch build-verification task, which is a different (non-GT) concern and earns no credit under equal rigor. Neither review caught off-screen-offset magnitude (GT 1/5/9), stale selection text (GT 3/8), or the unused-parameter rename (GT 6/11). Harm observed: the cheat-sheet induced topic-anchoring / speculative 'verify that...' comments rather than direct defect calls, lowering both raw (1 vs 3) and distinct (1 vs 3) recall against real reviewer comments. Label note: review_candidate_r5 is the distilled/cheat-sheet variant (it quotes 'The distilled knowledge emphasizes...'); review_baseline_r5 is the no-cheat-sheet variant."
+}

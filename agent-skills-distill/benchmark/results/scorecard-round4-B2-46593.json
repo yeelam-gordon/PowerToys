@@ -1,0 +1,46 @@
+{
+  "ground_truth_count": 16,
+  "candidate": {
+    "total_comments": 15,
+    "matched_gt_ids": [0, 1, 2, 5, 7, 9, 12, 14],
+    "matched_count": 8,
+    "matches": [
+      {"gt_id": 0, "review_id": 2, "gt_concern": "Held Shift (for capitalization) causes Space to navigate backwards", "why_match": "Candidate id2 flags Shift+Space right-anchoring during uppercase-accent entry, the same shift-overload/backwards-nav concern; id1 also covers shift overloaded capitals+nav."},
+      {"gt_id": 1, "review_id": 6, "gt_concern": "Hardcoded off-screen move can still land on-screen on large multi-monitor", "why_match": "Candidate id6 flags SM_XVIRTUALSCREEN-1000 insufficient to fully hide a wide toolbar, reintroducing flicker."},
+      {"gt_id": 5, "review_id": 6, "gt_concern": "Fixed 1000px off-screen offset can leave part of window visible", "why_match": "Candidate id6 directly targets the 1000px offset vs window width, urging offset by window width."},
+      {"gt_id": 9, "review_id": 6, "gt_concern": "1000px offset (not addressed response)", "why_match": "Same off-screen-offset concern raised by candidate id6."},
+      {"gt_id": 2, "review_id": 8, "gt_concern": "Auto horizontal scrollbar non-interactive with IsHitTestVisible=False", "why_match": "Candidate id8 recommends Hidden/Disabled over Auto for the non-hit-testable ListBox."},
+      {"gt_id": 7, "review_id": 8, "gt_concern": "Scrollbar visibility fix (response)", "why_match": "Same scrollbar concern captured by candidate id8."},
+      {"gt_id": 12, "review_id": 8, "gt_concern": "Auto scrollbar users cannot interact with", "why_match": "Candidate id8 raises identical non-functional-scrollbar concern."},
+      {"gt_id": 14, "review_id": 8, "gt_concern": "Scrollbar Auto intentional (response)", "why_match": "Same scrollbar area/behavior flagged by candidate id8."}
+    ]
+  },
+  "baseline": {
+    "total_comments": 18,
+    "matched_gt_ids": [0, 1, 2, 5, 7, 9, 12, 14],
+    "matched_count": 8,
+    "matches": [
+      {"gt_id": 0, "review_id": 1, "gt_concern": "Shift held at summon conflicts with uppercase / reverse-nav", "why_match": "Baseline id1 flags _initialShiftState static snapshot mishandling Shift-at-open, matching GT's suggested keying off shift transition after toolbar shown."},
+      {"gt_id": 1, "review_id": 11, "gt_concern": "Hardcoded off-screen offset can still land on-screen", "why_match": "Baseline id11 flags SM_XVIRTUALSCREEN-1000 heuristic can leave window visible, suggests full virtual-bounds offset."},
+      {"gt_id": 5, "review_id": 11, "gt_concern": "Fixed 1000px off-screen offset insufficient for wide popup", "why_match": "Baseline id11 targets the magic 1000px constant vs window size."},
+      {"gt_id": 9, "review_id": 11, "gt_concern": "1000px offset (not addressed response)", "why_match": "Same off-screen-offset concern raised by baseline id11."},
+      {"gt_id": 2, "review_id": 18, "gt_concern": "Auto scrollbar non-interactive with IsHitTestVisible=False", "why_match": "Baseline id18 flags visible-but-non-draggable scrollbar, suggests Disabled."},
+      {"gt_id": 7, "review_id": 18, "gt_concern": "Scrollbar visibility fix (response)", "why_match": "Same scrollbar concern captured by baseline id18."},
+      {"gt_id": 12, "review_id": 18, "gt_concern": "Auto scrollbar users cannot interact with", "why_match": "Baseline id18 raises identical dead-control scrollbar concern."},
+      {"gt_id": 14, "review_id": 18, "gt_concern": "Scrollbar Auto intentional (response)", "why_match": "Same scrollbar area/behavior flagged by baseline id18."}
+    ]
+  },
+  "candidate_unique_gt": [],
+  "baseline_unique_gt": [],
+  "unmatched_gt": [
+    {"gt_id": 3, "concern": "characterName.Text left stale/placeholder when _selectedIndex is -1"},
+    {"gt_id": 4, "concern": "CsWin32 repo-wide version bump blast radius (Directory.Packages.props)"},
+    {"gt_id": 6, "concern": "Rename unused 'character' parameter to _"},
+    {"gt_id": 8, "concern": "Cleared stale text on -1 (response)"},
+    {"gt_id": 10, "concern": "CsWin32 bump not addressed / escalated"},
+    {"gt_id": 11, "concern": "Rename parameter not addressed (response)"},
+    {"gt_id": 13, "concern": "CsWin32 0.3.269 repo-wide blast radius"},
+    {"gt_id": 15, "concern": "CsWin32 version bump escalated to maintainer"}
+  ],
+  "notes": "The distilled knowledge did NOT produce a decisive edge here. Both reviews independently recovered the same recurring concerns: shift-state-at-summon (GT0), off-screen hardcoded-offset positioning (GT1/5/9), and non-interactive Auto scrollbar (GT2/7/12/14). Result is an exact tie at 8/16 with zero unique matches on either side. Neither caught the CsWin32 *version-bump blast-radius* family (GT4/10/13/15): both only flagged the missing PackageReference Version / central-package-management angle in the UI csproj, which is a distinct concern from bumping the global Directory.Packages.props version, so no credit under strict matching. Neither caught the stale-text-on-(-1) clearing (GT3/8) nor the unused-parameter rename (GT6/11) — candidate's id5 (bounds-check IndexOutOfRange) and baseline's id12 (two _selectedIndex fields desync) touch nearby code but raise different root causes. No anchoring harm observed; both spent extra comments on DPI/coordinate-space and SendInput/surrogate issues that have no GT counterpart, but these did not crowd out any GT concern that the other side caught."
+}

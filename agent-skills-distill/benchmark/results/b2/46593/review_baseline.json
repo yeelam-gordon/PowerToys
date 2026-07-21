@@ -1,0 +1,113 @@
+{
+  "reviewer": "baseline",
+  "comments": [
+    {
+      "id": 1,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "IsShiftState() switched from GetKeyState to GetAsyncKeyState, which reads real-time physical key state rather than the state at the moment the hook processed the keystroke.",
+      "detail": "GetAsyncKeyState reports the current hardware state, not the logical state of the message being handled. This can race with SendInput-injected keys and with the hook's own event ordering, returning a shift value that does not correspond to the keystroke being processed, producing intermittent wrong (backward) navigation."
+    },
+    {
+      "id": 2,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "The hardware shift fallback is permanently suppressed for the whole popup lifetime whenever the toolbar was opened while Shift was held (_initialShiftState == true).",
+      "detail": "isHardwareShiftPressed = IsShiftState() && !_initialShiftState. If the user summoned the popup by typing a capital (Shift held), _initialShiftState stays true, so hardware shift detection never contributes again even after the user releases and re-presses Shift to navigate backwards. Shift-back navigation silently stops working for that session."
+    },
+    {
+      "id": 3,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "OR-combining the hook's shiftPressed with an async hardware poll on every navigation keystroke can misfire on unrelated Shift presses.",
+      "detail": "shiftPressed = shiftPressed || isHardwareShiftPressed evaluates the global physical Shift state on each ProcessNextChar. If the user is holding Shift for another reason (or Shift is momentarily down from fast typing), navigation is forced backwards even when the triggering key event carried no Shift. The two sources of truth can disagree."
+    },
+    {
+      "id": 4,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "GetDisplayMaxWidth/GetDisplayCoordinates rely on GetActiveDisplay().Dpi, which is the DPI of the monitor of the active foreground window, not necessarily the monitor the popup renders on.",
+      "detail": "In multi-monitor setups with mixed DPI, the popup can be positioned/sized using the foreground window's monitor DPI while WPF renders it at a different monitor's DPI, causing wrong width (off-screen) or misplacement during transitions. OnDpiChanged partially mitigates but the initial placement can still be wrong."
+    },
+    {
+      "id": 5,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/Calculation.cs",
+      "concern": "After removing the '/ dpi' from GetDisplayCoordinates, GetRawCoordinatesFromPosition mixes DIP window size (window.Width * dpi) with a hard-coded 24px offset that is not DPI-scaled.",
+      "detail": "The offset (24) is added in physical-pixel space, so it shrinks visually on high-DPI monitors, and the whole calculation now returns physical coordinates consumed by SetWindowPos. This unit path should be re-verified end-to-end; the constant offset should likely be scaled by dpi for consistent margins."
+    },
+    {
+      "id": 6,
+      "file": "src/modules/poweraccent/PowerAccent.Core/Tools/WindowsFunctions.cs",
+      "concern": "GetDpiForMonitor success is checked with '== 0' (magic number) and failures silently fall back to 96 DPI.",
+      "detail": "Compare against the HRESULT S_OK (or use .Succeeded) rather than a bare 0 for readability/correctness. Also, a silent 96 fallback on a genuinely high-DPI monitor would reintroduce the off-screen width bug this PR is fixing; consider whether failure should be logged."
+    },
+    {
+      "id": 7,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "SetWindowPosition computes size from Application.Current.MainWindow.Content ActualWidth/Height rather than this Selector window, and silently no-ops when hwnd == IntPtr.Zero.",
+      "detail": "If MainWindow is not the Selector (or its content differs), the size fed into GetDisplayCoordinates is wrong. Additionally, the SetWindowPos-only path means if the HWND handle isn't available the window is never positioned (no fallback to this.Left/Top), which can leave it at the off-screen coordinates."
+    },
+    {
+      "id": 8,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "Window_SizeChanged calls SetWindowPosition on every SizeChanged, which can cause reposition jitter and re-entrant layout, and it fires during the off-screen setup phase too.",
+      "detail": "SizeChanged fires repeatedly during initial layout (including while the window is parked off-screen). Repositioning on each event, combined with OnDpiChanged also calling SetWindowsSize/SetWindowPosition, risks a move->resize->move feedback loop or visible jitter, especially when the window crosses monitors."
+    },
+    {
+      "id": 9,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "OnDpiChanged and Window_SizeChanged can form a repositioning loop when the window moves across monitors of different DPI.",
+      "detail": "SetWindowPosition moves the window; crossing to another DPI monitor raises OnDpiChanged which resizes and repositions again, which can change size and refire SizeChanged. There is no guard/debounce to prevent oscillation."
+    },
+    {
+      "id": 10,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "Off-screen parking uses SM_XVIRTUALSCREEN/SM_YVIRTUALSCREEN minus a magic 1000, and the hwnd==0 else-branch sets this.Left/this.Top with physical pixel values though WPF Left/Top are DIPs.",
+      "detail": "The -1000 constant is unexplained and could be insufficient for very large negative virtual-screen origins. In the fallback branch, assigning physical coordinates to WPF's DIP-based Left/Top is a unit mismatch; it's harmless only because the target is off-screen, but it's inconsistent and fragile."
+    },
+    {
+      "id": 11,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "concern": "VirtualizingStackPanel (previously IsItemsHost=False) was replaced with a plain StackPanel, disabling UI virtualization for the characters list.",
+      "detail": "For letters with many mappings, all ListBoxItem containers are realized. Combined with the newly added ScrollIntoView calls this is functional but can be a measurable perf/memory cost; confirm the max mapping count is small enough that virtualization loss is acceptable."
+    },
+    {
+      "id": 12,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "concern": "The ListBox has IsHitTestVisible=False yet now enables HorizontalScrollBarVisibility=Auto.",
+      "detail": "With hit testing disabled the user cannot manually drag the horizontal scrollbar; scrolling only happens via ScrollIntoView. If ScrollIntoView fails or lags, a selected glyph can remain clipped/off-screen with no user recourse. Also the scrollbar consumes layout space, potentially affecting the measured width used for positioning."
+    },
+    {
+      "id": 13,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "concern": "The description Grid keeps MinWidth=600 while its MaxWidth is now bound to characters.ActualWidth, and the window MaxWidth is clamped to GetDisplayMaxWidth.",
+      "detail": "On small/low-resolution displays the display max width can be below 600, so MinWidth=600 will force horizontal overflow/clipping and conflict with the clamped window MaxWidth. Also the ActualWidth binding may resolve to 0 before the first layout pass, producing a momentarily collapsed description."
+    },
+    {
+      "id": 14,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "SetWindowsSize sets this.MaxWidth = GetDisplayMaxWidth() (monitor-DIP based) on the window itself, which can be smaller than the description Grid's MinWidth=600.",
+      "detail": "Constraining the top-level window MaxWidth below an inner element's MinWidth leads to WPF layout conflicts (content clipped or MaxWidth effectively ignored). The interaction between window MaxWidth, characters.MaxWidth, and the 600px MinWidth should be reconciled."
+    },
+    {
+      "id": 15,
+      "file": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+      "concern": "Reordering the initial-selection branches makes StartSelectionFromTheLeft no longer apply to the Space trigger, and Space+Shift now selects the last character even when 'start from left' is enabled.",
+      "detail": "Previously Space (or StartSelectionFromTheLeft) forced index 0. Now 'if Space' is evaluated before StartSelectionFromTheLeft, so Space with Shift jumps to the last glyph regardless of the user's start-from-left preference. This is a user-visible behavior change that may contradict the setting; confirm it's intended."
+    },
+    {
+      "id": 16,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "The UI now keeps its own _selectedIndex (reset to -1 on hide/change) in parallel with the Core's _selectedIndex, risking desync.",
+      "detail": "OnChangeDisplay sets characters.SelectedIndex from the UI field, then Core drives selection via OnSelectCharacter. If the Core and UI indices diverge (e.g., empty/late character build, generation races in ShowToolbar's delayed render), the highlighted item and the character actually inserted could differ. The two states should have a single source of truth."
+    },
+    {
+      "id": 17,
+      "file": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+      "concern": "Show() is now called before SetWindowsSize/SetWindowPosition, so the window is briefly shown (off-screen) and then resized/moved, and SetWindowsSize after Show can trigger an extra resize/layout.",
+      "detail": "Ordering Show() -> SetWindowsSize() -> ItemsSource -> UpdateLayout -> SetWindowPosition means the first rendered frame occurs before final size/position are known. The off-screen park mitigates flicker, but the extra UpdateLayout/resize passes are a source of visible flash if the park move hasn't taken effect; verify no on-screen frame is rendered pre-positioning."
+    },
+    {
+      "id": 18,
+      "file": "src/modules/poweraccent/PowerAccent.Core/NativeMethods.txt",
+      "concern": "GetDpiForWindow was removed from the projected APIs; confirm no remaining caller, and note GetAsyncKeyState is now used while GetKeyState is still used for CapsLock.",
+      "detail": "Removing GetDpiForWindow breaks the build if any other code path still calls it. Also, mixing GetAsyncKeyState (Shift) and GetKeyState (CapsLock) for closely-related state queries is inconsistent and worth a comment on why the semantics differ."
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "case_id": "m-awake",
+  "module": "awake",
+  "fix_commit": "725ad21952e08ab0fab7547cf88d1f766edfb7e4",
+  "parent_commit": "ebc3a139c5897191dad3357cc62d5b7dd1312bd5",
+  "changed_files": [
+    "src/modules/awake/Awake/Core/Manager.cs"
+  ],
+  "sparse_dirs": [
+    "src/modules/awake"
+  ]
+}

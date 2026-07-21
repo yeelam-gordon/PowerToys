@@ -1,0 +1,12 @@
+{
+  "case_id": "m-textextractor",
+  "module": "textextractor",
+  "fix_commit": "cea0497bb91d5b557b547a0c7fdeb0429e46ccb7",
+  "parent_commit": "fd5be6d04ec954de415a6a0f3095f04ed0dc9072",
+  "changed_files": [
+    "src/modules/PowerOCR/PowerOCR/Helpers/ImageMethods.cs"
+  ],
+  "sparse_dirs": [
+    "src/modules/PowerOCR"
+  ]
+}

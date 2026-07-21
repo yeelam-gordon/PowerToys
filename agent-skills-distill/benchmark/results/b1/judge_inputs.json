@@ -1,0 +1,310 @@
+[
+  {
+    "module": "advancedpaste",
+    "case_id": "m-advancedpaste",
+    "fix_pr": "46486",
+    "gt_files": [
+      "src/modules/AdvancedPaste/AdvancedPasteModuleInterface/dllmain.cpp"
+    ],
+    "baseline_fix": "The try_send_copy_message function incorrectly checks if SendMessageTimeout returns non-zero to determine success. Electron/Chromium apps handle WM_COPY but return 0, causing a false failure. The fix should check if SendMessageTimeout succeeds (returns non-zero) AND examine the result parameter, or check for timeout errors specifically to distinguish between message delivery failure and a zero return value from the window.",
+    "candidate_fix": "Release activation hotkey modifiers (Ctrl/Win/Shift/Alt) via try_inject_modifier_key_up before sending Ctrl+C, then restore them via try_inject_modifier_key_restore. Also verify clipboard sequence number changed after Ctrl+C to confirm copy succeeded (treat unchanged sequence as failure and log warning)."
+  },
+  {
+    "module": "alwaysontop",
+    "case_id": "m-alwaysontop",
+    "fix_pr": "45845",
+    "gt_files": [
+      "src/modules/alwaysontop/AlwaysOnTop/AlwaysOnTop.cpp"
+    ],
+    "baseline_fix": "The function checks if the menu item exists before inserting but doesn't properly handle edge cases where duplicates might exist. The fix should remove any existing items with the command ID before inserting a new one, or ensure that the check and insert are atomic. Specifically, before calling InsertMenuItemW, call RemoveMenu to ensure no duplicates remain from previous insertions.",
+    "candidate_fix": "Add an IsAlwaysOnTopMenuCommand function that verifies ownership via dwItemData (0x414F5450 tag) before updating or removing the system menu item. When a menu item at the fixed command ID (0xEFE0) already exists, check if it's ours via the tag; if not ours, skip and log to avoid collisions with other apps' menu items."
+  },
+  {
+    "module": "awake",
+    "case_id": "m-awake",
+    "fix_pr": "43785",
+    "gt_files": [
+      "src/modules/awake/Awake/Core/Manager.cs"
+    ],
+    "baseline_fix": "The Observable.Interval chain at line 346 uses TakeWhile with remaining.TotalSeconds > 0, which stops the sequence when time reaches 0 but doesn't guarantee the completion handler (HandleTimerCompletion) executes. The condition should be >= 0, or the logic should ensure the completion handler is called when the timer actually expires, not just when the sequence stops.",
+    "candidate_fix": "The Subscribe call uses a discard lambda `_ => HandleTimerCompletion(\"timed\")` as the second parameter, which binds to the Subscribe(onNext, onError) overload instead of the onCompleted overload. When the Observable completes after countdown, the completion handler never runs and the mode stays stuck in TIMED. The fix changes `_ =>` to `() =>` to properly bind to the onCompleted parameter."
+  },
+  {
+    "module": "cmdnotfound",
+    "case_id": "m-cmdnotfound",
+    "fix_pr": "30745",
+    "gt_files": [
+      "src/modules/cmdNotFound/CmdNotFound/CmdNotFound.csproj",
+      "src/modules/cmdNotFound/CmdNotFound/WinGetCommandNotFoundFeedbackPredictor.cs",
+      "src/modules/cmdNotFound/CmdNotFoundModuleInterface/dllmain.cpp"
+    ],
+    "baseline_fix": "The FindPackages method lacks exception handling and error logging. The try-finally block returns the PowerShell object to the pool but doesn't catch or log exceptions from Find-WinGetPackage invocations. The fix should add a catch block to log errors and return an empty collection on failure, ensuring graceful degradation when WinGet operations fail.",
+    "candidate_fix": "The constructor does not initialize the logger and GetFeedback has no exception handling, causing runtime failures (WinGet COM unavailable, offline) to throw uncaught exceptions that vanish silently. The fix initializes Logger.InitializeLogger(\"\\\\CmdNotFound\\\\Logs\") in the constructor and wraps GetFeedback in try/catch that logs errors and returns a graceful FeedbackItem explaining the limitation."
+  },
+  {
+    "module": "cmdpal",
+    "case_id": "m-cmdpal",
+    "fix_pr": "49182",
+    "gt_files": [
+      "src/modules/cmdpal/Microsoft.CmdPal.UI/Pages/ShellPage.xaml.cs"
+    ],
+    "baseline_fix": "The Items_ItemClick handler executes item actions (lines 183, 189) without checking if the list is visible/expanded. In compact mode when the list is collapsed (showing only the search box), item clicks should not execute actions. The fix should add a visibility or collapsed state check before executing InvokeItemCommand to prevent actions from firing when the list is not expanded.",
+    "candidate_fix": "Gate the ActivateSelectedListItemMessage (sent on Enter key) and ActivateSecondaryCommandMessage (sent on Ctrl+Enter) on whether the palette is expanded or collapsed. When compact mode is collapsed, these actions should not fire since the list is hidden and no item is visibly selected."
+  },
+  {
+    "module": "colorpicker",
+    "case_id": "m-colorpicker",
+    "fix_pr": "48762",
+    "gt_files": [
+      "src/modules/colorPicker/ColorPickerUI/Helpers/AppStateHandler.cs",
+      "src/modules/colorPicker/ColorPickerUI/Helpers/WindowCaptureExclusionHelper.cs",
+      "src/modules/colorPicker/ColorPickerUI/Helpers/ZoomWindowHelper.cs",
+      "src/modules/colorPicker/ColorPickerUI/NativeMethods.cs"
+    ],
+    "baseline_fix": "The ShowZoomWindow method calls AppStateHandler.SetTopMost() which sets the MainWindow to topmost when the zoom window is shown, causing the main ColorPicker UI to appear in the zoomed view. The fix is to set the zoom window itself to topmost instead of calling SetTopMost on the main window.",
+    "candidate_fix": "The zoom magnifier captures the picker window itself because `CopyFromScreen` is called while the picker UI is visible on screen. Need to create `WindowCaptureExclusionHelper.cs` that calls `SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)` before the screen capture in `SetZoomImage`, then restores `WDA_NONE` in a finally block. This Win10 2004+ API excludes the window from all screen capture operations.\n\n**CITED_FIX_PR:**\n#48762\n\n**CONFIDENCE:**\nhigh\n\n**USED_SKILL:**\nThe skill's regression playbook \"Zoom (magnifier) view includes the Color Picker's own window\" directly matched the sympt"
+  },
+  {
+    "module": "cropandlock",
+    "case_id": "m-cropandlock",
+    "fix_pr": "38044",
+    "gt_files": [
+      "src/modules/CropAndLock/CropAndLock/CropAndLock.vcxproj",
+      "src/modules/CropAndLock/CropAndLock/main.cpp"
+    ],
+    "baseline_fix": "The OverlayWindow constructor hardcodes black and red colors for the shade and selection brushes without respecting the system theme. The fix is to use theme-aware colors that adapt to dark/light mode by querying the current theme or using system-defined color resources.",
+    "candidate_fix": "Cropped windows are created without applying the system dark/light theme to their title bars. Need to add a `theme_listener` for system theme changes and a `handleTheme()` function that calls `ThemeHelpers::SetImmersiveDarkMode(window->Handle(), isDark)` on every newly created cropped window and whenever the system theme changes.\n\n**CITED_FIX_PR:**\n#38044\n\n**CONFIDENCE:**\nhigh\n\n**USED_SKILL:**\nThe skill's regression entry \"Theme: white/wrong cropped-window title bar\" matched the terse symptom \"theme\", pointing to the need for `SetImmersiveDarkMode` application on window creation and theme chan"
+  },
+  {
+    "module": "environmentvariables",
+    "case_id": "m-environmentvariables",
+    "fix_pr": "49069",
+    "gt_files": [
+      "src/modules/EnvironmentVariables/EnvironmentVariables/EnvironmentVariablesXAML/MainWindow.xaml.cs",
+      "src/modules/FileLocksmith/FileLocksmithUI/FileLocksmithXAML/MainWindow.xaml.cs",
+      "src/modules/Hosts/Hosts/HostsXAML/MainWindow.xaml.cs",
+      "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/MainWindow.xaml.cs",
+      "src/modules/registrypreview/RegistryPreview/RegistryPreviewXAML/MainWindow.xaml.cs",
+      "src/settings-ui/Settings.UI/SettingsXAML/Controls/Dashboard/ShortcutConflictWindow.xaml.cs"
+    ],
+    "baseline_fix": "The TitleBar XAML template sets MinWidth=\"48\" on the Title and Subtitle TextBlocks without checking if the text is empty. When the Title property is empty or null, this creates a 48-pixel wide empty space that causes issues with the drag region. The fix is to add a Visibility converter that collapses the TextBlock when the text is empty or set MinWidth=\"0\".",
+    "candidate_fix": "When running as administrator, `ResourceLoader.GetString(\"WindowAdminTitle\")` can return an empty string if the resource map fails to resolve, and WinUI's TitleBar faults on an empty `AppWindow.Title`, crashing the app. Add a non-empty fallback before `SetTitleBar()`: if the loaded title is empty or null, default to a hardcoded non-empty string like \"Environment Variables\" or \"PowerToys Environment Variables\".\n\n**CITED_FIX_PR:**\n#49069\n\n**CONFIDENCE:**\nhigh\n\n**USED_SKILL:**\nThe skill's playbook \"Crash immediately when launched as Administrator\" matched the symptom exactly, identifying that `Re"
+  },
+  {
+    "module": "filelocksmith",
+    "case_id": "m-filelocksmith",
+    "fix_pr": "47361",
+    "gt_files": [
+      "src/modules/FileLocksmith/FileLocksmithLib/IPC.cpp",
+      "src/modules/FileLocksmith/FileLocksmithLibInterop/NativeMethods.cpp"
+    ],
+    "baseline_fix": "The Writer class opens an ofstream in text mode (default) but writes binary Unicode data (WCHAR) to it. Text mode performs line-ending conversions which corrupts Unicode paths. The fix is to open the stream in binary mode by passing std::ios::binary flag to the ofstream constructor.",
+    "candidate_fix": "Both `std::ofstream` constructors write UTF-16 paths to `last-run.log` but open in default text mode, which performs newline translation and corrupts UTF-16 bytes equal to 0x0A (LF). Open both streams with `std::ios::binary` flag: `std::ofstream(path, std::ios::binary)` in `IPC.cpp::Writer::start()` and `std::ofstream(paths_file(), std::ios::binary)` in `NativeMethods.cpp::StartAsElevated()`.\n\n**CITED_FIX_PR:**\n#47361\n\n**CONFIDENCE:**\nhigh\n\n**USED_SKILL:**\nThe skill's regression \"Non-ASCII / Unicode paths corrupted (esp. when restarting elevated)\" directly matched the symptom, identifying that"
+  },
+  {
+    "module": "grabandmove",
+    "case_id": "m-grabandmove",
+    "fix_pr": "47261",
+    "gt_files": [
+      "src/modules/GrabAndMove/GrabAndMove/main.cpp"
+    ],
+    "baseline_fix": "When a non-Alt key is pressed while Alt was absorbed without a drag, the code resets g_altAbsorbed and replays Alt but forgets to reset g_altPressed to false. This leaves the Alt key logically \"pressed\" even after it's been released/replayed, preventing proper state cleanup. The fix is to also set g_altPressed = false when replaying the absorbed Alt key.",
+    "candidate_fix": "When Alt is absorbed and another key is pressed without a drag, the code clears g_altAbsorbed and replays Alt but leaves g_altPressed=true, making the system think Alt is still down. The fix adds `g_altPressed = false;` before the ReplayAbsorbedAlt() call at line 805 to ensure internal state matches reality."
+  },
+  {
+    "module": "imageresizer",
+    "case_id": "m-imageresizer",
+    "fix_pr": "45266",
+    "gt_files": [
+      "src/common/ManagedCommon/IdRecoveryHelper.cs",
+      "src/modules/imageresizer/tests/Properties/SettingsTests.cs",
+      "src/modules/imageresizer/ui/ImageResizerXAML/MainWindow.xaml.cs",
+      "src/modules/imageresizer/ui/Properties/Settings.cs",
+      "src/modules/imageresizer/ui/ViewModels/InputViewModel.cs",
+      "src/settings-ui/Settings.UI/ViewModels/ImageResizerViewModel.cs"
+    ],
+    "baseline_fix": "Add a FileSystemWatcher to monitor the settings JSON file for changes and automatically call Reload() when the file is modified. The Reload() method already exists but is never invoked automatically when settings change externally.",
+    "candidate_fix": "Add a FileSystemWatcher to monitor changes to settings.json, implement InitializeWatcher() to set up the watcher with debouncing, and call Reload() on the UI dispatcher when file changes are detected. The watcher should be created and initialized when the Settings.Default singleton is accessed, monitoring the settings.json file path with appropriate filters."
+  },
+  {
+    "module": "lightswitch",
+    "case_id": "m-lightswitch",
+    "fix_pr": "45304",
+    "gt_files": [
+      "src/modules/LightSwitch/LightSwitchService/LightSwitchService.cpp",
+      "src/modules/LightSwitch/LightSwitchService/LightSwitchStateManager.cpp",
+      "src/modules/LightSwitch/LightSwitchService/LightSwitchStateManager.h"
+    ],
+    "baseline_fix": "The startup logic calls SyncInitialThemeState() followed immediately by OnTick(nowMinutes), but OnTick() may re-evaluate and override the initial sync. Fix by ensuring OnTick() respects the initial synchronized state or delay the first OnTick() evaluation.",
+    "candidate_fix": "SyncInitialThemeState should not only read and cache the current theme state, but also call EvaluateAndApplyIfNeeded() to apply the correct scheduled theme immediately on startup. The current implementation only syncs state without evaluating whether the theme should be changed based on the active schedule."
+  },
+  {
+    "module": "mouseutils",
+    "case_id": "m-mouseutils",
+    "fix_pr": "48232",
+    "gt_files": [
+      ".github/actions/spell-check/expect.txt",
+      "src/modules/MouseUtils/MouseHighlighter/MouseHighlighter.cpp",
+      "src/modules/MouseUtils/MouseHighlighter/MouseHighlighter.h",
+      "src/modules/MouseUtils/MouseHighlighter/dllmain.cpp",
+      "src/settings-ui/Settings.UI.Library/MouseHighlighterProperties.cs",
+      "src/settings-ui/Settings.UI/SettingsXAML/Views/MouseUtilsPage.xaml",
+      "src/settings-ui/Settings.UI/Strings/en-us/Resources.resw",
+      "src/settings-ui/Settings.UI/ViewModels/MouseUtilsViewModel.cs"
+    ],
+    "baseline_fix": "The circles are created with a fixed radius and only fade in opacity. Add a scale animation to create a ripple effect by animating the circle's Scale property from 0 to 1 or from 1 to a larger value during the fade animation, making the highlight grow outward like a ripple.",
+    "candidate_fix": "The hook immediately spawns a drawing point on button-down and triggers fading on button-up, causing a double ripple for quick clicks. The fix adds hold-detection timers (HOLD_RIPPLE_THRESHOLD_MS = 180ms) that arm on button-down and spawn the persistent ripple only after the threshold; quick clicks that release before the threshold emit exactly one self-contained ripple instead."
+  },
+  {
+    "module": "mousewithoutborders",
+    "case_id": "m-mousewithoutborders",
+    "fix_pr": "48742",
+    "gt_files": [
+      "src/modules/MouseWithoutBorders/App/Core/Encryption.cs",
+      "src/modules/MouseWithoutBorders/MouseWithoutBorders.UnitTests/Core/EncryptionTests.cs"
+    ],
+    "baseline_fix": "Replace the static InitialIV constant with per-connection random salt and IV generation. Generate a unique random IV for each connection using symAl.GenerateIV(), exchange it during connection handshake, and derive per-connection keys using connection-specific salts instead of the static InitialIV string.",
+    "candidate_fix": "ed salt)\nFIX: Both encryption/decryption functions use a fixed IV from InitialIV constant and a cached key derived with the same fixed salt, violating cryptographic best practices. The fix generates a random 16-byte salt and 16-byte IV per connection, sends them as a 32-byte cleartext header via ExchangeEncryptionHeader, derives the key fresh with PBKDF2 using the random salt, and removes the cached key dictionary."
+  },
+  {
+    "module": "newplus",
+    "case_id": "m-newplus",
+    "fix_pr": "45439",
+    "gt_files": [
+      "src/modules/NewPlus/NewShellExtensionContextMenu/helpers_filesystem.h",
+      "src/modules/NewPlus/NewShellExtensionContextMenu/helpers_variables.h",
+      "src/modules/NewPlus/NewShellExtensionContextMenu/template_folder.cpp",
+      "src/modules/NewPlus/NewShellExtensionContextMenu/template_item.cpp"
+    ],
+    "baseline_fix": "When a filename contains only numbers (e.g., \"123\"), find_first_not_of() returns npos, which equals the string size, causing erase(0, size) to remove the entire filename. Fix by checking if find_first_not_of() returns npos before erasing, and if so, leave the filename unchanged or handle numeric-only filenames specially.",
+    "candidate_fix": "Add a guard to prevent stripping numeric-only filenames that would result in empty strings. The current implementation strips all leading digits and then all leading spaces/dots, but fails when the entire filename is just numbers (e.g., \"001231\" or \"001231.txt\"). Add logic to check if stripping would leave an empty string or would remove the extension from a file whose stem is only digits, and preserve the original name in those cases. Also ensure ALL consecutive spaces/dots are stripped after the digit run, not just one."
+  },
+  {
+    "module": "peek",
+    "case_id": "m-peek",
+    "fix_pr": "44995",
+    "gt_files": [
+      "src/modules/peek/Peek.UI/PeekXAML/MainWindow.xaml.cs"
+    ],
+    "baseline_fix": "The CaretVisible method checks if a focused window's class name contains \"Edit\" or \"Input\" to suppress Peek activation during typing. However, it doesn't catch in-place file rename scenarios in Explorer. The fix needs to detect rename-specific window classes or states to prevent Space key from triggering Peek during file rename operations.",
+    "candidate_fix": "When CurrentItem is null (typing in rename/search), the error handling code shows an error window and calls this.Show() and BringToForeground, which steals focus during file rename operations. The fix removes the error window display and restores the silent early return to avoid interfering with user input."
+  },
+  {
+    "module": "poweraccent",
+    "case_id": "m-poweraccent",
+    "fix_pr": "46604",
+    "gt_files": [
+      "Directory.Packages.props",
+      "NOTICE.md",
+      "src/modules/poweraccent/PowerAccent.UI/App.xaml",
+      "src/modules/poweraccent/PowerAccent.UI/PowerAccent.UI.csproj",
+      "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+      "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs"
+    ],
+    "baseline_fix": "The PowerAccent.UI project references the WPF-UI package (version 3.0.5 in Directory.Packages.props). To remove this dependency, remove the PackageReference from the .csproj file, remove XAML namespace declarations and WPF-UI controls from .xaml files, and replace with native WPF equivalents or custom implementations.",
+    "candidate_fix": "The bug involves removing wpfui dependencies from PowerAccent. In App.xaml, remove the `xmlns:ui=\"http://schemas.lepo.co/wpfui/2022/xaml\"` namespace declaration and replace the `<ui:ThemesDictionary>` and `<ui:ControlsDictionary>` merged dictionaries with native WinUI 3 equivalents. In Selector.xaml, change `<ui:FluentWindow>` to a standard WPF `<Window>` and remove wpfui-specific properties like `WindowBackdropType`."
+  },
+  {
+    "module": "powerdisplay",
+    "case_id": "m-powerdisplay",
+    "fix_pr": "48173",
+    "gt_files": [
+      ".github/actions/spell-check/expect.txt",
+      "src/modules/powerdisplay/PowerDisplay.Lib.UnitTests/CrashDetectionScopeTests.cs",
+      "src/modules/powerdisplay/PowerDisplay.Lib/Services/CrashDetectionScope.cs",
+      "src/modules/powerdisplay/PowerDisplay.Lib/Services/IProcessExitHook.cs"
+    ],
+    "baseline_fix": "The crash detection mechanism treats any orphan discovery.lock file as evidence of a crash. On normal/cooperative shutdown, the lock should be removed, but if it isn't (e.g., due to timing or rapid shutdown), the next startup incorrectly triggers auto-disable. The fix needs to distinguish between actual crashes and clean shutdowns, possibly by writing a shutdown marker before removing the lock or checking process exit status.",
+    "candidate_fix": "The crash detection system writes a `discovery.lock` file during risky DDC/CI operations and deletes it on normal completion. However, it lacks a safety-net for cooperative shutdown via `Environment.Exit(0)`. The fix requires subscribing to `AppDomain.CurrentDomain.ProcessExit` during `Begin()` and adding a handler that deletes the lock file, ensuring that a graceful shutdown doesn't leave an orphan lock that would trigger false-positive auto-disable on next startup."
+  },
+  {
+    "module": "powerrename",
+    "case_id": "m-powerrename",
+    "fix_pr": "43972",
+    "gt_files": [
+      ".github/actions/spell-check/allow/code.txt",
+      "src/modules/powerrename/lib/PowerRenameRegEx.cpp",
+      "src/modules/powerrename/unittests/CommonRegExTests.h"
+    ],
+    "baseline_fix": "The iswspace() function used for trimming whitespace in GetTrimmedFileName (lines 75, 79) does not recognize non-breaking spaces (U+00A0) as whitespace in all locales. Similarly, word boundary detection using iswspace() throughout GetTransformedFileName fails on non-breaking spaces and other Unicode whitespace characters. The fix should explicitly check for U+00A0 and other Unicode whitespace characters or use a more comprehensive Unicode-aware whitespace detection.",
+    "candidate_fix": "The Replace function uses source filenames directly without Unicode normalization (NFC) or non-breaking space (NBSP) sanitization. The fix requires implementing a `SanitizeAndNormalize` function that applies NFC normalization (via Win32 `NormalizeString(NormalizationC, ...)`) to both the source filename and the search/replace terms before comparison. This ensures that NFD-composed filenames (e.g., from macOS) and filenames containing non-breaking spaces match correctly."
+  },
+  {
+    "module": "previewpane",
+    "case_id": "m-previewpane",
+    "fix_pr": "47391",
+    "gt_files": [
+      "src/modules/previewpane/MarkdownPreviewHandler/MarkdownPreviewHandlerControl.cs",
+      "src/modules/previewpane/UnitTests-MarkdownPreviewHandler/MarkdownPreviewHandlerTest.cs"
+    ],
+    "baseline_fix": "File.ReadAllText(filePath) at line 119 auto-detects encoding by reading the file's BOM or defaulting to UTF-8. For files >2MB in bytes but <1.5M characters (multi-byte UTF-8 sequences), the method may fail or allocate excessive memory trying to decode the entire file. The fix should either check file size before reading, use streaming for large files, or explicitly specify encoding with a size limit to prevent crashes on oversized UTF-8 files.",
+    "candidate_fix": "The bug is in line 186 where the check `if (markdownHTML.Length > 1_500_000)` uses string character length (UTF-16 code units) instead of UTF-8 byte count. WebView2's `NavigateToString` limit is ~1.5 MB measured in UTF-8 bytes. Multi-byte Unicode characters (e.g., CJK) cause the byte count to exceed the limit while the character count stays under. The fix changes the check to `if (System.Text.Encoding.UTF8.GetByteCount(markdownHTML) > 1_500_000)`."
+  },
+  {
+    "module": "registrypreview",
+    "case_id": "m-registrypreview",
+    "fix_pr": "31552",
+    "gt_files": [
+      "src/modules/registrypreview/RegistryPreviewUI/MainWindow.Utilities.cs"
+    ],
+    "baseline_fix": "The DWORD validation accepts any hex string parseable as uint without checking length. DWORD values in .reg files must be exactly 8 hex characters. Add validation to check `value.Length == 8` before parsing to reject malformed DWORD values like \"1\" or \"fffffffff\".",
+    "candidate_fix": "The validation function only checks for long-form HKEY root names (e.g., HKEY_LOCAL_MACHINE) but does not accept the standard abbreviations (HKLM, HKCU, HKCR, HKU, HKCC) that reg.exe and regedit support. The function needs to add checks for abbreviated forms in both bare ([HKLM]) and sub-path ([HKLM\\...]) formats to properly validate all valid registry keys."
+  },
+  {
+    "module": "screenruler",
+    "case_id": "m-screenruler",
+    "fix_pr": "41556",
+    "gt_files": [
+      "src/modules/MeasureTool/MeasureToolCore/ToolState.h"
+    ],
+    "baseline_fix": "The constructor casts `resource.pData` directly to `const uint32_t*` without ensuring proper alignment. On architectures with strict alignment requirements (ARM64), accessing unaligned uint32_t pointers causes crashes. Add alignment checks or ensure pData is properly aligned before the cast.",
+    "candidate_fix": "The cursorPosSystemSpace field is written via InterlockedExchange64 which requires 8-byte alignment, but POINT structures are typically 4-byte aligned by default. On some CPUs, accessing under-aligned memory with 64-bit interlocked operations causes undefined behavior and crashes. The fix is to add alignas(8) to the cursorPosSystemSpace field declaration in CommonState."
+  },
+  {
+    "module": "shortcutguide",
+    "case_id": "m-shortcutguide",
+    "fix_pr": "48481",
+    "gt_files": [
+      "src/modules/ShortcutGuide/ShortcutGuide.Ui/Helpers/PinnedShortcutsHelper.cs",
+      "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/App.xaml.cs",
+      "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/MainWindow.xaml.cs",
+      "src/modules/ShortcutGuide/ShortcutGuide.Ui/ShortcutGuideXAML/TaskbarWindow.xaml.cs"
+    ],
+    "baseline_fix": "The event subscription pattern allows race conditions during rapid navigation. The OnPinnedShortcutsChanged callback can fire when the page is in an inconsistent state (after OnNavigatedFrom but before full disposal). Add null checks in the callback or ensure the event handler only processes events when the page state is valid (_shortcutFile != null).",
+    "candidate_fix": "The code has a reentrant activation chain where `App.TaskBarWindow.Activate()` triggers `Window_Activated \u2192 BringToFront \u2192 TaskbarWindow.Activated` that momentarily leaves `App.TaskBarWindow.AppWindow` null. When `SetWindowPosition()` tries to access it (line 250) without null checking, it throws. The exception escapes and closes the overlay. Fix requires: (1) null-guard `App.TaskBarWindow?.AppWindow` in SetWindowPosition before dereferencing, and (2) wrap WindowSelector_SelectionChanged and SetWindowPosition in try/catch that logs instead of crashing."
+  },
+  {
+    "module": "workspaces",
+    "case_id": "m-workspaces",
+    "fix_pr": "45183",
+    "gt_files": [
+      ".github/actions/spell-check/expect.txt",
+      "src/modules/Workspaces/WorkspacesEditor/OverlayWindow.xaml.cs",
+      "src/modules/Workspaces/WorkspacesEditor/Utils/NativeMethods.cs",
+      "src/modules/Workspaces/WorkspacesEditor/ViewModels/MainViewModel.cs"
+    ],
+    "baseline_fix": "EncoderParameters object is created but never disposed, causing a resource leak. EncoderParameters implements IDisposable and must be wrapped in a using statement to ensure proper cleanup when saving workspace snapshot bitmaps. This prevents overlay drawing issues due to resource exhaustion.",
+    "candidate_fix": "The overlay window positioning directly assigns DPI-unaware coordinates from GetDpiUnawareScreens() to WPF window properties (Top/Left at lines 498-499). Since the Editor is PerMonitorV2 DPI-aware, WPF double-scales these coordinates causing the overlay to draw in the wrong position. The fix requires using SetWindowPos wrapped in SetThreadDpiAwarenessContext (like MonitorHelper does) to position windows with DPI-unaware coordinates, instead of assigning to WPF properties."
+  },
+  {
+    "module": "zoomit",
+    "case_id": "m-zoomit",
+    "fix_pr": "47388",
+    "gt_files": [
+      "src/modules/ZoomIt/ZoomIt/Zoomit.cpp",
+      "src/settings-ui/Settings.UI/ViewModels/ZoomItViewModel.cs"
+    ],
+    "baseline_fix": "When registering RECORD_WINDOW_HOTKEY, the code uses XOR (^) to toggle MOD_ALT: `(g_RecordToggleMod ^ MOD_ALT)`. If Alt is the only modifier (g_RecordToggleMod = MOD_ALT), XOR produces 0, removing the modifier entirely. The fix is to use OR (|) instead of XOR, or check if modifiers exist before XORing, so Alt is properly added rather than toggled off.",
+    "candidate_fix": "The RECORD_WINDOW_HOTKEY is derived via XOR: `g_RecordToggleMod ^ MOD_ALT`. When the base modifier is exactly Alt-only (MOD_ALT), this XOR produces 0, registering a modifier-less hotkey that captures every bare keypress. The fix is to only register the window hotkey when the computed modifier is non-zero: `if ((g_RecordToggleMod ^ MOD_ALT) != 0)` before calling RegisterHotKey. This guard must be applied at all four registration sites."
+  },
+  {
+    "module": "textextractor",
+    "case_id": "m-textextractor",
+    "fix_pr": "44906",
+    "gt_files": [
+      "src/modules/PowerOCR/PowerOCR/Helpers/ImageMethods.cs"
+    ],
+    "baseline_fix": "PadImage sometimes returns the input bitmap unchanged, sometimes creates a new padded bitmap. When called as `bmp = PadImage(bmp)`, the original bitmap is leaked if a new one is created. Refactor to use an out parameter returning bool to indicate if a new bitmap was created, allowing the caller to dispose the original bitmap only when necessary.",
+    "candidate_fix": "PadImage currently returns either the original or a new padded bitmap, causing callers to leak the original when reassigning without disposal. Refactor to a TryPad pattern with bool return and out parameter with [NotNullWhen(true)], returning false when already large enough (no allocation) and true when padding was needed, allowing callers to dispose the original only when a new bitmap was created."
+  }
+]

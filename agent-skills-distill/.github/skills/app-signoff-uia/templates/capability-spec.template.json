@@ -1,0 +1,68 @@
+{
+  "name": "Windows Calculator",
+  "target": { "window": "REPLACE_WITH_HWND_FROM_list-windows", "app": "CalculatorApp" },
+  "_comment": "Generic P0/P1/P2 sign-off spec. Replace target + selectors with values discovered via 'winapp ui inspect'. Selectors here are the real automationIds of the Windows Calculator. See references/capability-spec.md for the full schema.",
+  "checks": [
+    {
+      "id": "add-1-2-equals-3",
+      "priority": "P0",
+      "description": "Addition: 1 + 2 = 3",
+      "steps": [
+        { "verb": "invoke", "selector": "clearButton" },
+        { "verb": "invoke", "selector": "num1Button" },
+        { "verb": "invoke", "selector": "plusButton" },
+        { "verb": "invoke", "selector": "num2Button" },
+        { "verb": "invoke", "selector": "equalButton" },
+        { "verb": "get-value", "selector": "CalculatorResults", "expect": { "contains": "Display is 3" } }
+      ]
+    },
+    {
+      "id": "multiply-3-4-equals-12",
+      "priority": "P0",
+      "description": "Multiplication: 3 x 4 = 12",
+      "steps": [
+        { "verb": "invoke", "selector": "clearButton" },
+        { "verb": "invoke", "selector": "num3Button" },
+        { "verb": "invoke", "selector": "multiplyButton" },
+        { "verb": "invoke", "selector": "num4Button" },
+        { "verb": "invoke", "selector": "equalButton" },
+        { "verb": "get-value", "selector": "CalculatorResults", "expect": { "contains": "12" } }
+      ]
+    },
+    {
+      "id": "clear-resets-to-0",
+      "priority": "P1",
+      "description": "Clear (C) resets the display to 0",
+      "steps": [
+        { "verb": "invoke", "selector": "num5Button" },
+        { "verb": "invoke", "selector": "num5Button" },
+        { "verb": "invoke", "selector": "clearButton" },
+        { "verb": "get-value", "selector": "CalculatorResults", "expect": { "contains": "Display is 0" } }
+      ]
+    },
+    {
+      "id": "square-root-9-equals-3",
+      "priority": "P2",
+      "description": "Square root of 9 = 3",
+      "steps": [
+        { "verb": "invoke", "selector": "clearButton" },
+        { "verb": "invoke", "selector": "num9Button" },
+        { "verb": "invoke", "selector": "squareRootButton" },
+        { "verb": "get-value", "selector": "CalculatorResults", "expect": { "contains": "Display is 3" } }
+      ]
+    },
+    {
+      "id": "subtract-9-4-equals-5",
+      "priority": "P2",
+      "description": "Subtraction: 9 - 4 = 5",
+      "steps": [
+        { "verb": "invoke", "selector": "clearButton" },
+        { "verb": "invoke", "selector": "num9Button" },
+        { "verb": "invoke", "selector": "minusButton" },
+        { "verb": "invoke", "selector": "num4Button" },
+        { "verb": "invoke", "selector": "equalButton" },
+        { "verb": "get-value", "selector": "CalculatorResults", "expect": { "contains": "Display is 5" } }
+      ]
+    }
+  ]
+}

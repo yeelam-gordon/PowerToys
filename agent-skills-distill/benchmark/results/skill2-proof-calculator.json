@@ -1,0 +1,313 @@
+{
+  "generated": "2026-07-04T06:25:42.958968+00:00",
+  "app": "Windows Calculator",
+  "target": {
+    "window": "4065634",
+    "app": "CalculatorApp"
+  },
+  "gate": "PASS",
+  "gate_rule": "all P0 checks must PASS",
+  "summary": {
+    "total": 5,
+    "passed": 5,
+    "failed": 0
+  },
+  "by_priority": {
+    "P0": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0
+    },
+    "P1": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    },
+    "P2": {
+      "total": 2,
+      "passed": 2,
+      "failed": 0
+    }
+  },
+  "checks": [
+    {
+      "id": "add-1-2-equals-3",
+      "priority": "P0",
+      "description": "Addition: 1 + 2 = 3",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "clearButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-clearbutton-feac"
+        },
+        {
+          "index": 1,
+          "verb": "invoke",
+          "selector": "num1Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num1button-fec5"
+        },
+        {
+          "index": 2,
+          "verb": "invoke",
+          "selector": "plusButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-plusbutton-febe"
+        },
+        {
+          "index": 3,
+          "verb": "invoke",
+          "selector": "num2Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num2button-fec7"
+        },
+        {
+          "index": 4,
+          "verb": "invoke",
+          "selector": "equalButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-equalbutton-fec0"
+        },
+        {
+          "index": 5,
+          "verb": "get-value",
+          "selector": "CalculatorResults",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='Display is 3' | contains 'Display is 3': yes"
+        }
+      ]
+    },
+    {
+      "id": "multiply-3-4-equals-12",
+      "priority": "P0",
+      "description": "Multiplication: 3 x 4 = 12",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "clearButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-clearbutton-feac"
+        },
+        {
+          "index": 1,
+          "verb": "invoke",
+          "selector": "num3Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num3button-fec9"
+        },
+        {
+          "index": 2,
+          "verb": "invoke",
+          "selector": "multiplyButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-multiplybutton-feba"
+        },
+        {
+          "index": 3,
+          "verb": "invoke",
+          "selector": "num4Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num4button-fecb"
+        },
+        {
+          "index": 4,
+          "verb": "invoke",
+          "selector": "equalButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-equalbutton-fec0"
+        },
+        {
+          "index": 5,
+          "verb": "get-value",
+          "selector": "CalculatorResults",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='Display is 12' | contains '12': yes"
+        }
+      ]
+    },
+    {
+      "id": "clear-resets-to-0",
+      "priority": "P1",
+      "description": "Clear (C) resets the display to 0",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "num5Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num5button-fecd"
+        },
+        {
+          "index": 1,
+          "verb": "invoke",
+          "selector": "num5Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num5button-fecd"
+        },
+        {
+          "index": 2,
+          "verb": "invoke",
+          "selector": "clearButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-clearbutton-feac"
+        },
+        {
+          "index": 3,
+          "verb": "get-value",
+          "selector": "CalculatorResults",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='Display is 0' | contains 'Display is 0': yes"
+        }
+      ]
+    },
+    {
+      "id": "square-root-9-equals-3",
+      "priority": "P2",
+      "description": "Square root of 9 = 3",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "clearButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-clearbutton-feac"
+        },
+        {
+          "index": 1,
+          "verb": "invoke",
+          "selector": "num9Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num9button-fed5"
+        },
+        {
+          "index": 2,
+          "verb": "invoke",
+          "selector": "squareRootButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-squarerootbutto-feb5"
+        },
+        {
+          "index": 3,
+          "verb": "get-value",
+          "selector": "CalculatorResults",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='Display is 3' | contains 'Display is 3': yes"
+        }
+      ]
+    },
+    {
+      "id": "subtract-9-4-equals-5",
+      "priority": "P2",
+      "description": "Subtraction: 9 - 4 = 5",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "invoke",
+          "selector": "clearButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-clearbutton-feac"
+        },
+        {
+          "index": 1,
+          "verb": "invoke",
+          "selector": "num9Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num9button-fed5"
+        },
+        {
+          "index": 2,
+          "verb": "invoke",
+          "selector": "minusButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-minusbutton-febc"
+        },
+        {
+          "index": 3,
+          "verb": "invoke",
+          "selector": "num4Button",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-num4button-fecb"
+        },
+        {
+          "index": 4,
+          "verb": "invoke",
+          "selector": "equalButton",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "pattern=InvokePattern; elementId=btn-equalbutton-fec0"
+        },
+        {
+          "index": 5,
+          "verb": "get-value",
+          "selector": "CalculatorResults",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='Display is 5' | contains 'Display is 5': yes"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+[
+  {
+    "id": 2698768217,
+    "author": "Copilot",
+    "path": "src/modules/AdvancedPaste/AdvancedPasteModuleInterface/dllmain.cpp",
+    "line": 357,
+    "body": "Potential exception if the key exists but doesn't contain a valid boolean object. The GetNamedBoolean call with a default parameter only handles missing VALUE keys within the object, not malformed JSON structure. Consider wrapping in a try-catch or validating the object type before calling GetNamedBoolean.",
+    "url": "https://github.com/microsoft/PowerToys/pull/44767#discussion_r2698768217"
+  },
+  {
+    "id": 2698768245,
+    "author": "Copilot",
+    "path": "src/modules/AdvancedPaste/AdvancedPasteModuleInterface/dllmain.cpp",
+    "line": 934,
+    "body": "The copy operation is asynchronous (using SendMessageTimeout with 100ms timeout or SendInput), but there's no delay or verification that the clipboard has been updated before continuing to process_manager.start() on line 937. This could lead to race conditions where the custom action executes before the copy completes, especially with slow applications.\n```suggestion\n            {\n                // Auto-copy the current selection before executing the custom action.\n                // The copy operation may be asynchronous, so wait briefly for the clipboard\n                // to update to reduce the risk of race conditions.\n                const DWORD initialClipboardSequence = GetClipboardSequenceNumber();\n                send_copy_selection();\n\n                constexpr DWORD MAX_WAIT_MS = 500;\n                constexpr DWORD SLEEP_INTERVAL_MS = 50;\n                DWORD waitedMs = 0;\n\n                // If GetClipboardSequenceNumber is supported, wait until the clipboard\n                // sequence changes or until the timeout expires.\n                if (initialClipboardSequence != 0)\n                {\n                    for (;;)\n                    {\n                        const DWORD currentSequence = GetClipboardSequenceNumber();\n                        if (currentSequence == 0 || currentSequence != initialClipboardSequence || waitedMs >= MAX_WAIT_MS)\n                        {\n                            break;\n                        }\n\n                        Sleep",
+    "url": "https://github.com/microsoft/PowerToys/pull/44767#discussion_r2698768245"
+  },
+  {
+    "id": 2698768263,
+    "author": "Copilot",
+    "path": "src/modules/AdvancedPaste/AdvancedPasteModuleInterface/dllmain.cpp",
+    "line": 515,
+    "body": "The 100ms timeout is hardcoded. For applications that respond quickly to WM_COPY, this introduces unnecessary delay. Consider reducing the timeout (e.g., 50ms) or making it configurable, as the fallback to Ctrl+C simulation is available if this fails.",
+    "url": "https://github.com/microsoft/PowerToys/pull/44767#discussion_r2698768263"
+  }
+]

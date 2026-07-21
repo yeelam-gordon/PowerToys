@@ -1,0 +1,95 @@
+{
+  "AdvancedPaste": [
+    "src/modules/AdvancedPaste/"
+  ],
+  "alwaysontop": [
+    "src/modules/alwaysontop/"
+  ],
+  "awake": [
+    "src/modules/awake/"
+  ],
+  "cmdNotFound": [
+    "src/modules/cmdNotFound/"
+  ],
+  "cmdpal": [
+    "src/modules/cmdpal/"
+  ],
+  "colorPicker": [
+    "src/modules/colorPicker/"
+  ],
+  "CropAndLock": [
+    "src/modules/CropAndLock/"
+  ],
+  "EnvironmentVariables": [
+    "src/modules/EnvironmentVariables/"
+  ],
+  "fancyzones": [
+    "src/modules/fancyzones/"
+  ],
+  "FileLocksmith": [
+    "src/modules/FileLocksmith/"
+  ],
+  "GrabAndMove": [
+    "src/modules/GrabAndMove/"
+  ],
+  "Hosts": [
+    "src/modules/Hosts/"
+  ],
+  "imageresizer": [
+    "src/modules/imageresizer/"
+  ],
+  "interface": [
+    "src/modules/interface/"
+  ],
+  "keyboardmanager": [
+    "src/modules/keyboardmanager/"
+  ],
+  "launcher": [
+    "src/modules/launcher/"
+  ],
+  "LightSwitch": [
+    "src/modules/LightSwitch/"
+  ],
+  "MeasureTool": [
+    "src/modules/MeasureTool/"
+  ],
+  "MouseUtils": [
+    "src/modules/MouseUtils/"
+  ],
+  "MouseWithoutBorders": [
+    "src/modules/MouseWithoutBorders/"
+  ],
+  "NewPlus": [
+    "src/modules/NewPlus/"
+  ],
+  "peek": [
+    "src/modules/peek/"
+  ],
+  "poweraccent": [
+    "src/modules/poweraccent/"
+  ],
+  "powerdisplay": [
+    "src/modules/powerdisplay/"
+  ],
+  "PowerOCR": [
+    "src/modules/PowerOCR/"
+  ],
+  "powerrename": [
+    "src/modules/powerrename/"
+  ],
+  "previewpane": [
+    "src/modules/previewpane/"
+  ],
+  "registrypreview": [
+    "src/modules/registrypreview/"
+  ],
+  "ShortcutGuide": [
+    "src/modules/ShortcutGuide/"
+  ],
+  "Workspaces": [
+    "src/modules/Workspaces/"
+  ],
+  "ZoomIt": [
+    "src/modules/ZoomIt/"
+  ]
+}

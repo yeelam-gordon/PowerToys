@@ -1,0 +1,12 @@
+{
+  "case_id": "m-screenruler",
+  "module": "screenruler",
+  "fix_commit": "09a12170263aac916753e4d8e4e31eeddc3e35aa",
+  "parent_commit": "3f6b5e4a65219097f80638a90e7182cd590e2066",
+  "changed_files": [
+    "src/modules/MeasureTool/MeasureToolCore/ToolState.h"
+  ],
+  "sparse_dirs": [
+    "src/modules/MeasureTool"
+  ]
+}

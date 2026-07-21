@@ -1,0 +1,18 @@
+{
+  "real_changed_files": [
+    "src/modules/powerrename/lib/Helpers.cpp",
+    "src/modules/powerrename/unittests/HelpersTests.cpp"
+  ],
+  "real_fix_mechanism": "In GetDatedFileName (Helpers.cpp), the over-broad negative lookaheads (e.g. $DD(?![A-Z])) were relaxed so date tokens only exclude genuine longer/metadata tokens (extra letters, $DATE_TAKEN_/$DESCRIPTION/$DOCUMENT_ID, $HEIGHT). Longest-first ordering handles the rest; $DDT now expands to day+'T'. Tests updated in HelpersTests.cpp.",
+  "candidate_v2": {
+    "located_area": 1.0,
+    "fix_matches": 1.0,
+    "found_fix_ref": null
+  },
+  "baseline": {
+    "located_area": 0.0,
+    "fix_matches": 0.0,
+    "found_fix_ref": null
+  },
+  "notes": "Yes, the comprehensive feature->file map resolved the earlier anchoring failure. Candidate_v2 correctly names the actual culprit file (Helpers.cpp) and function (GetDatedFileName) plus the test file (HelpersTests.cpp), whereas the previous candidate and the baseline both anchored on the wrong file (PowerRenameRegEx.cpp / PowerRenameRegEx::Replace, HandleDateTimeStringVariable) and scored 0.0. Candidate_v2's mechanism is also correct: it pinpoints the over-broad $DD/$D negative lookahead added during metadata-token work (#41728/#44466) rejecting a trailing 'T' and prescribes tightening the lookahead to exclude only real longer/metadata tokens, exactly matching the real diff which replaced (?![A-Z]) with targeted metadata-prefix lookaheads and relied on longest-first ordering. It even anticipates the $DDT regression test. Baseline named the wrong file and framed the bug as greedy longer-token/length checks in a Boost regex format pass, missing the negative-lookahead root cause."
+}

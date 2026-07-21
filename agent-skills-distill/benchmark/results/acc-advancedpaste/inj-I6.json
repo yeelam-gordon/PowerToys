@@ -1,0 +1,101 @@
+﻿{
+    "basename":  "inj-I6",
+    "gate":  "PASS",
+    "passed":  9,
+    "total":  10,
+    "p0_failed":  0,
+    "verification":  "produced-clipboard (locked-workstation variant)",
+    "timestamp":  "2026-07-05T21:51:59",
+    "checks":  [
+                   {
+                       "id":  "CHK-01",
+                       "priority":  "P0",
+                       "description":  "Paste as plain text produces clipboard text with HTML stripped",
+                       "pass":  true,
+                       "expected":  "equals \"BoldHello\"",
+                       "actual":  "BoldHello",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk01-plaintext.png"
+                   },
+                   {
+                       "id":  "CHK-02",
+                       "priority":  "P0",
+                       "description":  "Paste as markdown converts HTML \u003ch1\u003e heading to \u0027# Title\u0027",
+                       "pass":  true,
+                       "expected":  "contains \u0027# Title\u0027",
+                       "actual":  "# Title\r\n\r\n**bold**",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk02-markdown-heading.png"
+                   },
+                   {
+                       "id":  "CHK-03",
+                       "priority":  "P0",
+                       "description":  "Paste as JSON converts CSV to JSON array (values preserved)",
+                       "pass":  true,
+                       "expected":  "array containing \"name\" and \"Alice\"",
+                       "actual":  "[\r\n  [\r\n    \"name\",\r\n    \"age\"\r\n  ],\r\n  [\r\n    \"Alice\",\r\n    \"30\"\r\n  ]\r\n]",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk03-json-csv.png"
+                   },
+                   {
+                       "id":  "CHK-04",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON converts XML to JSON object with element keys",
+                       "pass":  true,
+                       "expected":  "contains \u0027\\",
+                       "actual":  "note\\:\u0027 object and \u0027Tove\u0027",
+                       "screenshot":  "{\r\n  \"note\": {\r\n    \"to\": \"Tove\",\r\n    \"from\": \"Jani\"\r\n  }\r\n}"
+                   },
+                   {
+                       "id":  "CHK-05",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON returns already-valid JSON unchanged (passthrough)",
+                       "pass":  true,
+                       "expected":  "equals {\"k\":123}",
+                       "actual":  "{\"k\":123}",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk05-json-passthrough.png"
+                   },
+                   {
+                       "id":  "CHK-06",
+                       "priority":  "P1",
+                       "description":  "Paste as JSON falls back to JSON array-of-lines for non-tabular text (never-throws guard)",
+                       "pass":  false,
+                       "expected":  "array containing \"hello world\",\"second line\"",
+                       "actual":  "[]",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk06-json-fallback.png"
+                   },
+                   {
+                       "id":  "CHK-07",
+                       "priority":  "P1",
+                       "description":  "AI prompt box (InputTxtBox) is disabled when no AI provider is configured (AI gating)",
+                       "pass":  true,
+                       "expected":  "InputTxtBox IsEnabled=False",
+                       "actual":  "IsEnabled=False",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk07-ai-gating.png"
+                   },
+                   {
+                       "id":  "CHK-08",
+                       "priority":  "P2",
+                       "description":  "Window clipboard preview shows the current clipboard content",
+                       "pass":  true,
+                       "expected":  "preview shows \u0027PREVIEW_CHECK_555\u0027",
+                       "actual":  "found=True",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk08-clipboard-preview.png"
+                   },
+                   {
+                       "id":  "CHK-09",
+                       "priority":  "P2",
+                       "description":  "Core paste-format list shows plain text, markdown and JSON actions",
+                       "pass":  true,
+                       "expected":  "all three core ListItems present",
+                       "actual":  "plain=True md=True json=True",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk09-format-list.png"
+                   },
+                   {
+                       "id":  "CHK-10",
+                       "priority":  "P2",
+                       "description":  "Paste as markdown converts \u003cb\u003ebold\u003c/b\u003e to \u0027**bold**\u0027 emphasis",
+                       "pass":  true,
+                       "expected":  "contains \u0027**bold**\u0027",
+                       "actual":  "# Title\r\n\r\n**bold**",
+                       "screenshot":  "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-advancedpaste\\screenshots\\inj-I6\\chk10-markdown-bold.png"
+                   }
+               ]
+}

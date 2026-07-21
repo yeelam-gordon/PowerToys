@@ -1,0 +1,12 @@
+{
+  "issue": 43971,
+  "module": "PowerRename",
+  "fix_commit": "48e95caf3",
+  "parent_commit": "d87dde132df50206d8ff90b1fb9168f79364c03f",
+  "changed_files": [
+    ".github/actions/spell-check/allow/code.txt",
+    "src/modules/powerrename/lib/PowerRenameRegEx.cpp",
+    "src/modules/powerrename/unittests/CommonRegExTests.h"
+  ],
+  "commit_subject": "[PowerRename] Fix Unicode characters and non-breaking spaces not being correctly normalized before matching (#43972)"
+}

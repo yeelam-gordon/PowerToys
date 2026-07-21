@@ -1,0 +1,218 @@
+{
+  "AlwaysOnTop": {
+    "paths": [
+      "src/modules/alwaysontop/"
+    ],
+    "labels": [
+      "Product-Always On Top"
+    ]
+  },
+  "Awake": {
+    "paths": [
+      "src/modules/awake/"
+    ],
+    "labels": [
+      "Product-Awake"
+    ]
+  },
+  "CmdNotFound": {
+    "paths": [
+      "src/modules/cmdNotFound/"
+    ],
+    "labels": [
+      "Product-CommandNotFound"
+    ]
+  },
+  "CmdPal": {
+    "paths": [
+      "src/modules/cmdpal/"
+    ],
+    "labels": [
+      "Product-Command Palette"
+    ]
+  },
+  "ColorPicker": {
+    "paths": [
+      "src/modules/colorPicker/"
+    ],
+    "labels": [
+      "Product-Color Picker"
+    ]
+  },
+  "CropAndLock": {
+    "paths": [
+      "src/modules/CropAndLock/"
+    ],
+    "labels": [
+      "Product-CropAndLock"
+    ]
+  },
+  "EnvironmentVariables": {
+    "paths": [
+      "src/modules/EnvironmentVariables/"
+    ],
+    "labels": [
+      "Product-Environment Variables"
+    ]
+  },
+  "FancyZones": {
+    "paths": [
+      "src/modules/fancyzones/"
+    ],
+    "labels": [
+      "Product-FancyZones"
+    ]
+  },
+  "FileLocksmith": {
+    "paths": [
+      "src/modules/FileLocksmith/"
+    ],
+    "labels": [
+      "Product-File Locksmith"
+    ]
+  },
+  "GrabAndMove": {
+    "paths": [
+      "src/modules/GrabAndMove/"
+    ],
+    "labels": [
+      "Product-Grab And Move"
+    ]
+  },
+  "Hosts": {
+    "paths": [
+      "src/modules/Hosts/"
+    ],
+    "labels": [
+      "Product-Hosts File Editor"
+    ]
+  },
+  "ImageResizer": {
+    "paths": [
+      "src/modules/imageresizer/"
+    ],
+    "labels": [
+      "Product-Image Resizer"
+    ]
+  },
+  "KeyboardManager": {
+    "paths": [
+      "src/modules/keyboardmanager/"
+    ],
+    "labels": [
+      "Product-Keyboard Manager"
+    ]
+  },
+  "PowerToysRun": {
+    "paths": [
+      "src/modules/launcher/"
+    ],
+    "labels": [
+      "Product-PowerToys Run"
+    ]
+  },
+  "LightSwitch": {
+    "paths": [
+      "src/modules/LightSwitch/"
+    ],
+    "labels": [
+      "Product-LightSwitch"
+    ]
+  },
+  "ScreenRuler": {
+    "paths": [
+      "src/modules/MeasureTool/"
+    ],
+    "labels": [
+      "Product-Screen Ruler"
+    ]
+  },
+  "MouseUtils": {
+    "paths": [
+      "src/modules/MouseUtils/"
+    ],
+    "labels": [
+      "Product-Mouse Utilities"
+    ]
+  },
+  "MouseWithoutBorders": {
+    "paths": [
+      "src/modules/MouseWithoutBorders/"
+    ],
+    "labels": [
+      "Product-Mouse Without Borders"
+    ]
+  },
+  "NewPlus": {
+    "paths": [
+      "src/modules/NewPlus/"
+    ],
+    "labels": [
+      "Product-New+"
+    ]
+  },
+  "Peek": {
+    "paths": [
+      "src/modules/peek/"
+    ],
+    "labels": [
+      "Product-Peek"
+    ]
+  },
+  "PowerDisplay": {
+    "paths": [
+      "src/modules/powerdisplay/"
+    ],
+    "labels": [
+      "Product-PowerDisplay"
+    ]
+  },
+  "TextExtractor": {
+    "paths": [
+      "src/modules/PowerOCR/"
+    ],
+    "labels": [
+      "Product-Text Extractor"
+    ]
+  },
+  "PreviewPane": {
+    "paths": [
+      "src/modules/previewpane/"
+    ],
+    "labels": [
+      "Product-File Explorer"
+    ]
+  },
+  "RegistryPreview": {
+    "paths": [
+      "src/modules/registrypreview/"
+    ],
+    "labels": [
+      "Product-Registry Preview"
+    ]
+  },
+  "ShortcutGuide": {
+    "paths": [
+      "src/modules/ShortcutGuide/"
+    ],
+    "labels": [
+      "Product-Shortcut Guide"
+    ]
+  },
+  "Workspaces": {
+    "paths": [
+      "src/modules/Workspaces/"
+    ],
+    "labels": [
+      "Product-Workspaces"
+    ]
+  },
+  "ZoomIt": {
+    "paths": [
+      "src/modules/ZoomIt/"
+    ],
+    "labels": [
+      "Product-ZoomIt"
+    ]
+  }
+}

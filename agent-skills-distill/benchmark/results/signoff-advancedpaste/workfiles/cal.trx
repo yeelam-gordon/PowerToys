@@ -1,0 +1,164 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="127f7a78-f181-4551-ac6f-27198532bb1b" name="yeelam@CPC-yeela-QP8LX 2026-07-05 08:06:14.056" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-07-05T08:06:12.4354037Z" queuing="2026-07-05T08:06:12.4354037Z" start="2026-07-05T08:06:12.4354037Z" finish="2026-07-05T08:06:14.0567558Z" />
+  <TestSettings name="default" id="4b5d534f-8b8a-416c-9efc-c9bf52094674">
+    <Deployment runDeploymentRoot="yeelam_CPC-yeela-QP8LX_2026-07-05_08_06_14.056" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="a3038964-76e6-49b7-b693-13358eb69068" testId="4c13c6d5-55bd-26ed-e1df-f3cf23a68024" testName="PlainText_StripsHtmlFormatting" computerName="CPC-yeela-QP8LX" duration="00:00:00.2360715" startTime="2026-07-05T08:06:12.9318322+00:00" endTime="2026-07-05T08:06:13.1908158+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="a3038964-76e6-49b7-b693-13358eb69068">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:13.1112614] [Trace] TransformHelpers.cs::ToPlainTextAsync::42
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="4d1ebfb4-2afb-4d05-9805-35e71f9e1aab" testId="30c924a6-7f9f-bbe8-4fbf-6a49a61342f2" testName="Markdown_ConvertsHtmlHeadingAndBold" computerName="CPC-yeela-QP8LX" duration="00:00:00.4961156" startTime="2026-07-05T08:06:13.1999614+00:00" endTime="2026-07-05T08:06:13.6968581+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="4d1ebfb4-2afb-4d05-9805-35e71f9e1aab">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:13.2022214] [Trace] TransformHelpers.cs::ToMarkdownAsync::48
+[16:06:13.2029951] [Trace] MarkdownHelper.cs::ToMarkdownAsync::20
+[16:06:13.4944222] [Trace] MarkdownHelper.cs::CleanHtml::31
+[16:06:13.5112246] [Trace] MarkdownHelper.cs::RemoveUnwantedElements::58
+[16:06:13.5136705] [Trace] MarkdownHelper.cs::RemoveInlineStyles::82
+[16:06:13.5148996] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5151350] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5151888] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5157966] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5158437] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5163554] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.5164022] [Trace] MarkdownHelper.cs::CleanUpWhitespace::93
+[16:06:13.6827989] [Trace] MarkdownHelper.cs::ConvertHtmlToMarkdown::112
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="d737bb39-b801-41ff-ae0d-2d1bb10def24" testId="4b1f5cd3-f5e5-c37a-5d32-8f881a866cf0" testName="Json_ConvertsCsv" computerName="CPC-yeela-QP8LX" duration="00:00:00.3107829" startTime="2026-07-05T08:06:13.6977764+00:00" endTime="2026-07-05T08:06:14.0088140+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="d737bb39-b801-41ff-ae0d-2d1bb10def24">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:13.7177654] [Trace] TransformHelpers.cs::ToJsonAsync::54
+[16:06:13.8499941] [Trace] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::52
+[16:06:13.9061954] [Error] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::93
+    Failed parsing input as xml
+System.Xml.XmlException (-2146232000): Data at the root level is invalid. Line 1, position 1.
+Stack trace: 
+   at System.Xml.XmlTextReaderImpl.Throw(Exception e)
+   at System.Xml.XmlTextReaderImpl.Throw(String res, String arg)
+   at System.Xml.XmlTextReaderImpl.ParseRootLevelWhitespace()
+   at System.Xml.XmlTextReaderImpl.ParseDocumentContent()
+   at System.Xml.XmlLoader.Load(XmlDocument doc, XmlReader reader, Boolean preserveWhitespace)
+   at System.Xml.XmlDocument.Load(XmlReader reader)
+   at System.Xml.XmlDocument.LoadXml(String xml)
+   at AdvancedPaste.Helpers.JsonHelper.ToJsonFromXmlOrCsvAsync(DataPackageView clipboardData) in C:\s\powertoys\src\modules\AdvancedPaste\AdvancedPaste\Helpers\JsonHelper.cs:line 87
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="98b06296-e8ce-4524-becd-9b776865243c" testId="1580523a-6d98-a3fe-93ac-099745095a21" testName="Json_ConvertsXml" computerName="CPC-yeela-QP8LX" duration="00:00:00.0122379" startTime="2026-07-05T08:06:14.0090892+00:00" endTime="2026-07-05T08:06:14.0215105+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="98b06296-e8ce-4524-becd-9b776865243c">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:14.0099089] [Trace] TransformHelpers.cs::ToJsonAsync::54
+[16:06:14.0099803] [Trace] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::52
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="a766d1f8-54d2-45fe-b783-465419a853b5" testId="89351edc-74cf-2fa5-151d-fc77e3c60f45" testName="Json_PassesThroughExistingJson" computerName="CPC-yeela-QP8LX" duration="00:00:00.0009534" startTime="2026-07-05T08:06:14.0216563+00:00" endTime="2026-07-05T08:06:14.0227482+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="a766d1f8-54d2-45fe-b783-465419a853b5">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:14.0223582] [Trace] TransformHelpers.cs::ToJsonAsync::54
+[16:06:14.0224086] [Trace] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::52
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="ad63ead7-40fe-4e39-a657-1037ac6a3959" testId="98dd3eee-a829-7553-9c8f-cd59119bb78f" testName="Json_NoTextReturnsEmpty" computerName="CPC-yeela-QP8LX" duration="00:00:00.0009508" startTime="2026-07-05T08:06:14.0228771+00:00" endTime="2026-07-05T08:06:14.0239638+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="ad63ead7-40fe-4e39-a657-1037ac6a3959">
+      <Output>
+        <StdOut>
+
+Debug Trace:
+[16:06:14.0235707] [Trace] TransformHelpers.cs::ToJsonAsync::54
+[16:06:14.0236168] [Trace] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::52
+[16:06:14.0237232] [Warning] JsonHelper.cs::ToJsonFromXmlOrCsvAsync::56
+    Clipboard does not contain text data
+</StdOut>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="3b2020ec-e9dc-49eb-af01-dc7c76adda41" testId="4a6f899f-1351-7e14-10f2-d666748c406a" testName="Metadata_CoreVsAiGating (PlainText,True,False)" computerName="CPC-yeela-QP8LX" duration="00:00:00.0025440" startTime="2026-07-05T08:06:14.0241055+00:00" endTime="2026-07-05T08:06:14.0308216+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="3b2020ec-e9dc-49eb-af01-dc7c76adda41" />
+    <UnitTestResult executionId="9e8e1ca1-f865-4112-ae12-bcf3389fff5c" testId="f7907f66-c317-71aa-e052-bde3638f8cee" testName="Metadata_CoreVsAiGating (Markdown,True,False)" computerName="CPC-yeela-QP8LX" duration="00:00:00.0013449" startTime="2026-07-05T08:06:14.0310193+00:00" endTime="2026-07-05T08:06:14.0326584+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="9e8e1ca1-f865-4112-ae12-bcf3389fff5c" />
+    <UnitTestResult executionId="bd4c8139-c633-4c49-a560-bce56ffdeaad" testId="549d85bf-deef-78a4-2f48-9a38b10acea1" testName="Metadata_CoreVsAiGating (Json,True,False)" computerName="CPC-yeela-QP8LX" duration="00:00:00.0012241" startTime="2026-07-05T08:06:14.0330782+00:00" endTime="2026-07-05T08:06:14.0346974+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="bd4c8139-c633-4c49-a560-bce56ffdeaad" />
+    <UnitTestResult executionId="227b2b8e-8002-4185-9c24-ea556afe0c86" testId="6d79acb6-41a5-191b-cec5-8400f54f05d5" testName="Metadata_CoreVsAiGating (KernelQuery,False,True)" computerName="CPC-yeela-QP8LX" duration="00:00:00.0001683" startTime="2026-07-05T08:06:14.0348453+00:00" endTime="2026-07-05T08:06:14.0352286+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="227b2b8e-8002-4185-9c24-ea556afe0c86" />
+    <UnitTestResult executionId="eb2767ef-31bd-4516-80ed-93e13d1ddb41" testId="6c7910fa-7ccd-ae66-300b-dc0c4ac59cf1" testName="Metadata_CoreVsAiGating (CustomTextTransformation,False,True)" computerName="CPC-yeela-QP8LX" duration="00:00:00.0001740" startTime="2026-07-05T08:06:14.0353839+00:00" endTime="2026-07-05T08:06:14.0370675+00:00" testType="13CDC9D9-DDB5-4fa4-A97D-D965CCFC6D4B" outcome="Passed" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" relativeResultsDirectory="eb2767ef-31bd-4516-80ed-93e13d1ddb41" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="PlainText_StripsHtmlFormatting" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="4c13c6d5-55bd-26ed-e1df-f3cf23a68024">
+      <Execution id="a3038964-76e6-49b7-b693-13358eb69068" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="PlainText_StripsHtmlFormatting" />
+    </UnitTest>
+    <UnitTest name="Markdown_ConvertsHtmlHeadingAndBold" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="30c924a6-7f9f-bbe8-4fbf-6a49a61342f2">
+      <Execution id="4d1ebfb4-2afb-4d05-9805-35e71f9e1aab" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Markdown_ConvertsHtmlHeadingAndBold" />
+    </UnitTest>
+    <UnitTest name="Json_ConvertsCsv" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="4b1f5cd3-f5e5-c37a-5d32-8f881a866cf0">
+      <Execution id="d737bb39-b801-41ff-ae0d-2d1bb10def24" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Json_ConvertsCsv" />
+    </UnitTest>
+    <UnitTest name="Json_ConvertsXml" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="1580523a-6d98-a3fe-93ac-099745095a21">
+      <Execution id="98b06296-e8ce-4524-becd-9b776865243c" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Json_ConvertsXml" />
+    </UnitTest>
+    <UnitTest name="Json_PassesThroughExistingJson" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="89351edc-74cf-2fa5-151d-fc77e3c60f45">
+      <Execution id="a766d1f8-54d2-45fe-b783-465419a853b5" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Json_PassesThroughExistingJson" />
+    </UnitTest>
+    <UnitTest name="Json_NoTextReturnsEmpty" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="98dd3eee-a829-7553-9c8f-cd59119bb78f">
+      <Execution id="ad63ead7-40fe-4e39-a657-1037ac6a3959" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Json_NoTextReturnsEmpty" />
+    </UnitTest>
+    <UnitTest name="Metadata_CoreVsAiGating (PlainText,True,False)" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="4a6f899f-1351-7e14-10f2-d666748c406a">
+      <Execution id="3b2020ec-e9dc-49eb-af01-dc7c76adda41" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Metadata_CoreVsAiGating (PlainText,True,False)" />
+    </UnitTest>
+    <UnitTest name="Metadata_CoreVsAiGating (Markdown,True,False)" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="f7907f66-c317-71aa-e052-bde3638f8cee">
+      <Execution id="9e8e1ca1-f865-4112-ae12-bcf3389fff5c" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Metadata_CoreVsAiGating (Markdown,True,False)" />
+    </UnitTest>
+    <UnitTest name="Metadata_CoreVsAiGating (Json,True,False)" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="549d85bf-deef-78a4-2f48-9a38b10acea1">
+      <Execution id="bd4c8139-c633-4c49-a560-bce56ffdeaad" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Metadata_CoreVsAiGating (Json,True,False)" />
+    </UnitTest>
+    <UnitTest name="Metadata_CoreVsAiGating (KernelQuery,False,True)" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="6d79acb6-41a5-191b-cec5-8400f54f05d5">
+      <Execution id="227b2b8e-8002-4185-9c24-ea556afe0c86" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Metadata_CoreVsAiGating (KernelQuery,False,True)" />
+    </UnitTest>
+    <UnitTest name="Metadata_CoreVsAiGating (CustomTextTransformation,False,True)" storage="c:\s\powertoys\x64\release\tests\advancedpaste.unittests\advancedpaste.unittests.dll" id="6c7910fa-7ccd-ae66-300b-dc0c4ac59cf1">
+      <Execution id="eb2767ef-31bd-4516-80ed-93e13d1ddb41" />
+      <TestMethod codeBase="C:\s\powertoys\x64\Release\tests\AdvancedPaste.UnitTests\AdvancedPaste.UnitTests.dll" adapterTypeName="executor://MSTestExtension/3.8.3" className="AdvancedPaste.UnitTests.SignoffTransformTests" name="Metadata_CoreVsAiGating (CustomTextTransformation,False,True)" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="4c13c6d5-55bd-26ed-e1df-f3cf23a68024" executionId="a3038964-76e6-49b7-b693-13358eb69068" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="30c924a6-7f9f-bbe8-4fbf-6a49a61342f2" executionId="4d1ebfb4-2afb-4d05-9805-35e71f9e1aab" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="4b1f5cd3-f5e5-c37a-5d32-8f881a866cf0" executionId="d737bb39-b801-41ff-ae0d-2d1bb10def24" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="1580523a-6d98-a3fe-93ac-099745095a21" executionId="98b06296-e8ce-4524-becd-9b776865243c" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="89351edc-74cf-2fa5-151d-fc77e3c60f45" executionId="a766d1f8-54d2-45fe-b783-465419a853b5" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="98dd3eee-a829-7553-9c8f-cd59119bb78f" executionId="ad63ead7-40fe-4e39-a657-1037ac6a3959" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="4a6f899f-1351-7e14-10f2-d666748c406a" executionId="3b2020ec-e9dc-49eb-af01-dc7c76adda41" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="f7907f66-c317-71aa-e052-bde3638f8cee" executionId="9e8e1ca1-f865-4112-ae12-bcf3389fff5c" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="549d85bf-deef-78a4-2f48-9a38b10acea1" executionId="bd4c8139-c633-4c49-a560-bce56ffdeaad" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="6d79acb6-41a5-191b-cec5-8400f54f05d5" executionId="227b2b8e-8002-4185-9c24-ea556afe0c86" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestEntry testId="6c7910fa-7ccd-ae66-300b-dc0c4ac59cf1" executionId="eb2767ef-31bd-4516-80ed-93e13d1ddb41" testListId="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8C84FA94-04C1-424b-9868-57A2D4851A1D" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="11" executed="11" passed="11" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+  </ResultSummary>
+</TestRun>

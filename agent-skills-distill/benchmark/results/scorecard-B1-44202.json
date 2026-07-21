@@ -1,0 +1,18 @@
+{
+  "real_changed_files": [
+    "src/modules/powerrename/lib/Helpers.cpp",
+    "src/modules/powerrename/unittests/HelpersTests.cpp"
+  ],
+  "real_fix_mechanism": "In GetDatedFileName (Helpers.cpp), the date-token regexes used an over-broad negative lookahead (?![A-Z]) that blocked $DD/$D/etc. when followed by a capital letter (e.g. $DDT). Fix removes those lookaheads, relying on longest-first ordering, and replaces them with targeted lookaheads only for real metadata collisions ($DATE_TAKEN_/$HEIGHT etc.).",
+  "candidate": {
+    "located_area": 0.0,
+    "fix_matches": 0.0,
+    "found_fix_ref": null
+  },
+  "baseline": {
+    "located_area": 0.5,
+    "fix_matches": 1.0,
+    "found_fix_ref": null
+  },
+  "notes": "Baseline was far more precise on the actual defect: it identified $DD failing when followed by an uppercase letter ($DDT) and prescribed making the match independent of the following character while fixing DDDD/DDD/DD/D ordering \u2014 exactly the real diff's mechanism (remove the (?![A-Z]) lookahead, keep longest-first ordering). It only missed the exact file/function (blamed PowerRenameRegEx.cpp::Replace/HandleDateTimeStringVariable instead of Helpers.cpp::GetDatedFileName), so right module/wrong file = 0.5. The distilled-knowledge candidate was anchored/misled: it built an elaborate, confident theory about $$-escaping and capture-group ($0-$9) preprocessing in a different file (PowerRenameRegEx.cpp::Replace/RegexReplaceEx), which is entirely wrong \u2014 wrong file and wrong mechanism. Here distilled knowledge hurt, driving overconfident anchoring away from the real regex-lookahead bug."
+}

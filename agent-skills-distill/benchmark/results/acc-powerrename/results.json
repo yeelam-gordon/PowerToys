@@ -1,0 +1,221 @@
+{
+  "injections": [
+    {
+      "id": "INJ1",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "res = sourceToUse.replace(pos, searchTerm.length(), replaceTerm);",
+      "new": "res = sourceToUse;",
+      "target_check": "p0-literal-replace-multi",
+      "bug": "Literal simple-replace turned into a no-op (result = unchanged source).",
+      "build_ok": true,
+      "build_secs": 85.6,
+      "exe_mtime": "Sun Jul  5 19:21:47 2026",
+      "gate": "FAIL",
+      "failed_checks": [
+        "p0-literal-replace-multi",
+        "p1-case-sensitive-toggle",
+        "p1-match-all-occurrences"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 2 (search Renamed1.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'Renamed1.txt': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ1\\p0-literal-replace-multi.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ2",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "const bool isCaseInsensitive = !(m_flags & CaseSensitive);",
+      "new": "const bool isCaseInsensitive = true;",
+      "target_check": "p1-case-sensitive-toggle",
+      "bug": "Case-sensitive flag ignored: matching is forced case-insensitive.",
+      "build_ok": true,
+      "build_secs": 85.3,
+      "exe_mtime": "Sun Jul  5 19:25:44 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p1-case-sensitive-toggle"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ2",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 5 (search (0)): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains '(0)': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ2\\p1-case-sensitive-toggle.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ3",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "if (!(m_flags & MatchAllOccurrences))",
+      "new": "if (false)",
+      "target_check": "p1-match-all-occurrences",
+      "bug": "Match-all guard removed: every occurrence is replaced even when the flag is OFF.",
+      "build_ok": true,
+      "build_secs": 85.3,
+      "exe_mtime": "Sun Jul  5 19:29:54 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p1-match-all-occurrences"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ3",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 2 (search festCase1.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'festCase1.txt': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ3\\p1-match-all-occurrences.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ4",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "replaceTerm = regex_replace(replaceTerm, otherGroupsRegex, L\"$1$0$4\");",
+      "new": "replaceTerm = regex_replace(replaceTerm, otherGroupsRegex, L\"$1$0\");",
+      "target_check": "p2-capture-groups",
+      "bug": "Capture-group index dropped ($4 removed): $1..$9 back-references stop working.",
+      "build_ok": true,
+      "build_secs": 85.5,
+      "exe_mtime": "Sun Jul  5 19:34:00 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p2-capture-groups"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ4",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 3 (search 1_testCase): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains '1_testCase': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ4\\p2-capture-groups.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ5",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "res = RegexReplaceDispatch[_useBoostLib](sourceToUse, m_searchTerm, replaceTerm, m_flags & MatchAllOccurrences, isCaseInsensitive);",
+      "new": "res = sourceToUse;",
+      "target_check": "p0-regex-replace",
+      "bug": "Regex replace turned into a no-op (result = unchanged source).",
+      "build_ok": true,
+      "build_secs": 85.2,
+      "exe_mtime": "Sun Jul  5 19:38:09 2026",
+      "gate": "FAIL",
+      "failed_checks": [
+        "p0-regex-replace",
+        "p1-enumerate-counter-padding",
+        "p2-capture-groups"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ5",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 4 (search matched.txt): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'matched.txt': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ5\\p0-regex-replace.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ6",
+      "file": "PowerRenameRegEx.cpp",
+      "old": "if (shouldIncrementCounter)\n            enumIndex++;",
+      "new": "if (shouldIncrementCounter)\n            enumIndex += 0;",
+      "target_check": "p1-enumerate-counter-padding",
+      "bug": "Enumeration counter never increments: every item gets the same counter value.",
+      "build_ok": true,
+      "build_secs": 88.7,
+      "exe_mtime": "Sun Jul  5 19:42:17 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p1-enumerate-counter-padding"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ6",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 4 (search img_01): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'img_01': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ6\\p1-enumerate-counter-padding.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ7",
+      "file": "Helpers.cpp",
+      "old": "if (flags & Uppercase)",
+      "new": "if (false && (flags & Uppercase))",
+      "target_check": "p2-uppercase-transform",
+      "bug": "Uppercase transform disabled: the whole-name uppercasing path is gated off.",
+      "build_ok": true,
+      "build_secs": 96.9,
+      "exe_mtime": "Sun Jul  5 19:46:09 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p2-uppercase-transform"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ7",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 1 (search TESTCASE1.TXT): text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"testCase1.txt\", \"automationId\": \"2\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1500, \"y\": 656, \"width\": 56, \"height\": 40, \"selector\": \"2\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"testCase1.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1608, \"y\": 660, \"width\": 135, \"height\": 32, \"selector\": \"lbl-testcase1txt-1db9\", \"isInvokable\": false}]}' | contains 'TESTCASE1.TXT': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ7\\p2-uppercase-transform.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ8",
+      "file": "Helpers.cpp",
+      "old": "else if (flags & Lowercase)",
+      "new": "else if (false && (flags & Lowercase))",
+      "target_check": "p2-lowercase-transform",
+      "bug": "Lowercase transform disabled.",
+      "build_ok": true,
+      "build_secs": 88.2,
+      "exe_mtime": "Sun Jul  5 19:49:22 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p2-lowercase-transform"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ8",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 1 (search specialcase.txt): text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"SpecialCase.txt\", \"automationId\": \"1\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1500, \"y\": 598, \"width\": 56, \"height\": 40, \"selector\": \"1\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"SpecialCase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1608, \"y\": 602, \"width\": 161, \"height\": 32, \"selector\": \"lbl-specialcasetxt-ca8b\", \"isInvokable\": false}]}' | contains 'specialcase.txt': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ8\\p2-lowercase-transform.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ9",
+      "file": "Helpers.cpp",
+      "old": "else if (flags & Titlecase)",
+      "new": "else if (false && (flags & Titlecase))",
+      "target_check": "p2-titlecase-transform",
+      "bug": "Title-case transform disabled.",
+      "build_ok": true,
+      "build_secs": 88.0,
+      "exe_mtime": "Sun Jul  5 19:52:35 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p2-titlecase-transform"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ9",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 1 (search Report_2020.log): text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"report_2020.log\", \"automationId\": \"0\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1500, \"y\": 540, \"width\": 56, \"height\": 40, \"selector\": \"0\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"report_2020.log\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1608, \"y\": 544, \"width\": 171, \"height\": 32, \"selector\": \"lbl-report2020log-084b\", \"isInvokable\": false}]}' | contains 'Report_2020.log': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ9\\p2-titlecase-transform.png",
+      "reverted_clean": true
+    },
+    {
+      "id": "INJ10",
+      "file": "Helpers.cpp",
+      "old": "else if (flags & Capitalized)",
+      "new": "else if (false && (flags & Capitalized))",
+      "target_check": "p2-capitalize-transform",
+      "bug": "Capitalize-each-word transform disabled.",
+      "build_ok": true,
+      "build_secs": 87.9,
+      "exe_mtime": "Sun Jul  5 19:55:48 2026",
+      "gate": "PASS",
+      "failed_checks": [
+        "p2-capitalize-transform"
+      ],
+      "target_caught": true,
+      "screenshots_dir": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ10",
+      "target_status": "FAIL",
+      "target_fail_reason": "step 1 (search Specialcase.txt): text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"CheckBox\", \"name\": \"SpecialCase.txt\", \"automationId\": \"1\", \"className\": \"CheckBox\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1500, \"y\": 598, \"width\": 56, \"height\": 40, \"selector\": \"1\", \"toggleState\": \"on\", \"isInvokable\": true}, {\"type\": \"Text\", \"name\": \"SpecialCase.txt\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1608, \"y\": 602, \"width\": 161, \"height\": 32, \"selector\": \"lbl-specialcasetxt-0851\", \"isInvokable\": false}]}' | contains 'Specialcase.txt': NO",
+      "target_screenshot": "C:\\s\\Demo\\SkillForDistill\\benchmark\\results\\acc-powerrename\\screenshots\\INJ10\\p2-capitalize-transform.png",
+      "reverted_clean": true
+    }
+  ],
+  "green_baseline": null,
+  "detection_rate": "10/10",
+  "final_git_status": "?? src/modules/AdvancedPaste/AdvancedPaste.UnitTests/SignoffTransformTests.cs"
+}

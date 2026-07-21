@@ -1,0 +1,15 @@
+{
+  "case_id": "m-newplus",
+  "module": "newplus",
+  "fix_commit": "7e3f9f0c3f5a74adc48dcd22873980ee3f029b3f",
+  "parent_commit": "9e4bf1e3e0ad9aeb98e41977dd00db29d5582168",
+  "changed_files": [
+    "src/modules/NewPlus/NewShellExtensionContextMenu/helpers_filesystem.h",
+    "src/modules/NewPlus/NewShellExtensionContextMenu/helpers_variables.h",
+    "src/modules/NewPlus/NewShellExtensionContextMenu/template_folder.cpp",
+    "src/modules/NewPlus/NewShellExtensionContextMenu/template_item.cpp"
+  ],
+  "sparse_dirs": [
+    "src/modules/NewPlus"
+  ]
+}

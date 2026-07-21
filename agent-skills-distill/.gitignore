@@ -1,0 +1,46 @@
+# OS files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor / IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# Build output
+bin/
+obj/
+build/
+dist/
+out/
+
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Logs & temp
+*.log
+*.tmp
+
+# Benchmark regenerable artifacts
+distilled_smoke/
+benchmark/fixtures/_smoke.json
+
+# keep distilled knowledge (.md) but not regenerable raw dumps
+distilled/**/raw/
+
+distilled_v2/**/raw/
+
+distilled_v3/**/raw/
+
+benchmark/results/b1/*/worktree
+
+distilled_all/**/raw/
+
+benchmark/results/b1/*/worktree/

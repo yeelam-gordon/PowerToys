@@ -1,0 +1,6 @@
+{
+  "repo": "microsoft/PowerToys",
+  "pr": 46593,
+  "ground_truth_count": 19,
+  "title": "[QuickAccent] Fix UI glitches, DPI-related issues, selection bugs, and add hardware shift key state fallback"
+}

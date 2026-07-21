@@ -1,0 +1,32 @@
+{
+  "skill": "powertoys-advancedpaste",
+  "grounding": {
+    "checked": 8,
+    "bad": []
+  },
+  "discoverability": {
+    "has_what_when_keywords": true,
+    "positive_match": true,
+    "negative_control_ok": true
+  },
+  "usefulness": {
+    "cases": [
+      {
+        "symptom": "Ctrl stuck after paste-as-plain-text",
+        "skill_points_to": "dllmain.cpp::try_to_paste_as_plain_text / send_ctrl_c_input with try_inject_modifier_key_up/_restore (L467/480, L670) guarded by GetAsyncKeyState + 0xFF key-up",
+        "correct": true
+      },
+      {
+        "symptom": "Clipboard sent to cloud LLM without moderation/GPO gate (security)",
+        "skill_points_to": "AdvancedAIKernelService.ShouldModerateAdvancedAI() L88 (ModerationEnabled && (OpenAI||AzureOpenAI)); PromptModerationService.ValidateAsync; getAllowedAdvancedPasteOnlineAIModelsValue GPO in dllmain.cpp",
+        "correct": true
+      }
+    ]
+  },
+  "consistency_issues": [
+    "Minor: Module Map annotates send_copy_selection as ~L517, but that line is poll_clipboard_sequence; send_copy_selection is at L614 (non-blocking line-number drift, function names correct)."
+  ],
+  "verdict": "PASS",
+  "open_issues": 0,
+  "confidence": "high"
+}

@@ -1,0 +1,160 @@
+{
+  "generated": "2026-07-04T14:49:41.165435+00:00",
+  "app": "PowerToys Environment Variables",
+  "target": {
+    "app": "PowerToys.EnvironmentVariables",
+    "window": "4656230"
+  },
+  "gate": "PASS",
+  "gate_rule": "all P0 checks must PASS",
+  "summary": {
+    "total": 7,
+    "passed": 6,
+    "failed": 1
+  },
+  "by_priority": {
+    "P0": {
+      "total": 3,
+      "passed": 3,
+      "failed": 0
+    },
+    "P1": {
+      "total": 3,
+      "passed": 2,
+      "failed": 1
+    },
+    "P2": {
+      "total": 1,
+      "passed": 1,
+      "failed": 0
+    }
+  },
+  "checks": [
+    {
+      "id": "user-var-name-shown",
+      "priority": "P0",
+      "description": "User variable B3_SIGNOFF appears in the Applied Variables list",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "B3_SIGNOFF",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"B3_SIGNOFF\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1645, \"y\": 1062, \"width\": 860, \"height\": 38, \"selector\": \"lbl-b3signoff-246c\", \"isInvokable\": false}]}' | contains 'B3_SIGNOFF': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    },
+    {
+      "id": "user-var-value-shown",
+      "priority": "P0",
+      "description": "User variable value HelloB3Value is displayed (value column populated)",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "HelloB3Value",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"HelloB3Value\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1645, \"y\": 1100, \"width\": 860, \"height\": 32, \"selector\": \"lbl-hellob3value-246d\", \"isInvokable\": false}]}' | contains 'HelloB3Value': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    },
+    {
+      "id": "system-var-os-shown",
+      "priority": "P0",
+      "description": "System variable OS value Windows_NT is displayed",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "Windows_NT",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"Windows_NT\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": true, \"x\": 0, \"y\": 0, \"width\": 0, \"height\": 0, \"selector\": \"lbl-windowsnt-24ac\", \"isInvokable\": false}]}' | contains 'Windows_NT': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    },
+    {
+      "id": "value-expansion-works",
+      "priority": "P1",
+      "description": "%NUMBER_OF_PROCESSORS% is expanded in the Applied view (B3_EXPAND -> 16_cores)",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "16_cores",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"16_cores\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1645, \"y\": 988, \"width\": 860, \"height\": 32, \"selector\": \"lbl-16cores-246a\", \"isInvokable\": false}]}' | contains '16_cores': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    },
+    {
+      "id": "path-user-merge-works",
+      "priority": "P1",
+      "description": "Merged PATH includes the USER PATH segment (ZZUSERPATHZZ appended to System PATH)",
+      "status": "FAIL",
+      "fail_reason": "step 0 (search ZZUSERPATHZZ): text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'ZZUSERPATHZZ': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "ZZUSERPATHZZ",
+          "value": null,
+          "ok": false,
+          "exit_code": 1,
+          "detail": "text='{\"matchCount\": 0, \"hasMore\": false, \"matches\": []}' | contains 'ZZUSERPATHZZ': NO; regex '\"matchCount\":\\\\s*[1-9]': NO MATCH"
+        }
+      ]
+    },
+    {
+      "id": "system-var-arch-shown",
+      "priority": "P1",
+      "description": "System variable PROCESSOR_ARCHITECTURE value AMD64 is displayed",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "AMD64",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 2, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"AMD64\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": true, \"x\": 0, \"y\": 0, \"width\": 0, \"height\": 0, \"selector\": \"lbl-amd64-24b8\", \"isInvokable\": false}, {\"type\": \"Text\", \"name\": \"AMD64 Family 25 Model 1 Stepping 1, AuthenticAMD\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": true, \"x\": 0, \"y\": 0, \"width\": 0, \"height\": 0, \"selector\": \"lbl-amd64family25mo-24bb\", \"isInvokable\": false}]}' | contains 'AMD64': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    },
+    {
+      "id": "extra-user-var-shown",
+      "priority": "P2",
+      "description": "Second user variable value AlphaUniqueVal is displayed",
+      "status": "PASS",
+      "fail_reason": "",
+      "steps": [
+        {
+          "index": 0,
+          "verb": "search",
+          "selector": "AlphaUniqueVal",
+          "value": null,
+          "ok": true,
+          "exit_code": 0,
+          "detail": "text='{\"matchCount\": 1, \"hasMore\": false, \"matches\": [{\"type\": \"Text\", \"name\": \"AlphaUniqueVal\", \"className\": \"TextBlock\", \"isEnabled\": true, \"isOffscreen\": false, \"x\": 1645, \"y\": 876, \"width\": 860, \"height\": 32, \"selector\": \"lbl-alphauniqueval-2467\", \"isInvokable\": false}]}' | contains 'AlphaUniqueVal': yes; regex '\"matchCount\":\\\\s*[1-9]': match"
+        }
+      ]
+    }
+  ]
+}

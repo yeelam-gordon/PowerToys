@@ -1,0 +1,19 @@
+{
+  "module": "AdvancedPaste",
+  "angle": "grounding",
+  "links_checked": 25,
+  "links_bad": [],
+  "symbols_checked": 26,
+  "symbols_missing": [
+    "AdvancedAIKernelService.IsModerationEnabled — no such member; actual method implementing the cited L95 logic (ModerationEnabled && (OpenAI||AzureOpenAI)) is named ShouldModerateAdvancedAI(). Logic/line correct, member name wrong."
+  ],
+  "map_issues": [
+    "Globalization lesson attributed to PR #44006 zadjii-msft comment (r2602143459) — comment is real and matches quoted text, but its path is src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.PowerToys/Package.appxmanifest, i.e. a CmdPal extension manifest, NOT an AdvancedPaste file. Generic lesson valid; file location grouped under AdvancedPaste is imprecise. (vanzue App.xaml.cs:147 comment in same PR is correctly an AdvancedPaste file.)"
+  ],
+  "fabrication_suspected": [
+    "Method name 'IsModerationEnabled' appears fabricated/renamed vs actual 'ShouldModerateAdvancedAI' (AdvancedAIKernelService.cs:88-95)."
+  ],
+  "verdict": "PASS",
+  "open_issues": 2,
+  "confidence": "high"
+}

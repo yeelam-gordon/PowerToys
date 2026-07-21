@@ -1,0 +1,154 @@
+{
+  "name": "PowerAccent (Quick Accent)",
+  "module": "microsoft-PowerToys / PowerAccent",
+  "note": "P0/P1/P2 capability spec grounded in distilled_v2/microsoft-PowerToys/PowerAccent.md (feature->file map + regression history). Executed against REAL freshly-built binaries. The end-user overlay-summon path (hold letter + activation key) is BLOCKED in this session by synthetic-input denial (see report.md section a); these checks exercise the same behavioral surface that FEEDS the overlay (candidate data, glyph correctness, native/managed enum lockstep, DPI/caret positioning) plus the module launch/enable/exit lifecycle.",
+  "checks": [
+    {
+      "id": "candidates-populated",
+      "priority": "P0",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["GetCharacters_AllLanguages_ReturnsNonEmptyForCommonKey", "GetCharacters_UnmappedKey_ReturnsEmpty", "GetCharacters_EmptyLanguages_ReturnsEmpty"],
+      "description": "Holding an accent-capable letter yields a non-empty candidate list; unmapped keys / no languages yield nothing (the data the overlay renders)."
+    },
+    {
+      "id": "glyph-fr-a-exact",
+      "priority": "P0",
+      "kind": "glyph",
+      "description": "French 'a' overlay shows exactly [a-grave, a-circumflex, a-acute, a-diaeresis, a-tilde, ae] in order."
+    },
+    {
+      "id": "glyph-fr-e-exact",
+      "priority": "P0",
+      "kind": "glyph",
+      "description": "French 'e' overlay shows exactly [e-acute, e-grave, e-circumflex, e-diaeresis, euro] in order."
+    },
+    {
+      "id": "glyph-fr-c-exact",
+      "priority": "P0",
+      "kind": "glyph",
+      "description": "French 'c' overlay shows exactly [c-cedilla]."
+    },
+    {
+      "id": "lifecycle-launch-enable",
+      "priority": "P0",
+      "kind": "lifecycle",
+      "op": "launch_enable",
+      "description": "Enabling Quick Accent launches PowerToys.PowerAccent.exe, which stays resident and materializes its settings (module initialized)."
+    },
+    {
+      "id": "candidates-dedup",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["GetCharacters_DeduplicatesCharactersAcrossLanguages"],
+      "description": "When multiple selected languages map the same glyph, the overlay shows it once (no duplicate candidates)."
+    },
+    {
+      "id": "candidates-ordering",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["GetCharacters_SortsOutput_AccordingToDisplayOrder", "GetCharacters_SingleLanguage_ReturnsOnlyThatLanguagesCharacters"],
+      "description": "Candidates are ordered by language DisplayOrder; a single selected language yields only that language's glyphs."
+    },
+    {
+      "id": "charset-all-expansion",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["GetCharacters_AllLanguagesCachedResult_IsConsistent", "All_ContainsEveryLanguageEnumValue_ExactlyOnce"],
+      "description": "'ALL' language setting expands to every language exactly once and returns a stable cached union."
+    },
+    {
+      "id": "enum-lockstep-native-managed",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["ManagedLetterKey_MatchesWinRtLetterKey_AllNamesPresent", "ManagedLetterKey_MatchesWinRtLetterKey_ValuesMatch"],
+      "description": "The managed LetterKey enum stays in lockstep (names + values) with the native WinRT keyboard-hook enum, so the right key triggers the right candidates."
+    },
+    {
+      "id": "language-metadata-integrity",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["All_EveryEntry_HasNonEmptyIdentifier", "All_EveryEntry_HasNonNullCharacters", "All_Characters_ContainsNoNullOrEmptyEntries", "All_EveryEntry_ExistsInDisplayOrder", "All_EveryLanguageGroupValue_IsUsedAtLeastOnce", "DisplayOrder_ContainsEveryLanguageEnumValue_ExactlyOnce", "GroupDisplayOrder_ContainsEveryLanguageGroupValue_ExactlyOnce", "LanguageLookup_ContainsEveryLanguageEnumValue"],
+      "description": "Every language entry is well-formed (non-empty id, non-null glyphs, present in display/group order maps) so the language picker and overlay never break."
+    },
+    {
+      "id": "language-alphabetical",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["DisplayOrder_SpokenLanguages_AreSortedAlphabeticallyByDisplayName"],
+      "description": "Spoken languages are listed alphabetically by display name in the settings language picker."
+    },
+    {
+      "id": "unknown-language-throws",
+      "priority": "P1",
+      "kind": "vstest",
+      "assembly": "common",
+      "tests": ["GetCharacters_UnknownLanguage_ThrowsKeyNotFoundException"],
+      "description": "An unknown/unsupported language identifier fails fast instead of returning silent-wrong candidates."
+    },
+    {
+      "id": "glyph-cur-e-euro",
+      "priority": "P1",
+      "kind": "glyph",
+      "description": "Currency-only language maps 'e' to exactly the euro sign."
+    },
+    {
+      "id": "glyph-all-a-contains-common",
+      "priority": "P1",
+      "kind": "glyph",
+      "description": "With all languages enabled, 'a' candidates include the common Latin accents (a-grave/acute/circumflex/diaeresis/tilde)."
+    },
+    {
+      "id": "lifecycle-single-instance",
+      "priority": "P1",
+      "kind": "lifecycle",
+      "op": "single_instance",
+      "description": "A second Quick Accent instance detects the 'QuickAccent' mutex and exits, leaving exactly one resident owner of the keyboard hook."
+    },
+    {
+      "id": "lifecycle-clean-exit",
+      "priority": "P1",
+      "kind": "lifecycle",
+      "op": "clean_exit",
+      "description": "Disabling Quick Accent signals POWERACCENT_EXIT_EVENT and the process shuts down cleanly (uninstalls the global hook)."
+    },
+    {
+      "id": "positioning-dpi1",
+      "priority": "P2",
+      "kind": "vstest",
+      "assembly": "core",
+      "tests": ["GetRawCoordinatesFromPosition_AtDpi1_PlacesEachAnchor"],
+      "description": "At 100% DPI the overlay anchors (TopLeft..BottomRight/Center) land at the expected screen coordinates."
+    },
+    {
+      "id": "positioning-dpi-scaling",
+      "priority": "P2",
+      "kind": "vstest",
+      "assembly": "core",
+      "tests": ["GetRawCoordinatesFromPosition_AtDpi150Percent_ScalesWindowFootprint"],
+      "description": "At 150% DPI the overlay footprint scales so it stays on-screen at high-DPI."
+    },
+    {
+      "id": "positioning-multimonitor",
+      "priority": "P2",
+      "kind": "vstest",
+      "assembly": "core",
+      "tests": ["GetRawCoordinatesFromPosition_OnOffsetMonitor_HonorsScreenOrigin", "GetRawCoordinatesFromPosition_OnNegativeOriginMonitor_OffsetsFromScreenEdge"],
+      "description": "The overlay honors the active monitor's origin (including offset and negative-origin monitors)."
+    },
+    {
+      "id": "caret-placement",
+      "priority": "P2",
+      "kind": "vstest",
+      "assembly": "core",
+      "tests": ["GetRawCoordinatesFromCaret_WithRoom_CentersAboveCaret", "GetRawCoordinatesFromCaret_NearLeftEdge_ClampsToScreenLeft", "GetRawCoordinatesFromCaret_NearRightEdge_ClampsToScreenRight", "GetRawCoordinatesFromCaret_NoRoomAbove_FlipsBelowCaret"],
+      "description": "In caret-follow mode the overlay centers above the caret, clamps at screen edges, and flips below when there's no room above."
+    }
+  ]
+}

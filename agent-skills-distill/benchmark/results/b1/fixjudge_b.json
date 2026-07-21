@@ -1,0 +1,11 @@
+{
+  "grabandmove": {"baseline": 1.0, "candidate": 0.0},
+  "imageresizer": {"baseline": 1.0, "candidate": 1.0},
+  "lightswitch": {"baseline": 0.5, "candidate": 1.0},
+  "mouseutils": {"baseline": 0.5, "candidate": 1.0},
+  "mousewithoutborders": {"baseline": 1.0, "candidate": 1.0},
+  "newplus": {"baseline": 1.0, "candidate": 1.0},
+  "peek": {"baseline": 0.0, "candidate": 0.0},
+  "poweraccent": {"baseline": 1.0, "candidate": 1.0},
+  "powerdisplay": {"baseline": 0.5, "candidate": 1.0}
+}

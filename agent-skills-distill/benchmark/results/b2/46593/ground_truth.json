@@ -1,0 +1,130 @@
+[
+  {
+    "id": 3004719221,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.Core/PowerAccent.cs",
+    "line": 252,
+    "body": "`shiftPressed = shiftPressed || WindowsFunctions.IsShiftState()` will treat *any* currently-held Shift as \u201cnavigate backwards\u201d, including Shift that was already down to type an uppercase letter. This appears to contradict the keyboard hook\u2019s existing behavior of only tracking Shift after the toolbar is visible (to avoid uppercase conflicts), and can cause Space navigation to unexpectedly go backwards when the user triggers Quick Accent while holding Shift for capitalization. Consider tracking the Shift state at toolbar-show time (and only applying the async-key fallback if Shift transitioned after the toolbar became visible), or moving the fallback into the hook where you can distinguish \u201cShift used for uppercase\u201d vs \u201cShift used for navigation\u201d reliably.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3004719221"
+  },
+  {
+    "id": 3004719226,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 99,
+    "body": "The hard-coded off-screen move to (-10000, -10000) may still land on-screen for large multi-monitor layouts (e.g., several 4K monitors positioned to the left/top can extend beyond -10000 in virtual screen coordinates), which would reintroduce the flicker this is trying to avoid. Consider computing a guaranteed-offscreen position using the virtual screen bounds (e.g., via GetSystemMetrics(SM_XVIRTUALSCREEN/SM_CXVIRTUALSCREEN/SM_YVIRTUALSCREEN/SM_CYVIRTUALSCREEN)) and placing the window just outside that rectangle.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3004719226"
+  },
+  {
+    "id": 3152237315,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+    "line": 55,
+    "body": "`ScrollViewer.HorizontalScrollBarVisibility=\"Auto\"` combined with `IsHitTestVisible=\"False\"` and `Focusable=\"False\"` can show a horizontal scrollbar that the user cannot interact with (mouse/keyboard). If the intent is programmatic scrolling only (via `ScrollIntoView`), consider hiding/disabled the scrollbar instead, or re-enabling hit-testing/focus so the scrollbar is functional.\n```suggestion\n            ScrollViewer.HorizontalScrollBarVisibility=\"Hidden\"\n```",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152237315"
+  },
+  {
+    "id": 3152237358,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 115,
+    "body": "When `_selectedIndex` is `-1` (the common initial state), `characterName.Text` is left unchanged, so the UI can display the XAML placeholder text or a stale description from the previous invocation. Consider explicitly clearing the text (or collapsing the description area) when there is no valid selection, e.g. on show when `_selectedIndex < 0` and/or in the `else` hide path.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152237358"
+  },
+  {
+    "id": 3152237389,
+    "author": "Copilot",
+    "path": "Directory.Packages.props",
+    "line": 71,
+    "body": "Bumping `Microsoft.Windows.CsWin32` in `Directory.Packages.props` affects every project in the repo that consumes CsWin32 and increases the blast radius of this QuickAccent UI fix. If this version change is not strictly required for the new APIs used here, consider reverting the global bump (or isolating it to a separate PR) to keep this change atomic and reduce risk of unrelated build/interop diffs.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152237389"
+  },
+  {
+    "id": 3152396690,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 87,
+    "body": "The off-screen pre-position uses a fixed 1000px offset from the virtual screen origin. If the selector window ends up wider/taller than 1000px, part of it can still appear on-screen (and flicker) before the final SetWindowPosition runs. Consider computing an off-screen point based on the full virtual screen bounds (e.g., subtract SM_CXVIRTUALSCREEN/SM_CYVIRTUALSCREEN or window size + margin) to guarantee the window is completely outside the virtual desktop.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152396690"
+  },
+  {
+    "id": 3152396729,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 61,
+    "body": "`PowerAccent_OnSelectionCharacter` no longer uses the `character` parameter (it now scrolls by index). Consider renaming the parameter to `_` (or similar) to make it clear it\u2019s intentionally unused and avoid confusion during future edits.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152396729"
+  },
+  {
+    "id": 3152932135,
+    "author": "MuyuanMS",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+    "line": 55,
+    "body": "Fixed in 557ebd16ca: Changed `HorizontalScrollBarVisibility` from `Auto` to `Hidden` since the ScrollViewer is non-interactive (`IsHitTestVisible=False`).",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152932135"
+  },
+  {
+    "id": 3152932156,
+    "author": "MuyuanMS",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 115,
+    "body": "Fixed in 557ebd16ca: Added `else { characterName.Text = string.Empty; }` branch to clear stale text when `_selectedIndex` is `-1`.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152932156"
+  },
+  {
+    "id": 3152932161,
+    "author": "MuyuanMS",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 87,
+    "body": "Not addressed: The 1000px offset is sufficient for the QuickAccent selector which is always significantly smaller than 1000px. The suggested change to compute from virtual screen bounds would add complexity for a non-realistic edge case.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152932161"
+  },
+  {
+    "id": 3152932164,
+    "author": "MuyuanMS",
+    "path": "Directory.Packages.props",
+    "line": 71,
+    "body": "Not addressed in this iteration: CsWin32 version bump (0.3.183 -> 0.3.206) has repo-wide blast radius. Escalated to maintainer for decision on whether to keep bundled with this UI fix PR or split into a separate PR.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152932164"
+  },
+  {
+    "id": 3152932170,
+    "author": "MuyuanMS",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml.cs",
+    "line": 61,
+    "body": "Not addressed: Renaming the `character` parameter to `_` is a minor style preference. The event handler signature is dictated by the delegate type, and the parameter name provides useful context for future readers.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3152932170"
+  },
+  {
+    "id": 3225445977,
+    "author": "Copilot",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+    "line": 55,
+    "body": "`characters` ListBox is `IsHitTestVisible=\"False\"`/`Focusable=\"False\"`, but `ScrollViewer.HorizontalScrollBarVisibility` is set to `Auto`, which can display a horizontal scrollbar that users cannot interact with. Set the scrollbar visibility to `Hidden` (or make the control interactive) to avoid a non-functional UI element.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3225445977"
+  },
+  {
+    "id": 3225446033,
+    "author": "Copilot",
+    "path": "Directory.Packages.props",
+    "line": 71,
+    "body": "The repo-wide bump of `Microsoft.Windows.CsWin32` to `0.3.269` increases blast radius beyond QuickAccent and can cause unrelated interop/source-generation diffs across many projects. If this PR only needs CsWin32 for PowerAccent, consider keeping the global version unchanged (or splitting the version bump into a separate PR) and justify why this newer version is required for the new APIs used here.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3225446033"
+  },
+  {
+    "id": 3238786104,
+    "author": "MuyuanMS",
+    "path": "src/modules/poweraccent/PowerAccent.UI/Selector.xaml",
+    "line": 55,
+    "body": "Not addressed: `ScrollViewer.HorizontalScrollBarVisibility=\"Auto\"` is intentional per the PR author's explicit feedback (see [comment](https://github.com/microsoft/PowerToys/pull/46593#issuecomment-3043424143)). The scrollbar provides visual feedback when there are more characters than fit on screen. Since the ListBox is navigated programmatically via `ScrollIntoView`, the scrollbar serves as a passive visual indicator \u2014 this is by design, not a bug.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3238786104"
+  },
+  {
+    "id": 3238789748,
+    "author": "MuyuanMS",
+    "path": "Directory.Packages.props",
+    "line": 71,
+    "body": "Escalated to maintainer: The CsWin32 version bump (`0.3.183` -> `0.3.269`) in `Directory.Packages.props` affects all projects repo-wide that consume CsWin32. The PR needs this package for `SetWindowPos` and `GetSystemMetrics` in PowerAccent.UI, but the version bump itself could be split into a separate PR to isolate blast radius. Deferring to maintainer on whether to keep bundled or split.",
+    "url": "https://github.com/microsoft/PowerToys/pull/46593#discussion_r3238789748"
+  }
+]

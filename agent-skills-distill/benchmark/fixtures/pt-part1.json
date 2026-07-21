@@ -1,0 +1,74 @@
+{
+  "AlwaysOnTop": {
+    "paths": [
+      "src/modules/alwaysontop/"
+    ],
+    "labels": [
+      "Product-Always On Top"
+    ]
+  },
+  "CmdPal": {
+    "paths": [
+      "src/modules/cmdpal/"
+    ],
+    "labels": [
+      "Product-Command Palette"
+    ]
+  },
+  "EnvironmentVariables": {
+    "paths": [
+      "src/modules/EnvironmentVariables/"
+    ],
+    "labels": [
+      "Product-Environment Variables"
+    ]
+  },
+  "GrabAndMove": {
+    "paths": [
+      "src/modules/GrabAndMove/"
+    ],
+    "labels": [
+      "Product-Grab And Move"
+    ]
+  },
+  "KeyboardManager": {
+    "paths": [
+      "src/modules/keyboardmanager/"
+    ],
+    "labels": [
+      "Product-Keyboard Manager"
+    ]
+  },
+  "ScreenRuler": {
+    "paths": [
+      "src/modules/MeasureTool/"
+    ],
+    "labels": [
+      "Product-Screen Ruler"
+    ]
+  },
+  "NewPlus": {
+    "paths": [
+      "src/modules/NewPlus/"
+    ],
+    "labels": [
+      "Product-New+"
+    ]
+  },
+  "TextExtractor": {
+    "paths": [
+      "src/modules/PowerOCR/"
+    ],
+    "labels": [
+      "Product-Text Extractor"
+    ]
+  },
+  "ShortcutGuide": {
+    "paths": [
+      "src/modules/ShortcutGuide/"
+    ],
+    "labels": [
+      "Product-Shortcut Guide"
+    ]
+  }
+}

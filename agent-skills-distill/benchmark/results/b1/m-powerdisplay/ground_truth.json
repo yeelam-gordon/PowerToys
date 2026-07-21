@@ -1,0 +1,16 @@
+{
+  "case_id": "m-powerdisplay",
+  "module": "powerdisplay",
+  "fix_commit": "cd5027fa1a60a4f8679214149a9fdec1b23f962d",
+  "parent_commit": "7da62cdb0a2a3a78f56e7f678ff8fcb0531f8828",
+  "changed_files": [
+    ".github/actions/spell-check/expect.txt",
+    "src/modules/powerdisplay/PowerDisplay.Lib.UnitTests/CrashDetectionScopeTests.cs",
+    "src/modules/powerdisplay/PowerDisplay.Lib/Services/CrashDetectionScope.cs",
+    "src/modules/powerdisplay/PowerDisplay.Lib/Services/IProcessExitHook.cs"
+  ],
+  "sparse_dirs": [
+    ".github/actions/spell-check",
+    "src/modules/powerdisplay"
+  ]
+}

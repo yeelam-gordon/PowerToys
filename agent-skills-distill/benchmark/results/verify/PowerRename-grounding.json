@@ -1,0 +1,33 @@
+{
+  "module": "PowerRename",
+  "angle": "grounding",
+  "links_checked": 32,
+  "links_bad": [
+    {
+      "ref": "unittests link (`lib/unittests`)",
+      "problem": "Path is wrong: the suites (HelpersTests, CommonRegExTests via CommonRegExTests.h, WICMetadataExtractorTests) live in src/modules/powerrename/unittests, NOT lib/unittests. Suites themselves exist and are correctly named; only the linked path is off by one directory."
+    },
+    {
+      "ref": "PR #47910",
+      "problem": "Real PR (title 'Fix GrabAndMove LNK2038 C++/WinRT version mismatch') but it is a GrabAndMove/CI fix, not a PowerRename change. Doc cites it only as a generic LNK2038 example, which is acceptable but not PowerRename-specific."
+    },
+    {
+      "ref": "PR #44639#discussion_r2771531847 (DHowett 'include order load-bearing')",
+      "problem": "Comment ID exists and quote/author are accurate, but the comment is on installer/PowerToysSetupCustomActionsVNext.vcxproj, not a PowerRename .vcxproj. Doc's generalization 'Applies to every PowerRename .vcxproj' is distiller inference, not what the comment targeted."
+    }
+  ],
+  "symbols_checked": 22,
+  "symbols_missing": [
+    {
+      "claim": "lib/Enumerating.cpp `Enumerator::printTo`",
+      "problem": "Symbol exists and is correct (struct Enumerator::printTo) but it is defined in Enumerating.h (inline), not Enumerating.cpp as the map row implies. Minor file attribution slip, not a fabrication."
+    }
+  ],
+  "map_issues": [
+    "Feature->file map spot-checks all resolved to real implementations: SanitizeAndNormalize/RegexReplaceDispatch/_useBoostLib in PowerRameRegEx.cpp; GetDatedFileName/GetMetadataFileName/GetTransformedFileName in Helpers.cpp; parseEnumOptions in Enumerating.cpp; parseRandomizerOptions/randomize in Randomizer.cpp; s_fileOpWorkerThread maxDepth matrix in PowerRenameManager.cpp. Only nit: Enumerator::printTo lives in the .h header not the .cpp."
+  ],
+  "fabrication_suspected": [],
+  "verdict": "PASS",
+  "open_issues": 4,
+  "confidence": "high"
+}

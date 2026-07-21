@@ -1,0 +1,15 @@
+{
+  "case_id": "m-powerrename",
+  "module": "powerrename",
+  "fix_commit": "48e95caf3935945a547c160f115b2fd344fc42c4",
+  "parent_commit": "d87dde132df50206d8ff90b1fb9168f79364c03f",
+  "changed_files": [
+    ".github/actions/spell-check/allow/code.txt",
+    "src/modules/powerrename/lib/PowerRenameRegEx.cpp",
+    "src/modules/powerrename/unittests/CommonRegExTests.h"
+  ],
+  "sparse_dirs": [
+    ".github/actions/spell-check",
+    "src/modules/powerrename"
+  ]
+}

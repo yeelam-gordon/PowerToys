@@ -39,7 +39,7 @@ Net: for a context-menu module, **most items are behavior → CLI-first**; the *
 - **Settings for these modules live in a module-OWNED file, not the PT-store `settings.json`** — see `SKILL.md` pitfall #12. The context-menu handler reads e.g. `power-rename-settings.json` / `file-locksmith-settings.json` / `image-resizer-settings.json` / `NewPlus\settings.json` at launch; editing the PT-store `<Module>\settings.json` (what `Get-PtModuleSettings` reads) often has **no effect** on the live handler. Drive icon/extended-menu/feature toggles via the module-owned file + relaunch (restart runner+Explorer for the menu handlers), then restore.
 - This is the **Win11 packaged** context menu (`Microsoft.UI.Content.PopupWindowSiteBridge` / "PopupHost"). The packaged module commands appear **only** here — not in classic `Shell.Application.Verbs()` and not via `CoCreate` of the command CLSID (`REGDB_E_CLASSNOTREGISTERED`). On Win10, or under "Show more options", you'd get the classic menu instead (different structure) — see **[Reading the legacy "Show more options" (`#32768`) menu](#reading-the-legacy-show-more-options-32768-menu)** below.
 - The menu exists in the UIA tree **only while open** — you must open it with real input first; you can't enumerate it cold.
-- A menu-launched module UI runs **non-elevated** (Explorer's integrity), even if your agent shell is elevated. Mind elevation-visibility (e.g. a non-elevated File Locksmith can't see higher-IL processes — match locker integrity with `scripts/pt-nonelevated.ps1`).
+- A menu-launched module UI runs **non-elevated** (Explorer's integrity), even if your agent shell is elevated. Mind elevation-visibility (e.g. a non-elevated File Locksmith can't see higher-IL processes — match locker integrity with `scripts/pt-non-elevated.ps1`).
 
 ## Recipe (robust)
 
@@ -219,7 +219,7 @@ present/absent assertions.
 | "popup not found after N attempts" | foreground not settled (esp. first right-click after Explorer opens) | the helper already retries 3×; raise `-MaxTries`, or pre-foreground the window once before calling |
 | menu item `invoke` returns but nothing launches | matched the wrong node / item disabled | match `type -eq 'MenuItem'` by exact Name; confirm the module is enabled |
 | caption not found though module enabled | wrong/old caption string, or it's only under "Show more options" (classic `#32768` menu — which `list-windows` can't see) | for the modern menu, `Get-PtContextMenuItems`; for the classic menu, `Open-PtShowMoreOptionsMenu` then the same `Get-PtContextMenuItems` — see [Reading the legacy menu](#reading-the-legacy-show-more-options-32768-menu) |
-| launched UI shows nothing | menu-launched UI is non-elevated and can't see higher-IL targets | match target integrity (`scripts/pt-nonelevated.ps1`) |
+| launched UI shows nothing | menu-launched UI is non-elevated and can't see higher-IL targets | match target integrity (`scripts/pt-non-elevated.ps1`) |
 
 ## Referenced by
 - `references/modules/file-locksmith.md` (L641/L652 — real right-click launch + menu present/absent)

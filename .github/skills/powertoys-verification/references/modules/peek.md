@@ -14,7 +14,7 @@
 ### 1. CLI back-door — fastest, no Explorer needed
 ```powershell
 # MUST run non-elevated (see the elevation warning below) — from an elevated agent shell use:
-#   . "$skill\scripts\pt-nonelevated.ps1"; Start-PtNonElevated -Exe $peekExe -Arguments '"<file>"'
+#   . "$skill\scripts\pt-non-elevated.ps1"; Start-PtNonElevated -Exe $peekExe -Arguments '"<file>"'
 Start-Process "$env:LOCALAPPDATA\PowerToys\WinUI3Apps\PowerToys.Peek.UI.exe" -ArgumentList "<file>"
 ```
 **Source**: `Peek.UI\PeekXAML\App.xaml.cs:106-134` — when last arg is not int (=runner PID) and is an existing file, it sets `_launchedFromCli=true`, builds `SelectedItemByPath`, calls `OnShowPeek()`. Bypasses hotkey + Explorer foreground.
@@ -28,7 +28,7 @@ Start-Process "$env:LOCALAPPDATA\PowerToys\WinUI3Apps\PowerToys.Peek.UI.exe" -Ar
 > previews spin forever on the "Busy" `ProgressBar` (only the non-WebView2 **image** previewer works).
 > This is **not** a product bug — a real user's Peek is spawned non-elevated by the runner. Launch it
 > the same way for CLI tests via `Start-PtNonElevated -Exe <peekExe> -Arguments '"<file>"'`
-> (`scripts/pt-nonelevated.ps1`), and confirm medium IL with `Test-ProcessElevated`. Verified 2026-07-07
+> (`scripts/pt-non-elevated.ps1`), and confirm medium IL with `Test-ProcessElevated`. Verified 2026-07-07
 > on 0.100.1.0: elevated → NRE + endless Busy; non-elevated → `PreviewBrowser` + `RootWebArea` render.
 > The Shell-COM + Ctrl+Space path (entry-path 2) already spawns Peek non-elevated via the runner.
 

@@ -4,7 +4,7 @@
       __MODULE__   ->  the module name used for the project/assembly (e.g. ColorPicker, ScreenRuler)
       the ProjectReference ..\ depth  ->  enough ..\ to reach src\common from THIS folder
                                           (see references/project-setup.md §2)
-    For a GREENFIELD project (module had no UI tests), rename the file and AssemblyName to drop
+    For a NEW-PROJECT (module had no UI tests), rename the file and AssemblyName to drop
     the ".Next" suffix (use <Module>.UITests).
   -->
 

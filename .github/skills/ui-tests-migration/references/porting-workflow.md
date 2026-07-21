@@ -110,7 +110,7 @@ for a different result.
 
 ---
 
-## Scenario B — Greenfield from a human sign-off markdown
+## Scenario B — New project from a human sign-off markdown
 
 The module has **no** automated UI tests. Build a new `[Module].UITests` project (no `.Next` suffix)
 whose tests come from the module's **manual test sign-off** document — the human checklist QA runs

@@ -52,7 +52,7 @@ Shares the exact `ResizeBatch.FromCliOptions` → `ResizeBatch.ProcessAsync` →
 | 3 | Remove a built-in size / add a custom size | edit `imageresizer_sizes` (INTEGER Ids!) + launch GUI | `SizeComboBox` reflects the edit (removed gone, custom present) |
 | 4 | Resize one / multiple files end-to-end | CLI `--size <id> [files…]` | outputs at the size's Fit dimensions |
 | 5 | GIF animation warning on `.gif` input | GUI on a `.gif` | warning InfoBar present (`winapp ui inspect`) |
-| 6 | Fit modes (Fill / Fit / Stretch) | CLI `--width --height --fit <mode>` | output shape matches the mode (crop / letterbox / exact) |
+| 6 | Fit modes (Fill / Fit / Stretch) | CLI `--width --height --fit <mode>` | output shape matches the mode (crop / aspect-fit / exact) |
 | 7 | Unit conversion (cm / inch / percent / pixel) | CLI `--unit <u>` | output px = unit converted at the image's DPI |
 | 8 | Custom filename format (`%1`..`%6` fields) | CLI `--filename <fmt>` | output filename follows the format fields |
 | 9 | "Keep date modified" | CLI `--keep-date-modified` | output mtime == source mtime (control: without the flag, differs) |

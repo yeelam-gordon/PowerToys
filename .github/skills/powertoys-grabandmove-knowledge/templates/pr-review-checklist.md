@@ -12,7 +12,7 @@ maps to a Regression Playbook / Review Rule in `SKILL.md`. All paths under `src/
 - [ ] Injected events bailed first (`LLKHF_INJECTED`).
 - [ ] Held non-modifier keys tracked by `g_keyHeld[256]` transition, **not** `KF_REPEAT`.
 - [ ] Every swallowed modifier keydown (`return 1`) has a `ReplayAbsorbedModifier` path when no drag
-      consumed it; Win replays **both** down and up.
+      consumed it; Win replays **both** key-down and key-up.
 - [ ] Non-modifier key while modifier absorbed → modifier replayed before the key.
 - [ ] Game Mode / remote-session suppression rules unchanged unless intended.
 

@@ -39,7 +39,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | App-specific shortcut remap | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleAppSpecificShortcutRemapEvent` |
 | Single-key → text remap | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleSingleKeyToTextRemapEvent` |
 | OS-level (global) shortcut remap wrapper | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `HandleOSLevelShortcutRemapEvent` |
-| KBM re-entrancy guard (skip our own injected events) | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `GeneratedByKBM`; `dwExtraInfo` flags in `common/KeyboardManagerConstants.h` (`KEYBOARDMANAGER_SINGLEKEY_FLAG`, `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`) |
+| KBM reentrancy guard (skip our own injected events) | `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` `GeneratedByKBM`; `dwExtraInfo` flags in `common/KeyboardManagerConstants.h` (`KEYBOARDMANAGER_SINGLEKEY_FLAG`, `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`) |
 | Input injection (batched `SendInput`) | `common/Input.h` `SendVirtualInput`; `common/Helpers.cpp` `SetKeyEvent`, `SetDummyKeyEvent`, `SetModifierKeyEvents`, `SendTextInput` |
 | Runtime remap state (invoked shortcuts, injection-failed passthrough) | `KeyboardManagerEngineLibrary/State.cpp` / `KeyboardManagerEngineLibrary/State.h` (`ConsumeSingleKeyRemapInjectionFailed`, `CheckShortcutRemapInvoked`) |
 | Mapping model / serialization (JSON load+save) | `common/MappingConfiguration.cpp` `LoadSettings`, `SaveSettingsToFile`, `LoadSingleKeyRemaps`, `LoadShortcutRemaps`, `LoadSingleKeyToTextRemaps`, `LoadAppSpecificShortcutRemaps` |

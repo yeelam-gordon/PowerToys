@@ -21,10 +21,10 @@ Ask one question up front and **echo the answer in the report header**:
 | Answer | Bits under test | `BITS:` line |
 |---|---|---|
 | **Yes** — merged **and** present in the installed / shipped build you're testing | Drive the **installed** bits, **read-only** | `BITS: installed shipped artifact <version> (read-only)` |
-| **No** — unmerged/open, **or** merged-but-not-yet-released (not in any shipped build) | **Build** the affected module + **sideload** it | `BITS: local build of <Module> @ <sha/branch>, sideloaded` |
+| **No** — unmerged/open, **or** merged-but-not-yet-released (not in any shipped build) | **Build** the affected module + **side-load** it | `BITS: local build of <Module> @ <sha/branch>, side-loaded` |
 
 > **"Merged" is not the deciding word — "in the build under test" is.** A PR that merged into `main`
-> but hasn't shipped in the installed build is still the **build + sideload** case (e.g. validating
+> but hasn't shipped in the installed build is still the **build + side-load** case (e.g. validating
 > a fix ahead of the next release — PR #45242 was exactly this). Only drive the installed bits when
 > the code you're validating is genuinely in them.
 
@@ -34,11 +34,11 @@ Ask one question up front and **echo the answer in the report header**:
   action. Allowed: anything a real user does through the shipped UI, read-only probes, screenshots —
   capture pre-state and restore in `finally{}`. If the documented user flow doesn't produce the
   claimed outcome, that's **FAIL** — never "rescue" it by editing install state.
-- **Build + sideload path — building unreleased code is the whole point,** so the immutability rule
+- **Build + side-load path — building unreleased code is the whole point,** so the immutability rule
   does **not** apply to *your* build. It still applies to *unrelated* installed bits you didn't
   build. **Restore the machine to the shipped build when done** (Step 4b).
 
-> A run that mutates the wrong `BITS` (sideloads when the code is already installed, or drives the
+> A run that mutates the wrong `BITS` (side-loads when the code is already installed, or drives the
 > stale installed binary when validating unreleased code) is **invalid regardless of the verdict.**
 > Set `BITS` before the first drive command. Full forbidden/allowed list: `index.md` → bits contract
 > and `../pre-flight.md` §Hard rules.
@@ -99,7 +99,7 @@ guess.
 
 You may `grep`/`view` a **read-only** local clone/worktree for source context (XAML AutomationIds,
 the `.cs`/`.cpp` the PR touched). On the **installed path** you must not run that code against the
-install; on the **build + sideload path**, building it is exactly the point (Step 2b).
+install; on the **build + side-load path**, building it is exactly the point (Step 2b).
 
 ### Live-drive floor (anti-shallow-verification)
 
@@ -121,7 +121,7 @@ Nothing to deploy: the shipped runner/modules are already installed. Confirm the
 (`../pre-flight.md`), then drive the **installed** bits read-only. This is the path for a merged PR
 that has shipped, and for a release/hotfix sign-off where you're validating the released artifact.
 
-### 2b — Build + sideload path (code not in the build under test)
+### 2b — Build + side-load path (code not in the build under test)
 
 Building & deploying unreleased code is the point. Build **only the affected project** (identified in
 Step 1) — do **not** build the whole solution just to populate every module.
@@ -183,13 +183,13 @@ Same engine as everything else: per item pick the `SKILL.md` §2 bucket, drive, 
 **inside** `report.md`, not in the folder name. Use the `../reporting-format.md` per-item table; the
 `winapp invoke` column is a hard contract — a literal `winapp ui …` command or `—` (never a
 `Select-String`/`gh`/`Test-Path` there). The header carries the `BITS:` line (incl. the sha/branch +
-proof-of-your-bits path on the sideload path) and, on 2b, a build summary (exit code, project built).
+proof-of-your-bits path on the side-load path) and, on 2b, a build summary (exit code, project built).
 
 **Roll-up** (multi-PR sets): top-level summary table — PR · Module · verdict · one-line evidence —
 plus the `exempt` list and (if `N > MAX_AUTO`) the un-scoped **queue** of PRs not yet verified.
 Include a §G retrospective (run friction).
 
-**Restore (Step 4b / sideload path only).** Stop your built runner and bring the shipped build back:
+**Restore (Step 4b / side-load path only).** Stop your built runner and bring the shipped build back:
 ```powershell
 Get-Process PowerToys -EA SilentlyContinue | ForEach-Object { Stop-Process -Id $_.Id -Force }
 Start-Process "$env:LOCALAPPDATA\PowerToys\PowerToys.exe"     # or the Program Files install
@@ -201,8 +201,8 @@ Restore all mutated state, confirm the runner is healthy, and disclose any resid
 
 ## Worked references
 
-- **Single unmerged/unreleased PR, build + sideload:** PR #45242 (Advanced Paste "Show AI paste
-  section") — derived 3 claims from the diff, built only the AdvancedPaste project, sideloaded the
+- **Single unmerged/unreleased PR, build + side-load:** PR #45242 (Advanced Paste "Show AI paste
+  section") — derived 3 claims from the diff, built only the AdvancedPaste project, side-loaded the
   dev `v0.0.1` runner (dismissed the partial-build dialogs), drove Settings + the AP window + a GPO
   gate, then restored the shipped build. 3/3 PASS.
 - **Release/hotfix set, installed bits:** the 0.100.1 14-PR sign-off (8 PASS / 6 BLOCKED) — derived

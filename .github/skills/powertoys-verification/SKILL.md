@@ -1,6 +1,6 @@
 ---
 name: powertoys-verification
-description: "Verify PowerToys behavior end-to-end with the winapp CLI across two scenarios: (A) a module's release checklist against the installed build; (B) PR validation — derive each PR's checklist from its description + diff, then drive it against the installed build (a merged/shipped PR, or a whole release/hotfix set) or by building + sideloading the module when the PR isn't in the build yet (unmerged or not-yet-released). Drive each item via UIA invoke / Named Events / settings.json edits / clipboard / GPO / SendInput, and emit a structured PASS / FAIL / BLOCKED verdict per item with evidence (FAIL distinguishes product defects from stale/ambiguous checklist items). Use when asked to verify a module checklist, validate a PR, sign off a release/hotfix's PRs, or QA installed/sideloaded PowerToys bits. Combines generic winapp ui mechanics (references/winapp-ui-testing.md) with PT-specific recipes, per-scenario playbooks (references/scenarios/), and the helper .ps1 files shipped with this skill."
+description: "Verify PowerToys behavior end-to-end with the winapp CLI across two scenarios: (A) a module's release checklist against the installed build; (B) PR validation — derive each PR's checklist from its description + diff, then drive it against the installed build (a merged/shipped PR, or a whole release/hotfix set) or by building + side-loading the module when the PR isn't in the build yet (unmerged or not-yet-released). Drive each item via UIA invoke / Named Events / settings.json edits / clipboard / GPO / SendInput, and emit a structured PASS / FAIL / BLOCKED verdict per item with evidence (FAIL distinguishes product defects from stale/ambiguous checklist items). Use when asked to verify a module checklist, validate a PR, sign off a release/hotfix's PRs, or QA installed/side-loaded PowerToys bits. Combines generic winapp ui mechanics (references/winapp-ui-testing.md) with PT-specific recipes, per-scenario playbooks (references/scenarios/), and the helper .ps1 files shipped with this skill."
 license: Complete terms in LICENSE.txt
 ---
 
@@ -14,7 +14,7 @@ helpers, taxonomy and report format — and differ only on what the checklist is
 | Scenario | Trigger | Checklist source | Bits under test |
 |---|---|---|---|
 | **A — Module checklist** | "verify all `<Module>` items", "sign off Color Picker" | Supplied file (`references/release-checklist/<module>.md`) | Installed shipped artifact (read-only) |
-| **B — PR validation** | "validate PR #N" (open or merged), "build it and test the fix", "verify the PRs in this release/hotfix", "sign off 0.X.Y" | **Derived** from each PR's description + diff | **Installed** shipped artifact if the code is already in the build; **build + sideload** if it isn't (unmerged / not-yet-released) |
+| **B — PR validation** | "validate PR #N" (open or merged), "build it and test the fix", "verify the PRs in this release/hotfix", "sign off 0.X.Y" | **Derived** from each PR's description + diff | **Installed** shipped artifact if the code is already in the build; **build + side-load** if it isn't (unmerged / not-yet-released) |
 
 > **Step 0 for every run — pick the scenario.** Read **`references/scenarios/index.md`** (the
 > router + the "bits under test" contract + the verdict-vocabulary mapping), then read the one
@@ -29,7 +29,7 @@ specific checklist.
 ## Required reads (in order)
 
 1. **`references/scenarios/index.md`** — **read FIRST**: the scenario router (A/B), the
-   **"bits under test" contract** (installed-and-immutable, vs build-and-sideload for a PR whose code
+   **"bits under test" contract** (installed-and-immutable, vs build-and-side-load for a PR whose code
    isn't in the build under test), and the verdict-vocabulary mapping. Then read the **one** matching
    scenario doc: `references/scenarios/module-checklist.md` (A) · `pr-validation.md` (B).
 2. **`references/winapp-ui-testing.md`** — the **prerequisite** UIA mechanics doc (winapp ui verbs, scripted batch testing, file pickers, accessibility audits, screenshots, click-vs-invoke, PostMessage, SendInput cb=40, stunted-UIA recovery, settings-mutation safety contract). **Read this first** — this skill assumes you know its content and only adds PT-specific extensions.
@@ -86,7 +86,7 @@ $rn = Test-PtRunnerAdmin
 # The checklist source depends on the scenario (see references/scenarios/):
 #   A - read the supplied references/release-checklist/<module>.md
 #   B - derive 1-3 items from each PR's `gh pr view/diff`; then drive the installed bits, OR
-#       build+sideload if the code isn't in the build under test (pr-validation.md)
+#       build+side-load if the code isn't in the build under test (pr-validation.md)
 # Then iterate the items (see Step 6 - Verifier loop).
 ```
 
@@ -284,13 +284,13 @@ run for Scenario A**, **one PR per report folder for B**. Resolve these placehol
 | `<N>` | Scenario A: total item count for the module. Scenario B: the GitHub PR number. |
 
 **Execution order:** `references/scenarios/index.md` (pick scenario + set `BITS`) → the matching
-`references/scenarios/<scenario>.md` (inputs, discipline, and build+sideload deploy steps for B when the code isn't in the build) → `references/pre-flight.md`
+`references/scenarios/<scenario>.md` (inputs, discipline, and build+side-load deploy steps for B when the code isn't in the build) → `references/pre-flight.md`
 → per item, the §2 drive-stack (this file) → `references/reporting-format.md` per-item table →
 Step 6 verifier loop → `references/pre-flight.md` §Final wrap-up → Step 7 archive → print the final report path.
 
 ## What NOT to do
 
-- Do NOT skip Step 0 — drive nothing until you've set the scenario and the `BITS:` contract. A run that mutates the wrong bits (sideloads when the code is already installed, or drives the stale installed binary when validating unreleased code) is invalid regardless of the verdict.
+- Do NOT skip Step 0 — drive nothing until you've set the scenario and the `BITS:` contract. A run that mutates the wrong bits (side-loads when the code is already installed, or drives the stale installed binary when validating unreleased code) is invalid regardless of the verdict.
 - Do NOT chain multiple modules in one report (Scenario A) — one module per run. For B, one PR per report folder.
 - Do NOT mark an item BLOCKED without a concrete, named obstacle (see §3 and `references/pre-flight.md` §Hard rules).
 - Do NOT invent steps for a VAGUE checklist item — if the spec is too ambiguous to judge, that is FAIL (cause=checklist), not a guess.

@@ -18,6 +18,6 @@ from the symptom and verify — don't force-fit.
 | Wrong/unexpected editor opens hosts file | `HostsService.OpenHostsFile` | Must be hardcoded Notepad (#46194/#46195) |
 | False/missing duplicate flags | `DuplicateService.FindDuplicates`/`SetDuplicate`; `_loopbackAddresses`; `LoopbackDuplicates` | 9-host rule via `Consts.MaxHostsCount` |
 | Line with many hosts split unexpectedly | `ReadAsync` chunking + `Consts.MaxHostsCount` (9) | |
-| Startup crash / empty admin title | `MainWindow.xaml.cs` ctor (`WindowAdminTitle` fallback) | Empty title faults TitleBar (PR #49069) |
+| Startup crash / empty admin title | `MainWindow.xaml.cs` ctor (`WindowAdminTitle` default) | Empty title faults TitleBar (PR #49069) |
 | Module not running in integration flow | `dllmain.cpp::is_enabled_by_default` (false), GPO gate | Off by default (#47144) |
 | External edit not detected / self-write loop | `HostsService` `FileSystemWatcher`, `FileChanged`, `EnableRaisingEvents` toggling | |

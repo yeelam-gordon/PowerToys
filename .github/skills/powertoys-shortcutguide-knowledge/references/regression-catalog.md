@@ -44,7 +44,7 @@ A bare number in `Keys:` is a virtual-key code (VK `9`=Tab, `1`=left mouse butto
 Literal digits must be the `<N>` token; the renderer (`KeyVisual`) strips brackets. PR #48757 was
 a data-only sweep of 91 keys across 14 manifests.
 
-### R4 — Manifest token authoring (review pushback #48821, #48959, #48960, #48652)
+### R4 — Manifest token authoring (review push-back #48821, #48959, #48960, #48652)
 Recurring maintainer corrections on community manifest PRs:
 - No WinGet package → prefix filename **and** `PackageName` with `+`.
 - Use spec `<...>` tokens for special keys (`<Delete>`, `<Tab>`, `<Space>`, `<Insert>`,

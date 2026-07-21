@@ -10,7 +10,7 @@ axes. **Pick the scenario first, read its doc, then run the shared engine in `SK
 | **Checklist source** | **Supplied** file (`../release-checklist/<module>.md`) | **Derived** by the agent from each PR's description + diff |
 | **Scope** | 1 module, exhaustive (e.g. 88 items) | 1 PR (deep) — or a release/hotfix set, one folder per PR |
 | **Bits under test** | Installed shipped artifact (READ-ONLY) | **Depends on a sub-decision** — see below |
-| **Discipline** | Mutate only via user-facing UI; restore in `finally{}` | Installed-path: same as A · Build-path: build & sideload unreleased bits, then restore |
+| **Discipline** | Mutate only via user-facing UI; restore in `finally{}` | Installed-path: same as A · Build-path: build & side-load unreleased bits, then restore |
 
 | If the task is… | Scenario | Read |
 |---|---|---|
@@ -37,11 +37,11 @@ BITS: installed shipped artifact <version> (read-only)
 **Scenario B** — the sub-decision is **"is the PR's code already in the build under test?"**
 ```
 BITS: installed shipped artifact <version> (read-only)          # yes — merged AND shipped in the build
-BITS: local build of <Module> @ <sha/branch>, sideloaded        # no  — unmerged, or merged-but-unreleased
+BITS: local build of <Module> @ <sha/branch>, side-loaded        # no  — unmerged, or merged-but-unreleased
 ```
 
 > **"Merged" is not the deciding word — "in the build under test" is.** A PR merged into `main` but
-> not yet in the installed build is still the **build + sideload** case (e.g. #45242).
+> not yet in the installed build is still the **build + side-load** case (e.g. #45242).
 
 - **Installed / read-only (A, and B when the code is already shipped)** — the artifact is immutable.
   Forbidden: copying source-built files into the install or `%LOCALAPPDATA%\...\PowerToys\...`,
@@ -51,12 +51,12 @@ BITS: local build of <Module> @ <sha/branch>, sideloaded        # no  — unmerg
   Settings fields), read-only probes, screenshots — always capture pre-state and restore in
   `finally{}`. If the documented user flow does not produce the claimed outcome, that is **FAIL** —
   do not "rescue" it by editing install state.
-- **Build + sideload (B when the code isn't in the build)** — testing unreleased code is the point,
+- **Build + side-load (B when the code isn't in the build)** — testing unreleased code is the point,
   so the immutability rule does **not** apply to *your* build. It still applies to *unrelated*
   installed bits you didn't build. Restore the machine to the shipped build when done (see
   `pr-validation.md` Step 4b).
 
-> A run that mutates the wrong `BITS` (sideloads when the code is already installed, or drives the
+> A run that mutates the wrong `BITS` (side-loads when the code is already installed, or drives the
 > stale installed binary when validating unreleased code) is **invalid regardless of the verdict.**
 > Set `BITS` before the first drive command.
 

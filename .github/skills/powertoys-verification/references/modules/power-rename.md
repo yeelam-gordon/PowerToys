@@ -77,7 +77,7 @@ Returns False on Win11 because PT registers PR only via IExplorerCommand, not as
 
 ## Recipes — a capability → control map (NOT a mini-checklist)
 
-> **What this is (and isn't):** it maps each PowerRename *capability* to **which control drives it** (AutomationId / settings key) — nothing more. It is **not** the checklist: the checklist owns the *inputs* AND the *expected result*; this table only says *how to reach & poke the control*. **Where/how to read the outcome** is in the Read-out notes below — no expected values live here. That keeps the table stable across checklist rewordings; only a real UI redesign should force an edit.
+> **What this is (and isn't):** it maps each PowerRename *capability* to **which control drives it** (AutomationId / settings key) — nothing more. It is **not** the checklist: the checklist owns the *inputs* AND the *expected result*; this table only says *how to reach & poke the control*. **Where/how to read the outcome** is in the Read-out notes below — no expected values live here. That keeps the table stable across checklist edits; only a real UI redesign should force an edit.
 
 | # | Capability | Control — how to drive it (AutomationId / settings key) |
 |---|---|---|

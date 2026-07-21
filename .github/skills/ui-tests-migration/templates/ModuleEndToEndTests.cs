@@ -2,7 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-// TEMPLATE — a starting scaffold for a `.Next` UI-test class. Replace __MODULE__ / __MODULEUI__ /
+// TEMPLATE — a starting scaffold for a `.Next` UI-test class. Replace __MODULE__ / __MODULE_UI__ /
 // selectors with the real values for your module, delete what you don't need, and add test methods.
 // See the skill's references/patterns-and-pitfalls.md for the full recipe catalog and
 // ColorPickerEndToEndTests.cs for a complete worked example.
@@ -37,7 +37,7 @@ public class __MODULE__EndToEndTests : UITestBase
         {
             // Tolerant cleanup — close any window the test spawned, then Settings. Never throws, so it
             // can't mask the real failure.
-            WindowControl.TryCloseByApp("__MODULEUI__");
+            WindowControl.TryCloseByApp("__MODULE_UI__");
             WindowControl.TryCloseByApp("PowerToys.Settings");
         }
     }
@@ -58,7 +58,7 @@ public class __MODULE__EndToEndTests : UITestBase
             {
                 toggle.Toggle(true);
                 Assert.IsTrue(toggle.WaitForProperty("ToggleState", "On", 5_000), "Toggle didn't turn On.");
-                Assert.IsTrue(WaitForProcess("__MODULEUI__", expected: true, 10_000), "Process didn't start.");
+                Assert.IsTrue(WaitForProcess("__MODULE_UI__", expected: true, 10_000), "Process didn't start.");
             }
 
             // 3. Read the activation shortcut from the ShortcutControl's EditButton (HelpText carries
@@ -73,7 +73,7 @@ public class __MODULE__EndToEndTests : UITestBase
             for (int attempt = 1; attempt <= 3 && appWindow is null; attempt++)
             {
                 KeyboardHelper.SendKeys(keys);
-                appWindow = WindowsFinder.WaitForWindowByApp("__MODULEUI__", _ => true, timeoutMS: 2_500);
+                appWindow = WindowsFinder.WaitForWindowByApp("__MODULE_UI__", _ => true, timeoutMS: 2_500);
             }
 
             Assert.IsNotNull(appWindow, "Module window did not appear after firing the shortcut.");

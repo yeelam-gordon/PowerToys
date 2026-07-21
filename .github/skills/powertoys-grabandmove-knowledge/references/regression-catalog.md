@@ -83,6 +83,6 @@ confirmed fix. Reason from the symptom and confirm in source.
 - Keep the C++/C# modifier mapping (`Alt=0`,`Win=1`) as a simple int for a two-value bugfix; don't
   churn it into an enum in an unrelated PR (scope-creep push-back).
 - New native `.vcxproj` mirrors the canonical CppWinRT NuGet wiring.
-- Prefer vcpkg + patch file over vendored shim headers for toolset compat.
+- Prefer vcpkg + patch file over bundled shim headers for toolset compat.
 - Keep code comments plain — a maintainer repeatedly rejected hyphenated compound nouns and flowery
   phrasing.

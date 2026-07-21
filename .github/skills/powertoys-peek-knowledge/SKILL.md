@@ -186,7 +186,7 @@ Enforce these when reviewing or authoring Peek changes:
   reject it as inconsistent with `CloseAfterLosingFocus`/`ConfirmFileDelete`
   ([PR #46624](https://github.com/microsoft/PowerToys/pull/46624)).
 - **Don't raise the settings `Changed` event while holding `_settingsLock`.** Capture the delegate
-  under the lock, invoke after releasing — raising under the lock risks re-entrancy/deadlock
+  under the lock, invoke after releasing — raising under the lock risks reentrancy/deadlock
   ([PR #44645](https://github.com/microsoft/PowerToys/pull/44645), `UserSettings.cs`).
 - **Release every COM/RCW in `try/finally`; drain caches without races.** Preview-handler factories
   must mirror `LockServer(true)`/`LockServer(false)` and use `TryRemove`, not snapshot+`Clear`; the

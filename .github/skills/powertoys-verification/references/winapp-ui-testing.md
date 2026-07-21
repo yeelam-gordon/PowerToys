@@ -219,7 +219,7 @@ Use `wait-for --value` as the primary assertion — it uses a smart fallback cha
 
 ### Testing File Pickers
 
-File/folder pickers (FileOpenPicker, FileSavePicker, FolderPicker) run in a separate `PickerHost` process but are fully interactable. The picker appears as an owned dialog window.
+File/folder pickers (FileOpenPicker, FileSavePicker, FolderPicker) run in a separate `PickerHost` process but are fully interactive. The picker appears as an owned dialog window.
 
 ```powershell
 # 1. Trigger the picker
@@ -537,5 +537,5 @@ try {
 }
 ```
 
-**Important**: this should be used ONLY when the UI route is unreachable. Any setting flippable through the AppX Settings UI should be flipped that way instead (it's the documented user flow and tests real binding code).
+**Important**: this should be used ONLY when the UI route is unreachable. Any setting that can be flipped through the AppX Settings UI should be flipped that way instead (it's the documented user flow and tests real binding code).
 

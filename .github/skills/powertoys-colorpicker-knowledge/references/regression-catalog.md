@@ -30,7 +30,7 @@ symptom class → where in source → root cause → guardrail → evidence. Con
 - **Root cause of bugs:** the mechanisms are maintained separately; string-based key matching must be
   re-derived on setting change (`SetActivationKeys`); global low-level hook observes editor keystrokes.
 - **Guardrail:** keep both in sync; empty shortcut arms nothing; preserve `_activationShortcutPressed`
-  latch; default fallback Win+Shift+C in `parse_hotkey`.
+  latch; fallback default Win+Shift+C in `parse_hotkey`.
 - **Evidence:** #43791/#43250 (editor flashing, closed/open), #44963 (partial-key trigger),
   #44404 (keys don't work), #48822 (only works with PT window focused), #41806 (shared-hook modifier
   release across modules), #40900 ("only pick a color" activation option request).

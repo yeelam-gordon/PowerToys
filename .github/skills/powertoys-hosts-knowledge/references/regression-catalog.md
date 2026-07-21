@@ -73,7 +73,7 @@ UI nits. Issue bodies were unavailable in the raw dump; titles + source are the 
 - **Fuzz tests:** [PR #45784](https://github.com/microsoft/PowerToys/pull/45784) fixed libFuzzer target
   class-name resolution in `Hosts.FuzzTests` (parsing is fuzzed — keep the parser robust to garbage).
 - **Empty-title guard:** [PR #49069](https://github.com/microsoft/PowerToys/pull/49069) added the
-  non-empty `Title` fallback in `MainWindow.xaml.cs` to stop a WinUI TitleBar startup fault.
+  non-empty `Title` default in `MainWindow.xaml.cs` to stop a WinUI TitleBar startup fault.
 - **Enabled-by-default off:** `dllmain.cpp::is_enabled_by_default()` returns `false`; module is GPO
   gated ([PR #47144](https://github.com/microsoft/PowerToys/pull/47144) aligned defaults).
 - **Build hygiene:** use `$(RepoRoot)` not bare relative paths

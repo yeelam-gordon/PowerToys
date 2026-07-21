@@ -112,7 +112,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#47693](https://github.com/microsoft/PowerToys/issues/47693),
   [#46317](https://github.com/microsoft/PowerToys/issues/46317) (GPS not stripped).
   See [WIC metadata](https://learn.microsoft.com/windows/win32/wic/-wic-about-metadata),
-  [Photometadata policies](https://learn.microsoft.com/windows/win32/wic/photo-metadata-policies).
+  [Photo metadata policies](https://learn.microsoft.com/windows/win32/wic/photo-metadata-policies).
 
 ### Orientation wrong / dimensions not swapped
 - **Symptom:** portrait/landscape mismatch; EXIF-rotated photos come out sideways or wrongly sized.

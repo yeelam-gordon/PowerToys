@@ -1,6 +1,6 @@
 ---
 name: powertoys-previewpane-knowledge
-description: 'PowerToys PreviewPane module knowledge: File Explorer preview handlers (SVG, Markdown, Monaco/source-code, PDF, G-code, BG-code, QOI) and thumbnail providers (SVG, PDF, STL, G-code, BG-code, QOI). Feature->file/function map, regression playbooks (WebView2 NavigateToString byte-vs-char limit, URI-scheme sandboxing of untrusted files, SVG blocked-element/namespace handling, PDF/SVG resource exhaustion, per-format COM registration, STA/threading), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/previewpane. Keywords: preview handler, thumbnail provider, IPreviewHandler, IThumbnailProvider, WebView2, SVG, Markdown, Monaco, PDF, gcode, QOI, STL, COM registration, CLSID, sandbox, STA, PR review, regression.'
+description: 'PowerToys PreviewPane module knowledge: File Explorer preview handlers (SVG, Markdown, Monaco/source-code, PDF, G-code, BG-code, QOI) and thumbnail providers (SVG, PDF, STL, G-code, BG-code, QOI). Feature->file/function map, regression playbooks (WebView2 NavigateToString byte-vs-char limit, URI-scheme sandbox isolation of untrusted files, SVG blocked-element/namespace handling, PDF/SVG resource exhaustion, per-format COM registration, STA/threading), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/previewpane. Keywords: preview handler, thumbnail provider, IPreviewHandler, IThumbnailProvider, WebView2, SVG, Markdown, Monaco, PDF, gcode, QOI, STL, COM registration, CLSID, sandbox, STA, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -19,7 +19,7 @@ conventions maintainers already established.
   WebView2 exception, blank thumbnail, high CPU/power draw, handler not registered after
   install/GPO change, or preview shown while renaming.
 - Reviewing a PreviewPane PR against maintainer conventions and security/reliability traps.
-- Adding a **new format** handler or thumbnail provider (new CLSID + registration + sandboxing).
+- Adding a **new format** handler or thumbnail provider (new CLSID + registration + sandbox isolation).
 - Touching WebView2-hosted rendering (SVG/Markdown/Monaco), COM registration, or STA/threading.
 
 ## Module Map (feature -> file/function)

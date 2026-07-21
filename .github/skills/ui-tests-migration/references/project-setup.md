@@ -8,7 +8,7 @@ in [../templates/](../templates/).
 | Scenario | Project name | Folder |
 |---|---|---|
 | **A — Port** (legacy UI tests exist) | `[Module].UITests.Next` | `src/modules/[Module]/Tests/[Module].UITests.Next/` |
-| **B — Greenfield** (no UI tests) | `[Module].UITests` | `src/modules/[Module]/Tests/[Module].UITests/` |
+| **B — New project** (no UI tests) | `[Module].UITests` | `src/modules/[Module]/Tests/[Module].UITests/` |
 
 Rules and judgment:
 
@@ -117,7 +117,7 @@ For anything beyond a single trivial test, also copy
 [../templates/TestHelper.cs](../templates/TestHelper.cs) — a static helper with the reusable building
 blocks every port needs (navigate to the page, toggle + verify the process, read the activation
 shortcut, discover/activate/close the module window with patient retry, clipboard, screen-center).
-Fill in the `__MODULE__` / `__MODULEUI__` / AutomationId placeholders and delete what you don't use.
+Fill in the `__MODULE__` / `__MODULE_UI__` / AutomationId placeholders and delete what you don't use.
 This mirrors how the legacy suites are organized (a `TestHelper` + thin test classes) and is exactly
 the shape of the validated ScreenRuler port.
 

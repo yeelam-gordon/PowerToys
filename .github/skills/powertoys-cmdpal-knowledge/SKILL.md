@@ -143,7 +143,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   bottom/right, disappears after monitor power-off, offset when palette opened from Dock, reloads on
   every settings change, frequent crashes.
 - **Where:** `Dock/DockWindow*.cs`, `DockWindowManager.cs`, `Services/MonitorService.cs`.
-- **Root cause:** not yet distilled (mostly open/untriaged). **Do not force-fit a fix location** —
+- **Root cause:** not yet distilled (mostly open or not yet assessed). **Do not force-fit a fix location** —
   reason from the symptom and confirm in source.
 - **Guardrail:** treat monitor geometry, DPI, and taskbar/edge state as first-class inputs; re-test
   Dock across multiple monitors, power events, and each edge. Evidence (open):

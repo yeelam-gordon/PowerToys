@@ -150,7 +150,7 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
   shortcut). Evidence: [#48158](https://github.com/microsoft/PowerToys/issues/48158).
 - **Where:** `MousePointerCrosshairs/dllmain.cpp` hotkey parse + the "set default hotkeys if not
   configured" block (`m_activationHotkey.key == 0` / `m_glidingHotkey.key == 0` → forced defaults).
-- **Root cause:** an empty/cleared hotkey is treated as "unconfigured" and silently replaced by the
+- **Root cause:** an empty/cleared hotkey is treated as "not configured" and silently replaced by the
   built-in default, so clearing appears to do nothing.
 - **Guardrail:** distinguish "never set" from "explicitly cleared"; don't force a default over a
   user-cleared shortcut. Mirror this in the C# Settings UI validation.

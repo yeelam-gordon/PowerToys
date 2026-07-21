@@ -115,7 +115,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   (`Shift` with empty `Keys`) is not a usable shortcut.
 - **Guardrail:** use spec tokens — `<Delete>`, `<Tab>`, `<Space>`, `<Insert>`, `<Escape>`,
   `<PageUp>`, `<PageDown>`, `<Enter>`, arrows, `<N>`; every shortcut needs a real key, not just a
-  modifier. Evidence: review pushback on PRs
+  modifier. Evidence: review push-back on PRs
   [#48821](https://github.com/microsoft/PowerToys/pull/48821),
   [#48959](https://github.com/microsoft/PowerToys/pull/48959),
   [#48960](https://github.com/microsoft/PowerToys/pull/48960),

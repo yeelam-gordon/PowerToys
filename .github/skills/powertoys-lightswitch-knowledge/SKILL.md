@@ -13,7 +13,7 @@ toggle manually. Use it to localize code fast, avoid known regression traps, and
 conventions maintainers already established.
 
 > **This is a young module** (first shipped ~PowerToys 0.98–0.100). History is comparatively thin
-> and many bug reports are still open/un-triaged. Where evidence is a bare issue title, this file
+> and many bug reports are still open or not yet assessed. Where evidence is a bare issue title, this file
 > says so — treat those as *symptoms to confirm in source*, not settled root causes.
 
 ## When to Use This Skill

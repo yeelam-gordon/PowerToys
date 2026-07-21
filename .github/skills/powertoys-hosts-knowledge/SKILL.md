@@ -54,7 +54,7 @@ the C++ launcher in `HostsModuleInterface/`.
 | Ping an entry's address | `HostsService.cs::PingAsync` |
 | Launch app (normal + elevated) | `HostsModuleInterface/dllmain.cpp::launch_process` (`ShellExecuteExW`, `runas` verb; `SHOW_HOSTS_ADMIN_EVENT`) |
 | Enabled-by-default = false; GPO gate | `dllmain.cpp::is_enabled_by_default` (returns `false`), `gpo_policy_enabled_configuration` |
-| Empty-title TitleBar guard | `Hosts/HostsXAML/MainWindow.xaml.cs` ctor (fallback to "Hosts File Editor") |
+| Empty-title TitleBar guard | `Hosts/HostsXAML/MainWindow.xaml.cs` ctor (falls back to "Hosts File Editor") |
 | Settings load (defaults, retry, watcher) | `Hosts/Settings/UserSettings.cs` |
 
 ## Regression Playbooks
@@ -139,7 +139,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   TitleBar reads `AppWindow.Title` during a deferred layout pass.
 - **Root cause:** `ResourceLoader.GetString` can return `""` when the resource map fails to resolve; an
   empty native window title faults the windowing layer.
-- **Guardrail:** never leave `Title` empty — keep the non-empty fallback ("Hosts File Editor").
+- **Guardrail:** never leave `Title` empty — keep the non-empty default ("Hosts File Editor").
   Evidence: [PR #49069](https://github.com/microsoft/PowerToys/pull/49069).
 
 ## Review Rules

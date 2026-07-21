@@ -84,14 +84,14 @@ flowchart TD
     A[Module to migrate] --> B{Does a legacy<br/>UITests project exist?}
     B -- Yes --> C["Scenario A: PORT<br/>Create [Module].UITests.Next<br/>Re-implement each legacy test"]
     B -- No --> D{Is there a human test<br/>sign-off .md?}
-    D -- Yes --> E["Scenario B: GREENFIELD<br/>Create [Module].UITests<br/>Turn each checklist item into a test"]
+    D -- Yes --> E["Scenario B: NEW-PROJECT<br/>Create [Module].UITests<br/>Turn each checklist item into a test"]
     D -- No --> F[Ask the user for the<br/>test spec / sign-off doc]
 ```
 
 | Scenario | Trigger | New project name | Source of test cases |
 |---|---|---|---|
 | **A — Port** | A legacy `[Module].UITests` (or similar) project already exists and references `UITestAutomation.csproj` | **`[Module].UITests.Next`** — keep the `.Next` suffix so it lives **alongside** the legacy project | The existing legacy test methods (1:1 re-implementation) |
-| **B — Greenfield** | The module has **no** UI tests at all | **`[Module].UITests`** — **drop** the `.Next` suffix; there's nothing to live alongside | The module's human sign-off markdown (manual checklist), e.g. `ColorPickerUITest.md` |
+| **B — New project** | The module has **no** UI tests at all | **`[Module].UITests`** — **drop** the `.Next` suffix; there's nothing to live alongside | The module's human sign-off markdown (manual checklist), e.g. `ColorPickerUITest.md` |
 
 Place the new project under **`src/modules/[Module]/Tests/[Module].UITests.Next/`** (or
 `…/Tests/[Module].UITests/` for Scenario B). If the module already keeps tests in a different
@@ -109,7 +109,7 @@ Place the new project under **`src/modules/[Module]/Tests/[Module].UITests.Next/
 Create a TODO list and work top-to-bottom. Each step links to the reference that drives it.
 
 ```markdown
-- [ ] 1. Identify the module + scenario (A port / B greenfield) — this SKILL.md "Pick your scenario"
+- [ ] 1. Identify the module + scenario (A port / B new project) — this SKILL.md "Pick your scenario"
 - [ ] 2. Read the two reference examples (ColorPicker .Next + ScreenRuler legacy) end-to-end
 - [ ] 3. Inventory the source:
         • Scenario A → list every [TestMethod] + shared helper in the legacy project
@@ -205,4 +205,4 @@ $exe = "<repo>\x64\Debug\tests\<Module>.UITests.Next\net10.0-windows10.0.26100.0
 
 ## What is NICE to do
 
-- **Improve the new UT Test framework if you see such opportunity**. The new framework works only with a few modules and may lack something other requires. If you see the old test uses something that we don't have in a new framework and it's handy, don't hesiate to port it to a new one. Or you may see the test uses a bunch of extra helpers ouside of test framework, which also may be a signal.
+- **Improve the new UT Test framework if you see such opportunity**. The new framework works only with a few modules and may lack something other requires. If you see the old test uses something that we don't have in a new framework and it's handy, don't hesitate to port it to a new one. Or you may see the test uses a bunch of extra helpers outside of test framework, which also may be a signal.

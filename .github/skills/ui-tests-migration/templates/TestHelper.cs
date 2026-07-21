@@ -4,7 +4,7 @@
 
 // TEMPLATE — a static helper for a `.Next` UI-test project, distilled from the validated ScreenRuler
 // port. Copy alongside ModuleEndToEndTests.cs, then:
-//   • Replace __MODULE__ (project name) and __MODULEUI__ (the module's PROCESS name, e.g.
+//   • Replace __MODULE__ (project name) and __MODULE_UI__ (the module's PROCESS name, e.g.
 //     "PowerToys.MeasureToolUI" — NOT the window title; see ModuleConfigData.cs in the harness).
 //   • Fill in the AutomationIds for your module's nav item(s), toggle, and shortcut card from the
 //     module's XAML (or discover them live: `winapp ui search "<id>" -a PowerToys.Settings --json`).
@@ -19,7 +19,7 @@ public static class TestHelper
 {
     // ── Customize: AutomationIds + process name ───────────────────────────────────────────────
     // The module's PROCESS name (winappcli -a). Window TITLE may differ — use the process name.
-    public const string ModuleProcess = "__MODULEUI__";
+    public const string ModuleProcess = "__MODULE_UI__";
 
     // Left-nav item AutomationId for the module's Settings page, and its parent group (if the item
     // lives under a collapsible group like "System Tools"). Set ParentNavItemId to null if there's none.

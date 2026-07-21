@@ -42,7 +42,7 @@ Short answer on a **client edition of Windows (Windows 10/11, ProductType=1)**: 
 
 > **Verdict on the common assumption "I can run two modules in two RDP sessions because I have two monitors":** the *conclusion* (can't run two at once on client Windows) is correct, but the *reasoning* is wrong on two counts — two monitors is still one session, and you can't get two simultaneously-Active sessions on client Windows at all (the 2nd login disconnects the 1st). The limit is "can't open a 2nd Active session", not "the two sessions fight each other".
 
-**Practical guidance:** keep a single RDP session for the whole run; don't reconnect/relogin mid-run; if you must check something elsewhere, alt-tab inside the *same* session rather than opening a new RDP connection. To detect a takeover after the fact, `qwinsta` will show your former session as `Disconnected`.
+**Practical guidance:** keep a single RDP session for the whole run; don't reconnect/sign in again mid-run; if you must check something elsewhere, alt-tab inside the *same* session rather than opening a new RDP connection. To detect a takeover after the fact, `qwinsta` will show your former session as `Disconnected`.
 
 ## Pre-run setup checklist
 

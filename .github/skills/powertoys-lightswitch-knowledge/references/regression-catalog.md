@@ -1,7 +1,7 @@
 # LightSwitch Regression & Decision Catalog
 
 Progressive-disclosure companion to `SKILL.md`. LightSwitch is a **young module** (first shipped
-~PowerToys 0.98–0.100); history is thin and many reports are still open/un-triaged. Where an entry
+~PowerToys 0.98–0.100); history is thin and many reports are still open or not yet assessed. Where an entry
 rests only on an issue **title** (issue bodies were unavailable at distill time), it is marked
 *(title-only — confirm in source)*.
 

@@ -121,7 +121,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   **replay** the original keydown (and sometimes keyup) when no drag/resize actually consumed it.
   Missing/one-sided replay leaves the modifier's normal behavior broken.
 - **Guardrail:** on modifier keyup with `!wasDragging && !wasResizing && !g_dragConsumedAlt`, replay
-  the absorbed key; replay **both** down and up for Win (Start opens on keyup, so a lone replayed
+  the absorbed key; replay **both** the key-down and key-up for Win (Start opens on keyup, so a lone replayed
   keydown isn't enough). Also replay when a **non-modifier** key arrives while the modifier is absorbed.
   Evidence: [PR #47261](https://github.com/microsoft/PowerToys/pull/47261) (release Alt on other press),
   [PR #47326](https://github.com/microsoft/PowerToys/pull/47326) (replay Win down+up); reports
@@ -213,7 +213,7 @@ Enforce these when reviewing or authoring GrabAndMove changes:
   C# side a raw `int` for a two-value bugfix — don't churn it into an enum inside an unrelated PR
   ([review on PR #47052](https://github.com/microsoft/PowerToys/pull/47052)).
 - **New native `.vcxproj` mirrors the canonical CppWinRT NuGet wiring** (see the CI playbook).
-- **Prefer vcpkg + a patch file over vendored shim headers.** A maintainer called the
+- **Prefer vcpkg + a patch file over bundled shim headers.** A maintainer called the
   `deps/spdlog-msvc-fix` shim (historical — path as of #47910; not in current tree) "slightly absurd"; toolset-compat fixes belong in the dependency, not a
   bespoke header ([review on PR #47910](https://github.com/microsoft/PowerToys/pull/47910)).
 - **Plain comments.** A maintainer repeatedly pushed back on hyphenated compound-noun comments and

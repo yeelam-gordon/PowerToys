@@ -5,6 +5,7 @@ ABORTIFHUNG
 ABOUTBOX
 Abug
 Acceleratorkeys
+accepteula
 ACCEPTFILES
 ACCESSDENIED
 ACCESSTOKEN
@@ -50,6 +51,7 @@ Animnate
 AOC
 aocfnapldcnfbofgmbbllojgocaelgdd
 aot
+AOTP
 apicontract
 apidl
 APIENTRY
@@ -136,8 +138,9 @@ BITMAPINFO
 BITMAPINFOHEADER
 BITSPERPEL
 BITSPIXEL
-Blackmagic
+Bitwarden
 bla
+Blackmagic
 BLENDFUNCTION
 blittable
 Blockquotes
@@ -153,6 +156,7 @@ Bootstrappers
 BOTTOMALIGN
 boxmodel
 BPBF
+bpc
 bpmf
 bpp
 breadcrumb
@@ -201,9 +205,13 @@ cfp
 CHANGECBCHAIN
 changecursor
 chatasweetie
+cheatsheets
+cheatsheetseries
 checkmarks
 CHILDACTIVATE
 CHILDWINDOW
+chongqi
+choosecharacter
 CHOOSEFONT
 chu
 CIBUILD
@@ -215,6 +223,7 @@ CLASSDC
 classguid
 classmethod
 CLASSNOTAVAILABLE
+CLASSNOTREGISTERED
 claude
 CLEARTYPE
 clickable
@@ -222,6 +231,7 @@ clickonce
 clientedge
 clientside
 cliextensions
+clipboardhistor
 CLIPBOARDUPDATE
 CLIPCHILDREN
 CLIPSIBLINGS
@@ -231,7 +241,9 @@ CLSCTX
 CLSIDs
 clsids
 Clusion
+cmb
 cmder
+cmdnotfound
 CMDNOTFOUNDMODULEINTERFACE
 cmdpal
 CMIC
@@ -261,6 +273,7 @@ comexp
 cominterop
 commandnotfound
 commandpalette
+commicrosoftcmd
 commoncontrols
 compmgmt
 COMPOSITIONDISABLED
@@ -326,6 +339,7 @@ customaction
 CUSTOMACTIONTEST
 CUSTOMFORMATPLACEHOLDER
 cvd
+cwe
 CWMO
 CXSCREEN
 CXSMICON
@@ -333,6 +347,7 @@ CXVIRTUALSCREEN
 CYSCREEN
 CYSMICON
 CYVIRTUALSCREEN
+CZE
 Czechia
 Dac
 dacl
@@ -355,6 +370,7 @@ DCBA
 DCOM
 DCR
 ddc
+Ddcci
 DDEIf
 Deact
 debouncer
@@ -400,9 +416,10 @@ devmgmt
 DEVMODE
 DEVMODEW
 DEVNODES
-devpal
 devpackages
+devpal
 DEVTYP
+Dexpot
 dfx
 DIALOGEX
 diffs
@@ -417,6 +434,7 @@ DISPLAYFLAGS
 DISPLAYFREQUENCY
 displayname
 DISPLAYORIENTATION
+DISPLAYPORT
 divyan
 DLGFRAME
 dlgmodalframe
@@ -443,6 +461,7 @@ DRAWFRAME
 drawingcolor
 dreamsofameaningfullife
 drivedetectionwarning
+DRM
 DROPFILES
 DSPDLOG
 DSTINVERT
@@ -491,6 +510,7 @@ ENABLETEMPLATE
 encodedlaunch
 encryptor
 ENDSESSION
+endtask
 ENSUREVISIBLE
 ENTERSIZEMOVE
 ENTRYW
@@ -531,17 +551,19 @@ EXPCMDFLAGS
 EXPCMDSTATE
 explr
 exprtk
+exps
 exsb
 exstyle
 EXTENDEDKEY
 EXTENDEDVERBS
+extensiononly
 extensionsdk
 EXTRALIGHT
 EXTRINSICPROPERTIES
 eyetracker
+Fairlight
 FANCYZONESDRAWLAYOUTTEST
 FANCYZONESEDITOR
-Fairlight
 FARPROC
 fdw
 fdx
@@ -562,6 +584,7 @@ FILELOCKSMITHEXT
 FILELOCKSMITHLIBINTEROP
 filemgmt
 FILEMUSTEXIST
+filenameonly
 FILEOP
 FILEOPENDIALOGOPTIONS
 FILEOS
@@ -631,6 +654,7 @@ gfx
 GHND
 gitmodules
 GMEM
+Godot
 googleai
 googlegemini
 Gotchas
@@ -657,6 +681,7 @@ GWLSTYLE
 hangeul
 Hantai
 Hanzi
+Harddisk
 Hardlines
 hardlinks
 HARDWAREINPUT
@@ -694,6 +719,8 @@ Hiberboot
 HIBYTE
 hicon
 HICONSM
+hideleadingdigi
+hidethefileexte
 HIDEWINDOW
 Hif
 highcontrast
@@ -716,6 +743,7 @@ HKPD
 HKU
 HMD
 hmenu
+Hmmss
 hmodule
 HMON
 hmonitor
@@ -746,6 +774,7 @@ HSCROLL
 hsi
 HTCLIENT
 hthumbnail
+HTMLPEEKMARKER
 HTOUCHINPUT
 HTTRANSPARENT
 hutchinsoniana
@@ -804,6 +833,7 @@ inetcpl
 Infobar
 INFOEXAMPLE
 Infotip
+inh
 INITCOMMONCONTROLSEX
 INITDIALOG
 INITGUID
@@ -856,6 +886,7 @@ issuecomment
 istep
 Italicise
 ith
+itm
 IUI
 IUWP
 IWIC
@@ -874,6 +905,7 @@ jsonval
 jxr
 Kantai
 KBSC
+keepme
 keybd
 KEYBDDATA
 KEYBDINPUT
@@ -953,7 +985,9 @@ LOGPIXELSX
 LOGPIXELSY
 lon
 longdate
+lookaheads
 lowlevel
+lowlevelkeyboardproc
 LOWORD
 lparam
 LPBITMAPINFOHEADER
@@ -1026,12 +1060,14 @@ MBR
 Mbuttondown
 mccs
 mcp
+Mdd
 MDICHILD
 MDL
 mdtext
 mdtxt
 mdwn
 measuretool
+mediapipe
 meme
 memicmp
 MENUITEMINFO
@@ -1068,6 +1104,7 @@ mmc
 mmcexe
 mmi
 mmsys
+Mnu
 mobileredirect
 mockapi
 MODALFRAME
@@ -1078,6 +1115,7 @@ MONITORINFO
 MONITORINFOEX
 MONITORINFOEXW
 monitorinfof
+moooyo
 MOUSEACTIVATE
 mousecrosshairs
 MOUSEDATA
@@ -1112,6 +1150,7 @@ MSLLHOOKSTRUCT
 Mso
 mspub
 msrc
+MSRDC
 msstore
 mstsc
 msvcp
@@ -1126,6 +1165,7 @@ muxc
 muxx
 muxxc
 muxxh
+Muyuan
 MVPs
 mvvm
 MVVMTK
@@ -1160,6 +1200,7 @@ NEEDDISPATCH
 netcoreapp
 netcpl
 netframework
+NETSDK
 netsetup
 netsh
 NEWDIALOGSTYLE
@@ -1172,6 +1213,7 @@ NEWPLUSCONTEXTMENU
 NEWPLUSSHELLEXTENSIONWIN
 newrow
 nicksnettravels
+niels
 NIF
 nightlight
 NLSTEXT
@@ -1271,6 +1313,7 @@ oleaut
 OLECHAR
 ollama
 onebranch
+oneline
 onnx
 OOBEUI
 openas
@@ -1297,6 +1340,7 @@ outsettings
 OVERLAPPEDWINDOW
 Oversampling
 OVERWRITEPROMPT
+owasp
 OWNDC
 OWNERDRAWFIXED
 Packagemanager
@@ -1314,6 +1358,10 @@ PARENTRELATIVEFORUI
 PARENTRELATIVEPARSING
 parray
 PARTIALCONFIRMATIONDIALOGTITLE
+pasteas
+pasteasjson
+pasteasmarkdown
+pasteasplaintex
 PATCOPY
 PATHMUSTEXIST
 PATINVERT
@@ -1330,8 +1378,8 @@ pchast
 PCIDLIST
 PCTSTR
 PCWSTR
-pdbs
 PDBs
+pdbs
 PDEVMODE
 PDFs
 pdisp
@@ -1358,6 +1406,7 @@ pguid
 phbm
 phbmp
 phicon
+Photometadata
 Photoshop
 photoshop
 phwnd
@@ -1383,6 +1432,7 @@ PMSIHANDLE
 pnid
 PNMLINK
 Poc
+POCOs
 Podcasts
 POINTERID
 POINTERUPDATE
@@ -1402,6 +1452,7 @@ POWERRENAMECONTEXTMENU
 powerrenameinput
 POWERRENAMETEST
 POWERTOYNAME
+powertoysrun
 powertoyssetup
 powertoysusersetup
 Powrprof
@@ -1459,6 +1510,7 @@ psapi
 pscid
 pscustomobject
 PSECURITY
+psexec
 psfgao
 psfi
 PSMODULEPATH
@@ -1472,6 +1524,7 @@ pstrm
 PSYSTEM
 psz
 ptb
+ptbk
 ptc
 PTCHAR
 ptcontrols
@@ -1500,6 +1553,8 @@ quickaccent
 quicklinks
 quickmask
 QUNS
+quser
+qwinsta
 RAII
 randi
 rasterization
@@ -1513,6 +1568,7 @@ rbhid
 Rbuttondown
 rclsid
 RCW
+RCWs
 RCZOOMIT
 rdp
 RDW
@@ -1525,9 +1581,11 @@ recursesubdirs
 recyclebin
 Redist
 Reencode
+reentrancy
 REFCLSID
 REFIID
 REGCLS
+REGDB
 regfile
 REGISTERCLASSFAILED
 REGISTRYHEADER
@@ -1540,6 +1598,7 @@ REINSTALLMODE
 releaseblog
 reloadable
 Relogger
+remapper
 remappings
 REMAPSUCCESSFUL
 REMAPUNSUCCESSFUL
@@ -1630,8 +1689,10 @@ SEEMASKINVOKEIDLIST
 SELCHANGE
 selfhost
 SENDCHANGE
+sendinput
 sendvirtualinput
 serverside
+SETAUTOHIDEBAREX
 SETBUDDYINT
 SETCONTEXT
 SETCURSEL
@@ -1645,7 +1706,6 @@ SETPOWEROFFACTIVE
 SETRANGE
 SETREDRAW
 SETRULES
-SETAUTOHIDEBAREX
 SETSCREENSAVEACTIVE
 SETSTICKYKEYS
 SETTEXT
@@ -1733,6 +1793,7 @@ slnx
 SMALLICON
 smartphone
 smileys
+SMTC
 SMTO
 SNAPPROCESS
 snk
@@ -1825,6 +1886,7 @@ SVGIn
 SVGIO
 svgz
 SVSI
+swapchain
 SWFO
 swp
 SWPNOSIZE
@@ -1835,6 +1897,7 @@ SYMCACHE
 SYMED
 SYMOPT
 SYNCPAINT
+syscalls
 SYSCHAR
 SYSCOLORCHANGE
 SYSCOMMAND
@@ -1851,6 +1914,7 @@ SYSTEMAPPS
 SYSTEMMODAL
 systemroot
 SYSTEMTIME
+Tailscale
 TARG
 TARGETAPPHEADER
 targetentrypoint
@@ -1883,6 +1947,7 @@ TEXTINCLUDE
 textvariable
 tfopen
 tgamma
+Tgl
 tgz
 THEMECHANGED
 themeresources
@@ -2028,11 +2093,13 @@ viewmodels
 virama
 VIRTKEY
 VIRTUALDESK
+VIRTUALSCREEN
 VISEGRADRELAY
 visiblecolorformats
 visio
 visualeffects
 vkey
+VKs
 vmovl
 VMs
 vnd
@@ -2170,6 +2237,7 @@ Wrk
 wrl
 wscui
 wsh
+WSLg
 wstr
 wsz
 WTA
@@ -2204,6 +2272,7 @@ YVIRTUALSCREEN
 zamora
 Zenbook
 ZEROINIT
+zhongqi
 zonability
 zonable
 zoneset
@@ -2212,3 +2281,4 @@ Zoomin
 zoomit
 ZOOMITX
 Zorder
+zzz

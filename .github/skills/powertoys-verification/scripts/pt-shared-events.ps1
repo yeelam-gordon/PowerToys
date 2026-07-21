@@ -3,7 +3,7 @@
 # Catalog source: PowerToys repo src/common/interop/shared_constants.h
 # (Friendly-name mapping was originally surfaced by community frameworks; the values themselves
 # are stable PT public IPC names. This file is self-contained - no external repo required.)
-# Reason: instead of pressing a hotkey (which is racey, foreground-sensitive, and UIPI-fragile),
+# Reason: instead of pressing a hotkey (which is race-prone, foreground-sensitive, and UIPI-fragile),
 # directly SetEvent on the kernel event the module is waiting on. Same code path as the hotkey.
 
 if (-not ('PtEv' -as [type])) {

@@ -163,7 +163,7 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
   `App.TaskBarWindow`/`AppWindow` as possibly null — escaping exceptions close the overlay (#48481).
 - **Never assign an empty native `Title`** to a WinUI window with `ExtendsContentIntoTitleBar`;
   `ResourceLoader.GetString` returns `""` (not an exception) on failure — guard it (#49069).
-- **New manifest = add spellcheck words** to `.github/actions/spell-check/expected.txt` (raised on
+- **New manifest = add spellcheck words** to `.github/actions/spell-check/expect.txt` (raised on
   #48652), and keep the `<N>`/special-key convention.
 - **Ship a test with logic changes.** Suite: `ShortcutGuide.UnitTests`
   (`ConvertersTests/ShortcutDescriptionToKeysConverterTests.cs`).

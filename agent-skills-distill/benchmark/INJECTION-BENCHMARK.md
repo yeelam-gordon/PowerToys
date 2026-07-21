@@ -50,6 +50,7 @@ sign-off skill's `scripts/` folder; the per-fault artifacts (`json`/`md`/`png`) 
 | I1 | `Helpers/TransformHelpers.cs` | plain-text output gets `_INJ` appended | CHK-01 |
 | I2 | `Helpers/MarkdownHelper.cs` | markdown transform returns raw HTML | CHK-02 |
 | I3 | `Helpers/JsonHelper.cs` | every CSV cell becomes constant `"X"` | CHK-03 |
+| I4 | `Helpers/JsonHelper.cs` | XML-to-JSON branch produces no output (conversion disabled) | CHK-04 |
 | I5 | `Helpers/JsonHelper.cs` | `IsJson` always false (passthrough broken) | CHK-05 |
 | I6 | `Helpers/JsonHelper.cs` | plain-text JSON fallback drops all lines | CHK-06 |
 | I7 | `ViewModels/OptionsViewModel.cs` | AI-gating guard returns `true` (AI box enabled when it should be gated) | CHK-07 |

@@ -16,7 +16,7 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
 - [ ] `Name` / `SectionName` in **sentence case** (feature/proper nouns kept capitalized).
 - [ ] `WindowFilter` is an exact `.exe` name or `*` — no other wildcards.
 - [ ] `<TASKBAR1-9>` section present only if the app genuinely has Win+number taskbar shortcuts.
-- [ ] Spellcheck: new product/app words added to `.github/actions/spell-check/expected.txt`.
+- [ ] Spellcheck: new product/app words added to `.github/actions/spell-check/expect.txt`.
 - [ ] PR description's category/section count matches the file (reviewers flag mismatches).
 
 ## If the PR touches the overlay UI (`ShortcutGuideXAML/MainWindow.xaml.cs`, TaskbarWindow)

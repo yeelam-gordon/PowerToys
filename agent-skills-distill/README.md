@@ -11,7 +11,7 @@ fault injection.
 |------|-----------|
 | `.github/skills/repo-history-distill/` | **Generator skill** — mines any GitHub repo's issues/PRs/commits into per-module knowledge skills. |
 | `.github/skills/app-signoff-uia/` | **Generator skill** — drives any Windows app via winappcli into a declarative sign-off/regression suite. |
-| `distilled-skills/` | The 3 hand-authored + proven skills: `powertoys-{powerrename,poweraccent,advancedpaste}-{knowledge,signoff}`. |
+| `distilled-skills/` | The 6 hand-authored + proven skills (3 modules × `{knowledge,signoff}`): `powertoys-{powerrename,poweraccent,advancedpaste}-{knowledge,signoff}`. |
 | `distilled_all/microsoft-PowerToys/skills/` | The 27 sub-agent-distilled per-module **knowledge** skills (alwaysontop … zoomit). |
 | `benchmark/` | The evaluation harness + reports that prove skill value. |
 

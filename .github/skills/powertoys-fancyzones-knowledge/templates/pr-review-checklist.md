@@ -1,7 +1,7 @@
 # FancyZones PR Review Checklist (template — modify per PR)
 
 Apply **after** reading the diff cold. Check only the groups whose files the diff touches. Each item
-links to the Regression Playbook / Review Rule it enforces.
+maps to the Regression Playbook / Review Rule it enforces.
 
 ## General (any FancyZones PR)
 - [ ] Diff read cold first; concerns formed before consulting this checklist (anti-anchoring).

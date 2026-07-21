@@ -1,7 +1,7 @@
 # Screen Ruler (Measure Tool) PR Review Checklist (template — modify per PR)
 
 Apply **after** reading the diff cold. Check only the groups whose files the diff touches. Each item
-links to the Regression Playbook / Review Rule it enforces. Source root: `src/modules/MeasureTool/`.
+maps to the Regression Playbook / Review Rule it enforces. Source root: `src/modules/MeasureTool/`.
 
 ## General (any Screen Ruler PR)
 - [ ] Diff read cold first; concerns formed before consulting this checklist (anti-anchoring).

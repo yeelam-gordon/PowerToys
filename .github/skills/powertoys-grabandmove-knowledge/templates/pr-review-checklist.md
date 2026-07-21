@@ -1,7 +1,7 @@
 # GrabAndMove PR Review Checklist (template — modify per PR)
 
 Apply **after** reading the diff cold. Check only the groups whose files the diff touches. Each item
-links to a Regression Playbook / Review Rule in `SKILL.md`. All paths under `src/modules/GrabAndMove/`.
+maps to a Regression Playbook / Review Rule in `SKILL.md`. All paths under `src/modules/GrabAndMove/`.
 
 ## General (any GrabAndMove PR)
 - [ ] Diff read cold first; concerns formed before consulting this checklist (anti-anchoring).

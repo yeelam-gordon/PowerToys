@@ -21,6 +21,7 @@ if ($HtmlFromFile -ne '') { $Html  = [System.IO.File]::ReadAllText($HtmlFromFile
 $do = New-Object System.Windows.Forms.DataObject
 if ($Mode -eq 'html') {
     if ($Html -eq '') { $Html = $Value }
+    if ($Value -eq '') { $Value = $Html }   # ensure the plain-text (UnicodeText) fallback is never empty
     # WinForms wraps the fragment into a valid CF_HTML descriptor automatically.
     $do.SetText($Html, [System.Windows.Forms.TextDataFormat]::Html)
     $do.SetText($Value, [System.Windows.Forms.TextDataFormat]::UnicodeText)

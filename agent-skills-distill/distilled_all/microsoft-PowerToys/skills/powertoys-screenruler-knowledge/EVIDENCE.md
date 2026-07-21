@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** Fixed a memory alignment issue that caused the measure tool to crash o
+- **Symptom:** Fixed a memory alignment issue that caused the measure tool to crash on some machines.
 - **Real fix PR:** [#41556](https://github.com/microsoft/PowerToys/pull/41556)
 - **Ground-truth changed file(s):** src/modules/MeasureTool/MeasureToolCore/ToolState.h
 

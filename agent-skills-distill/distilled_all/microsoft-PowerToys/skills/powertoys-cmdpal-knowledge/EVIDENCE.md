@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** CmdPal: Stop item action being executed when CmdPal is compact and col
+- **Symptom:** CmdPal: Stop item action being executed when CmdPal is compact and collapsed
 - **Real fix PR:** [#49182](https://github.com/microsoft/PowerToys/pull/49182)
 - **Ground-truth changed file(s):** src/modules/cmdpal/Microsoft.CmdPal.UI/Pages/ShellPage.xaml.cs
 

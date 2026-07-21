@@ -4,10 +4,15 @@
 # window whenever a trigger file appears, so a single AP process can be driven
 # through many sign-off iterations.
 param(
-    [string]$Exe  = "C:\s\PowerToys\x64\Release\WinUI3Apps\PowerToys.AdvancedPaste.exe",
-    [string]$WorkDir = "C:\s\Demo\SkillForDistill\benchmark\results\acc-advancedpaste\_work"
+    # Environment-specific — no portable default. Pass -Exe or set $env:POWERTOYS_AP_EXE.
+    [string]$Exe  = $env:POWERTOYS_AP_EXE,
+    [string]$WorkDir = $(if ($env:AP_SIGNOFF_WORKDIR) { $env:AP_SIGNOFF_WORKDIR } else { Join-Path $env:TEMP 'ap-signoff-work' })
 )
 $ErrorActionPreference = "Stop"
+if (-not $Exe -or -not (Test-Path $Exe)) {
+    throw "AdvancedPaste exe not found. Pass -Exe <path to PowerToys.AdvancedPaste.exe> or set `$env:POWERTOYS_AP_EXE. This sign-off runner is environment-specific and ships no machine-path default."
+}
+New-Item -ItemType Directory -Force $WorkDir | Out-Null
 $pipeName = "advancedpaste_acc_" + (Get-Random)
 $trigger  = Join-Path $WorkDir "show.trigger"
 $pidFile  = Join-Path $WorkDir "ap.pid"

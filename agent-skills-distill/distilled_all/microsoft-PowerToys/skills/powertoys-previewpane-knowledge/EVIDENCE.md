@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** Fix Markdown preview crash on UTF-8 files with >2MB size and <1.5M cha
+- **Symptom:** Fix Markdown preview crash on UTF-8 files with >2MB size and <1.5M characters
 - **Real fix PR:** [#47391](https://github.com/microsoft/PowerToys/pull/47391)
 - **Ground-truth changed file(s):** src/modules/previewpane/MarkdownPreviewHandler/MarkdownPreviewHandlerControl.cs, src/modules/previewpane/UnitTests-MarkdownPreviewHandler/MarkdownPreviewHandlerTest.cs
 

@@ -2,6 +2,9 @@
 # locked workstation (ERROR_ACCESS_DENIED=5) is visible. Exits 0 when input is
 # alive, 1 when the budget elapses.
 param([int]$Minutes = 10, [int]$IntervalSec = 15)
+if (-not [Environment]::Is64BitProcess) {
+    throw "wait_input.ps1 requires a 64-bit PowerShell host: the INPUT struct layout (Size=40, FieldOffset(8)) is x64-only. Re-run under 64-bit PowerShell."
+}
 Add-Type @'
 using System;using System.Runtime.InteropServices;
 public class Pr{

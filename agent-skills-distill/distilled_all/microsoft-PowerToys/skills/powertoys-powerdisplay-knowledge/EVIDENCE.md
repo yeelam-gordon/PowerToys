@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** [PowerDisplay] Fix false-positive crash detection on cooperative shutd
+- **Symptom:** [PowerDisplay] Fix false-positive crash detection on cooperative shutdown
 - **Real fix PR:** [#48173](https://github.com/microsoft/PowerToys/pull/48173)
 - **Ground-truth changed file(s):** .github/actions/spell-check/expect.txt, src/modules/powerdisplay/PowerDisplay.Lib.UnitTests/CrashDetectionScopeTests.cs, src/modules/powerdisplay/PowerDisplay.Lib/Services/CrashDetectionScope.cs, src/modules/powerdisplay/PowerDisplay.Lib/Services/IProcessExitHook.cs
 

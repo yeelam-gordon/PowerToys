@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** [MouseWithoutBorders] Use per-connection random salt and IV for encryp
+- **Symptom:** [MouseWithoutBorders] Use per-connection random salt and IV for encrypted streams
 - **Real fix PR:** [#48742](https://github.com/microsoft/PowerToys/pull/48742)
 - **Ground-truth changed file(s):** src/modules/MouseWithoutBorders/App/Core/Encryption.cs, src/modules/MouseWithoutBorders/MouseWithoutBorders.UnitTests/Core/EncryptionTests.cs
 

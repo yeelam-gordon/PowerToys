@@ -10,6 +10,9 @@ param(
     [string]$HtmlFromFile = ''
 )
 $ErrorActionPreference = 'Stop'
+if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+    throw "The Windows Forms clipboard requires an STA thread. PowerShell 7+ defaults to MTA — re-run with: pwsh -sta -File set_clipboard.ps1 ... (Windows PowerShell 5.1 is STA by default)."
+}
 Add-Type -AssemblyName System.Windows.Forms
 
 if ($FromFile -ne '')     { $Value = [System.IO.File]::ReadAllText($FromFile) }

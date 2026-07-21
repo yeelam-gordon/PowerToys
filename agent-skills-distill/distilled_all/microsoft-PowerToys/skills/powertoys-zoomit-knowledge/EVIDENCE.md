@@ -5,7 +5,7 @@ module. Methodology + full 30-module results: [`benchmark/ISSUE-BENCHMARK.md`](.
 (scored blind, baseline vs with-skill, same model).
 
 ## The real bug (cited)
-- **Symptom:** Fix ZoomIt Record hotkey ignoring Alt modifier when Alt is the only mo
+- **Symptom:** Fix ZoomIt Record hotkey ignoring Alt modifier when Alt is the only modifier key
 - **Real fix PR:** [#47388](https://github.com/microsoft/PowerToys/pull/47388)
 - **Ground-truth changed file(s):** src/modules/ZoomIt/ZoomIt/Zoomit.cpp, src/settings-ui/Settings.UI/ViewModels/ZoomItViewModel.cs
 

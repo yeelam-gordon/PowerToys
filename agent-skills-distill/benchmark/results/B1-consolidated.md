@@ -1,5 +1,10 @@
 # B1 Consolidated — issue-fix localization (3 cases, no-source, Opus, leak-free holdouts)
 
+> **Scale note:** the `Candidate`/`Baseline` values below are the **SUM of 3 axes**
+> (located_area + fix_matches + found_fix_ref), each 0–1, so the per-case range is **0–3**.
+> This is the early pilot's 0–3 sum — distinct from the **0–1 mean** used in
+> [`ISSUE-BENCHMARK.md`](../ISSUE-BENCHMARK.md).
+
 | Case | Bug | Real culprit | Candidate | Baseline | Lift |
 |------|-----|--------------|:---------:|:--------:|:----:|
 | #44980 | multi-monitor menu invisible | WindowsFunctions.cs/PowerAccent.cs (DPI) | 2.0 | 1.5 | +0.5 |

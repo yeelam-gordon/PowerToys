@@ -42,5 +42,3 @@ distilled_v3/**/raw/
 benchmark/results/b1/*/worktree
 
 distilled_all/**/raw/
-
-benchmark/results/b1/*/worktree/

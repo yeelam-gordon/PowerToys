@@ -28,7 +28,12 @@ $proc = Start-Process -FilePath $Exe -ArgumentList @("$PID", $pipeName) -PassThr
 Set-Content -Path $pidFile -Value $proc.Id
 Write-Host "launched AdvancedPaste pid=$($proc.Id) pipe=$pipeName"
 
-$server.WaitForConnection()
+$connectTask = $server.WaitForConnectionAsync()
+$timeoutMs = 30000
+if (-not $connectTask.Wait($timeoutMs)) {
+    if ($proc.HasExited) { throw "AdvancedPaste (pid=$($proc.Id)) exited with code $($proc.ExitCode) before connecting to the named pipe — check the -Exe path / build." }
+    throw "Timed out after $([int]($timeoutMs/1000))s waiting for AdvancedPaste (pid=$($proc.Id)) to connect to the named pipe. The process is still running; verify the build responds to ShowUI."
+}
 Write-Host "client connected"
 Start-Sleep -Milliseconds 800
 $bytes = [System.Text.Encoding]::Unicode.GetBytes("ShowUI`r`n")

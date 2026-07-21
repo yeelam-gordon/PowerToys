@@ -151,7 +151,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [PR #46899](https://github.com/microsoft/PowerToys/pull/46899).
 
 ### Zip filenames garbled for non-UTF-8 archives
-- **Symptom:** previewing a zip created on a non-UTF-8 OS (e.g. Chinese filenames) shows mojibake
+- **Symptom:** previewing a zip created on a non-UTF-8 OS (e.g. Chinese filenames) shows garbled text
   entry names.
 - **Where:** `ArchivePreviewer.cs` `.zip` branch.
 - **Root cause:** zip stores no encoding unless the UTF-8 (EFS bit 11) flag is set; SharpCompress then

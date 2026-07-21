@@ -35,7 +35,7 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 | PowerToys module wrapper, GPO gate, enable/disable, launch ZoomIt.exe | `ZoomItModuleInterface/dllmain.cpp` `enable/disable`, `gpo_policy_enabled_configuration` → `getConfiguredZoomItEnabledValue` |
 | Hotkey IDs (all 22) | `Zoomit.cpp:83-104` `ZOOM_HOTKEY..WEBCAM_TOGGLE_HOTKEY` |
 | Central hotkey registration + logging lambda | `Zoomit.cpp:3569` `RegisterAllHotkeys` (local `registerHotkey`) |
-| **XOR-derived hotkey variants** (crop/window/live-draw/demotype-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT` (3606-3612); `LIVE_DRAW = g_LiveZoomToggleMod ^ MOD_SHIFT` (3580); `DEMOTYPE_RESET = g_DemoTypeToggleMod ^ MOD_SHIFT` (3586) |
+| **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT` (3606-3612); `LIVE_DRAW = g_LiveZoomToggleMod ^ MOD_SHIFT` (3580); `DEMOTYPE_RESET = g_DemoTypeToggleMod ^ MOD_SHIFT` (3586) |
 | Other 3 registration sites (must stay in sync) | Options-dialog validation `OptionsProc` (~`Zoomit.cpp:5520-5620`); startup `MainWndProc WM_CREATE` (~`7691-7708`); `WM_USER_RELOAD_SETTINGS` (~`10356-10373`) |
 | Main window message pump / hotkey dispatch | `Zoomit.cpp:7501` `MainWndProc`, `WM_HOTKEY` (~`7870`) |
 | Zoom mode (static zoom + pan/draw) | `MainWndProc` `ZOOM_HOTKEY` path; `DrawWndProc`/draw state in `Zoomit.cpp` |
@@ -67,7 +67,7 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 **Hotkey model (critical):** ZoomIt registers global hotkeys via Win32 `RegisterHotKey`. Several
 hotkeys are **derived from one base modifier by XOR**, not stored independently: record-crop =
 `base ^ MOD_SHIFT`, record-window = `base ^ MOD_ALT`, live-draw = `liveBase ^ MOD_SHIFT`,
-demotype-reset = `demoBase ^ MOD_SHIFT`. This same registration logic is **duplicated across four
+DemoType-reset = `demoBase ^ MOD_SHIFT`. This same registration logic is **duplicated across four
 sites** (`RegisterAllHotkeys`, `OptionsProc` validation, `MainWndProc` startup,
 `WM_USER_RELOAD_SETTINGS`) — a fix in one must be mirrored in all four.
 

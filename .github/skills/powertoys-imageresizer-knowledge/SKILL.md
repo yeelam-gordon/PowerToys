@@ -58,7 +58,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 
 **Encode-path invariant (critical):** in `EncodeToStreamAsync`, ImageResizer **transcodes**
 (re-encodes via `BitmapTransform`, preserving all metadata) only when the output codec equals the
-input codec, `RemoveMetadata` is false, and `forceFresh` is false. Otherwise it takes the
+input codec, `RemoveMetadata` is false, and `forceFresh` is false. If not, it takes the
 **fresh-encode** path, which manually carries over only `KnownMetadataProperties`. JPEG resize
 forces fresh encode (`forceFresh = JpegEncoderId && transform needed`) so the quality setting
 applies — a deliberate metadata/quality trade-off, not a bug (PR #47134).

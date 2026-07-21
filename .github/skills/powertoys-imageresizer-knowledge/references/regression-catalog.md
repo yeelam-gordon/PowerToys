@@ -11,7 +11,7 @@ claim in source before acting. Symptoms map to `src/modules/imageresizer/`.
   re-implemented on the WinRT/WIC APIs. Maintainers standardize on **WinUIEx** for windowing.
 - **WIC encode: transcode vs fresh-encode.** `EncodeToStreamAsync` transcodes (re-encode via
   `BitmapTransform`, all metadata preserved) only when output codec == input codec, `RemoveMetadata`
-  is false, and `forceFresh` is false. Otherwise it fresh-encodes and carries over only
+  is false, and `forceFresh` is false. If not, it fresh-encodes and carries over only
   `KnownMetadataProperties`. JPEG resize forces fresh encode so `ImageQuality` applies — a deliberate
   metadata/quality trade-off (`ResizeOperation.cs`).
 - **Metadata handling is best-effort + explicit.** Known props (DateTaken, CameraModel/Manufacturer,

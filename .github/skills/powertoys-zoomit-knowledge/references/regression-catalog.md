@@ -12,7 +12,7 @@ source (`Zoomit.cpp` line numbers are approximate — grep the named symbol).
   switch (`Zoomit.cpp:7501`, `7870`). There is no per-feature object model — changing one mode often
   ripples across the switch.
 - **Hotkeys derived by XOR from a base modifier.** Record-crop = `base ^ MOD_SHIFT`, record-window =
-  `base ^ MOD_ALT`, live-draw = `liveBase ^ MOD_SHIFT`, demotype-reset = `demoBase ^ MOD_SHIFT`
+  `base ^ MOD_ALT`, live-draw = `liveBase ^ MOD_SHIFT`, DemoType-reset = `demoBase ^ MOD_SHIFT`
   (`RegisterAllHotkeys`, `Zoomit.cpp:3580-3612`). Compact, but a base equal to the XORed bit collapses
   the modifier to zero.
 - **Registration logic duplicated across four sites.** `RegisterAllHotkeys` (3569), `OptionsProc`

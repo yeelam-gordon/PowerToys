@@ -37,8 +37,10 @@ Each knowledge skill = `SKILL.md` (frontmatter + Module Map + Regression Playboo
 # Issue localization (per module): roll a worktree back to a fix's parent, solve with/without the skill, judge.
 python benchmark/prepare_b1_sparse.py --clone <PowerToys clone> --fix-sha <sha> --module <m> --case-id m-<m>
 python benchmark/score_all.py
-# Sign-off fault injection:
-pwsh benchmark/... (see INJECTION-BENCHMARK.md)
+# Sign-off fault injection (AdvancedPaste example — needs winappcli + a built PowerToys):
+pwsh distilled-skills/powertoys-advancedpaste-signoff/scripts/run_injections_uia.ps1
+# PowerRename:
+python distilled-skills/powertoys-powerrename-signoff/scripts/run-signoff.py --powertoys-root <powertoys-root> --report-json out.json --report-md out.md
 ```
 
 > This folder is an additive check-in for a Copilot code-review quality pass; it does not modify

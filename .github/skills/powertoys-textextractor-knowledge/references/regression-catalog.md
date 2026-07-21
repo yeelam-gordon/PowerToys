@@ -35,7 +35,7 @@ titles + source behavior (noted per entry).
   bounds by `DpiScaleX/Y` for WPF Width/Height.
 - **DPI coercion hack.** `OCROverlay.Window_Loaded` calls `MoveWindow` twice (first with +1/-1) — the
   first move lands the window on the target monitor and triggers `WM_DPICHANGED`; the coercion forces
-  WPF to update `Top/Left/Width/Height`. Removing it reintroduces misalignment.
+  WPF to update `Top/Left/Width/Height`. Removing it reintroduces mis-alignment.
 - **Selection→capture scaling.** `RegionClickCanvas_MouseUp` multiplies selection coordinates by the
   device transform (`CompositionTarget.TransformToDevice` `M11/M22`) to convert DIP→pixels before
   `CopyFromScreen`. Evidence: [#46852](https://github.com/microsoft/PowerToys/issues/46852),

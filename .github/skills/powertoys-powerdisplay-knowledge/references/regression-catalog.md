@@ -8,7 +8,7 @@ raw distillation set (`raw/PowerDisplay/`). **Newer module — history is thin; 
 | PR | Title | Durable lesson |
 |---|---|---|
 | [#47875](https://github.com/microsoft/PowerToys/pull/47875) | Max compatibility mode setting | Opt-in DDC discovery of monitors that don't advertise capabilities; toggling raises `RescanPowerDisplayMonitorsEvent`; hide brightness slider when VCP `0x10` absent. |
-| [#47876](https://github.com/microsoft/PowerToys/pull/47876) | Rescan monitors on display wake | Subscribe `GUID_CONSOLE_DISPLAY_STATE`; **lock UI first, then rescan** so stale interactions are blocked. (#47951) |
+| [#47876](https://github.com/microsoft/PowerToys/pull/47876) | Re-scan monitors on display wake | Subscribe `GUID_CONSOLE_DISPLAY_STATE`; **lock UI first, then re-scan** so stale interactions are blocked. (#47951) |
 | [#47734](https://github.com/microsoft/PowerToys/pull/47734) | Auto-disable on DDC/CI capability-fetch crash | `discovery.lock` sentinel + Phase 0 recovery → `crash_detected.flag`, `enabled.PowerDisplay=false`, `POWER_DISPLAY_AUTO_DISABLE_EVENT`, page lock via `IsCrashLockActive`. (#47556) |
 | [#47977](https://github.com/microsoft/PowerToys/pull/47977) | Migrate legacy `{Source}_{EdidId}_{N}` Ids | Match legacy Ids by **EdidId** onto DevicePath Ids or upgrades silently reset Enable* toggles. (Id format from #47712) |
 | [#48026](https://github.com/microsoft/PowerToys/pull/48026) | Close flyout on Escape | Flyout had no keyboard close path; handle Escape on RootGrid, matching other PowerToys flyouts. (#48016) |

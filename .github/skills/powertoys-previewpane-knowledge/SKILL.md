@@ -1,6 +1,6 @@
 ---
 name: powertoys-previewpane-knowledge
-description: 'PowerToys PreviewPane module knowledge: File Explorer preview handlers (SVG, Markdown, Monaco/source-code, PDF, G-code, BG-code, QOI) and thumbnail providers (SVG, PDF, STL, G-code, BG-code, QOI). Feature->file/function map, regression playbooks (WebView2 NavigateToString byte-vs-char limit, URI-scheme sandboxing of untrusted files, SVG blocked-element/namespace handling, PDF/SVG resource exhaustion, per-format COM registration, STA/threading), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/previewpane. Keywords: preview handler, thumbnail provider, IPreviewHandler, IThumbnailProvider, WebView2, SVG, Markdown, Monaco, PDF, gcode, QOI, STL, COM registration, CLSID, sandbox, STA, PR review, regression.'
+description: 'PowerToys PreviewPane module knowledge: File Explorer preview handlers (SVG, Markdown, Monaco/source-code, PDF, G-code, BG-code, QOI) and thumbnail providers (SVG, PDF, STL, G-code, BG-code, QOI). Feature->file/function map, regression playbooks (WebView2 NavigateToString byte-vs-char limit, URI-scheme sandboxing of untrusted files, SVG blocked-element/namespace handling, PDF/SVG resource exhaustion, per-format COM registration, STA/threading), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/previewpane. Keywords: preview handler, thumbnail provider, IPreviewHandler, IThumbnailProvider, WebView2, SVG, Markdown, Monaco, PDF, gcode, QOI, STL, COM registration, CLSID, sandbox, STA, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -140,7 +140,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#46386](https://github.com/microsoft/PowerToys/issues/46386) (SVG thumbnail high power draw).
 
 ### Handler not registered / preview broken after install, upgrade, or GPO change
-- **Symptom:** a format stops previewing or thumbnailing after install/upgrade, or when its
+- **Symptom:** a format stops previewing or generating thumbnails after install/upgrade, or when its
   per-utility GPO is toggled; Explorer shows the generic icon.
 - **Where:** `powerpreview/powerpreview.cpp` per-handler `registryChanges` + GPO rule function; the
   render-time GPO re-check inside each provider; native COM registration
@@ -181,7 +181,7 @@ Enforce these when reviewing or authoring PreviewPane changes:
   include/output paths ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 - **Ship a test with every fix.** Suites live in `src/modules/previewpane/UnitTests-*`.
 
-## Gotchas
+## Pitfalls
 
 - **`NavigateToString`'s limit is bytes, not `string.Length`.** A 700K-CJK-char string is ~2.1 MB
   of UTF-8 and crashes the API though `.Length` is under 1.5M. Always measure with

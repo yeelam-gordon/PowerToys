@@ -1,6 +1,6 @@
 ---
 name: powertoys-fancyzones-knowledge
-description: 'PowerToys FancyZones module knowledge: feature->file/function map for zone layouts, mouse drag-snap, keyboard (Win+arrow) snap, override-Windows-snap, multi-monitor/DPI, virtual-desktop layout binding, app-zone-history (last-known-zone restore), the WPF editor, and the CLI. Recurring regression playbooks (shutdown/teardown races in WorkArea/ZonesOverlay/OnThreadExecutor, stuck drag state + swallowed keys when a window is destroyed mid-drag, Win+Ctrl+Alt quick-layout digit stealing, Shift-only swallow during drag, last-known-zone moving all app windows, applied-layouts.json access-denied), maintainer review rules, and gotchas. Load when planning, fixing, triaging, or reviewing changes under src/modules/fancyzones — zone snapping/dragging, layout apply/serialization, multi-monitor/virtual-desktop, window-position restore, editor spacing/highlight, CLI.'
+description: 'PowerToys FancyZones module knowledge: feature->file/function map for zone layouts, mouse drag-snap, keyboard (Win+arrow) snap, override-Windows-snap, multi-monitor/DPI, virtual-desktop layout binding, app-zone-history (last-known-zone restore), the WPF editor, and the CLI. Recurring regression playbooks (shutdown/teardown races in WorkArea/ZonesOverlay/OnThreadExecutor, stuck drag state + swallowed keys when a window is destroyed mid-drag, Win+Ctrl+Alt quick-layout digit stealing, Shift-only swallow during drag, last-known-zone moving all app windows, applied-layouts.json access-denied), maintainer review rules, and pitfalls. Load when planning, fixing, triaging, or reviewing changes under src/modules/fancyzones — zone snapping/dragging, layout apply/serialization, multi-monitor/virtual-desktop, window-position restore, editor spacing/highlight, CLI.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -89,7 +89,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 ### Stuck drag + swallowed number keys when a window is destroyed mid-drag
 - **Symptom:** closing/destroying a window **while dragging** leaves zone overlays on screen and then
-  swallows/misroutes subsequent keystrokes (notably digits) from the focused app.
+  swallows or incorrectly routes subsequent keystrokes (notably digits) from the focused app.
 - **Where:** `FancyZones.cpp` `HandleWinHookEvent` (`EVENT_OBJECT_DESTROY`),
   `WM_PRIV_WINDOWDESTROYED` handler, `MoveSizeEnd`, `OnKeyDown`; `WindowMouseSnap::Abort`.
 - **Root cause:** FancyZones never subscribed to `EVENT_OBJECT_DESTROY`, so the
@@ -121,7 +121,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Where:** `FancyZonesLib/FancyZonesData/AppZoneHistory.cpp::GetAppLastZoneIndexSet`; consumers in
   `FancyZones.cpp` new-window handling.
 - **Root cause:** zone history is keyed per app (+ work-area id + layout id); multiple windows of one
-  process resolve to the same saved index set, and multi-monitor work-area id resolution can misroute.
+  process resolve to the same saved index set, and multi-monitor work-area id resolution can route incorrectly.
 - **Guardrail:** confirm the work-area/layout id used for lookup matches the target monitor; be wary
   of per-process (not per-window) history keys. Evidence (open):
   [#47010](https://github.com/microsoft/PowerToys/issues/47010),
@@ -152,7 +152,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 Enforce these when reviewing or authoring FancyZones changes:
 
-- **Every teardown/reconfig path must be race-safe.** Guard `thread::join()` with `joinable()`; stop
+- **Every teardown/reconfiguration path must be race-safe.** Guard `thread::join()` with `joinable()`; stop
   the render thread before recycling its HWND; write shutdown flags under the same mutex the waiter
   uses; tear down the drag snapper before clearing the work-area map (PR #48473).
 - **Never dereference a `WorkArea*`/`const&` across `WorkAreaConfiguration::Clear()`.** Monitor
@@ -169,7 +169,7 @@ Enforce these when reviewing or authoring FancyZones changes:
 - **Subscribe to every WinEvent you dispatch.** A `WM_PRIV_*` branch is dead code unless the matching
   `EVENT_*` is registered in the WinEvent hook (PR #48569 added `EVENT_OBJECT_DESTROY`).
 - **Resolve monitor/virtual-desktop ids defensively.** VD GUIDs come from the registry and vary by OS
-  build; multi-monitor work-area ids drive zone-history lookup — mismatches misroute windows
+  build; multi-monitor work-area ids drive zone-history lookup — mismatches route windows to the wrong monitor
   (#49057, #47010).
 - **Serialize and error-handle the JSON data files.** `applied-layouts.json`, `app-zone-history.json`,
   custom/default layouts are shared on disk; unguarded writes cause access-denied (#48374).
@@ -179,7 +179,7 @@ Enforce these when reviewing or authoring FancyZones changes:
   `FancyZonesEditor.UnitTests`; end-to-end → the `*.UITests`. FancyZones has **no** unit-test harness
   for the live hook/drag path — call that out and validate manually (PR #48569).
 
-## Gotchas
+## Pitfalls
 
 - **Never** call `thread::join()` in a destructor without `joinable()` — a ctor early-return (display
   TDR, monitor disconnect) leaves the render thread non-joinable → `std::terminate` (PR #48473).

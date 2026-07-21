@@ -1,6 +1,6 @@
 ---
 name: powertoys-grabandmove-knowledge
-description: 'PowerToys GrabAndMove module knowledge: feature->file/function map, recurring regression playbooks (modifier absorb/replay & stuck keys, held-key counter, cross-thread g_excludedCache data race, shell-surface/desktop exclusion, maximized drag/resize anchoring, remote-session overlay corners, CppWinRT LNK2038 CI break), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/GrabAndMove — Alt/Win+drag to move, Alt+right-drag to resize, low-level keyboard/mouse hooks, overlay rendering, window exclusion, settings. Keywords: GrabAndMove, Alt drag, move resize window, low-level hook, WH_KEYBOARD_LL, WH_MOUSE_LL, WinEventProc, overlay, GDI+, excluded apps, game mode, CppWinRT, LNK2038, PR review, regression, data race.'
+description: 'PowerToys GrabAndMove module knowledge: feature->file/function map, recurring regression playbooks (modifier absorb/replay & stuck keys, held-key counter, cross-thread g_excludedCache data race, shell-surface/desktop exclusion, maximized drag/resize anchoring, remote-session overlay corners, CppWinRT LNK2038 CI break), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/GrabAndMove — Alt/Win+drag to move, Alt+right-drag to resize, low-level keyboard/mouse hooks, overlay rendering, window exclusion, settings. Keywords: GrabAndMove, Alt drag, move resize window, low-level hook, WH_KEYBOARD_LL, WH_MOUSE_LL, WinEventProc, overlay, GDI+, excluded apps, game mode, CppWinRT, LNK2038, PR review, regression, data race.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -219,7 +219,7 @@ Enforce these when reviewing or authoring GrabAndMove changes:
 - **Plain comments.** A maintainer repeatedly pushed back on hyphenated compound-noun comments and
   "flowery" wording ("warning-gold", "literal equivalent"); keep code comments plain and factual.
 
-## Gotchas
+## Pitfalls
 
 - **Never** touch `g_excludedCache` (or other hook globals) off the main message-pump thread — a
   `std::unordered_map` race there corrupts memory; marshal via `PostMessage`.

@@ -30,7 +30,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Lab / NCol axis wrong | `ColorFormatHelper.GetStringRepresentation`; `ColorFormatConversionTest.cs` | Axis confusion | Color format |
 | Color name not localized | `ColorRepresentationHelper.ReplaceName` (`%Na`) | Localization | Review Rules |
 | Memory grows over a session | `MouseInfoProvider.GetPixelColor` per-tick GDI; `ZoomWindowHelper` static bmp | GDI/memory | Memory/GDI |
-| White rectangle stuck at startup | app init / window show (`AppStateHandler`, `MainWindow`) | Startup race | (Gotchas) |
+| White rectangle stuck at startup | app init / window show (`AppStateHandler`, `MainWindow`) | Startup race | (Pitfalls) |
 | Second instance won't start | `App.xaml.cs` mutex `PowerToys_ColorPicker_InstanceMutex` | Single-instance | Review Rules |
 | Contrast / heading / label a11y | `Views/*.xaml`, `Controls/*.xaml` | Accessibility | (Review Rules) |
 

@@ -33,7 +33,7 @@ Net: for a context-menu module, **most items are behavior → CLI-first**; the *
 
 **Hard prerequisite — unlocked interactive desktop.** Synthetic right-click injects into the session input stream, so it requires foreground. If the workstation is locked / RDP minimized (`GetForegroundWindow()=0`), this flow is `BLK-ENV` — there is no foreground-free way to open a context menu. `Open-PtExplorerContextMenu` throws a clear BLK-ENV error in that case. (A 4-hour idle auto-lock is the common culprit — see `references/environment-setup.md`.)
 
-**Window hygiene when opening one window per menu (pitfall #13).** Because you open a **fresh Explorer window per menu**, and a module UI launched from the menu (or via CLI) can appear **behind** those windows, close each Explorer window when the item's menu tests end — and `Force-PtForeground -AppId <moduleAppId>` the launched UI before observing/screenshotting. This keeps a recording on the right window and stops stale windows piling up in the z-order. Close by matching your disposable-fixture folder name so you never quit the user's own Explorer windows: `(New-Object -ComObject Shell.Application).Windows() | Where-Object { $_.LocationURL -match '<fixture-tag>' } | ForEach-Object { $_.Quit() }`.
+**Window hygiene when opening one window per menu (pitfall #13).** Because you open a **fresh Explorer window per menu**, and a module UI launched from the menu (or via CLI) can appear **behind** those windows, close each Explorer window when the item's menu tests end — and `Force-PtForeground -AppId <moduleAppId>` the launched UI before observing/capturing. This keeps a recording on the right window and stops stale windows piling up in the z-order. Close by matching your disposable-fixture folder name so you never quit the user's own Explorer windows: `(New-Object -ComObject Shell.Application).Windows() | Where-Object { $_.LocationURL -match '<fixture-tag>' } | ForEach-Object { $_.Quit() }`.
 
 **Other constraints:**
 - **Settings for these modules live in a module-OWNED file, not the PT-store `settings.json`** — see `SKILL.md` pitfall #12. The context-menu handler reads e.g. `power-rename-settings.json` / `file-locksmith-settings.json` / `image-resizer-settings.json` / `NewPlus\settings.json` at launch; editing the PT-store `<Module>\settings.json` (what `Get-PtModuleSettings` reads) often has **no effect** on the live handler. Drive icon/extended-menu/feature toggles via the module-owned file + relaunch (restart runner+Explorer for the menu handlers), then restore.
@@ -125,7 +125,7 @@ the module profile says which opener to call and the exact caption to match.
 **Openers** (each returns a menu HWND):
 
 - **`Open-PtExplorerWindow -Path <dir>`** — opens Explorer on a folder and returns its `CabinetWClass`
-  HWND (int), the handle the menu openers below take. (Discovery via `list-windows`; polls until the
+  HWND (int), the handle that the menu openers below take. (Discovery via `list-windows`; polls until the
   window appears.)
 - **`Open-PtBackgroundContextMenu -ExplorerHwnd <h>`** — folder-background menu via **Shift+F10 with
   nothing selected**. Coordinate-free; it first **focuses the file-list** (`winapp ui focus` on the
@@ -169,13 +169,13 @@ distinct ways in, and they are NOT interchangeable:**
 | The **extended** menu (`CMF_EXTENDEDVERBS`) — REQUIRED for any *"Extended context menu only"* / "Appear only in extended menu" entry (e.g. PowerRename L394 combos 3–4) | `Open-PtShiftRightClickMenu -ExplorerHwnd <h> -FileName <f>` (**genuine Shift+right-click**) | `#32768` populated with normal **+ extended** verbs. |
 
 > **Do not use "Show more options" to look for an extended-only entry.** `Show more options` does **not**
-> pass `CMF_EXTENDEDVERBS`, so an entry a module registered as extended-only is legitimately missing there —
+> pass `CMF_EXTENDEDVERBS`, so an entry that a module registered as extended-only is legitimately missing there —
 > reading it that way yields a false "absent". Only a real **Shift+right-click** sets the flag. Neither
 > keyboard `Shift+F10` nor `Show more options` yields extended verbs; the extended menu needs the Shift +
 > mouse right-click, which `Open-PtShiftRightClickMenu` performs (Shift held around an element-resolved
 > right-click on the COM-selected file), then resolves the `#32768` HWND.
 
-**The one gotcha:** the `#32768` window is **not returned by `winapp ui list-windows`**. So
+**The one pitfall:** the `#32768` window is **not returned by `winapp ui list-windows`**. So
 `Get-PtContextMenuItems` (which discovers the menu HWND *from* `list-windows`) can't reach it, and
 neither can the modern openers above. That does **not** mean it's invisible to UIA — its item subtree is
 fully readable once you obtain the HWND, which both openers do via Win32

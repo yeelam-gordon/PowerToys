@@ -70,7 +70,7 @@ Source: `ExplorerCommand.cpp:182-227`, `dllmain.cpp:94-159`, `IPC.cpp`, `NativeM
 ## Common BLOCKED traps (avoid)
 - **Don't BLOCK the lock-detection / End-task / scroll-doesn't-crash items as "needs a real installer / right-click"** — both the CLI and the `last-run.log`+UI back-door fully drive them with any locked file. The context menu literally just writes `last-run.log` + launches the same exe.
 - **Launching the UI from an elevated shell makes it elevated** (title "Administrator: …") and hides the `RestartAsAdminBtn`. To test the non-elevated case (Recipes 7-8), launch via a **scheduled task with `-RunLevel Limited` / LogonType Interactive** — it lands on the user's desktop at medium IL.
-- **`set-value` does fire the Reload** here (TogglePattern/Invoke work); no TextChanged gotchas.
+- **`set-value` does fire the Reload** here (TogglePattern/Invoke work); no TextChanged pitfalls.
 
 ## Elevation semantics (non-elevated FL invisibility — Recipes 7-8 core)
 A medium-IL File Locksmith can't `DuplicateHandle`/read modules of higher-integrity processes, so the **elevated PowerToys.exe runner is invisible** to a non-elevated FL and **visible** to an elevated FL (which also calls `SetDebugPrivilege`, `App.xaml.cs:53-61`). Per-user installs put PowerToys under `%LOCALAPPDATA%\PowerToys`, not "Program Files" — use the PT install dir as the stand-in and note the caveat.

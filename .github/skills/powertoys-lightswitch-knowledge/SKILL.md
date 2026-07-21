@@ -1,6 +1,6 @@
 ---
 name: powertoys-lightswitch-knowledge
-description: 'PowerToys LightSwitch module knowledge: feature->file/function map, regression playbooks (sunrise/sunset math, coordinate validation, schedule wrap-around, startup theme sync, manual-override hotkey toggling, PowerDisplay profile events, Personalize registry theme keys, Night Light registry observer), maintainer review rules and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/LightSwitch — scheduled light/dark theme switching, sunset/sunrise scheduling, geolocation, Follow Night Light, fixed hours, hotkey toggle, Windows service, settings. Keywords: LightSwitch, Light Switch, dark mode, light mode, theme scheduler, sunrise sunset, geolocation, Night Light, AppsUseLightTheme, SystemUsesLightTheme, Personalize registry, PowerDisplay, Windows service, PR review, regression.'
+description: 'PowerToys LightSwitch module knowledge: feature->file/function map, regression playbooks (sunrise/sunset math, coordinate validation, schedule wrap-around, startup theme sync, manual-override hotkey toggling, PowerDisplay profile events, Personalize registry theme keys, Night Light registry observer), maintainer review rules and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/LightSwitch — scheduled light/dark theme switching, sunset/sunrise scheduling, geolocation, Follow Night Light, fixed hours, hotkey toggle, Windows service, settings. Keywords: LightSwitch, Light Switch, dark mode, light mode, theme scheduler, sunrise sunset, geolocation, Night Light, AppsUseLightTheme, SystemUsesLightTheme, Personalize registry, PowerDisplay, Windows service, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -199,7 +199,7 @@ Enforce these when reviewing or authoring LightSwitch changes:
   `Directory.Packages.props` (repo-wide convention,
   [PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** read `Personalize` values as bool without remembering **1 = light, 0 = dark**
   (`GetCurrentSystemTheme` returns `value == 1`). Inverting this silently reverses the whole module.
@@ -207,7 +207,7 @@ Enforce these when reviewing or authoring LightSwitch changes:
   toggles (`changeSystem`/`changeApps`). "Half the UI switched" is usually one toggle off, not a bug.
 - **Switching to light mode also resets `ColorPrevalence`.** `SetSystemTheme(true)` calls
   `ResetColorPrevalence()` (writes `ColorPrevalence=0`) — a deliberate side effect; don't "clean it
-  up" without understanding accent-on-titlebars behavior (`ThemeHelper.cpp`).
+  up" without understanding accent-on-title-bars behavior (`ThemeHelper.cpp`).
 - **`IsNightLightEnabled` parses a raw binary blob** at fixed offsets (bytes 23–24 == `0x10 0x00`)
   under an undocumented CloudStore key. It is inherently fragile to Windows changes — treat any
   Night-Light regression as "the blob format moved" first (`ThemeHelper.cpp`).

@@ -14,7 +14,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 
 | Reported symptom | Start here (file · function) | Likely class | Playbook |
 |---|---|---|---|
-| Other app's title-bar right-click menu broken/glitched | `AlwaysOnTop.cpp` `UpdateSystemMenuItem`, `HandleWinHookEvent` | System-menu foreign mutation | System-menu integration |
+| Other app's title-bar right-click menu broken/garbled | `AlwaysOnTop.cpp` `UpdateSystemMenuItem`, `HandleWinHookEvent` | System-menu foreign mutation | System-menu integration |
 | `TrackPopupMenu` ERROR_INVALID_MENU_HANDLE with PT running | `UpdateSystemMenuItem`; `SubscribeToEvents` hooks | System-menu | System-menu integration |
 | Toggle item duplicated / wrong command | `UpdateSystemMenuItem`, `IsAlwaysOnTopMenuCommand` | Command-ID collision | Command-ID collision |
 | Settings change not applied while running | `Settings.cpp` `LoadSettings`/`InitFileWatcher`; `settings()` | File-watcher race | Settings live-apply |
@@ -24,7 +24,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Crash on/around border refresh | `WindowBorder.cpp` `UpdateBorderPosition` | Null FrameDrawer | Border null-deref |
 | Doesn't work on admin/elevated app | pin path (`SetWindowPos`/hooks) | UIPI / elevation | Elevated windows |
 | Border missing on some virtual desktop | `AlwaysOnTop.cpp` `AssignBorder`/`RefreshBorders`; `VirtualDesktopUtils` | Desktop tracking | Module Map |
-| Rounded corners square on Win10 | `WindowCornersUtil.cpp` `CornersRadius` | DWM Win11-only API | (Gotchas) |
+| Rounded corners square on Win10 | `WindowCornersUtil.cpp` `CornersRadius` | DWM Win11-only API | (Pitfalls) |
 | Default border color differs from Settings UI | `Settings.h` vs `AlwaysOnTopProperties.cs` | C++/C# drift | Review Rules |
 | Pin applies to random windows | `dllmain.cpp` `on_hotkey`; `RegisterLLKH` events | Hotkey/event routing | Module Map |
 

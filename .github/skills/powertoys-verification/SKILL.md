@@ -38,7 +38,7 @@ specific checklist.
 5. **`references/explorer-context-menu-flow.md` IF your module registers an Explorer right-click entry** (PowerRename, File Locksmith, Image Resizer, New+, Preview Pane, RegistryPreview) — shared synthetic-right-click + UIA-invoke + multi-file-selection flow + module-caption table. Helper: `scripts/pt-explorer-contextmenu.ps1`.
 6. **`references/pre-flight.md`** — pre-flight checks, bootstrap snippet, state-hygiene cleanup, final wrap-up, hard rules.
 7. **`references/reporting-format.md`** — per-item table template, top-of-report summary, step-table rules, anti-patterns, worked example.
-8. **`references/environment-setup.md`** — RDP/sleep/screensaver/session-attachment gotchas. Cite in BLK-ENV verdicts.
+8. **`references/environment-setup.md`** — RDP/sleep/screensaver/session-attachment pitfalls. Cite in BLK-ENV verdicts.
 9. **`references/release-checklist/<module>.md` — SCENARIO A ONLY** — the supplied checklist for the module under test (one file per module; see `references/release-checklist/index.md`). Each item carries `[ADMIN: …]` + `[CLARITY: …]` metadata. **This file IS the set of items to verify.** For B the checklist is derived from the PR(s) instead (see the scenario doc).
 
 ## Helper scripts shipped with this skill
@@ -173,7 +173,7 @@ if (-not $line) { throw 'Runner did not log hotkey invocation' }
 > Assert-PtForegroundOrAbort -AppId Microsoft.CmdPal.UI   # -AppId = the window you're typing INTO
 > Send-PtChord -Key 0xBB                                  # '=' (no modifiers) to trigger the calculator alias
 > ```
-> The `-AppId` is whatever window you're targeting — it's **not** CmdPal-specific. CmdPal is just the worst offender: its AppX foreground-lock drops focus after the first `SetForegroundWindow`, so without the guard the keys silently leak to your terminal.
+> The `-AppId` is whatever window you're targeting — it's **not** CmdPal-specific. CmdPal is just the worst offender: its AppX foreground-lock drops focus after the first `SetForegroundWindow`, so without the guard, the keys silently leak to your terminal.
 
 > Verdict decisions (PASS if behavior matches spec; **FAIL** if the product is wrong *or* the checklist item is stale/ambiguous; BLOCKED if you couldn't run the check after ≥2 entry-paths) live in **Step 3 — Classification taxonomy** below. Don't put verdict logic in Step 2.
 

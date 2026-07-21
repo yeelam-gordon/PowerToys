@@ -34,7 +34,7 @@ tools\build\build.cmd -Path src\modules\<Module>\Tests\<Module>.UITests -Platfor
 Start-Process pwsh -Verb RunAs -ArgumentList "-NoProfile","-ExecutionPolicy","Bypass","-File","<runner>.ps1"
 ```
 
-Knowing the baseline tells you which failures are pre-existing product/environment issues you should
+Knowing the baseline tells you which failures are already-present product/environment issues you should
 NOT expect the port to fix. A measurement failure on a scaled (non-100%) display is usually DPI (see
 [patterns-and-pitfalls.md](patterns-and-pitfalls.md) Pitfall 12): the ScreenRuler legacy suite scores
 **4/5** elevated here (Bounds fails at 150% scale), while the `.Next` port scores **5/5** — its Exe
@@ -159,7 +159,7 @@ recipes):
 ### B4. Make the UI observable (flag, don't fix)
 
 Sign-off docs assume a human's eyes. Some signals aren't UIA-readable (a transparent overlay's
-displayed HEX, a canvas color). If an assertion needs a hook the product doesn't expose:
+displayed HEX, a canvas color). If an assertion needs a hook that the product doesn't expose:
 
 - First try the existing readouts: `GetValue()` (reads the Text binding even when
   `AutomationProperties.Name` overrides the UIA Name), `Inspect(...)` tree walks, clipboard, window

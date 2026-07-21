@@ -1,6 +1,6 @@
 ---
 name: powertoys-peek-knowledge
-description: 'PowerToys Peek module knowledge: feature->file/function map, recurring regression playbooks (Space-to-activate firing during Explorer inline rename / IME composition, Ctrl+W & arrow shortcuts lost after focus enters WebView2/shell preview, preview-handler COM factory RCW leaks & fail-fast on teardown, media player / SMTC persisting after close, zip filename encoding garble, NumberOfDigits int.MinValue overflow, settings read only at Initialize), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/peek — quick file preview, previewers per type (image/video/audio/web-Monaco/archive/shell-handler/drive/special-folder), activation hotkey & Space mode, Explorer selection & neighboring-item navigation, delete, settings, GPO. Keywords: Peek, file preview, spacebar activation, rename conflict, IME, WebView2 Monaco, IPreviewHandler, SHCreateItemFromParsingName, LockServer, MediaSource, SMTC, CP437 zip encoding, PR review, regression.'
+description: 'PowerToys Peek module knowledge: feature->file/function map, recurring regression playbooks (Space-to-activate firing during Explorer inline rename / IME composition, Ctrl+W & arrow shortcuts lost after focus enters WebView2/shell preview, preview-handler COM factory RCW leaks & fail-fast on teardown, media player / SMTC persisting after close, zip filename encoding garble, NumberOfDigits int.MinValue overflow, settings read only at Initialize), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/peek — quick file preview, previewers per type (image/video/audio/web-Monaco/archive/shell-handler/drive/special-folder), activation hotkey & Space mode, Explorer selection & neighboring-item navigation, delete, settings, GPO. Keywords: Peek, file preview, spacebar activation, rename conflict, IME, WebView2 Monaco, IPreviewHandler, SHCreateItemFromParsingName, LockServer, MediaSource, SMTC, CP437 zip encoding, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -216,7 +216,7 @@ Enforce these when reviewing or authoring Peek changes:
 - **No bare relative paths in project files.** Use `$(RepoRoot)`, not `..\..\..\`
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **The default activation is a bare Space** (`EnableSpaceToActivate`, first-run default ON in
   `dllmain.cpp`). It is the single most common source of "Peek opens while I'm renaming" reports;

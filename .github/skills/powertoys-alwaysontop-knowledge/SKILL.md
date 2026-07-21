@@ -1,6 +1,6 @@
 ---
 name: powertoys-alwaysontop-knowledge
-description: 'PowerToys AlwaysOnTop module knowledge: feature->file/function map, recurring regression playbooks (system-menu integration breaking custom-titlebar apps, menu command-ID collision/dedup, settings file-watcher race, opacity hotkey conflicts/numpad/localized layouts, transparency layered-window restore mismatch, border null-deref, elevated-window limits, C++/C# default drift), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/alwaysontop — pin/unpin topmost, WS_EX_TOPMOST, hotkeys, opacity/transparency, colored border frame, rounded corners, virtual desktop, system menu, excluded apps, game mode, settings. Keywords: AlwaysOnTop, pin window, topmost, HWND_TOPMOST, system menu, opacity, transparency, layered window, WinEvent hook, DWM border, DPI, PR review, regression.'
+description: 'PowerToys AlwaysOnTop module knowledge: feature->file/function map, recurring regression playbooks (system-menu integration breaking custom-titlebar apps, menu command-ID collision/de-dup, settings file-watcher race, opacity hotkey conflicts/numpad/localized layouts, transparency layered-window restore mismatch, border null-deref, elevated-window limits, C++/C# default drift), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/alwaysontop — pin/unpin topmost, WS_EX_TOPMOST, hotkeys, opacity/transparency, colored border frame, rounded corners, virtual desktop, system menu, excluded apps, game mode, settings. Keywords: AlwaysOnTop, pin window, topmost, HWND_TOPMOST, system menu, opacity, transparency, layered window, WinEvent hook, DWM border, DPI, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -15,7 +15,7 @@ conventions maintainers already established.
 ## When to Use This Skill
 
 - Planning or implementing a change under `src/modules/alwaysontop/` and needing prior art.
-- Fixing/triaging an AlwaysOnTop bug: pin/unpin not working, border missing/glitched, opacity keys
+- Fixing/triaging an AlwaysOnTop bug: pin/unpin not working, border missing/garbled, opacity keys
   dead, system-menu toggle breaking another app's title-bar menu, settings not applied live, crash
   on border refresh, doesn't work on elevated windows.
 - Reviewing an AlwaysOnTop PR against maintainer conventions and regression traps.
@@ -175,7 +175,7 @@ Enforce these when reviewing or authoring AlwaysOnTop changes:
   every new property (e.g. `ShowInSystemMenu`). Evidence:
   [PR #45773 review](https://github.com/microsoft/PowerToys/pull/45773).
 
-## Gotchas
+## Pitfalls
 
 - **`ShowInSystemMenu` is the #1 "breaks other apps" trap.** It is opt-in (default false) precisely
   because enabling it hooks `EVENT_OBJECT_INVOKED` system-wide and edits foreign windows' system

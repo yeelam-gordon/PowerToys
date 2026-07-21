@@ -28,7 +28,7 @@ maps to the Regression Playbook / Review Rule it enforces.
 
 ## Filename / output (`GetDestinationPath`)
 - [ ] `%1..%6` tokens still map via `Settings.FileNameFormat` (`%`→`{}`).
-- [ ] Illegal chars sanitized to `_`; reserved names (`CON`, `PRN`, …) get trailing `_`; uniquifier applied.
+- [ ] Illegal chars sanitized to `_`; reserved names (`CON`, `PRN`, …) get trailing `_`; de-duplication applied.
 - [ ] `Replace` (overwrite) path keeps `.bak` backup + recycle-bin delete.
 
 ## Settings (`Settings.cs`, `SettingsWrapper.cs`, `ResizeSize.cs`, `AiSize.cs`)

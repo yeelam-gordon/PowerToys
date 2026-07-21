@@ -39,7 +39,7 @@ A WinUI `TitleBar` (with `ExtendsContentIntoTitleBar`) reads `AppWindow.Title` d
 layout pass and faults on empty. Fix: guard with a non-empty literal fallback. This is a **class**
 of bug across PowerToys WinUI windows, not SG-only.
 
-### R3 — Literal digit keys misrendered (#48461 convention → PR #48757)
+### R3 — Literal digit keys mis-rendered (#48461 convention → PR #48757)
 A bare number in `Keys:` is a virtual-key code (VK `9`=Tab, `1`=left mouse button, `0`=undefined).
 Literal digits must be the `<N>` token; the renderer (`KeyVisual`) strips brackets. PR #48757 was
 a data-only sweep of 91 keys across 14 manifests.

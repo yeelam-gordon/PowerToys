@@ -1,6 +1,6 @@
 ---
 name: powertoys-cmdnotfound-knowledge
-description: 'PowerToys Command Not Found (CmdNotFound) module knowledge: feature->file/function map, recurring regression playbooks (offline/DNS pwsh startup crash, empty $PROFILE creation, install on the UI thread, garbled/localized install logs, legacy bundled module -> PowerShell Gallery upgrade, WinGet.Client version floor, ARM64 gaps, GPO gating), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/cmdNotFound and the CmdNotFound Settings page/scripts — PowerShell 7 feedback provider, WinGet suggestion, $PROFILE modification, module install/uninstall/upgrade, experimental features, GPO. Keywords: Command Not Found, CmdNotFound, PowerShell feedback provider, WinGet, Microsoft.WinGet.CommandNotFound, $PROFILE, Install-Module, PSFeedbackProvider, pwsh, PR review, regression.'
+description: 'PowerToys Command Not Found (CmdNotFound) module knowledge: feature->file/function map, recurring regression playbooks (offline/DNS pwsh startup crash, empty $PROFILE creation, install on the UI thread, garbled/localized install logs, legacy bundled module -> PowerShell Gallery upgrade, WinGet.Client version floor, ARM64 gaps, GPO gating), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/cmdNotFound and the CmdNotFound Settings page/scripts — PowerShell 7 feedback provider, WinGet suggestion, $PROFILE modification, module install/uninstall/upgrade, experimental features, GPO. Keywords: Command Not Found, CmdNotFound, PowerShell feedback provider, WinGet, Microsoft.WinGet.CommandNotFound, $PROFILE, Install-Module, PSFeedbackProvider, pwsh, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -191,7 +191,7 @@ Enforce these when reviewing or authoring CmdNotFound changes:
 - **`Update-Module` to upgrade, `Install-Module` only when absent.** Conflating them was a real
   install-workflow bug ([#32766](https://github.com/microsoft/PowerToys/pull/32766) discussion).
 
-## Gotchas
+## Pitfalls
 
 - **Never** treat CmdNotFound as a live process — it is a `$PROFILE` `Import-Module` entry executed by
   every new pwsh session; a bad module or throw at load time breaks the user's shell globally.

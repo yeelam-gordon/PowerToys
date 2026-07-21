@@ -1,6 +1,6 @@
 ---
 name: powertoys-registrypreview-knowledge
-description: 'PowerToys RegistryPreview module knowledge: feature->file/function map, .reg parsing rules (dword/hex/hex(b)/hex(2)/hex(7)/hex(0) type prefixes, multi-line hex continuation, REG_MULTI_SZ/REG_EXPAND_SZ Unicode decode, QWORD little-endian, HKEY abbreviations), tree visualization, write-to-registry via regedit + UAC elevation, malformed-input hardening/fuzz tests, review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/registrypreview — .reg parsing, value type detection, hex/binary decoding, TreeView build, data preview (HexBox/Monaco), save/merge, elevation. Keywords: RegistryPreview, .reg file, registry, hex, dword, qword, REG_MULTI_SZ, REG_BINARY, regedit, elevation, TreeView, Monaco, HexBox, fuzz, PR review, regression.'
+description: 'PowerToys RegistryPreview module knowledge: feature->file/function map, .reg parsing rules (dword/hex/hex(b)/hex(2)/hex(7)/hex(0) type prefixes, multi-line hex continuation, REG_MULTI_SZ/REG_EXPAND_SZ Unicode decode, QWORD little-endian, HKEY abbreviations), tree visualization, write-to-registry via regedit + UAC elevation, malformed-input hardening/fuzz tests, review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/registrypreview — .reg parsing, value type detection, hex/binary decoding, TreeView build, data preview (HexBox/Monaco), save/merge, elevation. Keywords: RegistryPreview, .reg file, registry, hex, dword, qword, REG_MULTI_SZ, REG_BINARY, regedit, elevation, TreeView, Monaco, HexBox, fuzz, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -45,7 +45,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | REG_QWORD decode (`hex(b):` bytes → `BitConverter.ToUInt64`, little-endian) | `ParseRegistryFile` `case "REG_QWORD"` |
 | REG_EXPAND_SZ / REG_MULTI_SZ decode (`Encoding.Unicode`, `\0`→`\r`, TrimEnd) | `ParseRegistryFile` `case "REG_EXPAND_SZ"/"REG_MULTI_SZ"` |
 | Deleted key `[-...]` / deleted value `"x"=-` | `ParseRegistryFile` `StartsWith("[-")` / `EndsWith("=-")` branches |
-| **TreeView build** (nodes, dedup, backward key walk) | `RegistryPreviewMainPage.Utilities.cs` `AddTextToTree`; node map `mapRegistryKeys` |
+| **TreeView build** (nodes, de-dup, backward key walk) | `RegistryPreviewMainPage.Utilities.cs` `AddTextToTree`; node map `mapRegistryKeys` |
 | Value grid model + tooltip/type text | `RegistryValue.xaml.cs`, `RegistryKey.xaml.cs`; `SetValueToolTip`, `GetFolderToolTip` |
 | Extended data preview dialog (dispatch by type) | `RegistryPreviewMainPage.DataPreview.cs` `ShowExtendedDataPreview` |
 | Hex/decimal view (DWORD/QWORD), binary HexBox, expand-var view | `DataPreview.cs` `AddHexView`, `AddBinaryView`, `AddExpandStringView` |
@@ -124,8 +124,8 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   it should restore.
 - **Where:** `RegistryPreview/MainWindow.Utilities.cs` window-placement JSON load/save;
   `MainWindow.Events.cs`.
-- **Root cause:** placement JSON is best-effort (`{ }` fallback on any parse/IO error) and easy to
-  desync from actual window state.
+- **Root cause:** placement JSON is best-effort (`{ }` fallback on any parse/IO error) and easily
+  loses sync with actual window state.
 - **Guardrail:** persist real window state on close and validate the JSON round-trips. Evidence:
   issues [#46573](https://github.com/microsoft/PowerToys/issues/46573),
   [#36630](https://github.com/microsoft/PowerToys/issues/36630).
@@ -169,7 +169,7 @@ Enforce these when reviewing or authoring RegistryPreview changes:
 - **Ship a test with parser changes.** Add/extend `RegistryPreview.FuzzTests` or unit coverage for
   any new parsing branch.
 
-## Gotchas
+## Pitfalls
 
 - **Never** decode a wide-string registry type as ASCII/UTF-8 — REG_MULTI_SZ/REG_EXPAND_SZ are
   UTF-16LE (`Encoding.Unicode`); and you must map `\0`→`\r` or all line breaks vanish (#36629).
@@ -186,7 +186,7 @@ Enforce these when reviewing or authoring RegistryPreview changes:
   clickable (#37447).
 - **`@=` is the `(Default)` value** and `@=-` deletes/clears it — both are rewritten to
   `"(Default)"=...` before the normal value path (`ProcessRegistryLine`).
-- **Tree dedup walks keys backwards** and must use `LastIndexOf(@"\name")`, not `Replace` — a plain
+- **Tree de-dup walks keys backwards** and must use `LastIndexOf(@"\name")`, not `Replace` — a plain
   `Replace` collapses repeated key-name segments and corrupts the tree (see comment in `AddTextToTree`).
 - **Writing to the registry is an elevated, irreversible action** — `OpenRegistryEditor` shells
   `regedit.exe` which prompts for UAC and merges into the live registry; treat as destructive.

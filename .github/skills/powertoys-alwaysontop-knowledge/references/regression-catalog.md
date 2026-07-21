@@ -16,7 +16,7 @@ in source before acting. Symptoms map to `src/modules/alwaysontop/`.
   builds a new `Settings`, then `m_settings.store(...)` publishes it and notifies observers
   (`Settings.cpp`). A full strong-consistency fix would need synchronous IPC acks; the snapshot is a
   deliberate simplicity trade-off. [PR #45994](https://github.com/microsoft/PowerToys/pull/45994).
-- **Owner-tagged system-menu item for safe dedup.** Inserted menu items carry
+- **Owner-tagged system-menu item for safe de-dup.** Inserted menu items carry
   `dwItemData = 0x414F5450` ("AOTP"); `IsAlwaysOnTopMenuCommand` checks that tag before update/remove
   so AlwaysOnTop never edits a same-id item it doesn't own.
   [PR #45845](https://github.com/microsoft/PowerToys/pull/45845).

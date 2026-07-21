@@ -150,7 +150,7 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
   machine-matrix string, so a bad parse / overflow can wipe existing entries.
 - **Guardrail:** preserve the 4-machine cap and its exception path; when editing pool add/replace
   logic, keep existing machines when a new one can't be added, and round-trip the matrix string
-  losslessly.
+  without loss.
 
 ### Modifier key stuck / not released on the remote machine — RELIABILITY
 - **Symptom:** Ctrl/Shift/Alt/AltGr stays "held" on the other PC (e.g. after toggling "All PC mode"),
@@ -234,7 +234,7 @@ Enforce these when reviewing or authoring MWB changes:
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)); keep `packages.config` and
   `vcxproj` package versions in sync ([#49050](https://github.com/microsoft/PowerToys/pull/49050)).
 
-## Gotchas
+## Pitfalls
 
 - **Salt and IV are sent in the clear on purpose** — confidentiality depends only on the shared-key
   PBKDF2 derivation, not on the salt/IV being secret. Do not "harden" by hiding them; do keep them

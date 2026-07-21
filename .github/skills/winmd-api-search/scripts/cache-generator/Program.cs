@@ -1,4 +1,4 @@
-// Standalone WinMD cache generator — per-package deduplicate, multi-project support.
+// Standalone WinMD cache generator — per-package de-duplicate, multi-project support.
 // Parses WinMD files from NuGet packages and Windows SDK, exports JSON cache
 // keyed by package+version to avoid duplication across projects.
 //
@@ -121,7 +121,7 @@ if (File.Exists(selfCsproj) && !projectFiles.Any(f =>
     projectFiles.Add(selfCsproj);
 }
 
-Console.WriteLine($"WinMD Cache Generator (per-package deduplicate)");
+Console.WriteLine($"WinMD Cache Generator (per-package de-duplicate)");
 Console.WriteLine($"  Output:   {outputDir}");
 Console.WriteLine($"  Projects: {projectFiles.Count}");
 
@@ -373,7 +373,7 @@ static class NuGetResolver
             result.Add(new PackageWithWinMd("WinAppSdkRuntime", runtimeWinMd.Version, runtimeWinMd.Files));
         }
 
-        // Deduplicate by (Id, Version), merging WinMdFiles from multiple sources
+        // De-duplicate by (Id, Version), merging WinMdFiles from multiple sources
         return result
             .GroupBy(p => (p.Id.ToLowerInvariant(), p.Version.ToLowerInvariant()))
             .Select(g =>
@@ -432,7 +432,7 @@ static class NuGetResolver
                     .Where(f => !Path.GetFileName(f).Equals("Windows.winmd", StringComparison.OrdinalIgnoreCase))
                     .ToList();
 
-                // Deduplicate by filename (same WinMD across Debug/Release/x64/etc.)
+                // De-duplicate by filename (same WinMD across Debug/Release/x64/etc.)
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 winmdFiles = winmdFiles
                     .Where(f => seen.Add(Path.GetFileName(f)))
@@ -567,7 +567,7 @@ static class NuGetResolver
                         Directory.GetFiles(fullPath, "*.winmd", SearchOption.AllDirectories));
                 }
 
-                // Deduplicate by filename (WinMD is arch-neutral metadata)
+                // De-duplicate by filename (WinMD is arch-neutral metadata)
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 winmdFiles = winmdFiles
                     .Where(f => seen.Add(Path.GetFileName(f)))
@@ -650,7 +650,7 @@ static class NuGetResolver
                     }
                 }
 
-                // Deduplicate by filename
+                // De-duplicate by filename
                 var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 winmdFiles = winmdFiles
                     .Where(f => seen.Add(Path.GetFileName(f)))

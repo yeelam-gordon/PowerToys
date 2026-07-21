@@ -24,7 +24,7 @@ maps to the Regression Playbook / Review Rule it enforces.
 - [ ] Startup drift handled: `IsCorrectlyApplied` false → `EnvironmentState.ChangedOnStartup`, profile disabled.
 
 ## Elevation (`ElevationHelper.cs`, `Variable.cs::IsEditable`, `dllmain.cpp`)
-- [ ] System edits gated on `IsElevated`; never write `HKLM` unelevated (#45197).
+- [ ] System edits gated on `IsElevated`; never write `HKLM` without elevation (#45197).
 - [ ] `IsAppliedFromProfile` items remain non-editable.
 - [ ] No drag-and-drop reintroduced without an admin-mode fallback (WinUI3 blocks drag as admin) (#40105/#44705).
 - [ ] Admin launch path (`runas` verb) and show/show-admin events preserved.

@@ -1,13 +1,13 @@
 ---
 name: powertoys-cmdpal-knowledge
-description: 'PowerToys Command Palette (CmdPal) module knowledge: feature->file/function map across the WinUI 3 host (Microsoft.CmdPal.UI / .ViewModels), the Dock, Toast notifications, Compact/collapsed mode, Settings navigation, the extension SDK, and the built-in ext/* command providers (Apps, Shell, Indexer, PerfMon, WindowWalker, TimeDate...). Recurring regression playbooks (compact/collapsed-mode interactions, Dock page-command semantics, DI circular dependencies, localized-string-as-identifier, multi-monitor Dock, PerfMon soft-disable), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/cmdpal. Keywords: CmdPal, Command Palette, launcher, Dock, toast, compact mode, ShellPage, command provider, extension SDK, WinUI 3, DI, breadcrumb, PR review, regression.'
+description: 'PowerToys Command Palette (CmdPal) module knowledge: feature->file/function map across the WinUI 3 host (Microsoft.CmdPal.UI / .ViewModels), the Dock, Toast notifications, Compact/collapsed mode, Settings navigation, the extension SDK, and the built-in ext/* command providers (Apps, Shell, Indexer, PerfMon, WindowWalker, TimeDate...). Recurring regression playbooks (compact/collapsed-mode interactions, Dock page-command semantics, DI circular dependencies, localized-string-as-identifier, multi-monitor Dock, PerfMon soft-disable), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/cmdpal. Keywords: CmdPal, Command Palette, launcher, Dock, toast, compact mode, ShellPage, command provider, extension SDK, WinUI 3, DI, breadcrumb, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
 # PowerToys Command Palette (CmdPal) Knowledge
 
 Grounded engineering knowledge for the PowerToys **Command Palette** module (`src/modules/cmdpal/`)
-— a WinUI 3 keyboard launcher with a host app, a pinnable **Dock**, **toast** notifications, a
+— a WinUI 3 keyboard launcher with a host app, a pin-capable **Dock**, **toast** notifications, a
 **Compact/collapsed** display mode, a **Settings** window, an out-of-proc **extension SDK**, and a
 large set of first-party command providers under `ext/`. Use it to localize code fast, avoid known
 regression traps, and enforce the conventions that the maintainers already established.
@@ -43,7 +43,7 @@ below were added by the July 2026 PRs cited).
 | Compact-mode setting + toast-position setting | `Microsoft.CmdPal.UI.ViewModels/SettingsModel.cs` (`CompactMode`), `SettingsViewModel.cs` |
 | Search bar control + context menu | `Microsoft.CmdPal.UI/Controls/SearchBar.xaml(.cs)` |
 | XAML bind transformers (visibility/converters) | `Microsoft.CmdPal.UI/Helpers/BindTransformers.cs`; `Converters/` |
-| **Dock** (pinnable band host) | `Microsoft.CmdPal.UI/Dock/DockControl.xaml.cs` `InvokeItem`, `IsPageCommand`; `DockWindow*.cs`, `DockWindowManager.cs`, `PinToDockDialogContent.xaml.cs` |
+| **Dock** (pin-capable band host) | `Microsoft.CmdPal.UI/Dock/DockControl.xaml.cs` `InvokeItem`, `IsPageCommand`; `DockWindow*.cs`, `DockWindowManager.cs`, `PinToDockDialogContent.xaml.cs` |
 | Dock band view-models | `Microsoft.CmdPal.UI.ViewModels/Dock/` |
 | **Toast** notification window | `Microsoft.CmdPal.UI/ToastWindow.xaml(.cs)` `PositionBottomCenter` / `PositionWindow`; VM `Microsoft.CmdPal.UI.ViewModels/ToastViewModel.cs`, `Messages/ShowToastMessage.cs` |
 | Command dispatch pipeline | `Microsoft.CmdPal.UI.ViewModels/Messages/PerformCommandMessage.cs`, `ShellViewModel.cs` |
@@ -187,7 +187,7 @@ Enforce these when reviewing or authoring CmdPal changes:
 - **Respect StyleCop.** Don't explicitly initialize a member to its type default (`= false`/`= null`)
   — StyleCop (SA1101/SA1642-family defaults) flags it ([PR #49186](https://github.com/microsoft/PowerToys/pull/49186#discussion_r3539014488)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** assume a Dock invokable command shows the palette — only **page commands** summon it
   (`DockControl.IsPageCommand`); `CommandResult.GoHome()` alone won't (#49089).

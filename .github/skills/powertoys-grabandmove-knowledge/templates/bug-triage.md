@@ -27,7 +27,7 @@ is new; expect gaps. All paths under `src/modules/GrabAndMove/`.
 | Overlay corners rounded wrongly over RDP | `main.cpp::CornerRadiusForWindow`, `PrepareOverlayMetrics` | Remote-session corners | Remote overlay |
 | Wrong window grabbed in a remote session | `main.cpp::ResolveTargetWindow` (`SM_REMOTESESSION`) | Remote hit-testing | Remote overlay |
 | Overlay preview blurry / wrong DPI | `main.cpp::PrepareOverlayMetrics` (DPI scale), `RenderOverlayContent` | DPI scaling | (Module Map) |
-| Not working after wake from hibernation | `main.cpp::wWinMain` hook install; `WinEventProc` | Hook lifetime | (Gotchas) |
+| Not working after wake from hibernation | `main.cpp::wWinMain` hook install; `WinEventProc` | Hook lifetime | (Pitfalls) |
 | Doesn't work in a game / fullscreen app | `main.cpp::IsSuppressedByGameMode` | Game Mode gate | Remote overlay |
 | Resize does nothing on some windows | `MouseProc` `WS_THICKFRAME` gate | Non-resizable window | Review Rules |
 | Build fails `LNK2038 'C++/WinRT version'` | `GrabAndMove.vcxproj` CppWinRT NuGet import | Toolset mismatch | CppWinRT LNK2038 |

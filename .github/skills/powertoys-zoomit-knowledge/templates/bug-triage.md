@@ -26,7 +26,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Audio device intermittently not opened | `AudioSampleGenerator::InitializeAsync` (early start) | Audio init race | Recording lifecycle |
 | User filename digits stripped / overwrite risk | `GetUniqueRecordingFilename`, `IsDefaultRecordingFilename` | Filename suffix | Filename suffixes |
 | Cursor disappears / invisible on 2nd display | DPI + `MonitorFromPoint`; cursor show/hide | Cursor/DPI | Cursor/overlay visibility |
-| Webcam overlay mispositioned at <100% scale | `WebcamCapture.cpp`, `WebcamComposite.hlsl` | DPI geometry | Cursor/overlay visibility |
+| Webcam overlay mis-positioned at <100% scale | `WebcamCapture.cpp`, `WebcamComposite.hlsl` | DPI geometry | Cursor/overlay visibility |
 | Options dialog controls mis-sized at high DPI | `ScaleDialogForDpi`, `WM_DPICHANGED` | DPI scaling | Cursor/overlay visibility |
 | OCR returns nothing / fails | `OcrFromHBITMAP` (`MaxImageDimension`, OCR language) | OCR | Module Map |
 | Panorama popup blocks input | `PanoramaCapture.cpp`; `WM_HOTKEY` panorama guard | Input block | Module Map (#47154) |

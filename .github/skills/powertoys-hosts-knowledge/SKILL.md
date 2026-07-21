@@ -1,6 +1,6 @@
 ---
 name: powertoys-hosts-knowledge
-description: 'PowerToys Hosts File Editor module knowledge: feature->file/function map, recurring regression playbooks (hosts-file parse/write round-trip, UTF-8 vs UTF-8-BOM encoding & non-ASCII comments, elevation-gated writes, read-only/hidden hosts file, backup creation & retention, entry validation IPv4/IPv6/hostname, duplicate detection, 9-host line splitting, default-editor security hardening), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/Hosts — reading/writing C:\Windows\System32\drivers\etc\hosts, elevation, encoding, backups, duplicates, WinUI editor. Keywords: hosts file, Hosts File Editor, hosts, etc/hosts, elevation, admin, runas, UTF-8 BOM, encoding, backup, duplicate, IPv4, IPv6, hostname validation, read-only, WinUI3, PR review, regression.'
+description: 'PowerToys Hosts File Editor module knowledge: feature->file/function map, recurring regression playbooks (hosts-file parse/write round-trip, UTF-8 vs UTF-8-BOM encoding & non-ASCII comments, elevation-gated writes, read-only/hidden hosts file, backup creation & retention, entry validation IPv4/IPv6/hostname, duplicate detection, 9-host line splitting, default-editor security hardening), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/Hosts — reading/writing C:\Windows\System32\drivers\etc\hosts, elevation, encoding, backups, duplicates, WinUI editor. Keywords: hosts file, Hosts File Editor, hosts, etc/hosts, elevation, admin, runas, UTF-8 BOM, encoding, backup, duplicate, IPv4, IPv6, hostname validation, read-only, WinUI3, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -18,7 +18,7 @@ and enforce conventions maintainers established.
 - Planning or implementing a change under `src/modules/Hosts/` and needing prior art.
 - Fixing/triaging a Hosts bug: non-ASCII (e.g. Japanese) comments corrupted, entries reverting on
   enable/disable toggle, sections from other apps (Docker/Tailscale) broken into duplicates, backups
-  not created / file lost, "can't save" when unelevated / read-only / hidden hosts file, local
+  not created / file lost, "can't save" when non-elevated / read-only / hidden hosts file, local
   addresses failing validation, high CPU, admin-warning behavior.
 - Reviewing a Hosts PR against maintainer conventions and regression traps.
 - Touching the read/parse path, the write/format path, the encoding selector, the backup engine,
@@ -98,7 +98,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `DeleteByAge` globs `*_PowerToysBackup_*`). Evidence:
   [#37666](https://github.com/microsoft/PowerToys/issues/37666).
 
-### "Can't save" — unelevated, read-only, or hidden hosts file
+### "Can't save" — non-elevated, read-only, or hidden hosts file
 - **Symptom:** save fails; hosts file is read-only or hidden, or PowerToys is not elevated.
 - **Where:** `WriteAsync` (elevation + read-only guards, `FileMode.OpenOrCreate`),
   `MainViewModel.cs::SaveAsync` (maps exceptions to localized messages), `RemoveReadOnlyAttribute` /
@@ -146,7 +146,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 Enforce these when reviewing or authoring Hosts changes:
 
-- **Never write the hosts file unelevated or when read-only.** Preserve the `IsElevated` gate
+- **Never write the hosts file without elevation or when read-only.** Preserve the `IsElevated` gate
   (`NotRunningElevatedException`) and the read-only guard (`ReadOnlyHostsException`) in `WriteAsync`;
   read-only is cleared only via the explicit `OverwriteHosts` / `RemoveReadOnlyAttribute` path.
 - **Read and write with the same configured `Encoding`.** UTF-8 vs UTF-8-BOM must round-trip; keep the
@@ -172,7 +172,7 @@ Enforce these when reviewing or authoring Hosts changes:
   assume it's active (#47144). Use `$(RepoRoot)`, not bare relative paths, in project files
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** call `Environment...`-style default-editor resolution for "open hosts file" — it must be
   hardcoded Notepad; a registry association can run arbitrary code elevated (#46194/#46195).

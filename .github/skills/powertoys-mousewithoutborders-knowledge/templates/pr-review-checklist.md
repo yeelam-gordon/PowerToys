@@ -22,7 +22,7 @@ areas.
 
 ## Machine pool / matrix
 - [ ] `MAX_MACHINE = 4` cap preserved (pool, `MAX_SOCKET`, UI).
-- [ ] Existing machines are not dropped when an add fails; matrix string round-trips losslessly (#48825).
+- [ ] Existing machines are not dropped when an add fails; matrix string round-trips without loss (#48825).
 
 ## Input injection
 - [ ] Every injected key-down has a matching key-up; held modifiers released on machine switch/disable

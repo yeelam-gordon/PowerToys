@@ -9,8 +9,8 @@ doesn't map cleanly, reason from the symptom and verify — the history here is 
 | "PowerDisplay has crashed" InfoBar with no real crash | `CrashDetectionScope` (ProcessExit hook), `CrashRecovery.DetectOrphanAndDisable` | Cooperative `Environment.Exit` orphaning `discovery.lock`. (#48169, PR #48173) |
 | Built-in laptop panel not detected (dual-GPU/MUX laptop) | `MonitorManager` classification, `WmiController`, `MonitorIdentity.FromInstanceName` | Classify by capability, not `OutputTechnology`. (#48587, PR #48637) |
 | External monitor not detected / detected via dock | `MonitorManager` discovery, `DdcCiController`; check blacklist + max-compat mode | Many open reports; confirm DDC/CI reachable. (#48179, #48472, #48898) |
-| Monitor duplicated until reboot | `DisplayChangeWatcher` rescan, `MonitorIdComparer` identity | Hotplug/wake dedup. (#48977) |
-| Woken monitor stays unrecognized | `DisplayChangeWatcher` (GUID_CONSOLE_DISPLAY_STATE) → `MonitorManager` rescan | Lock UI, then rescan. (#47951, PR #47876) |
+| Monitor duplicated until reboot | `DisplayChangeWatcher` re-scan, `MonitorIdComparer` identity | Hot-plug/wake de-dup. (#48977) |
+| Woken monitor stays unrecognized | `DisplayChangeWatcher` (GUID_CONSOLE_DISPLAY_STATE) → `MonitorManager` re-scan | Lock UI, then re-scan. (#47951, PR #47876) |
 | Can't wake monitor / Turn Off(DPM) doesn't work | `MonitorViewModel.HandlePowerStateSelectionChanged` → `DdcCiController.SetPowerStateAsync` (VCP 0xD6) | On=0x01 wakes; Off(Hard)=0x05 may cut DDC. (#48428/#49048, PR #48628) |
 | Per-monitor toggles reset after upgrade | `MonitorIdMigrator`, `MonitorSettingsRebuilder` | Legacy Id → DevicePath Id migration by EdidId. (PR #47977) |
 | Wrong brightness/volume values (e.g. Volume Max 255) | `VcpFeatureValue` scaling, `DdcCiController.Get/SetVcpFeatureAsync`, `MccsCapabilitiesParser` | Respect per-monitor VCP max. (#49120) |

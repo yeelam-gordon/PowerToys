@@ -15,7 +15,7 @@ provider** and **managed (`<Fmt>PreviewHandler/`) vs native (`<Fmt>PreviewHandle
 | Monaco/source preview shows wrong encoding | `MonacoPreviewHandlerControl.cs`, `FileHandler.cs` (`UtfUnknown`) | Encoding detection |
 | A format stops previewing after install/upgrade/GPO | `powerpreview/powerpreview.cpp` change-set + GPO rule; `CLSID.h`; `*Cpp/dllmain.cpp` | Quartet drift; check register + unregister |
 | Blank thumbnail for one format only | that format's `<Fmt>ThumbnailProvider/*.cs` `GetThumbnail`; GPO early-return | Confirm `MaxThumbnailSize` and GPO check |
-| Preview appears while renaming a file/folder | preview handler activation path | Reported #45672/#45186 (dedup/triage) |
+| Preview appears while renaming a file/folder | preview handler activation path | Reported #45672/#45186 (de-dup/triage) |
 
 If the symptom doesn't map cleanly, reason from the symptom and verify in source — do not force-fit
 a row (a thin map entry can anchor you onto a confident, wrong file).

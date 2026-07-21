@@ -17,7 +17,7 @@ Some flows are common to several modules and live in their own top-level docs (n
 
 - Each module has its own quirks (Peek's `_isFromCli` guard, CmdPal's TextChanged-broken state, PT Run's mini-popup HWND, Workspaces' snapshot-elevation rules). Bundling all of them into the global SKILL.md bloats context and forces every verification to load 25+ KB of mostly-irrelevant text.
 - A profile lets a focused verification run with only the relevant 5-10 KB.
-- New gotchas discovered during a module verification round get added to that module's profile, not the global one — keeps the global doc stable.
+- New pitfalls discovered during a module verification round get added to that module's profile, not the global one — keeps the global doc stable.
 
 ## Profile catalog
 
@@ -81,7 +81,7 @@ A profile holds **only module-specific logic** an agent can't infer from the SKI
 
 > Mapping: read item → find capability row → drive the control, design your OWN inputs+assertions. No canned inputs/expected values (they go stale + invite copying). New capability ⇒ add a row.
 
-## BLOCKED traps                      # ④ REQUIRED — false-block + gotcha prevention (absorbs old "Don'ts"/"gotchas")
+## BLOCKED traps                      # ④ REQUIRED — false-block + pitfall prevention (absorbs old "Don'ts"/"pitfalls")
 - <mistake prior agents made → the fix>; <module quirk that misleads driving>
 
 ## Fixtures                           # OPTIONAL — only if the module needs canned files (else omit)
@@ -99,13 +99,13 @@ A profile holds **only module-specific logic** an agent can't infer from the SKI
 
 ## Filling a profile: provenance & keeping it fresh
 
-Profiles are written by an agent and may sit unreviewed, so a hallucination can read exactly like a verified truth (that's how `power-rename.md` ended up telling agents to read a non-existent HKCR `Icon` value, contradicting its own "modern-menu-only on Win11" thesis). Guard against that with **content discipline, not hedges.**
+Profiles are written by an agent and may sit unreviewed, so a hallucination can read exactly like a verified truth (that's how `power-rename.md` ended up telling agents to read a missing HKCR `Icon` value, contradicting its own "modern-menu-only on Win11" thesis). Guard against that with **content discipline, not hedges.**
 
 **1. State a fact, or give the discovery instruction — never hedge.** If a value is confirmed, state it plainly. If it's a guess or *volatile* (changes per launch/build — e.g. PowerRename's per-launch `txt-textbox-XXXX` IDs), **don't write the guessed value at all** — write the runtime-discovery instruction instead ("discover the AutomationId at runtime by name/role"). **Do NOT** add `[UNVERIFIED] — confirm yourself` tags, "review notes", or any commentary about the doc's own reliability: it doesn't help the consuming agent (which re-checks at runtime anyway) and makes it distrust otherwise-good content. If something's wrong, fix it; if it's uncertain, turn it into a discovery instruction.
 
 **2. Fill from evidence, not speculation.** Don't AI-generate a whole profile up front (that's what produced the HKCR hallucination). **Seed** a thin one (metadata + a source scan for durable facts), then let **each run add** the controls/keys it actually confirmed, correct anything that failed, and append BLOCKED traps from that run's §G retrospective. The profile grows *out of* runs.
 
-**3. Durable vs volatile.** Durable facts (settings-file path, "modern-menu-only on Win11", the two-settings-files gotcha) belong here as plain statements. Volatile facts (per-launch/per-build IDs, layout) are **discovered at runtime**, never pinned.
+**3. Durable vs volatile.** Durable facts (settings-file path, "modern-menu-only on Win11", the two-settings-files pitfall) belong here as plain statements. Volatile facts (per-launch/per-build IDs, layout) are **discovered at runtime**, never pinned.
 
 **4. State each fact once.** Duplication is the #1 staleness amplifier: when a fact lives in the recipe table, an entry-path, and three BLOCKED traps, one edit leaves the others stale → contradiction. Shared mechanics go in the cross-flow doc; module facts once; everything else cross-references.
 

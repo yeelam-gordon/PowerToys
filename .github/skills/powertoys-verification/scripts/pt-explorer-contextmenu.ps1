@@ -200,7 +200,7 @@ function Get-PtContextMenuItems {
         Select-String 'MenuItem "([^"]+)"' -AllMatches | ForEach-Object { $_.Matches } | ForEach-Object { $_.Groups[1].Value }
 }
 
-# Open an Explorer window on $Path and return its CabinetWClass HWND (int) - the handle the context-menu
+# Open an Explorer window on $Path and return its CabinetWClass HWND (int) - the handle that the context-menu
 # openers need. Polls until the window appears (or throws). Use at the start of a synthetic-menu flow.
 # Detect whether the Explorer preview (reading) pane is currently shown. Heuristic: when the preview
 # pane is open it occupies the right portion of the window, so the "Shell Folder View" list pane's

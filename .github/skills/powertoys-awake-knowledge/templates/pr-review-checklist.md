@@ -25,7 +25,7 @@ code paths the PR actually touches.
 - [ ] Argument precedence unchanged: `--use-pt-config` > `--pid`/`--use-parent-pid` > `--expire-at` > `--time-limit` > indefinite.
 
 ## Tray (`Awake/Core/TrayHelper.cs`)
-- [ ] `ShowContextMenu` foregrounds owner window and uses correct `TPM_*` alignment + `MNS_AUTO_DISMISS`.
+- [ ] `ShowContextMenu` brings owner window to the foreground and uses correct `TPM_*` alignment + `MNS_AUTO_DISMISS`.
 - [ ] Tray icon re-added on `TaskbarCreated`; `SetModeShellIcon` called after mode changes.
 - [ ] Tray/menu state touched only via `RunOnMainThread`.
 

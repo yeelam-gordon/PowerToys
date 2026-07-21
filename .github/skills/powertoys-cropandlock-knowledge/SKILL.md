@@ -1,6 +1,6 @@
 ---
 name: powertoys-cropandlock-knowledge
-description: 'PowerToys CropAndLock module knowledge: three crop modes (Reparent = live SetParent child window, Thumbnail = DWM live clone, Screenshot = frozen PrintWindow bitmap), feature->file/function map, recurring regression playbooks (reparent restore/offset, multi-monitor coordinate union, DWM/DPI, PrintWindow black-image on GPU/protected windows, theme title bar, hotkey activation & conflict detection, single-instance mutex, GPO gating, default-enabled parity), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/CropAndLock. Keywords: CropAndLock, crop and lock, reparent, thumbnail, DWM, PrintWindow, SetParent, DPI, multi-monitor, hotkey, GPO, PR review, regression.'
+description: 'PowerToys CropAndLock module knowledge: three crop modes (Reparent = live SetParent child window, Thumbnail = DWM live clone, Screenshot = frozen PrintWindow bitmap), feature->file/function map, recurring regression playbooks (reparent restore/offset, multi-monitor coordinate union, DWM/DPI, PrintWindow black-image on GPU/protected windows, theme title bar, hotkey activation & conflict detection, single-instance mutex, GPO gating, default-enabled parity), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/CropAndLock. Keywords: CropAndLock, crop and lock, reparent, thumbnail, DWM, PrintWindow, SetParent, DPI, multi-monitor, hotkey, GPO, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -192,12 +192,12 @@ Enforce these when reviewing or authoring CropAndLock changes:
 - **No bare relative paths in project files** — use `$(RepoRoot)`; don't reorder `Microsoft.Cpp.*.props`
   imports ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** assume the crop window is live — **Screenshot mode is a frozen bitmap by design**; only
   Reparent and Thumbnail update. Don't "fix" Screenshot to update (#38104).
 - **Never** reorder `get_hotkeys` without updating `on_hotkey`'s `hotkeyId` branches — they are matched
-  positionally (dllmain.cpp).
+  by position (dllmain.cpp).
 - **Never** compute overlay/selection rects in raw per-monitor coordinates — use the all-displays union
   and shift origin, or multi-monitor and negative-origin layouts break (#36485).
 - **Never** capture GPU/hardware-accelerated/protected windows and expect a valid bitmap — `PrintWindow`

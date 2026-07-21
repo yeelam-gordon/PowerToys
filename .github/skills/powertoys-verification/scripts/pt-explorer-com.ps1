@@ -34,7 +34,7 @@ function Open-PtExplorerAtPath {
     Start-Process explorer.exe -ArgumentList $Path
     Start-Sleep -Milliseconds 1500
     $wins = Get-PtExplorerWindows
-    # Note: the -replace must be wrapped in its own parens, otherwise the ',' in -replace '\\','/'
+    # Note: the -replace must be wrapped in its own parens; otherwise the ',' in -replace '\\','/'
     # is parsed as a second argument to [regex]::Escape() (overload error: "argument count: 2").
     $needle = [regex]::Escape(((Resolve-Path $Path).Path -replace '\\','/'))
     return ($wins | Where-Object { $_.LocationURL -match $needle } | Select-Object -First 1)

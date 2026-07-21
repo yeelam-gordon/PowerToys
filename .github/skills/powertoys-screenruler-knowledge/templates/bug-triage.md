@@ -22,8 +22,8 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Crash on startup on some machines | `ToolState.h::cursorPosSystemSpace`; `MouseCaptureThread` | Alignment/atomic | Cursor alignment |
 | Overlay on wrong virtual desktop / not over app | `OverlayUI.cpp::CreateOverlayUIWindow` (`WS_EX_TOOLWINDOW`) | Overlay coverage | Overlay/desktop |
 | Black screen / overexposure / blank capture | `ScreenCapturing.cpp` (frame/resize/device-lost); `D2DState.cpp` | Capture race | Overlay/desktop |
-| No mouse cursor while ruler active | `MeasureToolOverlayUI.cpp` `WM_CREATE` `ShowCursor(false)` | By-design | (Gotchas) |
-| Esc doesn't close (opened via PowerToys Run) | overlay `WndProc` `VK_ESCAPE`; focus ownership | Focus/close | (Gotchas #42243) |
+| No mouse cursor while ruler active | `MeasureToolOverlayUI.cpp` `WM_CREATE` `ShowCursor(false)` | By-design | (Pitfalls) |
+| Esc doesn't close (opened via PowerToys Run) | overlay `WndProc` `VK_ESCAPE`; focus ownership | Focus/close | (Pitfalls #42243) |
 | Tool activates when disabled / unexpected hotkey | `dllmain.cpp::on_hotkey/parse_hotkey`; GPO gate | Activation | Module Map |
 | Copy to clipboard missing/garbled | `Clipboard.cpp::SetClipboardToMeasurements`; `CopyToClipboard` | Clipboard | Module Map |
 | Continuous mode captures overlay / flicker | `ScreenCapturing.cpp::StartCapturingThread`; `excludeFromCapture` | Capture mode | Module Map |

@@ -33,7 +33,7 @@ module source and the mined PR/issue history. Confirm in source before acting.
   so the throw reaches `App.xaml.cs::App_UnhandledException` and fast-fails the app.
 - **Guardrail:** `try/catch` → log warning → placeholder `BitmapImage`. Review note (Copilot):
   add a `File.Exists` fast-path because the converter re-runs many times per row and exception-based
-  control flow is expensive and log-spamming.
+  control flow is expensive and log-flooding.
 
 ### R4 — Handle enumeration hangs on a single handle
 - **Evidence:** in-source design in `NtdllExtensions.cpp::handles` (comment references

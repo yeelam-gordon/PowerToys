@@ -1,6 +1,6 @@
 ---
 name: powertoys-imageresizer-knowledge
-description: 'PowerToys ImageResizer module knowledge: feature->file/function map, recurring regression playbooks (WIC transcode-vs-fresh-encode & JPEG quality, EXIF/metadata & orientation preservation, size presets & Fit/Fill/percent math, %-token filename format & reserved-name sanitizing, Win11 sparse-MSIX + Win10 COM context-menu registration, settings JSON round-trip), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/imageresizer — resize/encode, WIC codecs, metadata, presets, CLI, context menu, settings, WinUI editor. Keywords: ImageResizer, resize, WIC, BitmapEncoder, transcode, JPEG quality, EXIF metadata, orientation, PNG interlace, TIFF, HEIC, sparse MSIX, context menu, WinUI3, PR review, regression.'
+description: 'PowerToys ImageResizer module knowledge: feature->file/function map, recurring regression playbooks (WIC transcode-vs-fresh-encode & JPEG quality, EXIF/metadata & orientation preservation, size presets & Fit/Fill/percent math, %-token filename format & reserved-name sanitizing, Win11 sparse-MSIX + Win10 COM context-menu registration, settings JSON round-trip), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/imageresizer — resize/encode, WIC codecs, metadata, presets, CLI, context menu, settings, WinUI editor. Keywords: ImageResizer, resize, WIC, BitmapEncoder, transcode, JPEG quality, EXIF metadata, orientation, PNG interlace, TIFF, HEIC, sparse MSIX, context menu, WinUI3, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -41,7 +41,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Encoder options (JPEG `ImageQuality`, PNG `InterlaceOption`, TIFF `TiffCompressionMethod`) | `ResizeOperation.cs` `GetEncoderPropertySet`, `MapTiffCompression` |
 | Metadata preservation set (DateTaken/Camera/Orientation/ColorSpace/Comment) | `ResizeOperation.cs` `KnownMetadataProperties`, `RenderingMetadataProperties` |
 | Metadata read/write best-effort (format may not support) | `ResizeOperation.cs` `ReadMetadataAsync`, `WriteMetadataAsync` |
-| Destination filename (`%1..%6` tokens, reserved-name + illegal-char sanitize, uniquifier) | `ResizeOperation.cs` `GetDestinationPath`; format built in `Settings.cs` `FileNameFormat` |
+| Destination filename (`%1..%6` tokens, reserved-name + illegal-char sanitize, de-duplication) | `ResizeOperation.cs` `GetDestinationPath`; format built in `Settings.cs` `FileNameFormat` |
 | Overwrite-in-place (`Replace`) with `.bak` + recycle-bin backup | `ResizeOperation.cs` `ExecuteAsync` (`File.Replace`), `GetBackupPath` |
 | Keep-date-modified | `ResizeOperation.cs` `ExecuteAsync` (`SetLastWriteTimeUtc`) |
 | Codec ↔ extension mapping, legacy container-GUID → encoder ID, fallback encoder | `ui/Utilities/CodecHelper.cs` |
@@ -160,7 +160,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Where:** `ResizeOperation.cs` `GetDestinationPath` (`_avoidFilenames`, char replacement).
 - **Root cause:** user-controlled `%`-token format + size name can produce `CON`/`PRN`/… or
   `:*?"<>|`.
-- **Guardrail:** sanitize illegal chars to `_`, append `_` for reserved names, and uniquify with
+- **Guardrail:** sanitize illegal chars to `_`, append `_` for reserved names, and de-duplicate with
   ` (n)` when the target exists. Any new token or size-name source must run through this sanitizer.
   See [naming files](https://learn.microsoft.com/windows/win32/fileio/naming-a-file).
 
@@ -178,7 +178,7 @@ Enforce these when reviewing or authoring ImageResizer changes:
 - **Forward `[JsonPropertyName]` on generated observable properties.** `[ObservableProperty]` does not
   auto-forward JSON attributes; use `[property: JsonPropertyName]` or settings silently revert
   (#47056). Add a round-trip test, not just a `Name`/`Count` assertion.
-- **Settings are snapshotted per batch.** `ResizeBatch.ProcessAsync` captures `Settings.Default` once
+- **Settings are captured per batch.** `ResizeBatch.ProcessAsync` captures `Settings.Default` once
   before `Parallel.ForEachAsync`; on-disk edits mid-batch are intentionally ignored. Don't add
   per-file settings re-reads inside the parallel loop.
 - **Keep the settings watcher debounced and marshalled to the UI thread.** `Reload` must apply via
@@ -197,7 +197,7 @@ Enforce these when reviewing or authoring ImageResizer changes:
 - **Ship a test with every fix.** Suites live in `src/modules/imageresizer/tests`
   (`ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, CLI tests).
 
-## Gotchas
+## Pitfalls
 
 - **Never** assume the transcode path preserves EXIF for every JPEG — large/unusual metadata blocks
   drop silently; `CopyKnownMetadataAsync` re-sets known props as a safety net (#47693).

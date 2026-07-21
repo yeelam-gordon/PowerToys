@@ -1,6 +1,6 @@
 ---
 name: powertoys-keyboardmanager-knowledge
-description: 'PowerToys Keyboard Manager module knowledge: feature->file/function map for the low-level keyboard hook, single-key/shortcut/key-to-text/app-specific remap handlers, input injection, mapping serialization, and both editors (legacy XAML-islands + new WinUI3). Recurring regression playbooks (stale AltGr flag -> sticky Ctrl, modifier->non-modifier delivered as WM_SYSKEYDOWN, WM_SYSKEYDOWN dropped while Alt held, empty SendVirtualInput false "blocked" error, UIPI injection failure -> stranded key, multiline text replacement, WinUI None/keycode-0 + binding-revert), maintainer review rules, and gotchas. Load when planning, fixing, triaging, or reviewing changes under src/modules/keyboardmanager — key/shortcut remapping, key-eating/suppression, per-app remaps, hook timing/races, stuck keys, text replacement, editor validation. Keywords: Keyboard Manager, KBM, key remap, low-level hook, WH_KEYBOARD_LL, SendInput, AltGr, WM_SYSKEYDOWN, stuck modifier, key-to-text, UIPI, PR review, regression.'
+description: 'PowerToys Keyboard Manager module knowledge: feature->file/function map for the low-level keyboard hook, single-key/shortcut/key-to-text/app-specific remap handlers, input injection, mapping serialization, and both editors (legacy XAML-islands + new WinUI3). Recurring regression playbooks (stale AltGr flag -> sticky Ctrl, modifier->non-modifier delivered as WM_SYSKEYDOWN, WM_SYSKEYDOWN dropped while Alt held, empty SendVirtualInput false "blocked" error, UIPI injection failure -> stranded key, multiline text replacement, WinUI None/keycode-0 + binding-revert), maintainer review rules, and pitfalls. Load when planning, fixing, triaging, or reviewing changes under src/modules/keyboardmanager — key/shortcut remapping, key-eating/suppression, per-app remaps, hook timing/races, stuck keys, text replacement, editor validation. Keywords: Keyboard Manager, KBM, key remap, low-level hook, WH_KEYBOARD_LL, SendInput, AltGr, WM_SYSKEYDOWN, stuck modifier, key-to-text, UIPI, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -169,7 +169,7 @@ Enforce these when reviewing or authoring KBM changes:
   (**KeyboardManager.Engine.UnitTests**); PR #48571 added a mockable injection-failure seam
   (`SetSendVirtualInputShouldFail`) so stuck-key behavior is testable.
 
-## Gotchas
+## Pitfalls
 
 - **Never** assume a key-down is `WM_KEYDOWN` — with Alt held it is `WM_SYSKEYDOWN`; handle both or
   the remap vanishes.

@@ -69,7 +69,7 @@ module, which tests) comes from the calling prompt.
 6. **[references/patterns-and-pitfalls.md](references/patterns-and-pitfalls.md)** — adaptable recipes
    for the recurring PowerToys patterns (toggle a module + verify its process, read the activation
    shortcut from a `ShortcutControl`, fire a global hotkey reliably, inspect the clipboard, discover
-   overlay/editor windows) and the gotchas that bite during migration.
+   overlay/editor windows) and the pitfalls that bite during migration.
 7. **[references/ci-stability.md](references/ci-stability.md)** — the CI-stability capstone: the
    Win32-window vs UIA-element mental model, five design principles that keep a port green on a slow
    CI agent (authoritative-signal retries over fixed sleeps, invoke-vs-physical-click, screen-capture
@@ -136,7 +136,7 @@ managed dependency on the engine. So you can always compile-verify a migration e
 no winappcli installed.
 
 ```pwsh
-# 0. FIRST build of a brand-new project: restore so the assets file exists, otherwise the build
+# 0. FIRST build of a brand-new project: restore so the assets file exists; otherwise the build
 #    fails with NETSDK1004 "Assets file ... project.assets.json not found".
 dotnet restore src\modules\<Module>\Tests\<Module>.UITests.Next\<Module>.UITests.Next.csproj -p:Platform=x64
 #    (Equivalently, run tools\build\build-essentials.cmd once at the start of the session.)
@@ -170,7 +170,7 @@ $exe = "<repo>\x64\Debug\tests\<Module>.UITests.Next\net10.0-windows10.0.26100.0
   why VS Test Explorer passes them: VS runs as admin.) Run from an **elevated** terminal: start
   `WinAppDriver.exe` on `127.0.0.1:4723`, then run the built DLL with `vstest.console.exe` (see
   [references/porting-workflow.md](references/porting-workflow.md) §A0 for the `-Verb RunAs` recipe).
-  A measurement failure on a scaled (non-100%) display is usually a pre-existing DPI issue (Pitfall
+  A measurement failure on a scaled (non-100%) display is usually an already-present DPI issue (Pitfall
   12), not something the port must reproduce — the ScreenRuler legacy suite scores **4/5** elevated
   here (Bounds fails at 150% scale) while the `.Next` port scores **5/5**. `.Next` tests themselves
   need **no** elevation (the new harness launches the runner non-elevated).
@@ -191,7 +191,7 @@ $exe = "<repo>\x64\Debug\tests\<Module>.UITests.Next\net10.0-windows10.0.26100.0
 - **Do NOT touch product code.** This is a test-only migration. If a test needs a UIA hook that
   doesn't exist (e.g. an `AutomationId` or a hidden automation-peer TextBlock), flag it for the user
   rather than silently editing the module. (The ColorPicker example's `ColorHexAutomationPeer` hook
-  is a documented, pre-existing exception — see its class remarks.)
+  is a documented, already-present exception — see its class remarks.)
 - **Do NOT port the legacy plumbing literally.** No Selenium `Actions`, no `WindowsDriver`/`WindowsElement`,
   no `By.XPath`/`By.CssSelector`, no `:4723`. Map them to the winappcli idioms in
   [references/api-mapping.md](references/api-mapping.md).

@@ -26,8 +26,8 @@ Source root: `src/modules/NewPlus/`; unqualified files are under `NewShellExtens
 | NullReferenceException hiding/restoring New | `NewPlusViewModel.cs` `OpenSubKey` null check | Hide built-in New |
 | Only part of registry sentinel written | `new_utilities.h::disable_built_in_new_via_registry` (REG_SZ byte size) | Hide built-in New |
 | Ctrl+Shift+N broken after hiding built-in New | `disable_built_in_new_via_registry`; built-in `New` handler | Hide built-in New |
-| Rename mode not entered after create | `template_item.cpp::enter_rename_mode`; `new_utilities.h::explorer_enter_rename_mode` | Gotchas |
-| New file appears on wrong monitor (multi-mon) | `explorer_enter_rename_mode` desktop `SelectAndPositionItems` path | Gotchas |
+| Rename mode not entered after create | `template_item.cpp::enter_rename_mode`; `new_utilities.h::explorer_enter_rename_mode` | Pitfalls |
+| New file appears on wrong monitor (multi-mon) | `explorer_enter_rename_mode` desktop `SelectAndPositionItems` path | Pitfalls |
 | Wrong translation of "New+" menu | resource `IDS_CONTEXT_MENU_ITEM_NEW`; module `.resx` | Localization |
 | Wrong icon / theme icon | `new_utilities.h::get_new_icon_resource_filepath`, `get_explorer_icon_handle` | Module Map |
 | Setting not persisting | `settings.cpp::Save/Load/ParseJson`; `constants.h` keys | Module Map |

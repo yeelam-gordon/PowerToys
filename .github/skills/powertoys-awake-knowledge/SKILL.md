@@ -1,6 +1,6 @@
 ---
 name: powertoys-awake-knowledge
-description: 'PowerToys Awake module knowledge: feature->file/function map, recurring regression playbooks (keep-awake lost after sleep/resume, timed mode expiring early / countdown drift, past expiration date, indefinite mode ineffective on Modern Standby S0, tray icon/time-format mismatch, tray context-menu positioning, CLI console output not visible, --pid validation), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/awake — SetThreadExecutionState keep-awake, ES_SYSTEM_REQUIRED/ES_DISPLAY_REQUIRED/ES_CONTINUOUS, indefinite/timed/expirable/passive modes, keep display on, system tray, settings JSON, CLI options. Keywords: Awake, keep awake, SetThreadExecutionState, ES_CONTINUOUS, display on, sleep, standby, tray icon, TrackPopupMenu, timed mode, expirable, --pid, --use-pt-config, PR review, regression.'
+description: 'PowerToys Awake module knowledge: feature->file/function map, recurring regression playbooks (keep-awake lost after sleep/resume, timed mode expiring early / countdown drift, past expiration date, indefinite mode ineffective on Modern Standby S0, tray icon/time-format mismatch, tray context-menu positioning, CLI console output not visible, --pid validation), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/awake — SetThreadExecutionState keep-awake, ES_SYSTEM_REQUIRED/ES_DISPLAY_REQUIRED/ES_CONTINUOUS, indefinite/timed/expirable/passive modes, keep display on, system tray, settings JSON, CLI options. Keywords: Awake, keep awake, SetThreadExecutionState, ES_CONTINUOUS, display on, sleep, standby, tray icon, TrackPopupMenu, timed mode, expirable, --pid, --use-pt-config, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -146,7 +146,7 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
 - **Symptom:** the tray icon's right/left-click menu pops away from the cursor / taskbar or won't
   dismiss on click-away.
 - **Where:** `TrayHelper.ShowContextMenu`.
-- **Root cause:** menu shown without foregrounding the owner window and without correct alignment
+- **Root cause:** menu shown without bringing the owner window to the foreground and without correct alignment
   flags, so Windows mis-positions it and skips auto-dismiss.
 - **Guardrail:** `SetForegroundWindow(hWnd)` before `TrackPopupMenuEx`; use cursor position with
   `TPM_LEFT_ALIGN | TPM_BOTTOMALIGN | TPM_LEFT_BUTTON` and `MNS_AUTO_DISMISS`. Evidence:
@@ -201,7 +201,7 @@ Enforce these when reviewing or authoring Awake changes:
 - **Keep C# mode/serialization in lockstep with the Settings UI.** `AwakeMode` and `AwakeProperties`
   serialization drive both `ProcessSettings` and `AwakeViewModel`; a schema change must round-trip.
 
-## Gotchas
+## Pitfalls
 
 - **Modern Standby (S0) is the #1 "still sleeps" trap.** `ES_SYSTEM_REQUIRED | ES_CONTINUOUS` may not
   hold an S0 laptop awake unless the display is kept on — a Windows platform limitation, not an Awake

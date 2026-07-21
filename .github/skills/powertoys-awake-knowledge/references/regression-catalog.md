@@ -77,7 +77,7 @@ top playbooks.
 
 From `review_comments.json` on Awake PRs (maintainers/Copilot, high-signal only):
 
-- **Validate CLI options at parse time** (`--pid` positive + existing process; `--expire-at` parseable) —
+- **Validate CLI options at parse time** (`--pid` positive + existing process; `--expire-at` parsable) —
   don't defer to execution. `daverayment` agreed to restore the fuller `--pid` validation. (PR #41774)
 - **Use `await InvokeAsync`, not `.Result`**, on `System.CommandLine` to avoid deadlocks. `daverayment`
   agreed it was the right call despite legacy behavior. (PR #41774)

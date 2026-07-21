@@ -4,7 +4,7 @@
 
 .DESCRIPTION
     Reads pre-built JSON cache of WinMD types, members, and namespaces.
-    The cache is organized per-package (deduplicated) with project manifests
+    The cache is organized per-package (de-duplicated) with project manifests
     that map each project to its referenced packages.
 
     Supports listing namespaces, types, members, searching, enum value lookup,

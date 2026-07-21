@@ -19,8 +19,8 @@ Apply to any PR touching `src/modules/powerdisplay/` (or `src/settings-ui/**/Pow
 - [ ] Cooperative-vs-involuntary exit partition intact (`ProcessExit` fires for `Environment.Exit`, not for `FailFast`/BSOD/`TerminateProcess`).
 - [ ] Recovery commit point (lock delete) still ordered after `crash_detected.flag` + `enabled.PowerDisplay=false` + event signal. (PR #47734)
 
-## Hotplug / wake
-- [ ] Wake/hotplug handling locks the UI before rescan and unregisters power notifications on dispose. (PR #47876)
+## Hot-plug / wake
+- [ ] Wake/hot-plug handling locks the UI before re-scan and removes the registration of power notifications on dispose. (PR #47876)
 
 ## Serialization / AOT
 - [ ] New serialized types/properties registered in the relevant source-gen `JsonSerializerContext`.

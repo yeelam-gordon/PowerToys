@@ -1,6 +1,6 @@
 ---
 name: powertoys-filelocksmith-knowledge
-description: 'PowerToys File Locksmith module knowledge: feature->file/function map, recurring regression playbooks (NtQuerySystemInformation handle enumeration + NtQueryObject hang watchdog, path->kernel-name matching, process kill/EndTask, elevation + SeDebugPrivilege + runas, last-run.log IPC binary vs text mode Unicode corruption, per-row icon extraction crash, Win10 classic vs Win11 sparse-MSIX context menu, extended-menu gating), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/FileLocksmith — handle enumeration, locking-process discovery, kill process, elevation, context-menu registration, IPC. Keywords: File Locksmith, FileLocksmith, locked file, which process locks, handle, NtQuerySystemInformation, NtQueryObject, SystemExtendedHandleInformation, kernel name, EndTask, kill process, SeDebugPrivilege, elevated, runas, context menu, sparse package, MSIX, shell extension, IExplorerCommand, IPC, last-run.log, PR review, regression.'
+description: 'PowerToys File Locksmith module knowledge: feature->file/function map, recurring regression playbooks (NtQuerySystemInformation handle enumeration + NtQueryObject hang watchdog, path->kernel-name matching, process kill/EndTask, elevation + SeDebugPrivilege + runas, last-run.log IPC binary vs text mode Unicode corruption, per-row icon extraction crash, Win10 classic vs Win11 sparse-MSIX context menu, extended-menu gating), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/FileLocksmith — handle enumeration, locking-process discovery, kill process, elevation, context-menu registration, IPC. Keywords: File Locksmith, FileLocksmith, locked file, which process locks, handle, NtQuerySystemInformation, NtQueryObject, SystemExtendedHandleInformation, kernel name, EndTask, kill process, SeDebugPrivilege, elevated, runas, context menu, sparse package, MSIX, shell extension, IExplorerCommand, IPC, last-run.log, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -99,7 +99,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Root cause:** the image path is non-empty but the file is gone, so `ExtractAssociatedIcon` throws.
 - **Guardrail:** wrap the extraction in `try/catch`, log a warning, and fall back to a placeholder
   `BitmapImage`. Because the converter re-runs during virtualization, prefer a `File.Exists`
-  fast-path so the common case doesn't rely on (expensive, log-spamming) exceptions. Evidence:
+  fast-path so the common case doesn't rely on (expensive, log-flooding) exceptions. Evidence:
   [#48693](https://github.com/microsoft/PowerToys/issues/48693) →
   [PR #48719](https://github.com/microsoft/PowerToys/pull/48719).
 
@@ -173,7 +173,7 @@ Enforce these when reviewing or authoring File Locksmith changes:
 - **Use `$(RepoRoot)`, not bare relative paths, in project files**
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** open `last-run.log` in default text mode — UTF-16 bytes equal to `0x0A` are corrupted;
   the bug hides on ASCII-only paths and only surfaces for Unicode paths / elevated relaunch (#46949).

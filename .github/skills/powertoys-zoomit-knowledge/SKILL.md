@@ -1,6 +1,6 @@
 ---
 name: powertoys-zoomit-knowledge
-description: 'PowerToys ZoomIt module knowledge: feature->file/function map, regression playbooks (hotkey XOR-modifier derivation collisions, toggle/save hotkey coupling registering VK=0, recording lifecycle + audio-init race, recording/screenshot filename suffixes, cursor/overlay visibility on multi-monitor & fractional DPI, international/AltGr hotkey conflicts), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/ZoomIt — live zoom, draw/annotate, break timer, DemoType, screen/GIF recording, webcam + background blur, mic noise cancellation, OCR/snip, panorama, hotkey registration, settings, DPI. Keywords: ZoomIt, live zoom, magnification, annotate, break timer, screen recording, GIF, webcam, background blur, noise cancellation, OCR, snip, panorama, hotkey, RegisterHotKey, MOD_ALT, DPI, multi-monitor, PR review, regression.'
+description: 'PowerToys ZoomIt module knowledge: feature->file/function map, regression playbooks (hotkey XOR-modifier derivation collisions, toggle/save hotkey coupling registering VK=0, recording lifecycle + audio-init race, recording/screenshot filename suffixes, cursor/overlay visibility on multi-monitor & fractional DPI, international/AltGr hotkey conflicts), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/ZoomIt — live zoom, draw/annotate, break timer, DemoType, screen/GIF recording, webcam + background blur, mic noise cancellation, OCR/snip, panorama, hotkey registration, settings, DPI. Keywords: ZoomIt, live zoom, magnification, annotate, break timer, screen recording, GIF, webcam, background blur, noise cancellation, OCR, snip, panorama, hotkey, RegisterHotKey, MOD_ALT, DPI, multi-monitor, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -19,7 +19,7 @@ the conventions maintainers already established.
 - Planning or implementing a change under `src/modules/ZoomIt/` and needing prior art.
 - Fixing/triaging a ZoomIt bug: hotkey not registering / conflicting / capturing bare keys, "shortcut
   already in use" errors, recording crash or GIF stuck, audio device not opening, cursor invisible,
-  webcam overlay mispositioned, OCR/snip breaking on non-US keyboards, break/live-zoom/draw glitches.
+  webcam overlay mis-positioned, OCR/snip breaking on non-US keyboards, break/live-zoom/draw glitches.
 - Reviewing a ZoomIt PR against maintainer conventions and the recurring regression classes.
 - Touching hotkey registration (the XOR-derived Record/LiveDraw/DemoType-Reset variants), the
   recording session lifecycle, webcam/audio pipelines, DPI scaling of the options dialog, or the
@@ -98,7 +98,7 @@ corpus are terse (title-level); technical rows were verified against source.
   `WM_USER_RELOAD_SETTINGS` (~`10356`, `10373`): `SNIP_SAVE_HOTKEY` / `SNIP_PANORAMA_SAVE_HOTKEY`
   registered unconditionally whenever the *toggle* key is set.
 - **Root cause:** the save hotkey is treated as a coupled pair with its toggle; when the save field is
-  empty (`HKM_GETHOTKEY` returns 0) it attempts to register VK=0, which fails and misattributes the
+  empty (`HKM_GETHOTKEY` returns 0) it attempts to register VK=0, which fails and mis-attributes the
   conflict to the toggle hotkey.
 - **Guardrail:** validate/register toggle and save **independently**; only register a save hotkey when
   its key is non-zero; report conflicts against the save hotkey separately; use the existing
@@ -155,7 +155,7 @@ corpus are terse (title-level); technical rows were verified against source.
 
 ### Cursor / overlay visibility on multi-monitor & fractional DPI
 - **Symptom:** mouse cursor disappears while a mode is active or on a second display; webcam overlay
-  is mispositioned or squished when display scaling is < 100% or the cutout isn't rectangular.
+  is mis-positioned or squished when display scaling is < 100% or the cutout isn't rectangular.
 - **Where:** DPI helpers (`GetDpiForWindowHelper`, `ScaleForDpi`, `ScaleDialogForDpi`, `WM_DPICHANGED`);
   monitor selection (`MonitorFromPoint`/`GetMonitorInfo` ~`2258`); webcam compositing
   (`WebcamCapture.cpp`, `WebcamPreviewWindow.cpp`, `WebcamComposite.hlsl`).
@@ -203,7 +203,7 @@ Enforce these when reviewing or authoring ZoomIt changes:
   *display* of a bare-key label (the converter), it does not affect native hotkey registration —
   word comments accordingly (PR #47539 review).
 
-## Gotchas
+## Pitfalls
 
 - **Never** register `base ^ MOD_ALT` / `base ^ MOD_SHIFT` without a non-zero guard — an Alt-only (or
   Shift-only) base collapses to a modifier-less hotkey that swallows every bare keypress (#47388).

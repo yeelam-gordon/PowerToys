@@ -1,6 +1,6 @@
 # Patterns & pitfalls
 
-Adaptable recipes for the recurring PowerToys UI-test patterns, plus the gotchas that bite during a
+Adaptable recipes for the recurring PowerToys UI-test patterns, plus the pitfalls that bite during a
 `.Next` migration. **These are patterns, not a script** — every module differs; lift the shape, not
 the literal strings. All snippets assume `using Microsoft.PowerToys.UITest.Next;` and a class deriving
 from `UITestBase`.
@@ -190,7 +190,7 @@ Assert.IsTrue(found, $"'{captured}' not found in editor tree.");
 Use this when a value can appear in any of several controls (e.g. ColorPicker's editor renders the
 captured color in whichever format control matches) and you only need "it's somewhere in the tree".
 
-## Recipe 8 — Read a value the UIA Name hides
+## Recipe 8 — Read a value that the UIA Name hides
 
 When `AutomationProperties.Name` overrides the UIA Name with a friendly label (e.g. a color *name*
 instead of its HEX), `GetValue()` still reads the underlying Text/Value binding:

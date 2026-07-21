@@ -103,7 +103,7 @@ install; on the **build + sideload path**, building it is exactly the point (Ste
 
 ### Live-drive floor (anti-shallow-verification)
 
-If the PR has a verb a real user performs (open/toggle/press/drag/right-click/type/preview/paste/
+If the PR has a verb that a real user performs (open/toggle/press/drag/right-click/type/preview/paste/
 invoke/install/pin/search/record/scroll), the steps table MUST contain **≥4 `winapp ui …` rows** and
 **≥1 `winapp ui screenshot` of the post-state**. A PR with a user-visible surface and zero
 `winapp ui …` rows is **not validated**. "Source verified; live deferred" is a weasel-word that

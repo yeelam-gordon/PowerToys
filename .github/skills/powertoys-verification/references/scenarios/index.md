@@ -76,5 +76,5 @@ map 1:1 — use the `SKILL.md` set and treat the legacy labels as aliases:
 | BLOCKED (`BLK-*`) | Incapable of Testing | Couldn't run the check after ≥2 entry-paths → name the concrete obstacle. |
 
 Whichever label set the caller asks for, keep the **evidence rules identical**: no "source verified /
-live deferred / pre-existing / probably / unlikely" weasel-words to justify a PASS — those flip the
+live deferred / already-present / probably / unlikely" weasel-words to justify a PASS — those flip the
 verdict to FAIL or BLOCKED-with-a-named-environmental-reason.

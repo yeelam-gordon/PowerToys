@@ -1,6 +1,6 @@
 ---
 name: powertoys-screenruler-knowledge
-description: 'PowerToys Screen Ruler (Measure Tool) module knowledge: feature->file/function map, regression playbooks (pixel edge-detection off-by-one & 8-bit tolerance truncation, unit-conversion math, multi-monitor overlay lifecycle, continuous vs single-frame capture, cross-thread cursor alignment), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/MeasureTool — edge detection, measurement overlay, DPI/px-to-mm, Direct3D screen capture, multi-monitor, bounds/measure/spacing tools, clipboard, UI tests. Keywords: Screen Ruler, Measure Tool, MeasureTool, edge detection, DetectEdges, PixelsClose, px2mm, DPI, multi-monitor, Windows.Graphics.Capture, D2D overlay, continuous capture, PR review, regression.'
+description: 'PowerToys Screen Ruler (Measure Tool) module knowledge: feature->file/function map, regression playbooks (pixel edge-detection off-by-one & 8-bit tolerance truncation, unit-conversion math, multi-monitor overlay lifecycle, continuous vs single-frame capture, cross-thread cursor alignment), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/MeasureTool — edge detection, measurement overlay, DPI/px-to-mm, Direct3D screen capture, multi-monitor, bounds/measure/spacing tools, clipboard, UI tests. Keywords: Screen Ruler, Measure Tool, MeasureTool, edge detection, DetectEdges, PixelsClose, px2mm, DPI, multi-monitor, Windows.Graphics.Capture, D2D overlay, continuous capture, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -114,7 +114,7 @@ issue tracker are terse — confirm each claim in source (done for the entries b
   [#33345](https://github.com/microsoft/PowerToys/issues/33345),
   [#32205](https://github.com/microsoft/PowerToys/issues/32205).
 
-### Cross-thread cursor read misalignment → crash on some machines
+### Cross-thread cursor read mis-alignment → crash on some machines
 - **Symptom:** Measure Tool crashes on startup on some machines (alignment / torn-read fault).
 - **Where:** `ToolState.h` `CommonState::cursorPosSystemSpace` (`alignas(8) POINT`, warning 4324
   suppressed) written via `InterlockedExchange64` in `MouseCaptureThread`, read by overlay/capture
@@ -171,7 +171,7 @@ Enforce these when reviewing or authoring Screen Ruler changes:
   ([PR #43920](https://github.com/microsoft/PowerToys/pull/43920),
   [PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** mask a multi-channel pixel sum to 8 bits — `PixelsClose<false>`'s `& 0xFF` on a 0–1020
   SAD is a real bug; compare the full width (#46946).

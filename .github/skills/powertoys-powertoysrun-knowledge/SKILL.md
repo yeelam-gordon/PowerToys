@@ -55,7 +55,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 
 ### Key bundled plugins (`Plugins/`)
 
-| Plugin | Root · notable file | Purpose / gotcha area |
+| Plugin | Root · notable file | Purpose / pitfall area |
 |---|---|---|
 | Shell (`>`) | `Microsoft.Plugin.Shell/Main.cs` `EscapeCmdArgument`/`EscapePowerShellArgument`, `PrepareProcessStartInfo` | Runs cmd/PowerShell/WT; **per-shell quote escaping** (command-injection surface) |
 | Program | `Microsoft.Plugin.Program/Programs/Win32Program.cs`, `UWP.cs` | Win32 + UWP app enumeration/launch |
@@ -175,7 +175,7 @@ Enforce these when reviewing or authoring Run changes:
   between `dllmain.cpp` and `EnabledModules.cs` (#47144).
 - **Ship a test with every fix.** Suites live in `Plugins/**/*.UnitTest(s)` and `Wox.Test`.
 
-## Gotchas
+## Pitfalls
 
 - **Never** reuse a CreateProcess/C-runtime argument escaper (`\"`) for cmd.exe or PowerShell command
   strings — cmd needs doubled `""` and PowerShell differs; wrong escaper = command injection (#45554).

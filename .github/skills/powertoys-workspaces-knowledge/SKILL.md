@@ -1,6 +1,6 @@
 ---
 name: powertoys-workspaces-knowledge
-description: 'PowerToys Workspaces module knowledge: feature->file/function map, recurring regression playbooks (window<->app matching identity for Edge/Chrome PWA & packaged/ApplicationFrameHost & Steam apps, DPI-aware vs DPI-unaware coordinate storage, monitor-number remapping on display changes, CLI-arg capture via WMI, elevated/packaged launch, JSON snapshot round-trip & deserialization), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/Workspaces — capturing/snapshotting a desktop layout, launching a workspace, window placement/monitor assignment, app-launch/CLI args, the WPF editor, or the launcher status UI. Keywords: Workspaces, snapshot, launcher, window arranger, WindowFilter, PWA, AUMID, DPI, monitor, WMI command line, WPF Fluent, JSON, PR review, regression.'
+description: 'PowerToys Workspaces module knowledge: feature->file/function map, recurring regression playbooks (window<->app matching identity for Edge/Chrome PWA & packaged/ApplicationFrameHost & Steam apps, DPI-aware vs DPI-unaware coordinate storage, monitor-number remapping on display changes, CLI-arg capture via WMI, elevated/packaged launch, JSON snapshot round-trip & deserialization), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/Workspaces — capturing/snapshotting a desktop layout, launching a workspace, window placement/monitor assignment, app-launch/CLI args, the WPF editor, or the launcher status UI. Keywords: Workspaces, snapshot, launcher, window arranger, WindowFilter, PWA, AUMID, DPI, monitor, WMI command line, WPF Fluent, JSON, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -198,7 +198,7 @@ Enforce these when reviewing or authoring Workspaces changes:
   (`AppUtilsTests`, `PwaHelperTests`, `JsonUtilsTests`, `WorkspacesDataTests`); UI in
   `WorkspacesEditorUITest`.
 
-## Gotchas
+## Pitfalls
 
 - **Never** compare app identity by process name alone — Edge/Chrome share one exe across profiles and
   PWAs, and UWP apps host under `ApplicationFrameHost.exe`. Resolve AUMID/PWA app-id and recover the

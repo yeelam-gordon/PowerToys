@@ -1,6 +1,6 @@
 ---
 name: powertoys-colorpicker-knowledge
-description: 'PowerToys Color Picker (module dir src/modules/colorPicker; C# WPF app ColorPickerUI + C++ Runner module ColorPicker) knowledge: feature->file/function map, recurring regression playbooks (GDI screen pixel capture wrong on HDR/wide-gamut displays, zoom window capturing the picker window itself, dual activation paths — Runner centralized hotkey via shared event vs standalone GlobalKeyboardHook, color-format specifier strings incl. Decimal %Dv BGR order, multi-monitor/per-monitor-DPI positioning & refresh-rate polling, static Bitmap/Graphics reuse & memory), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/colorPicker — pixel color capture, zoom, color formats/editor & history, activation shortcut, settings, GPO.'
+description: 'PowerToys Color Picker (module dir src/modules/colorPicker; C# WPF app ColorPickerUI + C++ Runner module ColorPicker) knowledge: feature->file/function map, recurring regression playbooks (GDI screen pixel capture wrong on HDR/wide-gamut displays, zoom window capturing the picker window itself, dual activation paths — Runner centralized hotkey via shared event vs standalone GlobalKeyboardHook, color-format specifier strings incl. Decimal %Dv BGR order, multi-monitor/per-monitor-DPI positioning & refresh-rate polling, static Bitmap/Graphics reuse & memory), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/colorPicker — pixel color capture, zoom, color formats/editor & history, activation shortcut, settings, GPO.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -93,7 +93,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   is on screen**, so `CopyFromScreen` captures the picker itself.
 - **Guardrail:** set `WDA_EXCLUDEFROMCAPTURE` (`SetWindowDisplayAffinity`) on the picker HWND
   *before* the capture and restore `WDA_NONE` in a `finally` — never leave the window excluded (it
-  would stop the picker from being captured/screenshotted afterward). Exclusion requires Win10 2004+
+  would stop the picker from being captured afterward). Exclusion requires Win10 2004+
   (build 19041); handle the unsupported/failed case without crashing. Evidence:
   [PR #48762](https://github.com/microsoft/PowerToys/pull/48762).
 
@@ -134,7 +134,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 ### Multi-monitor / per-monitor-DPI positioning & refresh-rate polling
 - **Symptom:** picker/zoom opens on the wrong monitor or offset from the cursor on mixed-DPI setups;
-  zoom feels laggy or misplaced; capture cadence wrong on high-refresh displays.
+  zoom feels sluggish or misplaced; capture cadence wrong on high-refresh displays.
 - **Where:** `MonitorResolutionHelper.AllMonitors`/`GetCurrentMonitorDpi`/`IsPrimary`;
   `ZoomWindowHelper.ShowZoomWindow` (iterative `PointFromScreen` convergence to center the zoom on
   the cursor across DPI); `MouseInfoProvider.GetMainDisplayRefreshRate` (polls **primary** monitor
@@ -195,7 +195,7 @@ Enforce these when reviewing or authoring Color Picker changes:
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)). Keep C#
   `TreatWarningsAsErrors=true` (repo default; #48467).
 
-## Gotchas
+## Pitfalls
 
 - **`CopyFromScreen` gives sRGB, not HDR.** The single most common "wrong color" report on HDR/wide-gamut
   displays is inherent to GDI capture in `MouseInfoProvider.GetPixelColor`, not a conversion bug (#44329).

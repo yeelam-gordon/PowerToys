@@ -23,8 +23,8 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Crash on open/close, save dialog crash | `MainWindow.Events.cs`; `HandleDirtyClosing`; `SaveFile` | Lifecycle | (Review Rules) |
 | Window not restored / wrong size / closes on open | `MainWindow.Utilities.cs` placement JSON | Window state | Window state |
 | Commented (`;`) URL still opens browser | `ScanAndRemoveComments`; Monaco link handling | Comment scope | Comments |
-| `(Default)` value wrong / `@=-` mishandled | `ParseHelper.cs::ProcessRegistryLine` | Default value | (Gotchas) |
-| Tree drawn wrong / duplicated segments | `AddTextToTree` (`LastIndexOf`, not `Replace`) | Tree dedup | (Gotchas) |
+| `(Default)` value wrong / `@=-` mishandled | `ParseHelper.cs::ProcessRegistryLine` | Default value | (Pitfalls) |
+| Tree drawn wrong / duplicated segments | `AddTextToTree` (`LastIndexOf`, not `Replace`) | Tree de-dup | (Pitfalls) |
 | Hex/decimal/binary preview wrong | `RegistryPreviewMainPage.DataPreview.cs` `ShowExtendedDataPreview` | Data preview | Module Map |
 
 ## Confirmation steps

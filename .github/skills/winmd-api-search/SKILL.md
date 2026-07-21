@@ -40,7 +40,7 @@ All query and search commands read from a local JSON cache. **You must generate 
 
 No project restore or build is needed for baseline coverage (Platform SDK + WinAppSDK). For additional NuGet packages, the project needs `dotnet restore` (which generates `project.assets.json`) or a `packages.config` file.
 
-Cache is stored at `Generated Files\winmd-cache\`, deduplicated per-package+version.
+Cache is stored at `Generated Files\winmd-cache\`, de-duplicated per-package+version.
 
 ### What gets indexed
 

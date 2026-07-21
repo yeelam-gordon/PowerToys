@@ -20,7 +20,7 @@ maps to the Regression Playbook / Review Rule it enforces.
 
 ## Root / key validation (`CheckForKnownGoodBranches`, `AddTextToTree`)
 - [ ] New root aliases added in all forms (long + abbrev; bare `[HKLM]` and sub-path `[HKLM\...`).
-- [ ] Tree dedup uses `LastIndexOf(@"\name")`, not `Replace` (avoids collapsing repeated segments).
+- [ ] Tree de-dup uses `LastIndexOf(@"\name")`, not `Replace` (avoids collapsing repeated segments).
 - [ ] Deleted key `[-...]` and deleted value `"x"=-` still get their special icons/handling.
 
 ## Data preview (`RegistryPreviewMainPage.DataPreview.cs`, `Controls/HexBox`)

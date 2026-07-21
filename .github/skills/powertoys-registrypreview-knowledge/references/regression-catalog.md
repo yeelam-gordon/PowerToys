@@ -66,7 +66,7 @@ GitHub issue. Confirm in source before acting.
 - **Issues:** [#46573](https://github.com/microsoft/PowerToys/issues/46573),
   [#36630](https://github.com/microsoft/PowerToys/issues/36630).
 - **Where:** `MainWindow.Utilities.cs` placement JSON; `MainWindow.Events.cs`.
-- **Root cause:** placement JSON is best-effort (`{ }` fallback) and desyncs from window state.
+- **Root cause:** placement JSON is best-effort (`{ }` fallback) and loses sync with window state.
 - **Guardrail:** persist real state on close; validate JSON round-trip.
 
 ### R7 — Commented URL opens browser / comment scope

@@ -1,6 +1,6 @@
 ---
 name: powertoys-newplus-knowledge
-description: 'PowerToys New+ (NewPlus) module knowledge: feature->file/function map, regression playbooks (template-folder scan/exclude, leading-digit stripping, filename-variable resolution, hide-built-in-New registry edits, Win10 IContextMenu vs Win11 IExplorerCommand + sparse-MSIX registration, localization of the "New+" menu name), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/NewPlus — context-menu registration, template creation/copy, filename variables ($PARENT_FOLDER_NAME/env/date), hide built-in New, GPO, settings, localization. Keywords: New+, NewPlus, context menu, template folder, shell extension, IExplorerCommand, IContextMenu, sparse MSIX, Ctrl+Shift+N, GPO, localization, PR review, regression.'
+description: 'PowerToys New+ (NewPlus) module knowledge: feature->file/function map, regression playbooks (template-folder scan/exclude, leading-digit stripping, filename-variable resolution, hide-built-in-New registry edits, Win10 IContextMenu vs Win11 IExplorerCommand + sparse-MSIX registration, localization of the "New+" menu name), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/NewPlus — context-menu registration, template creation/copy, filename variables ($PARENT_FOLDER_NAME/env/date), hide built-in New, GPO, settings, localization. Keywords: New+, NewPlus, context menu, template folder, shell extension, IExplorerCommand, IContextMenu, sparse MSIX, Ctrl+Shift+N, GPO, localization, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -165,7 +165,7 @@ Enforce these when reviewing or authoring New+ changes:
   central deps in `Directory.Packages.props`).
 - **"New+" is a localized product name** — treat resx changes with locale care (PRs #47225, #46827).
 
-## Gotchas
+## Pitfalls
 
 - **`saved_number_of_templates` is a global HACK** initialized to `(size_t)-1`
   (`new_utilities.cpp`); `copy_template`/`open_template_folder` gate telemetry on `>= 0`, which is
@@ -180,7 +180,7 @@ Enforce these when reviewing or authoring New+ changes:
 - **Hiding built-in New requires the runner running and the module loaded** (applied in
   `init_settings`) — invoking the context menu alone won't apply the preference.
 - **Variables resolve top-down for `$PARENT_FOLDER_NAME`; copied folders rename leaf-first** to avoid
-  rescans (`resolve_variables_in_path`, `resolve_variables_in_filename_and_rename_files`).
+  re-scans (`resolve_variables_in_path`, `resolve_variables_in_filename_and_rename_files`).
 - **The date/time token engine is a *copied subset* of PowerRename's `GetDatedFileName`** — it is not
   shared code; fixes in PowerRename don't propagate here automatically.
 - **The default template folder is auto-created if missing** (`create_folder_if_not_exist`) at

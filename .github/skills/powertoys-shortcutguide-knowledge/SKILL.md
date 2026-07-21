@@ -1,6 +1,6 @@
 ---
 name: powertoys-shortcutguide-knowledge
-description: 'PowerToys Shortcut Guide module knowledge: the WinGet-manifest-based (v0.100+) keyboard-shortcut overlay — feature->file/function map, per-app YAML manifest authoring rules (+ prefix, <N>/special-key tokens, WindowFilter), recurring crash/regression playbooks (overlay crash on section navigation, empty-title startup fault, digit-key misrender), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/ShortcutGuide — manifests, overlay window, hotkey/process activation, index generation, taskbar-number window, multi-monitor positioning, PowerToys dynamic shortcuts. Keywords: Shortcut Guide, keyboard shortcuts, WinGet manifest, KBSC, overlay, WindowFilter, taskbar shortcuts, WinUI 3, PR review, regression.'
+description: 'PowerToys Shortcut Guide module knowledge: the WinGet-manifest-based (v0.100+) keyboard-shortcut overlay — feature->file/function map, per-app YAML manifest authoring rules (+ prefix, <N>/special-key tokens, WindowFilter), recurring crash/regression playbooks (overlay crash on section navigation, empty-title startup fault, digit-key mis-render), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/ShortcutGuide — manifests, overlay window, hotkey/process activation, index generation, taskbar-number window, multi-monitor positioning, PowerToys dynamic shortcuts. Keywords: Shortcut Guide, keyboard shortcuts, WinGet manifest, KBSC, overlay, WindowFilter, taskbar shortcuts, WinUI 3, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -168,7 +168,7 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
 - **Ship a test with logic changes.** Suite: `ShortcutGuide.UnitTests`
   (`ConvertersTests/ShortcutDescriptionToKeysConverterTests.cs`).
 
-## Gotchas
+## Pitfalls
 
 - **The hotkey toggles the process.** Pressing the Shortcut Guide hotkey while it is open
   **terminates** the process (`OnHotkeyEx` → `TerminateProcess`); it does not just refocus.

@@ -9,7 +9,7 @@ from the symptom and verify — don't force-fit.
 | Entry reverts when toggled on/off | `Entry.Parse` ↔ `HostsService.WriteAsync` | Parse/format round-trip asymmetry (#44389) |
 | Sections from Docker/Tailscale broken → duplicates | `WriteAsync` (verbatim invalid lines), `HostsData.AdditionalLines` | Whole-file rewrite reformatting foreign blocks (#35979) |
 | No backup / lost hosts file | `BackupManager.Create` (`BackupHosts`, `_backupDone`) | Opt-in + once-per-session (#37666) |
-| "Can't save" unelevated | `WriteAsync` → `NotRunningElevatedException`; `ElevationHelper.IsElevated` | Needs admin (#40600, #44022) |
+| "Can't save" without elevation | `WriteAsync` → `NotRunningElevatedException`; `ElevationHelper.IsElevated` | Needs admin (#40600, #44022) |
 | "Can't save" hidden file | `WriteAsync` `FileMode.OpenOrCreate` | Hidden-file create guard (#34291) |
 | "Can't save" read-only file | `WriteAsync` → `ReadOnlyHostsException`; `RemoveReadOnlyAttribute`; VM `OverwriteHosts` | Explicit overwrite path |
 | Save fails on large file (locked) | `MainViewModel.SaveAsync` `IOException` HResult 32 | svchost lock (#28066) |

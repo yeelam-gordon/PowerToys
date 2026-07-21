@@ -1,6 +1,6 @@
 ---
 name: powertoys-textextractor-knowledge
-description: 'PowerToys Text Extractor (module dir/namespace PowerOCR, product name "TextExtractor") knowledge: feature->file/function map, recurring regression playbooks (Windows.Media.Ocr language-pack availability, input-vs-OS language resolution, multi-monitor/per-monitor-DPI overlay misalignment, dual activation paths — Runner centralized hotkey vs standalone GlobalKeyboardHook, clipboard/STA capture, GDI bitmap disposal), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/PowerOCR — screen-capture OCR overlay, language selection, table/single-line output, clipboard copy, activation shortcut, settings, GPO. Keywords: Text Extractor, PowerOCR, OCR, Windows.Media.Ocr, OcrEngine, language pack, screen capture overlay, multi-monitor, DPI, clipboard, global keyboard hook, PR review, regression.'
+description: 'PowerToys Text Extractor (module dir/namespace PowerOCR, product name "TextExtractor") knowledge: feature->file/function map, recurring regression playbooks (Windows.Media.Ocr language-pack availability, input-vs-OS language resolution, multi-monitor/per-monitor-DPI overlay mis-alignment, dual activation paths — Runner centralized hotkey vs standalone GlobalKeyboardHook, clipboard/STA capture, GDI bitmap disposal), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/PowerOCR — screen-capture OCR overlay, language selection, table/single-line output, clipboard copy, activation shortcut, settings, GPO. Keywords: Text Extractor, PowerOCR, OCR, Windows.Media.Ocr, OcrEngine, language pack, screen capture overlay, multi-monitor, DPI, clipboard, global keyboard hook, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -17,7 +17,7 @@ established.
 ## When to Use This Skill
 
 - Planning or implementing a change under `src/modules/PowerOCR/` and needing prior art.
-- Fixing/triaging a Text Extractor bug: no text captured, overlay on wrong monitor / misaligned,
+- Fixing/triaging a Text Extractor bug: no text captured, overlay on wrong monitor / mis-aligned,
   "No possible OCR languages are installed", wrong/default language, activation shortcut not firing
   or conflicting, capture blank on certain windows, clipboard not populated, crash on capture.
 - Reviewing a Text Extractor PR against maintainer conventions and regression traps.
@@ -86,9 +86,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   issues [#42904](https://github.com/microsoft/PowerToys/issues/42904),
   [#47137](https://github.com/microsoft/PowerToys/issues/47137).
 
-### Multi-monitor / per-monitor-DPI overlay misalignment
+### Multi-monitor / per-monitor-DPI overlay mis-alignment
 - **Symptom:** overlay on the wrong screen, selection offset from the cursor, "all windows pulled to
-  one screen", increasing latency with multiple displays, misalignment after a screen shift.
+  one screen", increasing latency with multiple displays, mis-alignment after a screen shift.
 - **Where:** `WindowUtilities.LaunchOCROverlayOnEveryScreen` (one `OCROverlay` per `Screen.AllScreens`
   with `screen.GetDpi()`), `OCROverlay` ctor (Width/Height = `bounds / dpiScale`), `OCROverlay.Window_Loaded`
   (double `MoveWindow` +1/-1), region math in `RegionClickCanvas_MouseUp` (`TransformToDevice` `m.M11/M22`).
@@ -183,14 +183,14 @@ Enforce these when reviewing or authoring Text Extractor changes:
   product name are `TextExtractor` (`UserSettings.PowerOcrModuleName = "TextExtractor"`,
   `Logger.InitializeLogger("\\TextExtractor\\Logs")`). Keep both consistent.
 
-## Gotchas
+## Pitfalls
 
 - **Never** assume OCR languages exist — `Windows.Media.Ocr` uses OS language packs, not anything
   PowerToys ships; an offline PC yields "No possible OCR languages are installed" (#46030, #41969).
 - **Input language ≠ OS display language ≠ `PreferredLanguage`.** `GetOCRLanguage` keys off the
   current **keyboard input** language; this surprises users (#42904, #47137).
 - **The overlay is one `Window` per `Screen.AllScreens`** — each needs its own `DpiScale`; mixing DPI
-  without it misaligns selection or throws the overlay onto the wrong monitor (#46088, #43024).
+  without it mis-aligns selection or throws the overlay onto the wrong monitor (#46088, #43024).
 - **Do not remove the double `MoveWindow` (+1/-1) in `Window_Loaded`** — it deliberately triggers
   `WM_DPICHANGED` so WPF updates `Top/Left/Width/Height`. It looks redundant; it isn't.
 - **Two activation code paths** (Runner centralized hotkey via shared event + standalone

@@ -207,7 +207,7 @@ Enforce these when reviewing or authoring Mouse Utilities changes:
   `..\..\` in vcxproj. If a toolset override is truly required, comment **why** and file a follow-up
   ([PR #44639 review](https://github.com/microsoft/PowerToys/pull/44639)).
 
-## Gotchas
+## Pitfalls
 
 - **`WH_MOUSE_LL` drives overlay position, and it is global + serialized.** A hung foreground app
   stalls the hook and freezes/detaches the crosshair or highlighter ([#48442](https://github.com/microsoft/PowerToys/issues/48442),

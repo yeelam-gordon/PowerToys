@@ -1,6 +1,6 @@
 ---
 name: powertoys-powerdisplay-knowledge
-description: 'PowerToys PowerDisplay (Power Display) module knowledge: feature->file/function map, regression playbooks (DDC/CI capability-fetch BSOD blacklist + auto-disable/crash-lock, false-positive crash detection on cooperative exit, monitor classification WMI-first vs DDC/CI, discrete-GPU internal-panel detection, stable monitor-Id migration, rescan on display wake, power-state wake via VCP 0xD6, linked brightness), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/powerdisplay — monitor enumeration, brightness/contrast/volume/input-source/color-temperature/power control, DDC/CI + WMI drivers, hotplug/wake, crash recovery, profiles, LightSwitch, settings. Keywords: PowerDisplay, Power Display, DDC/CI, VCP, WMI brightness, monitor enumeration, EDID, EdidId, multi-monitor, hotplug, wake, BSOD, crash detection, linked brightness, monitor Id, PR review, regression.'
+description: 'PowerToys PowerDisplay (Power Display) module knowledge: feature->file/function map, regression playbooks (DDC/CI capability-fetch BSOD blacklist + auto-disable/crash-lock, false-positive crash detection on cooperative exit, monitor classification WMI-first vs DDC/CI, discrete-GPU internal-panel detection, stable monitor-Id migration, re-scan on display wake, power-state wake via VCP 0xD6, linked brightness), maintainer review rules, and pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/powerdisplay — monitor enumeration, brightness/contrast/volume/input-source/color-temperature/power control, DDC/CI + WMI drivers, hot-plug/wake, crash recovery, profiles, LightSwitch, settings. Keywords: PowerDisplay, Power Display, DDC/CI, VCP, WMI brightness, monitor enumeration, EDID, EdidId, multi-monitor, hot-plug, wake, BSOD, crash detection, linked brightness, monitor Id, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -21,7 +21,7 @@ grounded in source + those PRs/issues. Where the map is thin, verify in source (
   BSOD on a specific monitor, settings reset after upgrade, sliders not updating live.
 - Reviewing a Power Display PR against maintainer conventions and regression traps.
 - Touching DDC/CI or WMI drivers, monitor enumeration/classification, monitor-Id identity, the
-  crash-detection/auto-disable lifecycle, hotplug/wake rescan, or the flyout ViewModels.
+  crash-detection/auto-disable lifecycle, hot-plug/wake re-scan, or the flyout ViewModels.
 
 ## Module Map (feature -> file/function)
 
@@ -44,7 +44,7 @@ interface: `PowerDisplay/` (WinUI flyout app), `PowerDisplay.Lib/` (drivers + se
 | Built-in monitor blacklist (skip DDC/CI on known-BSOD models by EdidId) | `PowerDisplay.Lib/Services/MonitorBlacklistService.cs` (`IsBlocked`); data `PowerDisplay.Models/BuiltInMonitorBlacklist.{cs,json}`, `MonitorBlacklistEntry.cs` |
 | Crash detection scope (writes `discovery.lock` around capability fetch) | `PowerDisplay.Lib/Services/CrashDetectionScope.cs` (`Begin`, `Dispose`, `ProcessExit` safety-net); `IProcessExitHook.cs` |
 | Crash recovery (Phase 0 orphan-lock detect → auto-disable) | `PowerDisplay.Lib/Services/CrashRecovery.cs` (`DetectOrphanAndDisable`, `CreateDefault`) |
-| Display wake / hotplug watcher (GUID_CONSOLE_DISPLAY_STATE, WM_DISPLAYCHANGE) | `PowerDisplay/Helpers/DisplayChangeWatcher.cs` (`Start`/`Stop`, PowerSettingRegisterNotification) |
+| Display wake / hot-plug watcher (GUID_CONSOLE_DISPLAY_STATE, WM_DISPLAYCHANGE) | `PowerDisplay/Helpers/DisplayChangeWatcher.cs` (`Start`/`Stop`, PowerSettingRegisterNotification) |
 | Display rotation | `PowerDisplay.Lib/Services/DisplayRotationService.cs` |
 | Linked ("All Displays") brightness | `PowerDisplay/ViewModels/MainViewModel.LinkedBrightness.cs`; planner `PowerDisplay.Lib/Services/LinkedBrightnessPlanner.cs`; settings `linked_levels_active`, `excluded_from_sync_monitor_ids` |
 | Slider commit debounce | `PowerDisplay/Helpers/SliderCommitScheduler.cs`, `SliderExtensions.cs` (`MouseWheelChange`) |
@@ -144,9 +144,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Symptom:** monitors woken from sleep stay unrecognized until manual re-discovery; duplicated
   monitor entries until reboot.
 - **Where:** `DisplayChangeWatcher` (subscribes `GUID_CONSOLE_DISPLAY_STATE` via
-  `PowerSettingRegisterNotification`) → triggers `MonitorManager` rescan.
-- **Guardrail:** on wake, **lock the UI immediately** to block stale interactions before the rescan
-  completes, then rescan. Unregister the power notification on dispose. Evidence:
+  `PowerSettingRegisterNotification`) → triggers `MonitorManager` re-scan.
+- **Guardrail:** on wake, **lock the UI immediately** to block stale interactions before the re-scan
+  completes, then re-scan. Unregister the power notification on dispose. Evidence:
   [PR #47876](https://github.com/microsoft/PowerToys/pull/47876), issue
   [#47951](https://github.com/microsoft/PowerToys/issues/47951); open dup case
   [#48977](https://github.com/microsoft/PowerToys/issues/48977).
@@ -199,10 +199,10 @@ Enforce these when reviewing or authoring Power Display changes. Read the diff c
   `.\.pipelines\applyXamlStyling.ps1 -Main` before pushing XAML — CI enforces XAML styling
   ([PR #48207](https://github.com/microsoft/PowerToys/pull/48207) review).
 - **UI hangs → lock the UI, don't hide latency behind inner flags.** Reviewer's rule: if the UI may
-  hang during work (e.g. rescan), lock it rather than add hidden suppression logic
+  hang during work (e.g. re-scan), lock it rather than add hidden suppression logic
   ([PR #48207](https://github.com/microsoft/PowerToys/pull/48207)).
 
-## Gotchas
+## Pitfalls
 
 - **The BSOD is a Windows kernel defect, not a PowerDisplay bug** — you can only *avoid* the API on
   known-bad models via the EdidId blacklist; you cannot "fix" the crash in this module.

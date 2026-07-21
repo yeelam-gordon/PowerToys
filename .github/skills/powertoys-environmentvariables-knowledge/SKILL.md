@@ -1,6 +1,6 @@
 ---
 name: powertoys-environmentvariables-knowledge
-description: 'PowerToys Environment Variables module knowledge: feature->file/function map, recurring regression playbooks (elevation/admin crashes & drag-as-admin, profile apply/unapply + backup restore, registry-direct writes vs Environment API, WM_SETTINGCHANGE broadcast/self-ignore, REG_EXPAND_SZ vs REG_SZ, empty-titlebar startup fault), maintainer review rules, and gotchas. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/EnvironmentVariables — user/system/profile variable handling, elevation, applying/broadcasting env changes, backup/restore, profiles.json, PATH merge, WinUI editor. Keywords: Environment Variables, env var, PATH, profile, elevation, admin, runas, registry, WM_SETTINGCHANGE, REG_EXPAND_SZ, backup, WinUI3, PR review, regression.'
+description: 'PowerToys Environment Variables module knowledge: feature->file/function map, recurring regression playbooks (elevation/admin crashes & drag-as-admin, profile apply/unapply + backup restore, registry-direct writes vs Environment API, WM_SETTINGCHANGE broadcast/self-ignore, REG_EXPAND_SZ vs REG_SZ, empty-titlebar startup fault), maintainer review rules, and Pitfalls. Load when planning, implementing, fixing, triaging, or reviewing changes under src/modules/EnvironmentVariables — user/system/profile variable handling, elevation, applying/broadcasting env changes, backup/restore, profiles.json, PATH merge, WinUI editor. Keywords: Environment Variables, env var, PATH, profile, elevation, admin, runas, registry, WM_SETTINGCHANGE, REG_EXPAND_SZ, backup, WinUI3, PR review, regression.'
 license: Complete terms in LICENSE.txt
 ---
 
@@ -148,7 +148,7 @@ Enforce these when reviewing or authoring Environment Variables changes:
   not the generic `SetVariable`, regardless of `ParentType`
   ([PR #48740](https://github.com/microsoft/PowerToys/pull/48740)).
 - **Gate System edits on elevation.** Any new edit/delete UI path must respect `Variable.IsEditable`
-  (System requires `ElevationHelper.IsElevated`); never write `HKLM` unelevated (#45197).
+  (System requires `ElevationHelper.IsElevated`); never write `HKLM` without elevation (#45197).
 - **Never overwrite an existing backup.** Backup only when `GetExisting(backupName) == null`; restore
   then delete on unapply. Keep `GetBackupVariableName` format stable (renaming orphans backups).
 - **Keep the `WM_SETTINGCHANGE` self-ignore sentinel (`0x12345`) consistent** across
@@ -163,7 +163,7 @@ Enforce these when reviewing or authoring Environment Variables changes:
   blanket `$WarningPreference='SilentlyContinue'` (which hides real resource/localization warnings)
   ([PR #46729](https://github.com/microsoft/PowerToys/pull/46729)).
 
-## Gotchas
+## Pitfalls
 
 - **Never** run drag-and-drop assuming it works elevated — WinUI 3 blocks drag under admin; the app
   frequently runs as admin (#40105 → reverted #44705).

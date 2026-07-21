@@ -149,7 +149,7 @@ Write-DebugMsg ("First 5 commits: {0}" -f (($normalizedCommits | Select-Object -
     Patterns handled:
       1. Merge commits:   'Merge pull request #12345 from ...'
       2. Squash commits:  'Some feature change (#12345)' (GitHub default squash format)
-    We collect both. If a commit matches both (unlikely), it's deduped later.
+    We collect both. If a commit matches both (unlikely), it's de-duplicated later.
 #>
 # Extract PR numbers from merge or squash commits
 $mergeCommits = @()
@@ -182,7 +182,7 @@ if (-not $mergeCommits -or $mergeCommits.Count -eq 0) {
     Write-Warn "No merge commits with PR numbers found in range."; exit 0
 }
 
-# Deduplicate PR numbers (in case of revert or merges across branches)
+# De-duplicate PR numbers (in case of revert or merges across branches)
 $prNumbers = $mergeCommits | Select-Object -ExpandProperty Pr -Unique | Sort-Object
 Write-Info ("Found {0} unique PRs: {1}" -f $prNumbers.Count, ($prNumbers -join ', '))
 Write-DebugMsg ("Total merge commits examined: {0}" -f $mergeCommits.Count)
@@ -353,7 +353,7 @@ foreach ($pr in $prNumbers) {
             }
         }
 
-        # Deduplicate contributors (case-insensitive)
+        # De-duplicate contributors (case-insensitive)
         $allContributors = $allContributors | Where-Object { $_ } | Sort-Object -Unique
 
         # Filter to only external contributors (not in member list) for thanks

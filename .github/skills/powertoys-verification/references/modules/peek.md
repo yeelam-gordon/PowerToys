@@ -81,7 +81,7 @@ Wakes the resident Peek process (different from CLI back-door — respects curre
 | 9 | Concurrent Peek sessions don't crash/interfere | launch `Peek.UI.exe` several times on different files, leaving windows open | each spawns its own process/window; no error in `Peek\Logs` |
 | 10 | Arrow keys cycle between selected files | Shell COM multi-file selection → Ctrl+Space → `Send-PtChord` Right/Left | window title updates to each file in sequence, wraps at the ends |
 | 11 | Multi-file selection scopes navigation | select a subset of a folder → navigate | only the selected files cycle, not the rest |
-| 12 | Activation-hotkey reassignment takes effect | edit `Peek\settings.json` `properties.ActivationShortcut` → `Restart-PtRunner` (**not hot-reloaded** — see Gotchas) → press the new chord, then the old chord | new chord opens Peek; old chord does nothing |
+| 12 | Activation-hotkey reassignment takes effect | edit `Peek\settings.json` `properties.ActivationShortcut` → `Restart-PtRunner` (**not hot-reloaded** — see BLOCKED traps) → press the new chord, then the old chord | new chord opens Peek; old chord does nothing |
 
 > **Mapping process**: read the actual checklist item → identify the capability → find its row → drive the named control and design your own inputs + assertions for *that* item. If no row matches, it's a NEW capability — drive ad-hoc and add a row (capability + control + observation point; no canned inputs).
 

@@ -1,7 +1,9 @@
 # Distilled PowerToys Agent Skills
 
-Installable **GitHub Copilot Agent Skills** distilled from PowerToys' own engineering history,
-each shipped with `EVIDENCE.md` proving it finds a real historical issue.
+Installable **GitHub Copilot Agent Skills** distilled from PowerToys' own engineering history.
+Each ships with an `EVIDENCE.md`: **knowledge** skills prove they localize a real historical bug
+(and recover its fix PR), and **sign-off** skills prove they catch planted regressions via
+fault injection.
 
 ## Layout
 

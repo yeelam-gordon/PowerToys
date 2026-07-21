@@ -28,7 +28,7 @@ Usage:
       --screenshot-dir shots\
 
   # Auto-discover the built exe and generate throwaway sample files:
-  python run-signoff.py --powertoys-root C:\\s\\powertoys \
+  python run-signoff.py --powertoys-root <PATH_TO_POWERTOYS_REPO> \
       --report-json out.json --report-md out.md --screenshot-dir shots\
 
 Exit codes: 0 = gate PASS (all P0 passed), 1 = gate FAIL, 2 = error.

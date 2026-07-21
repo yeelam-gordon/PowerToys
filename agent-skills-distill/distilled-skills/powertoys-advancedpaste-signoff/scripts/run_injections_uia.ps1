@@ -14,11 +14,25 @@ require SendInput and are reported separately.
 #>
 param(
     [string]$OutDir  = "$PSScriptRoot",
-    [string]$WorkDir = "$PSScriptRoot"
+    [string]$WorkDir = "$PSScriptRoot",
+    [string]$PTRoot  = $env:POWERTOYS_ROOT,
+    [string]$MSBuild = $env:POWERTOYS_MSBUILD
 )
 $ErrorActionPreference = "Continue"
-. (Join-Path $WorkDir "injections.ps1")
-$msbuild = "C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Current\Bin\MSBuild.exe"
+. (Join-Path $WorkDir "injections.ps1")   # resolves/validates $PTRoot (env-based, fail-fast)
+
+function Resolve-MSBuild([string]$explicit) {
+    if ($explicit -and (Test-Path $explicit)) { return $explicit }
+    $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+    if (Test-Path $vswhere) {
+        $found = & $vswhere -latest -prerelease -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" 2>$null | Select-Object -First 1
+        if ($found -and (Test-Path $found)) { return $found }
+    }
+    throw "MSBuild.exe not found. Pass -MSBuild <path>, set `$env:POWERTOYS_MSBUILD, or install Visual Studio with the MSBuild component (auto-resolved via vswhere)."
+}
+
+$msbuild = Resolve-MSBuild $MSBuild
+$apExe   = Join-Path $PTRoot "x64\Release\WinUI3Apps\PowerToys.AdvancedPaste.exe"
 $ctrl    = Join-Path $WorkDir "ap_controller.ps1"
 $pidFile = Join-Path $WorkDir "ap.pid"
 $readyFile = Join-Path $WorkDir "controller.ready"
@@ -34,9 +48,12 @@ function Kill-AP {
     Start-Sleep 2
 }
 function Rebuild {
-    Push-Location "C:\s\PowerToys"
-    $out = & $msbuild "src\modules\AdvancedPaste\AdvancedPaste\AdvancedPaste.csproj" /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=C:\s\PowerToys\" /m /v:m /nologo 2>&1
-    Pop-Location
+    Push-Location $PTRoot
+    try {
+        $out = & $msbuild "src\modules\AdvancedPaste\AdvancedPaste\AdvancedPaste.csproj" /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=$PTRoot\" /m /v:m /nologo 2>&1
+    } finally {
+        Pop-Location
+    }
     $ok = ($out | Select-String -Pattern "PowerToys.AdvancedPaste.dll") -ne $null
     $err = $out | Select-String -Pattern ": error " | Select-Object -First 3
     if (-not $ok -or $err) { Write-Host "BUILD ISSUE:"; $err | ForEach-Object { Write-Host "  $_" } }
@@ -44,6 +61,7 @@ function Rebuild {
 }
 function Start-Controller {
     Remove-Item $readyFile -ErrorAction SilentlyContinue
+    if (-not $env:POWERTOYS_AP_EXE) { $env:POWERTOYS_AP_EXE = $apExe }
     $script:ctrlProc = Start-Process pwsh -ArgumentList @("-NoProfile","-ExecutionPolicy","Bypass","-File",$ctrl) -PassThru -WindowStyle Hidden
     for ($i=0; $i -lt 40; $i++) { if (Test-Path $readyFile) { Start-Sleep 2; return $true }; Start-Sleep 1 }
     return $false

@@ -3,7 +3,7 @@
 ## Setup
 1. Select N fixed issues per module that reference a fixing PR/commit. Find via the
    distilled `Regression History` links or `gh issue list --state closed`.
-2. For each, resolve the **fix commit** and its **parent** in `C:\s\PowerToys`.
+2. For each, resolve the **fix commit** and its **parent** in your local PowerToys clone (`<powertoys-root>`).
 3. Create an isolated worktree at the parent: `git worktree add <dir> <parent_sha>`.
    The bug is now "live" and unfixed.
 

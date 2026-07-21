@@ -1,4 +1,13 @@
 # Shared SendInput + window helpers for the AdvancedPaste sign-off harness.
+# The INPUT struct layout (Explicit union of MOUSEINPUT/KEYBDINPUT with IntPtr
+# fields) and Marshal.SizeOf assume a 64-bit process; SendInput will reject the
+# wrong cb size otherwise. Fail fast on a 32-bit host.
+if (-not [Environment]::Is64BitProcess) {
+    throw "input_helpers.ps1 requires a 64-bit PowerShell host: the INPUT struct layout and SendInput cb size are x64-only. Re-run under 64-bit PowerShell (pwsh) or Windows PowerShell x64."
+}
+# Guard Add-Type so repeated dot-sourcing in one session does not throw
+# 'type already exists'.
+if (-not ('WinInput' -as [type])) {
 Add-Type @"
 using System; using System.Runtime.InteropServices; using System.Text;
 public class WinInput {
@@ -34,7 +43,8 @@ public class WinInput {
    return GetForegroundWindow()==h;
  }
 }
-"@ -ErrorAction SilentlyContinue
+"@
+}
 
 function Get-NotepadHwnd { (Get-Process notepad -ErrorAction SilentlyContinue | Where-Object {$_.MainWindowHandle -ne 0} | Select-Object -First 1).MainWindowHandle }
 

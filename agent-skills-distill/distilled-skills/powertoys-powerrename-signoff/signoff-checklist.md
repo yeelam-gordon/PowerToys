@@ -158,7 +158,7 @@ the gate.
 
 Baselines are captured with real `winapp ui screenshot` calls and, when captured from
 a **connected** session, render the full WinUI client area (Original/Renamed preview
-columns, flag checkboxes, transform popup) — see the shipped PNGs. PowerRename is
+columns, flag checkboxes, transform popup). PowerRename is
 WinUI 3 (DirectComposition / swap-chain rendered); when the interactive session is
 **RDP-disconnected**, that surface is not composited, so a screenshot taken in that
 state captures window chrome only. Either way the sign-off's behavioral verdicts hold —

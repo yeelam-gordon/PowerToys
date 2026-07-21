@@ -38,9 +38,9 @@ declarative items (CHK-01..CHK-10) each with **Check / Drive / Verify**.
 ## Prerequisites
 
 - **winappcli** on PATH (`winapp ui status`), v0.4.0+.
-- **PowerToys built** at `C:\s\PowerToys\x64\Release`; Advanced Paste source at
-  `C:\s\PowerToys\src\modules\AdvancedPaste`. Rebuild the project with VsDevCmd
-  x64 + MSBuild (see below).
+- **PowerToys built** at `<powertoys-root>\x64\Release`; Advanced Paste source at
+  `<powertoys-root>\src\modules\AdvancedPaste` (replace `<powertoys-root>` with your
+  own PowerToys clone path). Rebuild the project with VsDevCmd x64 + MSBuild (see below).
 - **Synthetic input must work** in the current session. Advanced Paste pastes via
   `SendInput(Ctrl+V)`; if the session is disconnected the paste silently no-ops.
   **Always run `scripts/verify_input.ps1` first** — it exits 0 only when SendInput
@@ -58,8 +58,8 @@ Work the checklist item by item, capturing a screenshot per item and gating on P
    locked while it runs):
    ```powershell
    & "$vsDevCmd\...\MSBuild.exe" `
-     "C:\s\PowerToys\src\modules\AdvancedPaste\AdvancedPaste\AdvancedPaste.csproj" `
-     /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=C:\s\PowerToys\" /m /v:m
+     "<powertoys-root>\src\modules\AdvancedPaste\AdvancedPaste\AdvancedPaste.csproj" `
+     /p:Configuration=Release /p:Platform=x64 "/p:SolutionDir=<powertoys-root>\" /m /v:m
    ```
    Success = output names `PowerToys.AdvancedPaste.dll` with no `: error`.
 3. **Start the window controller** (owns the ShowUI pipe):
@@ -199,8 +199,8 @@ window clipboard preview, and the core format list — 10 checks, CHK-01..CHK-10
   `ap_controller.ps1`, `set_clipboard.ps1`, `input_helpers.ps1`,
   `run_signoff.ps1` (paste-to-target) and `run_signoff_clip.ps1`
   (locked-session produced-clipboard), plus `injections.ps1` /
-  `run_injections.ps1` / `run_injections_clip.ps1` (the fault-injection
-  acceptance harness).
+  `run_injections.ps1` / `run_injections_uia.ps1` / `run_injections_clip.ps1` (the
+  fault-injection acceptance harness).
 - Optional machine-runnable mirror: [`assets/advancedpaste.spec.json`](./assets/advancedpaste.spec.json).
-- Baseline screenshots: `assets/screenshots/` (written at sign-off run time).
-- Advanced Paste source: `C:\s\PowerToys\src\modules\AdvancedPaste`.
+- Baseline screenshots: `assets/screenshots/` (written at sign-off run time; not committed here).
+- Advanced Paste source: `<powertoys-root>\src\modules\AdvancedPaste` (in your PowerToys clone).

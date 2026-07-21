@@ -2,7 +2,7 @@
 
 Rigorous, execution-based verification of every distilled deliverable. No claim below is
 asserted from the skill text alone; each was checked against **live GitHub**, the **raw mined
-JSON**, and the **PowerToys source at `C:\s\PowerToys`**, or against **real winappcli fault-injection runs**.
+JSON**, and the **PowerToys source in a local clone (`<powertoys-root>`)**, or against **real winappcli fault-injection runs**.
 
 ## Method
 

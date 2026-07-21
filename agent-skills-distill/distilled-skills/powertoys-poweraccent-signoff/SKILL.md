@@ -104,7 +104,7 @@ One command — build glyph driver + run all three executors + emit reports:
 Or invoke the Python harness directly (glyph driver must already be built):
 
 ```powershell
-python run_signoff.py --release C:\s\powertoys\x64\Release
+python run_signoff.py --release <powertoys-root>\x64\Release
 python run_signoff.py --help
 ```
 
@@ -137,14 +137,15 @@ NOT claim to cover it.** This is a feature of the skill (honest scope), not a hi
   math, and full launch/enable/single-instance/clean-exit lifecycle.
 - **How to run it fully:** execute this suite on the **interactive console session
   (session 1, input-owning)**, not an RDP session. A complete `SendInput` trigger
-  harness (`keydriver.py`, `edithost.py` in the original proof folder) is ready to drive
-  the overlay and can then be UIA-verified via the generic `app-signoff-uia` skill.
+  harness (`keydriver.py`, `edithost.py` — produced when running the overlay proof;
+  not committed in this skill) can drive the overlay and then be UIA-verified via the
+  generic `app-signoff-uia` skill.
 
 ## Gotchas
 
 - **`PowerAccent.Common.dll` is a WinRT-free POCO** — the glyph driver reflection-loads
   it directly. **Never** add `Common.Dotnet.CsWinRT.props` to it "to fix" a load error;
-  it's deliberately excluded (`verifyCommonProps.ps1`).
+  it's deliberately excluded (verified by the build's Common-props guard).
 - **The module's own unit tests are data-invariant** — they verify *structure* (dedup,
   ordering, well-formedness), not *specific glyphs*. A removed accent like `é` passes
   vstest but **fails the glyph driver**. Keep the `glyph-*` checks — they are the only

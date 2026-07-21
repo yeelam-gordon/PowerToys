@@ -3,7 +3,14 @@
 # and the checklist item expected to catch it.
 # find/repl are built from single-quoted line arrays joined with CRLF to avoid
 # any quote/newline escaping ambiguity.
-$PTRoot = "C:\s\PowerToys"
+# PowerToys repo root — environment-specific, no portable default.
+# A caller may pre-set $PTRoot (e.g. via a runner -PTRoot param); otherwise it is
+# taken from $env:POWERTOYS_ROOT. Fail fast so a stale machine path can never be
+# silently assumed.
+if (-not $PTRoot) { $PTRoot = $env:POWERTOYS_ROOT }
+if (-not $PTRoot -or -not (Test-Path $PTRoot)) {
+    throw "PowerToys repo root not found. Pass -PTRoot <path to your PowerToys checkout> or set `$env:POWERTOYS_ROOT. This injection harness is environment-specific and ships no machine-path default."
+}
 function J([string[]]$lines) { $lines -join "`r`n" }
 
 $Injections = @(

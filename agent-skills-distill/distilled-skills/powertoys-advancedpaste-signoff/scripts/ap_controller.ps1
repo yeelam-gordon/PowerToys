@@ -42,7 +42,12 @@ Write-Host "sent initial ShowUI"
 Set-Content -Path $readyFile -Value "ready"
 
 # Re-show loop: whenever the trigger file appears, send another ShowUI.
+# Exit if the AdvancedPaste process it drives has gone away so we don't spin forever.
 while ($true) {
+    if ($proc.HasExited) {
+        Write-Host "AdvancedPaste (pid=$($proc.Id)) exited with code $($proc.ExitCode); controller stopping."
+        break
+    }
     if (Test-Path $trigger) {
         Remove-Item $trigger -ErrorAction SilentlyContinue
         try {

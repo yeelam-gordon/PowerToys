@@ -104,13 +104,16 @@ to 1.0. `hosts` was left as the control. Net: **0.900 → 0.978**.
 ## Reproduce
 
 ```powershell
-python benchmark/prepare_b1_sparse.py --clone C:\s\PowerToys --fix-sha <sha> --module <m> \
+python benchmark/prepare_b1_sparse.py --clone <PowerToys clone> --fix-sha <sha> --module <m> \
     --case-id m-<m> --symptom "<symptom>" --paths src/modules/<m>
 # baseline + candidate solver agents write answer_baseline.md / answer_candidate.md per case dir
 python benchmark/score_all.py           # objective located_area + found_fix_ref, emits judge_inputs
 # fresh Opus judges score fix_matches -> fixjudge_{a,b,c}.json ; then merge -> all30_scores.json
 ```
 
-Artifacts: `benchmark/results/b1/m-*/{candidate_task.md, ground_truth.diff, ground_truth.json,
-answer_baseline.md, answer_candidate.md}`; `cases_all.json`, `all30_scores.json`,
-`fixjudge_{a,b,c}.json`. Scripts: `benchmark/prepare_b1_sparse.py`, `benchmark/score_all.py`.
+These are produced by running the commands above and are **not committed** in this PR
+(each solver run regenerates them): per-case dirs `benchmark/results/b1/m-*/`
+containing `{candidate_task.md, ground_truth.diff, ground_truth.json,
+answer_baseline.md, answer_candidate.md}`, plus `cases_all.json`, `all30_scores.json`,
+and `fixjudge_{a,b,c}.json`. Scripts: `benchmark/prepare_b1_sparse.py`,
+`benchmark/score_all.py`.

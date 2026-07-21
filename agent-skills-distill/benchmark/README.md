@@ -4,8 +4,8 @@ Outcome-based evaluation that measures **how good the distilled skills actually 
 not whether the files exist, but whether the distilled knowledge changes engineering
 outcomes. Both skills are generic; these benchmarks use fixed targets as a measuring stick.
 
-Fixtures: `microsoft/PowerToys` modules **PowerRename, PowerAccent, AdvancedPaste**
-(`fixtures/powertoys-3modules.json`). A local clone is at `C:\s\PowerToys`.
+Fixtures: `microsoft/PowerToys` modules **PowerRename, PowerAccent, AdvancedPaste**.
+Point the harness at your own local PowerToys clone (referred to below as `<powertoys-root>`).
 
 ## Headline results (see the two benchmark reports)
 
@@ -49,12 +49,18 @@ build). Score = detection rate (caught / injected) + false-positive rate on the 
 See `rubrics/skill2-regression-injection.md`.
 
 ## Scorecard
-`run_benchmark.py` aggregates B1/B2/B3 into `results/scorecard-<round>.json` and a Markdown
-summary. Each round: run → score → record failures → improve skill → re-run (fail-fast).
-Every 5–10 rounds: meta-analyze failures and replan strategy.
+`run_b1.py` + `score_all.py` drive the B1 issue benchmark and emit per-module scores; the
+B3 injection benchmark is driven from each sign-off skill's `scripts/` runner (see
+[INJECTION-BENCHMARK.md](./INJECTION-BENCHMARK.md)). Each round: run → score → record
+failures → improve skill → re-run (fail-fast). Every 5–10 rounds: meta-analyze failures and
+replan strategy. Per-round `results/scorecard-*.json` summaries are generated locally and not
+committed.
 
 ## Running
 ```
-python run_benchmark.py --round <n> --evals B1 B2 B3
+# B1 — issue-fix localization (per module)
+python benchmark/prepare_b1_sparse.py --clone <powertoys-root> --fix-sha <sha> --module <m> --case-id m-<m>
+python benchmark/score_all.py
+# B3 — injection sign-off: see INJECTION-BENCHMARK.md
 ```
-Requires `gh` authenticated, Python 3.12, local PowerToys clone, and (for B3) winappcli.
+Requires `gh` authenticated, Python 3.12, a local PowerToys clone, and (for B3) winappcli.

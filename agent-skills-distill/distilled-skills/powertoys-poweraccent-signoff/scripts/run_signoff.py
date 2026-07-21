@@ -24,7 +24,8 @@ Usage:
     python run_signoff.py [options]
 
     --spec PATH        Capability spec JSON  (default: ../assets/poweraccent.spec.json)
-    --release DIR      PowerToys x64\\Release root (default: C:\\s\\powertoys\\x64\\Release)
+    --release DIR      PowerToys x64\\Release root (default: $POWERTOYS_RELEASE, else
+                       $POWERTOYS_ROOT\\x64\\Release; no machine-path default)
     --vstest PATH      vstest.console.exe path (default: auto-detect under VS 18)
     --glyph-exe PATH   Prebuilt GlyphDriver.exe (default: auto-detect under ./glyphdriver/bin)
     --out-json PATH    Report JSON out       (default: ./results.json)
@@ -266,7 +267,9 @@ def autodetect_glyph(explicit):
 def main():
     ap = argparse.ArgumentParser(description="PowerAccent behavioral+lifecycle sign-off")
     ap.add_argument("--spec", default=str(HERE.parent / "assets" / "poweraccent.spec.json"))
-    ap.add_argument("--release", default=r"C:\s\powertoys\x64\Release")
+    ap.add_argument("--release", default=None,
+                    help="PowerToys x64\\Release root (default: $POWERTOYS_RELEASE, "
+                         "else $POWERTOYS_ROOT\\x64\\Release; no machine-path default)")
     ap.add_argument("--vstest", default=None)
     ap.add_argument("--glyph-exe", default=None)
     ap.add_argument("--out-json", default=str(HERE / "results.json"))
@@ -278,7 +281,17 @@ def main():
     spec = json.loads(Path(args.spec).read_text(encoding="utf-8"))
     checks = [c for c in spec["checks"] if c["kind"] not in skip]
 
-    release = Path(args.release)
+    release_arg = args.release or os.environ.get("POWERTOYS_RELEASE")
+    if not release_arg and os.environ.get("POWERTOYS_ROOT"):
+        release_arg = str(Path(os.environ["POWERTOYS_ROOT"]) / "x64" / "Release")
+    if not release_arg:
+        log("ERROR: PowerToys Release root not set. Pass --release <x64\\Release>, "
+            "or set POWERTOYS_RELEASE / POWERTOYS_ROOT. No machine-path default is shipped.")
+        return 2
+    release = Path(release_arg)
+    if not release.exists():
+        log(f"ERROR: PowerToys Release root does not exist: {release}")
+        return 2
     common_dll = release / "tests" / "PowerAccent.Common.UnitTests" / "PowerToys.PowerAccent.Common.UnitTests.dll"
     core_dll = release / "tests" / "PowerAccent.Core.UnitTests" / "PowerToys.PowerAccent.Core.UnitTests.dll"
     common_data_dll = release / "tests" / "PowerAccent.Common.UnitTests" / "PowerAccent.Common.dll"

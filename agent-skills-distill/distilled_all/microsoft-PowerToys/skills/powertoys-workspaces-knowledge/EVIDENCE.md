@@ -21,6 +21,3 @@ With the skill, the agent localized: `WorkspacesEditor/ViewModels/MainViewModel.
 **Lift: +0.83.** The skill did not just exist — an agent using it found the real culprit and the prior fix.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/m-workspaces/ground_truth.diff)
-- With-skill answer: `benchmark/results/b1/m-workspaces/answer_candidate.md`
-- Cold answer: `benchmark/results/b1/m-workspaces/answer_baseline.md`

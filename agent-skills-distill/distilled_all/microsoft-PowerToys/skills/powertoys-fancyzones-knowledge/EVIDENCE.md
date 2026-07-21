@@ -21,6 +21,3 @@ With the skill, the agent localized: `FancyZonesLib/FancyZones.cpp` + `WindowMou
 **Lift: +0.67.** With the skill, the agent localized the correct culprit area (perfect 1.00 vs 0.33 cold) AND recovered the exact fix PR #48569.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/48542/ground_truth.diff)
-- Task prompt: [`candidate_task.md`](../../../../benchmark/results/b1/48542/candidate_task.md)
-- Blind judge scores: [`judge.json`](../../../../benchmark/results/b1/48542/judge.json)

@@ -21,6 +21,3 @@ With the skill, the agent localized: `src/modules/Hosts/HostsUILib/HostsMainPage
 **Generalization control** (this exact bug was deliberately NOT distilled into the skill). **Lift: +0.00.** Honest null: the skill oriented to the right area but this novel bug was outside its map — it did not mislead.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/32704/ground_truth.diff)
-- Task prompt: [`candidate_task.md`](../../../../benchmark/results/b1/32704/candidate_task.md)
-- Blind judge scores: [`judge.json`](../../../../benchmark/results/b1/32704/judge.json)

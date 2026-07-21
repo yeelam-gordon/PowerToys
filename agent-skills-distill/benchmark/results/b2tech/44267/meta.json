@@ -1,6 +1,0 @@
-{
-  "repo": "microsoft/PowerToys",
-  "pr": 44267,
-  "ground_truth_count": 5,
-  "title": "[PowerRename] Fix date replacement tokens failing if followed by a capital letter"
-}

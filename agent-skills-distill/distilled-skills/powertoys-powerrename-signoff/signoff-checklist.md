@@ -26,7 +26,7 @@ check) is documented in [`SKILL.md`](./SKILL.md) › *App-Specific winappcli Log
   `winapp ui search "Search for" -w <HWND> --json` → the match with `type=="Edit"` →
   its `.selector`. Below, `<SEARCH>` / `<REPLACE>` denote those resolved selectors
   (spec placeholders `__SEARCH_SLUG__` / `__REPLACE_SLUG__`).
-- **Baseline screenshots** live in [`assets/screenshots/`](./assets/screenshots/);
+- **Baseline screenshots** live in `assets/screenshots/` (written at sign-off run time);
   capture with `winapp ui screenshot <selector> -w <HWND>` (add `--capture-screen`
   over RDP). See *Screenshot note* at the bottom.
 

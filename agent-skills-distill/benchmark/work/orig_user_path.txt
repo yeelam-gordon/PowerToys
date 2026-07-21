@@ -1,1 +1,0 @@
-C:\Users\yeelam\AppData\Local\Programs\Python\Python312\Scripts\;C:\Users\yeelam\AppData\Local\Programs\Python\Python312\;C:\Users\yeelam\AppData\Local\Programs\Python\Launcher\;C:\Users\yeelam\AppData\Local\Microsoft\WindowsApps;C:\Users\yeelam\AppData\Local\Microsoft\WinGet\Links;C:\Users\yeelam\AppData\Local\PowerToys\DSCModules\;C:\Users\yeelam\.dotnet\tools

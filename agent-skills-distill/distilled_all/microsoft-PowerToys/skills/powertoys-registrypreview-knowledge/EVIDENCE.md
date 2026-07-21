@@ -21,6 +21,3 @@ With the skill, the agent localized: `RegistryPreviewUI/MainWindow.Utilities.cs`
 **Lift: +0.67.** The skill did not just exist — an agent using it found the real culprit and the prior fix.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/m-registrypreview/ground_truth.diff)
-- With-skill answer: `benchmark/results/b1/m-registrypreview/answer_candidate.md`
-- Cold answer: `benchmark/results/b1/m-registrypreview/answer_baseline.md`

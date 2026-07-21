@@ -21,6 +21,3 @@ With the skill, the agent localized: `Plugins/Community.PowerToys.Run.Plugin.VSC
 **Lift: +0.50.** With the skill, the agent localized the affected code (perfect 1.00 vs 0.50 cold) AND recovered the exact fix PR #48922.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/48472/ground_truth.diff)
-- With-skill answer: `benchmark/results/b1/48472/answer_candidate.md`
-- Cold answer: `benchmark/results/b1/48472/answer_baseline.md`

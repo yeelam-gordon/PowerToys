@@ -1,5 +1,0 @@
-B1 blind-judge A/B mapping (to prevent judge bias; recorded post-hoc):
-  fancyzones (48542): A=candidate(with-skill), B=baseline(cold)
-  keyboardmanager (46608): A=baseline, B=candidate
-  powertoysrun (48472): A=candidate, B=baseline
-  hosts (32704): A=baseline, B=candidate

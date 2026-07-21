@@ -21,6 +21,3 @@ With the skill, the agent localized: `src/modules/FileLocksmith/FileLocksmithLib
 **Lift: +0.33.** The skill did not just exist — an agent using it found the real culprit and the prior fix.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/m-filelocksmith/ground_truth.diff)
-- With-skill answer: [`answer_candidate.md`](../../../../benchmark/results/b1/m-filelocksmith/answer_candidate.md)
-- Cold answer: [`answer_baseline.md`](../../../../benchmark/results/b1/m-filelocksmith/answer_baseline.md)

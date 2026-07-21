@@ -21,6 +21,3 @@ With the skill, the agent localized: `KeyboardManagerEngineLibrary/KeyboardEvent
 **Lift: +0.33.** With the skill, the agent localized the correct culprit area (perfect 1.00 vs 0.67 cold) AND recovered the exact fix PR #46672.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/46608/ground_truth.diff)
-- Task prompt: [`candidate_task.md`](../../../../benchmark/results/b1/46608/candidate_task.md)
-- Blind judge scores: [`judge.json`](../../../../benchmark/results/b1/46608/judge.json)

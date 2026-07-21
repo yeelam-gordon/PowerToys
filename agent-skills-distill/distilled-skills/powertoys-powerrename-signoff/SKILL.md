@@ -194,5 +194,5 @@ sign-off, records which checklist item flipped to FAIL, then reverts. Result:
 - Acceptance proof (10 injections, 10/10 caught): `benchmark/results/acc-powerrename/report.md`
 - Prior sign-off (launch method, 8-check baseline, 5 regressions): `benchmark/results/signoff-powerrename/report.md`
 - Bundled capability spec: [assets/powerrename.spec.json](./assets/powerrename.spec.json)
-- Baseline screenshots: [assets/screenshots/](./assets/screenshots/)
+- Baseline screenshots: `assets/screenshots/` (written at sign-off run time)
 - Runner: [scripts/run-signoff.py](./scripts/run-signoff.py)

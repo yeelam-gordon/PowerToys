@@ -21,6 +21,3 @@ With the skill, the agent localized: `src/modules/cmdNotFound/CmdNotFound/WinGet
 **Lift: +0.50.** The skill did not just exist — an agent using it found the real culprit and the prior fix.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/m-cmdnotfound/ground_truth.diff)
-- With-skill answer: `benchmark/results/b1/m-cmdnotfound/answer_candidate.md`
-- Cold answer: `benchmark/results/b1/m-cmdnotfound/answer_baseline.md`

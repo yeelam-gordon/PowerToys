@@ -202,5 +202,5 @@ window clipboard preview, and the core format list — 10 checks, CHK-01..CHK-10
   `run_injections.ps1` / `run_injections_clip.ps1` (the fault-injection
   acceptance harness).
 - Optional machine-runnable mirror: [`assets/advancedpaste.spec.json`](./assets/advancedpaste.spec.json).
-- Baseline screenshots: [`assets/screenshots/`](./assets/screenshots).
+- Baseline screenshots: `assets/screenshots/` (written at sign-off run time).
 - Advanced Paste source: `C:\s\PowerToys\src\modules\AdvancedPaste`.

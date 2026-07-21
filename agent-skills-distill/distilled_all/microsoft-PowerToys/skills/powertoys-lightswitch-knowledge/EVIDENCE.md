@@ -21,6 +21,3 @@ With the skill, the agent localized: `src/modules/LightSwitch/LightSwitchService
 **Lift: +0.50.** The skill did not just exist — an agent using it found the real culprit and the prior fix.
 
 ## Raw artifacts (auditable)
-- Real fix diff: [`ground_truth.diff`](../../../../benchmark/results/b1/m-lightswitch/ground_truth.diff)
-- With-skill answer: [`answer_candidate.md`](../../../../benchmark/results/b1/m-lightswitch/answer_candidate.md)
-- Cold answer: [`answer_baseline.md`](../../../../benchmark/results/b1/m-lightswitch/answer_baseline.md)

@@ -10,7 +10,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 - **Keyboard layout (US / non-US / AltGr):**
 - **Monitors / DPI / scaling:**
 - **Mode:** zoom / live zoom / draw / break / demotype / record (MP4/GIF) / webcam / snip / OCR / panorama
-- **Launched via:** PowerToys / standalone ZoomIt.exe
+- **Launched via:** PowerToys — the integrated `PowerToys.ZoomIt.exe` (distinct from standalone Sysinternals ZoomIt)
 
 ## Symptom → likely location
 

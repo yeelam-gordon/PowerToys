@@ -5,7 +5,7 @@ maps to the Regression Playbook / Review Rule it enforces. Source root: `src/mod
 
 ## General (any ZoomIt PR)
 - [ ] Diff read cold first; concerns formed before consulting this checklist (anti-anchoring).
-- [ ] All new end-user strings are localizable (`Resources.resw`), Sentence casing, no hard-coded literals.
+- [ ] New end-user strings are localizable — Settings-UI strings in `src/settings-ui/Settings.UI/Strings/en-us/Resources.resw`; native ZoomIt strings in the module `.rc` / `resource.h` (ZoomIt is native C++ and has no module-local `Resources.resw`). Sentence casing, no hard-coded literals.
 - [ ] New settings round-trip through `ZoomItSettings.h RegSettings[]` + `ZoomItViewModel.cs` /
       `ZoomItSettingsInterop`, and survive `WM_USER_RELOAD_SETTINGS`.
 

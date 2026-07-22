@@ -228,19 +228,13 @@ Enforce these when reviewing or authoring LightSwitch changes:
   reports trace to default-on behavior ([#48537](https://github.com/microsoft/PowerToys/issues/48537),
   [#44619](https://github.com/microsoft/PowerToys/issues/44619)).
 
-## Using This Skill in PR Review (Anti-Anchoring)
+## Using This Skill in PR Review
 
-**Read the diff cold first.** Do not skim this file's playbooks and then hunt the diff for those
-themes — that anchors you on recurring concerns and lowers your catch rate on the PR's actual issues.
-
-1. Read the diff and form your own list of concerns from what actually changed.
-2. **Then** cross-check the touched files against the Module Map, Regression Playbooks, and Review
-   Rules — only for the code paths the diff touches (targeted retrieval).
-3. Treat this file as a checklist for the touched area, not a script for the whole review.
-
-Because this module is young and several entries rest on **bare issue titles** (bodies were not
-available at distill time), be extra skeptical: if a symptom doesn't map cleanly to a row above,
-reason from the symptom and verify in source rather than force-fitting the map.
+Read the diff cold and form your own concerns **first**; then cross-check *only the touched paths*
+against the Module Map and Regression Playbooks — skimming them first anchors you on recurring
+themes and measurably lowers your catch rate on the PR's actual issues. If a symptom doesn't map to
+a row, reason from the source, not the map. Best for planning / triage; a targeted checklist (not a
+script) for review.
 
 ## References
 

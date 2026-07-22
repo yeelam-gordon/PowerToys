@@ -40,7 +40,7 @@ Native code lives in `FancyZonesLib/`; the editor is C#/WPF under `editor/FancyZ
 | Override Windows Snap (Win+arrow interception) | `FancyZones.cpp` `ShouldProcessSnapHotkey` + `Settings.overrideSnapHotkeys` |
 | Quick layout switch by digit while dragging/idle | `FancyZones.cpp` `OnKeyDown` (`changeLayoutWhileDragging` requires Win+Ctrl+Alt); `LayoutHotkeys.cpp` |
 | Per-monitor work area (owns layout + overlay) | `FancyZonesLib/WorkArea.cpp`; config in `WorkAreaConfiguration.cpp` `Clear`, `GetAllWorkAreas` |
-| Zone overlay rendering (D2D render thread) | `FancyZonesLib/ZonesOverlay.cpp` `RenderLoop`, `DrawActiveZoneSet`, `Show`/`Hide`/`Flash`; window pool `FreeZonesOverlayWindow`/`NewZonesOverlayWindow` |
+| Zone overlay rendering (D2D render thread) | `FancyZonesLib/ZonesOverlay.cpp` `RenderLoop`, `DrawActiveZoneSet`, `Show`/`Hide`/`Flash`; overlay window pool `NewZonesOverlayWindow`/`FreeZonesOverlayWindow` in `FancyZonesLib/WorkArea.cpp` (`WindowPool` class) |
 | Highlighted-zone hit testing during drag | `FancyZonesLib/HighlightedZones.cpp` |
 | Zone geometry / layout model | `FancyZonesLib/Zone.cpp`, `Layout.cpp`, `LayoutConfigurator.cpp`, `LayoutAssignedWindows.cpp` |
 | Background worker (serialized tasks, teardown) | `FancyZonesLib/OnThreadExecutor.cpp` `submit`, `cancel`, `worker_thread`, dtor |
@@ -200,18 +200,13 @@ Enforce these when reviewing or authoring FancyZones changes:
   process can collapse into one zone (#47010).
 - **PowerShell eats `{GUID}` as a script block** — the CLI must accept brace-less GUIDs (#44676).
 
-## Using This Skill in PR Review (Anti-Anchoring)
+## Using This Skill in PR Review
 
-**Read the diff cold first.** Do not skim these playbooks and then hunt the diff for their themes —
-that anchors you on recurring concerns and lowers your catch rate on the PR's actual issues.
-
-1. Read the diff and form your own list of concerns from what actually changed.
-2. **Then** cross-check the touched files against the Module Map, Regression Playbooks, and Review
-   Rules — only for the code paths the diff touches (targeted retrieval).
-3. Treat this file as a checklist for the touched area, not a script for the whole review.
-
-When localizing a bug, if the symptom doesn't map cleanly to a row above, reason from the symptom
-and verify in source — a thin/absent map entry can anchor you onto a confident, wrong file.
+Read the diff cold and form your own concerns **first**; then cross-check *only the touched paths*
+against the Module Map and Regression Playbooks — skimming them first anchors you on recurring
+themes and measurably lowers your catch rate on the PR's actual issues. If a symptom doesn't map to
+a row, reason from the source, not the map. Best for planning / triage; a targeted checklist (not a
+script) for review.
 
 ## References
 

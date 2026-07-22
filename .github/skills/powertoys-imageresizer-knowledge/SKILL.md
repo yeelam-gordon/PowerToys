@@ -216,21 +216,13 @@ Enforce these when reviewing or authoring ImageResizer changes:
 - **The C# models are forked from Brice Lambson's ImageResizer (MIT)** — preserve the license header
   and be wary that upstream behavior/tests informed the current design.
 
-## Using This Skill in PR Review (Anti-Anchoring)
+## Using This Skill in PR Review
 
-**Read the diff cold first.** Do not skim this file's playbooks and then hunt the diff for those
-themes — that anchors you on recurring concerns and lowers your catch rate on the PR's actual issues.
-
-1. Read the diff and form your own list of concerns from what actually changed.
-2. **Then** cross-check the touched files against the Module Map, Regression Playbooks, and Review
-   Rules — only for the code paths the diff touches (targeted retrieval).
-3. Treat this file as a checklist for the touched area, not a script for the whole review.
-
-Note: several Copilot-authored review comments on PR #47134 (claiming `forceFresh` drops metadata /
-codec options) were marked **"incorrect"** by maintainer `moooyo` — the fresh-encode path is
-deliberate and does carry known metadata. When localizing a bug, if the symptom doesn't map cleanly
-to a row above, reason from the symptom and verify in source; a thin/absent map entry can anchor you
-onto a confident, wrong file.
+Read the diff cold and form your own concerns **first**; then cross-check *only the touched paths*
+against the Module Map and Regression Playbooks — skimming them first anchors you on recurring
+themes and measurably lowers your catch rate on the PR's actual issues. If a symptom doesn't map to
+a row, reason from the source, not the map. Best for planning / triage; a targeted checklist (not a
+script) for review.
 
 ## References
 

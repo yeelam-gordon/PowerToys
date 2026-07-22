@@ -37,7 +37,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 ### Find My Mouse (`FindMyMouse/`) — C++ / WinAppSDK Composition
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
-| Module interface, enable/disable, settings load, hotkey parse | `FindMyMouse/dllmain.cpp` `FindMyMouse` class, `init_settings`, `parse_settings`, `get_hotkeys` (`HotkeyEx m_hotkey`) |
+| Module interface, enable/disable, settings load, hotkey parse | `FindMyMouse/dllmain.cpp` `FindMyMouse` class, `init_settings`, `parse_settings`, `GetHotkeyEx`/`OnHotkeyEx` (returns `std::optional<HotkeyEx>`; `m_hotkey`) |
 | Legacy `overlay_opacity` % → color alpha migration | `dllmain.cpp` `LegacyOpacityToAlpha` (applied to background/spotlight color A channel) |
 | Activation state machine + raw input snoop | `FindMyMouse.cpp` `SuperSonar<D>` `OnSonarKeyboardInput` (double-Ctrl), `OnSonarMouseInput`/`DetectShake` (shake), `StartSonar`/`StopSonar`, `UpdateMouseSnooping` (`RegisterRawInputDevices` `RIDEV_INPUTSINK`) |
 | Activation methods enum | `FindMyMouse.h` `FindMyMouseActivationMethod` {`DoubleLeftControlKey`=0 (default), `DoubleRightControlKey`, `ShakeMouse`, `Shortcut`} |
@@ -231,19 +231,13 @@ Enforce these when reviewing or authoring Mouse Utilities changes:
 - **Only Mouse Jump has unit tests** (`MouseJump.Common.UnitTests`). C++ overlay logic is validated by
   `MouseUtils.UITests`; add coverage there for activation/settings changes.
 
-## Using This Skill in PR Review (Anti-Anchoring)
+## Using This Skill in PR Review
 
-**Read the diff cold first.** Do not skim these playbooks and then hunt the diff for those themes —
-that anchors you on recurring concerns and lowers your catch rate on the PR's actual issues.
-
-1. Read the diff and form your own list of concerns from what actually changed.
-2. **Then** cross-check the touched files against the Module Map, Regression Playbooks, and Review
-   Rules — only for the code paths the diff touches (targeted retrieval), and only for the specific
-   sub-utility involved (they're independent).
-3. Treat this file as a checklist for the touched area, not a script for the whole review.
-
-When localizing a bug, if the symptom doesn't map cleanly to a row above, reason from the symptom and
-verify in source — a thin/absent map entry can anchor you onto a confident, wrong file.
+Read the diff cold and form your own concerns **first**; then cross-check *only the touched paths*
+against the Module Map and Regression Playbooks — skimming them first anchors you on recurring
+themes and measurably lowers your catch rate on the PR's actual issues. If a symptom doesn't map to
+a row, reason from the source, not the map. Best for planning / triage; a targeted checklist (not a
+script) for review.
 
 ## References
 

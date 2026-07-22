@@ -107,6 +107,7 @@ AUTOMATIONPROPERTIES
 autopf
 AUTORADIOBUTTON
 Autorun
+autorun
 AUTOTICKS
 AUTOUPDATE
 AWAYMODE
@@ -240,6 +241,8 @@ closesocket
 clp
 CLSCTX
 CLSIDs
+Clsids
+clsids
 Clusion
 cmb
 cmder
@@ -377,6 +380,7 @@ debouncer
 debugbreak
 decryptor
 Dedup
+dedup
 Deduplicator
 DEFAULTBOOTSTRAPPERINSTALLFOLDER
 DEFAULTCOLOR
@@ -392,6 +396,7 @@ DEFPUSHBUTTON
 deinitialization
 DELA
 DELD
+deld
 DELETEDKEYIMAGE
 DELETESCANS
 DEMOTYPE
@@ -572,6 +577,7 @@ FFFF
 fffffffzzz
 FFh
 Figma
+figma
 FILEEXPLORER
 fileexploreraddons
 fileexplorerpreview
@@ -1281,6 +1287,8 @@ NORMALUSER
 NOSEARCH
 NOSENDCHANGING
 NOSIZE
+Nosize
+nosize
 notdefault
 NOTHOUSANDS
 NOTICKS
@@ -1396,6 +1404,7 @@ PCIDLIST
 PCTSTR
 PCWSTR
 PDBs
+pdbs
 PDEVMODE
 PDFs
 pdisp
@@ -1424,6 +1433,7 @@ phbmp
 phicon
 Photometadata
 Photoshop
+photoshop
 phwnd
 pici
 pidl
@@ -2062,6 +2072,7 @@ unparsable
 unremapped
 Unsend
 Unsubscribes
+unsubscribes
 untriaged
 unvirtualized
 unwide
@@ -2096,6 +2107,7 @@ vcgtq
 VCINSTALLDIR
 vcp
 Vcpkg
+vcpkg
 vcpname
 VCRT
 vcruntime

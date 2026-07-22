@@ -136,8 +136,8 @@ BITMAPINFO
 BITMAPINFOHEADER
 BITSPERPEL
 BITSPIXEL
-Blackmagic
 bla
+Blackmagic
 BLENDFUNCTION
 blittable
 Blockquotes
@@ -174,6 +174,7 @@ BUNDLEINFO
 byapp
 BYCOMMAND
 BYPOSITION
+CABAC
 CALCRECT
 CALG
 callbackptr
@@ -400,8 +401,8 @@ devmgmt
 DEVMODE
 DEVMODEW
 DEVNODES
-devpal
 devpackages
+devpal
 DEVTYP
 dfx
 DIALOGEX
@@ -490,6 +491,7 @@ ENABLETAB
 ENABLETEMPLATE
 encodedlaunch
 encryptor
+endgroup
 ENDSESSION
 ENSUREVISIBLE
 ENTERSIZEMOVE
@@ -539,9 +541,9 @@ extensionsdk
 EXTRALIGHT
 EXTRINSICPROPERTIES
 eyetracker
+Fairlight
 FANCYZONESDRAWLAYOUTTEST
 FANCYZONESEDITOR
-Fairlight
 FARPROC
 fdw
 fdx
@@ -585,11 +587,13 @@ folderpath
 FONTTYPE
 FORCEFILESYSTEM
 FORCEMINIMIZE
+foregrounding
 FORMATDLGORD
 formatetc
 FORPARSING
 foundrylocal
 framechanged
+Freelook
 frm
 FROMTOUCH
 fsanitize
@@ -744,9 +748,17 @@ HROW
 hsb
 HSCROLL
 hsi
+HTBOTTOM
+HTBOTTOMLEFT
 HTCLIENT
 hthumbnail
+HTLEFT
+HTNOWHERE
 HTOUCHINPUT
+HTRIGHT
+HTTOP
+HTTOPLEFT
+HTTOPRIGHT
 HTTRANSPARENT
 hutchinsoniana
 Hvci
@@ -767,6 +779,7 @@ ICONLOCATION
 ICONONLY
 IDCANCEL
 IDD
+idempotently
 idk
 idl
 idlist
@@ -786,6 +799,7 @@ iid
 IIM
 Iindex
 Ijwhost
+ILC
 ILD
 IMAGEHLP
 IMAGERESIZERCONTEXTMENU
@@ -901,6 +915,7 @@ Kybd
 LARGEICON
 lastcodeanalysissucceeded
 LASTEXITCODE
+launchgame
 LAYOUTRTL
 lbl
 Lbuttondown
@@ -917,6 +932,7 @@ LEFTSCROLLBAR
 LEFTTEXT
 Lenovo
 LError
+letterboxing
 LEVELID
 LFU
 LGD
@@ -947,6 +963,7 @@ LOCALSYSTEM
 LOCATIONCHANGE
 LOCKTYPE
 LOGFONTW
+logissue
 LOGMSG
 logon
 LOGPIXELSX
@@ -1062,6 +1079,7 @@ MINIMIZESTART
 MINMAXINFO
 minwindef
 Mip
+Miracast
 mkdn
 mlcfg
 mmc
@@ -1100,6 +1118,7 @@ msctls
 msdata
 msdia
 MSDL
+msgamelaunch
 MSGFLT
 msiexec
 MSIFASTINSTALL
@@ -1196,6 +1215,7 @@ NODRAWICON
 NOINHERITLAYOUT
 NOINTERFACE
 NOINVERT
+nojekyll
 NOLINKINFO
 nologo
 NOMCX
@@ -1269,6 +1289,7 @@ oldpath
 oldtheme
 oleaut
 OLECHAR
+olk
 ollama
 onebranch
 onnx
@@ -1330,8 +1351,8 @@ pchast
 PCIDLIST
 PCTSTR
 PCWSTR
-pdbs
 PDBs
+pdbs
 PDEVMODE
 PDFs
 pdisp
@@ -1369,6 +1390,7 @@ pinfo
 pinvoke
 pipename
 Pitjantjatjara
+PJT
 PKBDLLHOOKSTRUCT
 pkgfamily
 PKI
@@ -1476,6 +1498,7 @@ ptc
 PTCHAR
 ptcontrols
 ptd
+PTLONGPATH
 PTOKEN
 ptstr
 ptsym
@@ -1562,6 +1585,7 @@ resizers
 RESIZETOFIT
 resmimetype
 RESOURCEID
+respawns
 RESTORETOMAXIMIZED
 RETURNONLYFSDIRS
 Revalidates
@@ -1572,6 +1596,7 @@ rgf
 rgh
 rgn
 rgs
+rgt
 rguid
 rhk
 RIDEV
@@ -1632,12 +1657,14 @@ selfhost
 SENDCHANGE
 sendvirtualinput
 serverside
+SETAUTOHIDEBAREX
 SETBUDDYINT
 SETCONTEXT
 SETCURSEL
 setcursor
 SETFOCUS
 SETFOREGROUND
+SETFOREGROUNDLOCKTIMEOUT
 SETHOTKEY
 SETICON
 SETLOWPOWERACTIVE
@@ -1645,7 +1672,6 @@ SETPOWEROFFACTIVE
 SETRANGE
 SETREDRAW
 SETRULES
-SETAUTOHIDEBAREX
 SETSCREENSAVEACTIVE
 SETSTICKYKEYS
 SETTEXT
@@ -1881,6 +1907,7 @@ TEXTBOXNEWLINE
 textextractor
 TEXTINCLUDE
 textvariable
+tfm
 tfopen
 tgamma
 tgz
@@ -1895,6 +1922,7 @@ TILEDWINDOW
 TILLSON
 timedate
 timediff
+timestamped
 timeutil
 TITLEBARINFO
 Titlecase
@@ -1957,6 +1985,7 @@ ULONGLONG
 Ultrawide
 ums
 uncompilable
+uncomposited
 UNCPRIORITY
 UNDNAME
 ungroup
@@ -2061,6 +2090,7 @@ Vtbl
 WANTNUKEWARNING
 WANTPALM
 WASDK
+watsonportal
 wbem
 Wca
 WCE

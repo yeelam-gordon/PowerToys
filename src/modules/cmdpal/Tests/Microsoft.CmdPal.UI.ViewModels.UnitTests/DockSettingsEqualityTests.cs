@@ -13,7 +13,7 @@ namespace Microsoft.CmdPal.UI.ViewModels.UnitTests;
 /// compare by <em>content</em> rather than by list reference. Dock consumers guard their
 /// (expensive) reloads with <c>_settings == args.DockSettings</c>, so two settings that differ
 /// only by having freshly-rebuilt band lists — e.g. after loading from disk — must compare
-/// equal, otherwise the reload fires needlessly.
+/// equal; otherwise the reload fires needlessly.
 /// </summary>
 [TestClass]
 public class DockSettingsEqualityTests

@@ -36,7 +36,7 @@ public sealed partial class MainWindow : TransparentWindow, IDisposable
     {
         InitializeComponent();
 
-        // Give the overlay a stable UIA identity (window name) for accessibility tools (Narrator,
+        // Assign a stable UIA identity (window name) to the overlay for accessibility tools (Narrator,
         // Accessibility Insights) and the release-verification harness. "Quick Accent" is the
         // user-facing feature name.
         AppWindow.Title = "Quick Accent";

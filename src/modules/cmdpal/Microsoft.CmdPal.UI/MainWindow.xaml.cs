@@ -500,7 +500,7 @@ public sealed partial class MainWindow : WindowEx,
     }
 
     /// <summary>
-    /// Returns true if the user has opted in to seeing the OS-drawn HWND chrome (an internal
+    /// Returns true if the user has opted into seeing the OS-drawn HWND chrome (an internal
     /// debugging setting). Always false in CI / release builds.
     /// </summary>
     private static bool ShouldShowHwndFrame(SettingsModel settings) =>
@@ -1679,7 +1679,7 @@ public sealed partial class MainWindow : WindowEx,
 
             // Borderless mode: claim the entire window rectangle as client area.
             // A resizable window has WS_THICKFRAME, which makes the OS reserve a
-            // non-client sizing frame *and* gives the window a DWM drop shadow / a thin
+            // non-client sizing frame *and* adds a DWM drop shadow / a thin
             // frame line along the top. We keep WS_THICKFRAME (so our custom WM_NCHITTEST
             // can still drive resizing) but tell the OS the whole window is client by
             // returning 0 from WM_NCCALCSIZE — which removes that frame and its shadow.

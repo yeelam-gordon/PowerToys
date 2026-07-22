@@ -19,5 +19,5 @@ enum class ImageFormat
 };
 
 // Saves the given bitmap to Filename in the requested format.
-// Returns ERROR_SUCCESS on success, otherwise a Win32 error code.
+// Returns ERROR_SUCCESS on success; otherwise a Win32 error code.
 DWORD SaveImage( LPCTSTR Filename, HBITMAP hBitmap, ImageFormat format );

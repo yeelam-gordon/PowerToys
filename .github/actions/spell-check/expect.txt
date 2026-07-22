@@ -105,6 +105,7 @@ AUTOMATIONPROPERTIES
 autopf
 AUTORADIOBUTTON
 Autorun
+autorun
 AUTOTICKS
 AUTOUPDATE
 AWAYMODE
@@ -230,6 +231,7 @@ closesocket
 clp
 CLSCTX
 CLSIDs
+Clsids
 clsids
 Clusion
 cmder
@@ -362,6 +364,7 @@ debouncer
 debugbreak
 decryptor
 Dedup
+dedup
 Deduplicator
 DEFAULTBOOTSTRAPPERINSTALLFOLDER
 DEFAULTCOLOR
@@ -1242,6 +1245,7 @@ NORMALUSER
 NOSEARCH
 NOSENDCHANGING
 NOSIZE
+Nosize
 nosize
 notdefault
 NOTHOUSANDS
@@ -2003,6 +2007,7 @@ unparsable
 unremapped
 Unsend
 Unsubscribes
+unsubscribes
 untriaged
 unvirtualized
 unwide

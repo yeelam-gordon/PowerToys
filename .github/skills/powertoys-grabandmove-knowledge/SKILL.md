@@ -240,11 +240,10 @@ Enforce these when reviewing or authoring GrabAndMove changes:
 
 ## Using This Skill in PR Review
 
-Read the diff cold and form your own concerns **first**; then cross-check *only the touched paths*
-against the Module Map and Regression Playbooks — skimming them first anchors you on recurring
-themes and measurably lowers your catch rate on the PR's actual issues. If a symptom doesn't map to
-a row, reason from the source, not the map. Best for planning / triage; a targeted checklist (not a
-script) for review.
+Read the diff cold and form your own concerns **first**, then cross-check *only the touched paths*
+against the Module Map and Regression Playbooks — skimming them first anchors you and lowers your
+catch rate. Full method (anti-anchoring, bug localization, freshness):
+[using these skills](../powertoys-knowledge-skill-usage.md).
 
 ## References
 

@@ -81,10 +81,10 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `EvaluateAndApplyIfNeeded` so the correct theme is applied immediately. Don't reuse one function
   for "read state" and "decide+apply". Evidence: issue
   [#45291](https://github.com/microsoft/PowerToys/issues/45291) fixed by
-  [PR #45304](https://github.com/microsoft/PowerToys/pull/45304); related open reports
-  [#47566](https://github.com/microsoft/PowerToys/issues/47566),
-  [#46159](https://github.com/microsoft/PowerToys/issues/46159),
-  [#44619](https://github.com/microsoft/PowerToys/issues/44619) (confirm in source; issue bodies unavailable).
+  [PR #45304](https://github.com/microsoft/PowerToys/pull/45304); further reports in the same cluster
+  [#46159](https://github.com/microsoft/PowerToys/issues/46159) and
+  [#44619](https://github.com/microsoft/PowerToys/issues/44619) have since closed as **completed**;
+  [#47566](https://github.com/microsoft/PowerToys/issues/47566) remains open (confirm in source).
 
 ### PowerDisplay profile only applied on every *other* hotkey press
 - **Symptom:** binding a monitor profile per theme via PowerDisplay, the profile only follows the
@@ -164,6 +164,21 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#48257](https://github.com/microsoft/PowerToys/issues/48257),
   [#48082](https://github.com/microsoft/PowerToys/issues/48082),
   [#48692](https://github.com/microsoft/PowerToys/issues/48692) (confirm in source; bodies unavailable).
+
+### "Detect location" spins forever when location services are off/unavailable
+- **Symptom:** in Sun (sunset→sunrise) mode setup, clicking **Detect location** shows an infinite
+  spinner that never returns when Windows location services are disabled or can't answer.
+- **Where:** `src/settings-ui/Settings.UI/SettingsXAML/Views/LightSwitchPage.xaml.cs`
+  `GetGeoLocation_Click` (`GeoLocationTimeout` = 10 s, a `CancellationTokenSource`, and
+  `geolocator.GetGeopositionAsync().AsTask(cts.Token)`); error UI `LocationErrorText` in
+  `LightSwitchPage.xaml`.
+- **Root cause:** `Geolocator.GetGeopositionAsync()` was awaited with **no timeout** and no
+  availability/permission pre-check, so it hangs indefinitely when the location service can't answer.
+- **Guardrail:** bound `GetGeopositionAsync` with a `CancellationTokenSource` timeout, pre-check
+  `Geolocator` availability/permission before calling, and surface a user-facing error with an
+  "enter coordinates manually" fallback instead of a spinner. Evidence:
+  [#45860](https://github.com/microsoft/PowerToys/issues/45860) →
+  [PR #45887](https://github.com/microsoft/PowerToys/pull/45887).
 
 ## Review Rules
 

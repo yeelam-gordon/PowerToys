@@ -138,27 +138,65 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   for readability. Evidence: [#49236](https://github.com/microsoft/PowerToys/issues/49236) →
   [PR #49241](https://github.com/microsoft/PowerToys/pull/49241).
 
+### Dock (and host) rebuild on every *unrelated* settings change — record reference-equality
+- **Symptom:** editing any setting — theme, an alias, an unrelated provider — tore down and recreated
+  the Dock windows, re-registered hotkeys, and rebuilt the backdrop (visible churn/flicker), even
+  though nothing the Dock consumes had changed.
+- **Where:** `Microsoft.CmdPal.UI.ViewModels/Settings/DockSettings.cs` (the `record`) +
+  `Microsoft.CmdPal.UI.ViewModels/Settings/EquatableList`1.cs`; guards in
+  `ViewModels/Dock/DockViewModel.cs::UpdateSettings`, `UI/Dock/DockWindow.xaml.cs::SettingsChangedHandler`,
+  `UI/Dock/DockWindowManager.cs::OnSettingsChanged`, `UI/MainWindow.xaml.cs` (`_lastAppliedSettings`,
+  `MainWindowSettingsComparer`).
+- **Root cause:** the `DockSettings` record held `ImmutableList<DockBandSettings>` fields, and
+  `ImmutableList<T>` implements **reference** equality. After settings reloaded from disk the rebuilt
+  list was a fresh instance, so the record compared **unequal** even for identical content — firing
+  every subscriber's full hot-reload path on every `SettingsChanged`.
+- **Guardrail:** back record collection properties with a **structural-equality** wrapper
+  (`EquatableList<T>`) so record `==` compares by content, then guard each expensive settings-changed
+  handler with a value check (`if (_settings == args.DockSettings) return;`). Add equality unit tests
+  (`Tests/…UnitTests/DockSettingsEqualityTests.cs`, `EquatableListTests.cs`). **Note the
+  `SettingsModel` "LOAD BEARING" comment** — a subscriber that reacts selectively must be updated when
+  a new live-reacting setting is added. Evidence:
+  [#49168](https://github.com/microsoft/PowerToys/issues/49168) →
+  [PR #49171](https://github.com/microsoft/PowerToys/pull/49171).
+
 ### Dock stability / multi-monitor / lifecycle (open cluster — verify in source)
-- **Symptom:** many open Dock bugs — wrong monitor reported, wrong position when docked
-  bottom/right, disappears after monitor power-off, offset when palette opened from Dock, reloads on
-  every settings change, frequent crashes.
+- **Symptom:** open Dock bugs — wrong monitor reported as display 1, offset when the palette is opened
+  from the Dock, "Pin to Dock" pins to a hidden Dock, Dock disappears after a monitor is powered off,
+  frequent crashes.
 - **Where:** `Dock/DockWindow*.cs`, `DockWindowManager.cs`, `Services/MonitorService.cs`.
-- **Root cause:** not yet distilled (mostly open or not yet assessed). **Do not force-fit a fix location** —
-  reason from the symptom and confirm in source.
+- **Root cause:** not yet distilled (still open). **Do not force-fit a fix location** — reason from the
+  symptom and confirm in source.
 - **Guardrail:** treat monitor geometry, DPI, and taskbar/edge state as first-class inputs; re-test
   Dock across multiple monitors, power events, and each edge. Evidence (open):
   [#49295](https://github.com/microsoft/PowerToys/issues/49295), [#49264](https://github.com/microsoft/PowerToys/issues/49264),
   [#49205](https://github.com/microsoft/PowerToys/issues/49205), [#49086](https://github.com/microsoft/PowerToys/issues/49086),
-  [#49168](https://github.com/microsoft/PowerToys/issues/49168), [#49281](https://github.com/microsoft/PowerToys/issues/49281).
+  [#49281](https://github.com/microsoft/PowerToys/issues/49281).
 
-### PerformanceMonitor extension — enable/soft-disable states
-- **Symptom:** enabling Performance Monitor immediately crashes CmdPal; battery/single-metric Dock
-  bands misbehave when PerfMon is "soft-disabled"; units miscalculated.
-- **Where:** `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/` (incl. `PerformanceMonitorDisabledPage.cs`).
-- **Root cause:** not yet distilled (open). Flagged as a distinct area with several live reports.
-- **Guardrail:** exercise the enabled / soft-disabled / hardware-unavailable states when touching
-  PerfMon or its Dock bands. Evidence (open): [#49154](https://github.com/microsoft/PowerToys/issues/49154),
-  [#49163](https://github.com/microsoft/PowerToys/issues/49163), [#49159](https://github.com/microsoft/PowerToys/issues/49159),
+### PerformanceMonitor — soft-disabled single-metric Dock bands vanish
+- **Symptom:** after PerfMon soft-disables itself (it disables after repeated startup crashes), the
+  single-metric Dock bands (CPU / Memory / Network / GPU) disappeared entirely instead of showing a
+  disabled placeholder, so the user couldn't tell why their bands were gone.
+- **Where:** `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/PerformanceMonitorCommandsProvider.cs`
+  (`BandMetrics` array, `SetDisabledState`); `PerformanceMonitorDisabledPage.cs` (now takes a per-band
+  `id`); `PerformanceWidgetsPage.cs::GetBandId` (stable band ids).
+- **Root cause:** the soft-disabled path emitted only the single aggregate disabled page, so each
+  per-metric Dock band had no placeholder to render.
+- **Guardrail:** when soft-disabling, emit a **matching disabled placeholder band for each
+  single-metric band** with the same stable id (`GetBandId`), so the band persists and tells the user
+  it's disabled. Evidence: [#49159](https://github.com/microsoft/PowerToys/issues/49159) →
+  [PR #49162](https://github.com/microsoft/PowerToys/pull/49162). (The **battery** Dock band is still
+  missing — slated to move to a separate extension; [#49163](https://github.com/microsoft/PowerToys/issues/49163) open.)
+
+### PerformanceMonitor — enable crash / battery / units (open — verify in source)
+- **Symptom:** enabling Performance Monitor immediately crashes CmdPal; battery indicator
+  unavailable; Bytes vs Binary-bytes units render identically.
+- **Where:** `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/`.
+- **Root cause:** not yet distilled (open).
+- **Guardrail:** exercise the enabled / soft-disabled / hardware-unavailable states and verify unit
+  formatting when touching PerfMon or its Dock bands. Evidence (open):
+  [#49154](https://github.com/microsoft/PowerToys/issues/49154),
+  [#49163](https://github.com/microsoft/PowerToys/issues/49163),
   [#49071](https://github.com/microsoft/PowerToys/issues/49071).
 
 ## Review Rules
@@ -200,8 +238,12 @@ Enforce these when reviewing or authoring CmdPal changes:
 - **DWM will repaint the non-client frame** after focus changes — a one-time frame tweak isn't
   enough; re-assert with `RedrawWindow` (PR #49184). User32 window-frame hacks are fragile; re-test
   focus-in/out.
-- **The Dock reloads/re-renders on settings changes** — avoid heavy work in settings-changed paths
-  and don't rebuild the Dock for unrelated setting edits (#49168).
+- **The Dock used to rebuild on *every* settings change** — the `DockSettings` record held
+  `ImmutableList` fields (reference equality), so it compared unequal after a settings reload and
+  re-ran every subscriber's hot-reload. Guard settings-changed handlers with a value check and back
+  record collection fields with `EquatableList<T>` (fixed in
+  [PR #49171](https://github.com/microsoft/PowerToys/pull/49171)); still avoid heavy work in
+  settings-changed paths (#49168).
 - **Extensions are out-of-proc over WinRT** — a breaking `.idl` change silently breaks installed
   third-party extensions; version additively (PR #49260).
 - **Soft-disabled vs hard-disabled PerfMon are different states** — Dock bands and battery indicator

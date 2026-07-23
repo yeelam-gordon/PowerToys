@@ -49,7 +49,7 @@ treat them as areas, not diagnoses.
 | Issue/PR | What | Location / status |
 |---|---|---|
 | #49089 → PR #49095 | Open-Command-Palette dock button dead | `Dock/DockControl.xaml.cs` |
-| #49168 *(closed)* | Dock reloads on every settings change | `Dock/` settings handlers |
+| #49168 → PR #49171 | Dock rebuilt on *every* settings change (record held `ImmutableList` = reference equality) | fix: `EquatableList<T>` backing fields + `_settings == args.DockSettings` guards (`Settings/DockSettings.cs`, `Settings/EquatableList`1.cs`, Dock/MainWindow handlers) |
 | #49309 (PR, merged) | clock band showed unwanted OpenLink icon after primary command added | `src/modules/cmdpal/ext/Microsoft.CmdPal.Ext.TimeDate/NowDockBand.cs` |
 | #49295 *(open)* | reports display 1 as display 2 | `Services/MonitorService.cs` — verify |
 | #49264 *(open)* | palette opened from Dock has offset | Dock summon geometry — verify |
@@ -72,7 +72,7 @@ treat them as areas, not diagnoses.
 |---|---|---|
 | #49154 *(open)* | enabling PerfMon immediately crashes CmdPal | `ext/...PerformanceMonitor/` |
 | #49163 *(open)* | battery indicator unavailable when perfmon soft-disabled | verify |
-| #49159 *(closed)* | soft-disabled PerfMon doesn't replace single-metric Dock bands | verify |
+| #49159 → PR #49162 | soft-disabled PerfMon single-metric Dock bands vanished | fix: emit a disabled placeholder band per metric (`BandMetrics`, `PerformanceWidgetsPage.GetBandId`, `PerformanceMonitorDisabledPage`) |
 | #49306 *(open)* | can't detect hardware | verify |
 | #49071 *(open)* | Bytes vs Binary bytes same calc, different label | units formatting |
 

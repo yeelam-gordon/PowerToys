@@ -59,7 +59,7 @@ These four are grounded directly in current source, not just issue text:
 
 Scheduling / correctness:
 - [#45723](https://github.com/microsoft/PowerToys/issues/45723) schedule works in reverse *(title-only)*
-- [#45860](https://github.com/microsoft/PowerToys/issues/45860) "position check bug" *(title-only)*
+- [#45860](https://github.com/microsoft/PowerToys/issues/45860) "position check" = **geolocation detect hangs** (no timeout) → fixed by [PR #45887](https://github.com/microsoft/PowerToys/pull/45887): 10 s timeout + location-availability pre-check in `LightSwitchPage.xaml.cs`
 - [#45291](https://github.com/microsoft/PowerToys/issues/45291) light returns after restart w/ Follow Night Light (fixed PR#45304)
 
 Theme reverts / default-on:

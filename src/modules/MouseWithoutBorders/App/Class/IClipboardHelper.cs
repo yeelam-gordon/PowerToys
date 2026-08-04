@@ -284,6 +284,10 @@ namespace MouseWithoutBorders
 
             try
             {
+                // Drive classification is a best-effort IPC-boundary check: a mapping can
+                // change before the downstream filesystem probe. Reject roots that are
+                // remote or unavailable now; eliminating that TOCTOU window requires the
+                // consumer itself to avoid path-based filesystem probes.
                 DriveType driveType = new DriveInfo(pathRoot).DriveType;
                 return driveType == DriveType.Network || driveType == DriveType.NoRootDirectory;
             }

@@ -130,6 +130,9 @@ namespace MouseWithoutBorders
 #if !MM_HELPER
     public class ClipboardHelper : IClipboardHelper
     {
+        private const int MaxLoggedPathLength = 512;
+        private static readonly char[] PathSeparators = { '\\', '/' };
+
         public void SendLog(string log)
         {
             Logger.LogDebug("FROM HELPER: " + log);
@@ -155,12 +158,221 @@ namespace MouseWithoutBorders
 
         public void SendDragFile(string fileName)
         {
+            if (IsRemoteOrUncPath(fileName))
+            {
+                Logger.Log("SendDragFile: Rejected non-local path received over IPC: " + FormatPathForLog(fileName));
+                return;
+            }
+
             DragDrop.DragDropStep05Ex(fileName);
         }
 
         public void SendClipboardData(ByteArrayOrString data, bool isFilePath)
         {
+            string filePath = data.IsString ? data.GetString() : null;
+            if (isFilePath && data.IsString && IsRemoteOrUncPath(filePath))
+            {
+                Logger.Log("SendClipboardData: Rejected non-local file path received over IPC: " + FormatPathForLog(filePath));
+                return;
+            }
+
             _ = Clipboard.CheckClipboardEx(data, isFilePath);
+        }
+
+        // The ClipboardHelper IPC endpoint is reachable by any authenticated user on the
+        // named pipe. A malicious client could inject a UNC/remote path (e.g. \\attacker\share)
+        // that, when probed via File.Exists/Directory.Exists, triggers outbound SMB
+        // authentication and leaks the user's credentials. The legitimate helper only ever
+        // forwards local clipboard/drag file paths, so reject anything that is not local.
+        internal static bool IsRemoteOrUncPath(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                return false;
+            }
+
+            if (StartsWithRemotePathPrefix(path))
+            {
+                return true;
+            }
+
+            try
+            {
+                string fullPath = Path.GetFullPath(path);
+                if (StartsWithRemotePathPrefix(fullPath))
+                {
+                    return true;
+                }
+
+                string fullPathRoot = Path.GetPathRoot(fullPath);
+                string driveRoot = NormalizeExtendedLengthDriveRoot(fullPathRoot);
+                if (IsNetworkOrUnavailableDriveRoot(driveRoot))
+                {
+                    return true;
+                }
+
+                return ContainsReparsePoint(fullPath, fullPathRoot);
+            }
+            catch (ArgumentException)
+            {
+                return true;
+            }
+            catch (NotSupportedException)
+            {
+                return true;
+            }
+            catch (PathTooLongException)
+            {
+                return true;
+            }
+            catch (IOException)
+            {
+                // Malformed paths cannot be trusted; treat them as remote/invalid and reject.
+                return true;
+            }
+        }
+
+        private static bool StartsWithRemotePathPrefix(string path)
+        {
+            if (path.StartsWith("//", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            if (!path.StartsWith(@"\\", StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            if (IsExtendedLengthDrivePath(path))
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        private static bool ContainsReparsePoint(string fullPath, string pathRoot)
+        {
+            if (string.IsNullOrEmpty(pathRoot))
+            {
+                return true;
+            }
+
+            // A reparse point can resolve a lexical local path to a remote target. Reject
+            // all reparse points, including ones with local targets, instead of resolving
+            // a final target and risking an outbound filesystem probe.
+            string currentPath = pathRoot;
+            string[] pathComponents = fullPath.Substring(pathRoot.Length)
+                .Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string pathComponent in pathComponents)
+            {
+                currentPath = Path.Combine(currentPath, pathComponent);
+
+                try
+                {
+                    if ((File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0)
+                    {
+                        return true;
+                    }
+                }
+                catch (FileNotFoundException)
+                {
+                    return false;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return false;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return true;
+                }
+                catch (IOException)
+                {
+                    return true;
+                }
+            }
+
+            // This checks the path's current components only. The downstream consumers
+            // still use the original string, so a component may be replaced after this
+            // check. Closing that time-of-check/time-of-use race requires consumers to
+            // retain and use a handle opened without following reparse points.
+            return false;
+        }
+
+        private static string NormalizeExtendedLengthDriveRoot(string pathRoot)
+        {
+            return IsExtendedLengthDriveRoot(pathRoot) ? pathRoot.Substring(@"\\?\".Length) : pathRoot;
+        }
+
+        private static bool IsExtendedLengthDriveRoot(string pathRoot)
+        {
+            return pathRoot?.Length == 7
+                && IsExtendedLengthDrivePath(pathRoot);
+        }
+
+        private static bool IsExtendedLengthDrivePath(string path)
+        {
+            return path?.Length >= 7
+                && path.StartsWith(@"\\?\", StringComparison.Ordinal)
+                && IsDriveLetter(path[4])
+                && path[5] == ':'
+                && IsDirectorySeparator(path[6]);
+        }
+
+        private static bool IsDriveLetter(char value)
+        {
+            return (value >= 'A' && value <= 'Z') || (value >= 'a' && value <= 'z');
+        }
+
+        private static bool IsDirectorySeparator(char value)
+        {
+            return value == '\\' || value == '/';
+        }
+
+        private static bool IsNetworkOrUnavailableDriveRoot(string pathRoot)
+        {
+            if (string.IsNullOrEmpty(pathRoot))
+            {
+                return false;
+            }
+
+            try
+            {
+                // Reject roots that are remote or unavailable at the IPC boundary.
+                DriveType driveType = new DriveInfo(pathRoot).DriveType;
+                return driveType == DriveType.Network || driveType == DriveType.NoRootDirectory;
+            }
+            catch (ArgumentException)
+            {
+                return true;
+            }
+            catch (IOException)
+            {
+                return true;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return true;
+            }
+        }
+
+        private static string FormatPathForLog(string path)
+        {
+            if (path == null)
+            {
+                return string.Empty;
+            }
+
+            string sanitizedPath = path.Replace('\r', ' ').Replace('\n', ' ');
+            if (sanitizedPath.Length <= MaxLoggedPathLength)
+            {
+                return sanitizedPath;
+            }
+
+            return string.Concat(sanitizedPath.AsSpan(0, MaxLoggedPathLength), "...");
         }
     }
 #endif

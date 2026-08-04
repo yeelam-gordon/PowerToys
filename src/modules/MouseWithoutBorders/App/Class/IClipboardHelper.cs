@@ -131,6 +131,7 @@ namespace MouseWithoutBorders
     public class ClipboardHelper : IClipboardHelper
     {
         private const int MaxLoggedPathLength = 512;
+        private static readonly char[] PathSeparators = { '\\', '/' };
 
         public void SendLog(string log)
         {
@@ -181,7 +182,7 @@ namespace MouseWithoutBorders
         // The ClipboardHelper IPC endpoint is reachable by any authenticated user on the
         // named pipe. A malicious client could inject a UNC/remote path (e.g. \\attacker\share)
         // that, when probed via File.Exists/Directory.Exists, triggers outbound SMB
-        // authentication and leaks the user's NTLMv2 hash. The legitimate helper only ever
+        // authentication and leaks the user's credentials. The legitimate helper only ever
         // forwards local clipboard/drag file paths, so reject anything that is not local.
         internal static bool IsRemoteOrUncPath(string path)
         {
@@ -203,8 +204,14 @@ namespace MouseWithoutBorders
                     return true;
                 }
 
-                string pathRoot = NormalizeExtendedLengthDriveRoot(Path.GetPathRoot(fullPath));
-                return IsNetworkOrUnavailableDriveRoot(pathRoot);
+                string fullPathRoot = Path.GetPathRoot(fullPath);
+                string driveRoot = NormalizeExtendedLengthDriveRoot(fullPathRoot);
+                if (IsNetworkOrUnavailableDriveRoot(driveRoot))
+                {
+                    return true;
+                }
+
+                return ContainsReparsePoint(fullPath, fullPathRoot);
             }
             catch (ArgumentException)
             {
@@ -243,6 +250,56 @@ namespace MouseWithoutBorders
             }
 
             return true;
+        }
+
+        private static bool ContainsReparsePoint(string fullPath, string pathRoot)
+        {
+            if (string.IsNullOrEmpty(pathRoot))
+            {
+                return true;
+            }
+
+            // A reparse point can resolve a lexical local path to a remote target. Reject
+            // all reparse points, including ones with local targets, instead of resolving
+            // a final target and risking an outbound filesystem probe.
+            string currentPath = pathRoot;
+            string[] pathComponents = fullPath.Substring(pathRoot.Length)
+                .Split(PathSeparators, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (string pathComponent in pathComponents)
+            {
+                currentPath = Path.Combine(currentPath, pathComponent);
+
+                try
+                {
+                    if ((File.GetAttributes(currentPath) & FileAttributes.ReparsePoint) != 0)
+                    {
+                        return true;
+                    }
+                }
+                catch (FileNotFoundException)
+                {
+                    return false;
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    return false;
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    return true;
+                }
+                catch (IOException)
+                {
+                    return true;
+                }
+            }
+
+            // This checks the path's current components only. The downstream consumers
+            // still use the original string, so a component may be replaced after this
+            // check. Closing that time-of-check/time-of-use race requires consumers to
+            // retain and use a handle opened without following reparse points.
+            return false;
         }
 
         private static string NormalizeExtendedLengthDriveRoot(string pathRoot)
@@ -284,10 +341,7 @@ namespace MouseWithoutBorders
 
             try
             {
-                // Drive classification is a best-effort IPC-boundary check: a mapping can
-                // change before the downstream filesystem probe. Reject roots that are
-                // remote or unavailable now; eliminating that TOCTOU window requires the
-                // consumer itself to avoid path-based filesystem probes.
+                // Reject roots that are remote or unavailable at the IPC boundary.
                 DriveType driveType = new DriveInfo(pathRoot).DriveType;
                 return driveType == DriveType.Network || driveType == DriveType.NoRootDirectory;
             }

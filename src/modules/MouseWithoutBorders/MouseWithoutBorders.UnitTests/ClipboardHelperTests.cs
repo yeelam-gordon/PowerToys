@@ -7,9 +7,9 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace MouseWithoutBorders.UnitTests;
 
 // Guards the fix for MSRC 110760 / ICM 31000000569630: the ClipboardHelper IPC
-// endpoint must reject UNC/remote paths so a malicious pipe client cannot coerce
-// outbound SMB authentication (NTLMv2 hash leak) by injecting a path that is then
-// probed via File.Exists/Directory.Exists.
+// endpoint must reject UNC/remote and reparse-point paths so a malicious pipe client
+// cannot coerce outbound SMB authentication by injecting a path that is then probed
+// via File.Exists/Directory.Exists.
 [TestClass]
 public sealed class ClipboardHelperTests
 {
@@ -65,6 +65,27 @@ public sealed class ClipboardHelperTests
     public void IsRemoteOrUncPath_ReturnsTrue_ForForwardSlashDeviceOrMalformedPaths(string path)
     {
         Assert.IsTrue(ClipboardHelper.IsRemoteOrUncPath(path), $"Expected '{path}' to be rejected.");
+    }
+
+    [TestMethod]
+    public void IsRemoteOrUncPath_ReturnsTrue_ForLocalPathThroughRemoteSymbolicLink()
+    {
+        string testDirectory = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        string linkPath = Path.Combine(testDirectory, "remote-link");
+
+        Directory.CreateDirectory(testDirectory);
+        try
+        {
+            _ = Directory.CreateSymbolicLink(linkPath, @"\\localhost\ClipboardHelperTest");
+
+            Assert.IsTrue(
+                ClipboardHelper.IsRemoteOrUncPath(Path.Combine(linkPath, "file.txt")),
+                "A local path that traverses a symbolic link must be rejected.");
+        }
+        finally
+        {
+            Directory.Delete(testDirectory, recursive: true);
+        }
     }
 
     [DataTestMethod]

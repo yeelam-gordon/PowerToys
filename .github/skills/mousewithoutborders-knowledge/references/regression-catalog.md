@@ -1,91 +1,65 @@
-# Mouse Without Borders — Regression Catalog & Constants
+# Mouse Without Borders — Evidence and Decision Ledger
 
-Progressive-disclosure detail behind SKILL.md. All grounded in `src/modules/MouseWithoutBorders/`
-source and the PR/issue history in this module's raw data.
+[Return to actionable playbooks](../SKILL.md).
 
-## Crypto / wire constants (`App/Core/Encryption.cs`)
+This catalog is the progressive-disclosure evidence record for `SKILL.md`.
 
-| Constant | Value | Meaning |
+> **Role split:** `SKILL.md` owns actionable symptom → root-cause → guardrail guidance. This file
+> owns provenance: exact source anchors, historical decisions, reviewer rationale, unresolved issue
+> clusters, chronology, and confidence caveats. Do not duplicate the playbook prose here.
+
+## Verified source-anchor ledger
+
+| Area | Exact source anchors | Evidence retained |
 |---|---|---|
-| `SaltSize` | 16 | Random per-connection PBKDF2 salt, sent cleartext |
-| `SymAlBlockSize` | 16 | AES block; also the per-connection IV length |
-| `KeyDerivationIterations` | 50000 | PBKDF2 iteration count (SHA512) |
-| `DerivedKeyLength` | 32 | AES-256 key length (bytes) |
-| Cleartext header | `SaltSize + SymAlBlockSize` = 32 bytes | salt ‖ IV, exchanged before cipher text |
-| AES config | KeySize 256, BlockSize 128, `CipherMode.CBC`, `PaddingMode.Zeros` | `InitEncryption` |
-| Key derivation | `Rfc2898DeriveBytes.Pbkdf2(MyKey, salt, 50000, SHA512, 32)` | `GenLegalKey` |
-| Packet auth | `MagicNumber` = `Get24BitHash(MyKey)` (SHA512 iterated 50000×) | routing/auth token, **not** encryption |
-| Key rules | `CreateRandomKey` = 16 chars from curated charset; `IsKeyValid` requires ≥16 chars | shared secret in settings.json |
+| Encryption constants | `App/Core/Encryption.cs`: `SaltSize = 16`, `SymAlBlockSize = 16`, `KeyDerivationIterations = 50000`, `DerivedKeyLength = 32` | AES-256/CBC uses `PaddingMode.Zeros`; PBKDF2 uses SHA512. |
+| Connection header | `Encryption.GetEncryptedStream`, `GetDecryptedStream`, `ExchangeEncryptionHeader` | Cleartext layout is salt (16 bytes) followed by IV (16 bytes). |
+| Handshake/framing | `Common.SendOrReceiveARandomDataBlockPerInitialIV`; `SocketStuff.TcpSendData`, `ProcessReceivedDataEx` | Header → random first block → framed packets. No wire-version negotiation was identified. |
+| Shared-key token | `Encryption.Get24BitHash`, `Encryption.MagicNumber`; validation in `SocketStuff.ProcessReceivedDataEx` | The misleadingly named helper incorporates four hash bytes, while packet framing transmits and validates only the upper 16 bits. It is not the encryption layer. |
+| Key lifecycle | `Encryption.CreateRandomKey`, `IsKeyValid`; `App/Class/Setting.cs` | Generated keys are 16 characters; validation requires at least 16; the shared secret persists in `settings.json`. |
+| Machine limit | `App/Core/MachineStuff.cs`: `MAX_MACHINE = 4`, `MAX_SOCKET = MAX_MACHINE * 2`; `App/Class/MachinePool.cs` | Pool enforcement throws when `list.Count >= 4`; UI anchors are `App/Control/MachineMatrix.*` and `App/Form/frmMatrix.*`. |
 
-**Handshake order (per connection):** salt/IV header (`ExchangeEncryptionHeader`) → random first
-block (`Common.SendOrReceiveARandomDataBlockPerInitialIV`) → framed packets with `MagicNumber`
-(`SocketStuff.TcpSendData` / `ProcessReceivedDataEx`). Any change to this order/layout is a breaking
-wire change (no version negotiation).
+## Decision chronology
 
-## Machine pool constants (`App/Core/MachineStuff.cs`)
+Ordered by the repository history represented in this corpus.
 
-| Constant | Value |
-|---|---|
-| `MAX_MACHINE` | 4 |
-| `MAX_SOCKET` | `MAX_MACHINE * 2` = 8 |
+| Change | Evidence | Decision / reviewer record |
+|---|---|---|
+| MTP migration | [PR #37651](https://github.com/microsoft/PowerToys/pull/37651) | Dependency/platform migration; no MWB-specific behavioral decision was distilled. |
+| .NET 10 and PBKDF2 API update | [PR #41280](https://github.com/microsoft/PowerToys/pull/41280) | Reviewer requested named constants for the 50,000 iterations and 32-byte derived key rather than embedded literals. |
+| WIL update | [PR #43503](https://github.com/microsoft/PowerToys/pull/43503) | Dependency update retained only as build-history context. |
+| `Common` split, part 7 | [PR #44283](https://github.com/microsoft/PowerToys/pull/44283) | Incremental structural split; behavior preservation remained the governing constraint. |
+| Like-for-like port/refactor context | [PR #44553](https://github.com/microsoft/PowerToys/pull/44553) | Maintainers emphasized defect avoidance. A `Logger.GetStackTrace` test was brittle across test hosts, establishing a caveat against environment-dependent serialized test data. |
+| Project-path migration | [PR #44639](https://github.com/microsoft/PowerToys/pull/44639) | Use `$(RepoRoot)`; avoid `..\..\` and mixed `$(SolutionDir)`/`$(ProjectDir)$(RepoRoot)` path construction. |
+| C++/WinRT update | [PR #45420](https://github.com/microsoft/PowerToys/pull/45420) | Reviewer requested x64 and ARM64, Debug and Release evidence for solution-wide C++/WinRT changes. |
+| Dependency trimming | [PR #47233](https://github.com/microsoft/PowerToys/pull/47233) | MWB package references were reduced; installer-side discussion was not treated as MWB behavioral evidence. |
+| Per-connection salt and IV | [PR #48742](https://github.com/microsoft/PowerToys/pull/48742) | Security fix referencing **MSRC 118042** in `EncryptionTests.cs`: removed fixed `InitialIV`/`GenLegalIV` behavior and the derived-key cache. The wire layout changed, so all peers must update together. |
+| WIL project/package drift | [PR #49050](https://github.com/microsoft/PowerToys/pull/49050) | Keep `vcxproj` and `packages.config` dependency versions synchronized. |
 
-Pool enforcement lives in `App/Class/MachinePool.cs` (`list.Count >= 4` throws
-`ArgumentException` naming `MAX_MACHINE`). UI: `App/Control/MachineMatrix.*`, `App/Form/frmMatrix.*`.
+## Open symptom-cluster ledger
 
-## Regression / issue index (this module's history)
+These are issue signals, not established root causes. Confirm against current source and obtain a
+reproduction before changing behavior.
 
-### Security & wire format
-- **Per-connection random salt + IV** — [PR #48742](https://github.com/microsoft/PowerToys/pull/48742),
-  references **MSRC 118042** in `EncryptionTests.cs`. Replaced a single fixed `InitialIV`/`GenLegalIV`
-  constant; removed the derived-key cache; changed the on-the-wire format (all machines must update).
-- **PBKDF2 constant clarity** — [PR #41280](https://github.com/microsoft/PowerToys/pull/41280) review:
-  migrated `Rfc2898DeriveBytes` constructor → static `Pbkdf2`; reviewer asked for named constants for
-  iteration count (50000) and key length (32) — now `KeyDerivationIterations` / `DerivedKeyLength`.
+| Cluster | Reports | Current evidence boundary |
+|---|---|---|
+| Adding/pairing machines disrupts the pool | [#48825](https://github.com/microsoft/PowerToys/issues/48825) | Relevant anchors are `MachinePool` parsing/addition and the four-machine cap; the issue alone does not prove overflow is the cause. |
+| Non-ASCII machine identity | [#47673](https://github.com/microsoft/PowerToys/issues/47673) | Japanese/non-ASCII device name cannot connect; encoding boundary remains unverified here. |
+| General connectivity failures | [#48551](https://github.com/microsoft/PowerToys/issues/48551), [#48208](https://github.com/microsoft/PowerToys/issues/48208), [#48136](https://github.com/microsoft/PowerToys/issues/48136) | Similar symptoms may span discovery, handshake, firewall, key, or version mismatch. Do not collapse them into one cause. |
+| Modifier/keyboard state | [#49149](https://github.com/microsoft/PowerToys/issues/49149), [#48450](https://github.com/microsoft/PowerToys/issues/48450), [#49282](https://github.com/microsoft/PowerToys/issues/49282), [#48704](https://github.com/microsoft/PowerToys/issues/48704) | Covers All PC mode, keyboard sync/dead remote keyboard, and AltGr. Input-event loss is a hypothesis, not a finding for every report. |
+| Elevated-window input | [#47633](https://github.com/microsoft/PowerToys/issues/47633) (closed), [#47561](https://github.com/microsoft/PowerToys/issues/47561) | Correlates with Windows Terminal/elevated focus; validate service/elevation state before changing injection code. |
+| Clipboard format fidelity | [#49176](https://github.com/microsoft/PowerToys/issues/49176), [#47828](https://github.com/microsoft/PowerToys/issues/47828) | Excel cells becoming pictures and rich-text corruption may involve different clipboard-format negotiation paths. |
+| Clipboard/network failure | [#47782](https://github.com/microsoft/PowerToys/issues/47782) | Specific-NIC network-stack crash report; hardware/driver specificity limits generalization. |
+| Admin/service lifecycle | [#48137](https://github.com/microsoft/PowerToys/issues/48137), [#48047](https://github.com/microsoft/PowerToys/issues/48047), [#47746](https://github.com/microsoft/PowerToys/issues/47746), [#48787](https://github.com/microsoft/PowerToys/issues/48787) (closed) | Includes run/exit-admin behavior, the “Disable C-A-D” secpol effect, and Runner-window lifecycle. Treat as separate service/policy/lifecycle paths. |
+| Settings-file contention | [#47039](https://github.com/microsoft/PowerToys/issues/47039), [#48708](https://github.com/microsoft/PowerToys/issues/48708) | Reports `IOException`/file-in-use symptoms. Multiple desktop/service processes are relevant, but the exact locking sequence must be reproduced. |
 
-### Machine pool / connectivity (open issues — hypotheses, confirm in source)
-- Adding a PC drops the others — [#48825](https://github.com/microsoft/PowerToys/issues/48825).
-- Non-ASCII / Japanese device name can't connect — [#47673](https://github.com/microsoft/PowerToys/issues/47673).
-- Various "won't connect" reports — [#48551](https://github.com/microsoft/PowerToys/issues/48551),
-  [#48208](https://github.com/microsoft/PowerToys/issues/48208), [#48136](https://github.com/microsoft/PowerToys/issues/48136).
+## Caveats and exclusions
 
-### Input injection / keyboard sync
-- Modifier stuck when toggling "All PC mode" — [#49149](https://github.com/microsoft/PowerToys/issues/49149).
-- Keyboard sync bug — [#48450](https://github.com/microsoft/PowerToys/issues/48450);
-  keyboard dead on remote — [#49282](https://github.com/microsoft/PowerToys/issues/49282).
-- AltGr not working — [#48704](https://github.com/microsoft/PowerToys/issues/48704).
-- Easy Mouse fails when Windows Terminal / elevated app focused —
-  [#47633](https://github.com/microsoft/PowerToys/issues/47633) (closed),
-  [#47561](https://github.com/microsoft/PowerToys/issues/47561).
-
-### Clipboard / file transfer
-- Excel cells become pictures — [#49176](https://github.com/microsoft/PowerToys/issues/49176).
-- Rich text mangled — [#47828](https://github.com/microsoft/PowerToys/issues/47828).
-- Share-clipboard crashes network stack with a specific NIC — [#47782](https://github.com/microsoft/PowerToys/issues/47782).
-
-### Service / elevation / settings
-- Can't run as administrator / can't close admin mode — [#48137](https://github.com/microsoft/PowerToys/issues/48137),
-  [#48047](https://github.com/microsoft/PowerToys/issues/48047).
-- "Disable C-A-D" toggles secpol policy — [#47746](https://github.com/microsoft/PowerToys/issues/47746).
-- Closing the PowerToys window kills MWB — [#48787](https://github.com/microsoft/PowerToys/issues/48787) (closed).
-- settings.json IOException / read by another program — [#47039](https://github.com/microsoft/PowerToys/issues/47039),
-  [#48708](https://github.com/microsoft/PowerToys/issues/48708).
-
-## Refactor / build history (context, mostly low-signal)
-- Incremental `Common` god-class split into partial classes — [PR #44283](https://github.com/microsoft/PowerToys/pull/44283)
-  (part 7 of 7), [PR #44553](https://github.com/microsoft/PowerToys/pull/44553). MWB was ported
-  like-for-like from the standalone app; cleanup must stay behaviour-preserving. A `Logger.GetStackTrace`
-  test proved brittle across test hosts — avoid serializing environment-dependent data in tests.
-- `$(RepoRoot)` project-path migration — [PR #44639](https://github.com/microsoft/PowerToys/pull/44639)
-  (use `$(RepoRoot)`, not `..\..\`; avoid mixing `$(SolutionDir)`/`$(ProjectDir)$(RepoRoot)`).
-- Remove unused dependencies / shrink installer — [PR #47233](https://github.com/microsoft/PowerToys/pull/47233)
-  (trimmed MWB `.csproj` package references; installer-side changes were not MWB-specific).
-- Windows.ImplementationLibrary vcxproj vs packages.config drift — [PR #49050](https://github.com/microsoft/PowerToys/pull/49050).
-- Dependency bumps: WIL [#43503](https://github.com/microsoft/PowerToys/pull/43503),
-  CppWinRT [#45420](https://github.com/microsoft/PowerToys/pull/45420) (reviewer asked for x64+ARM64
-  Debug+Release build evidence on solution-wide C++/WinRT bumps), .NET 10 [#41280](https://github.com/microsoft/PowerToys/pull/41280),
-  MTP migration [#37651](https://github.com/microsoft/PowerToys/pull/37651).
-
-## Excluded as noise (not distilled)
-Pure formatting/blank-line nits, "fixed in latest commit", `/azp run` CI chatter, LGTM, and
-installer/WinUI3Apps hardlink review threads in [#47233](https://github.com/microsoft/PowerToys/pull/47233)
-that are not specific to the MouseWithoutBorders module.
+- The 32-byte salt/IV header is intentionally cleartext; this ledger records layout, not a claim
+  that the header authenticates the peer.
+- `MagicNumber` is shared-key-derived, but current packet framing validates only its upper 16 bits;
+  do not infer modern authenticated-encryption guarantees from it.
+- The open-issue table preserves symptoms and candidate anchors only. Issue titles are not proof of
+  causality, common scope, or current reproducibility.
+- Pure formatting, “fixed in latest commit,” `/azp run`, LGTM, and non-MWB installer/WinUI3Apps
+  hardlink threads from [PR #47233](https://github.com/microsoft/PowerToys/pull/47233) were excluded.

@@ -6,8 +6,8 @@ planning, and bug-fixing. Each module skill links here instead of repeating this
 ## PR review — read the diff first (anti-anchoring)
 
 **Read the diff cold and form your own list of concerns before opening the skill.** Skimming a
-module's Regression Playbooks first *anchors* you on its recurring themes and measurably lowers your
-catch rate on the PR's actual, concrete issues (benchmark-verified).
+module's Regression Playbooks first can anchor the review on recurring themes and distract from the
+PR's actual, concrete issues.
 
 1. Read the diff; list concerns from what actually changed.
 2. **Then** cross-check the touched files against the module skill's Module Map, Regression
@@ -16,6 +16,20 @@ catch rate on the PR's actual, concrete issues (benchmark-verified).
 
 These skills are most valuable for **planning, onboarding, and issue-fixing** (where module
 familiarity is the bottleneck), and least valuable as a flat pre-read for expert PR review.
+
+## Skill and catalog have different jobs
+
+- `SKILL.md` contains the actionable module map, regression playbooks, review rules, and pitfalls.
+- `references/regression-catalog.md` is an evidence ledger: PR/issue links, chronology, reviewer
+  decisions, unresolved symptom clusters, and evidence-quality caveats.
+- Do not copy a playbook into the catalog. Link from the catalog to the playbook and record only the
+  evidence or decision context that is not already actionable in `SKILL.md`.
+- When a rule describes a defect that still exists in current source, label it **Known current
+  violation**. A guardrail must never imply the code already implements the guard.
+
+For changes that cross module boundaries or touch `src/common/`, also load
+[`shared-infrastructure-knowledge`](./shared-infrastructure-knowledge/SKILL.md). Module skills own
+feature behavior; the shared skill owns blast-radius and recurring shared-code checks.
 
 ## Localizing a bug
 

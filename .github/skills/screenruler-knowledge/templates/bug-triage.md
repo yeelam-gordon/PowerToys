@@ -18,7 +18,7 @@ If the symptom doesn't map cleanly, reason from the symptom — don't force-fit 
 | Measurement 1px short at top/left edge | `EdgeDetection.cpp::FindEdge` (clamp `[1,dim-2]`) | Off-by-one | Edge off-by-one |
 | Edge detection erratic in total (non-per-channel) mode | `BGRATextureView.h::PixelsClose<false>` (`& 0xFF`) | 8-bit truncation | Tolerance truncation |
 | Wrong mm / cm / inch value | `Measurement.cpp::Convert`; `GetPhysicalPx2MmRatio` | Unit math | Unit conversion |
-| Ruler only on primary monitor / crash 2+ screens | `PowerToys.MeasureToolCore.cpp::StartMeasureTool` (`return` vs `continue`) | Per-monitor abort | Multi-monitor |
+| Ruler only on primary monitor / crash 2+ screens | `PowerToys.MeasureToolCore.cpp::StartMeasureTool` (`return` vs `continue`) | Investigation hypothesis; cited reports do not prove this cause | Multi-monitor |
 | Crash on startup on some machines | `ToolState.h::cursorPosSystemSpace`; `MouseCaptureThread` | Alignment/atomic | Cursor alignment |
 | Overlay on wrong virtual desktop / not over app | `OverlayUI.cpp::CreateOverlayUIWindow` (`WS_EX_TOOLWINDOW`) | Overlay coverage | Overlay/desktop |
 | Black screen / overexposure / blank capture | `ScreenCapturing.cpp` (frame/resize/device-lost); `D2DState.cpp` | Capture race | Overlay/desktop |

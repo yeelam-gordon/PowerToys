@@ -5,7 +5,7 @@ confirm in source**, not ground truth (a thin map row can anchor you onto a wron
 
 | Symptom | Start here | Notes |
 |---|---|---|
-| "No possible OCR languages are installed" / empty result | `ImageMethods.GetOCRLanguage`, `ExtractText`; `OcrEngine.AvailableRecognizerLanguages` | OS language pack missing (offline/standalone). #46030, #41969 |
+| "No possible OCR languages are installed" / empty result / null-engine crash | `ImageMethods.GetOCRLanguage`, `ExtractText`; `OcrExtensions.GetOcrResultFromImageAsync`; `OcrEngine.AvailableRecognizerLanguages` | OS language pack missing or `TryCreateFromLanguage` returned null; both engine-creation paths must be checked. #46030, #41969 |
 | Wrong language / doesn't match OS/system language | `ImageMethods.GetOCRLanguage`; `UserSettings.PreferredLanguage` | Uses keyboard **input** language, not OS display language. #42904, #47137 |
 | Overlay on wrong monitor / selection offset / "windows pulled to one screen" | `WindowUtilities.LaunchOCROverlayOnEveryScreen`, `OCROverlay` ctor + `Window_Loaded` | Per-monitor DPI + physical↔DIP conversion. #46852, #46088, #43024, #41930 |
 | Capture region mis-aligned from cursor | `OCROverlay.RegionClickCanvas_MouseUp` (`TransformToDevice` `m.M11/M22`) | Device-transform scaling of selection rect. |

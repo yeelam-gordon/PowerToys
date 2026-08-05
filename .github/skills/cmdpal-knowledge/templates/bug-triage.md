@@ -16,8 +16,9 @@ several areas below (Dock, PerfMon) have open, un-root-caused reports, so verify
 | Toast in wrong position / no icon or action button | `ToastWindow.xaml.cs` `PositionWindow`/`PositionBottomCenter`; `ToastViewModel.cs` | PR #49262, #49260 |
 | App/store shortcut missing from results | `ext/Microsoft.CmdPal.Ext.Apps/Programs/Win32Program.cs` `InternetShortcutURLPrefixes` | #49236 / PR #49241 |
 | Dock wrong monitor / position / disappears | `Dock/DockWindow*.cs`, `DockWindowManager.cs`, `Services/MonitorService.cs` (open — verify) | #49295, #49264, #49086 |
-| Dock reloads on every settings change | `Dock/` settings-changed handlers (open — verify) | #49168 |
-| PerfMon crash on enable / soft-disable band issues | `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/` (open — verify) | #49154, #49163, #49159 |
+| Dock reloads on every settings change | `Dock/` settings-changed handlers; compare with merged fix | #49168 (closed) / PR #49171 |
+| PerfMon crash on enable / battery band missing | `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/` (open — verify) | #49154, #49163 |
+| Soft-disabled single-metric band disappears | `ext/Microsoft.CmdPal.Ext.PerformanceMonitor/` disabled placeholder path | #49159 (closed) / PR #49162 |
 | A built-in feature missing entirely | check it's registered in `Microsoft.CmdPal.UI/App.xaml.cs` `AddBuiltInCommands` | — |
 | Third-party extension broke after an update | `extensionsdk/Microsoft.CommandPalette.Extensions/*.idl` (non-additive change?) | PR #49260 |
 

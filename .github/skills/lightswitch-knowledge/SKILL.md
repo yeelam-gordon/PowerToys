@@ -97,41 +97,39 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [PR #47190](https://github.com/microsoft/PowerToys/pull/47190) (see the in-code comment in
   `OnManualOverride`).
 
-### PowerDisplay reads registry before LightSwitch finished writing (race)
-- **Symptom:** wrong monitor profile applied because PowerDisplay read `AppsUseLightTheme` mid-write.
-- **Where:** `NotifyPowerDisplay` event names; `CommonSharedConstants` in `src/common/interop/shared_constants.h`.
-- **Root cause:** a single "theme changed" event forced the consumer to re-read the registry.
-- **Guardrail:** signal **separate** light vs dark named events (`LIGHT_SWITCH_LIGHT_THEME_EVENT` /
-  `LIGHT_SWITCH_DARK_THEME_EVENT`) that carry the direction, so PowerDisplay never has to read the
-  half-written registry. Evidence: [PR #47190](https://github.com/microsoft/PowerToys/pull/47190)
-  (comment in `NotifyPowerDisplay`).
+### Preserve direction-specific PowerDisplay events
+- **Where:** `NotifyPowerDisplay` event names; `CommonSharedConstants` in
+  `src/common/interop/shared_constants.h`.
+- **Chronology:** direction-specific `LIGHT_SWITCH_LIGHT_THEME_EVENT` /
+  `LIGHT_SWITCH_DARK_THEME_EVENT` events came from PowerDisplay integration
+  [PR #42642](https://github.com/microsoft/PowerToys/pull/42642). PR #47190 did not introduce them;
+  it fixed notification being skipped on every other manual override.
+- **Guardrail:** preserve the direction-specific event contract and notify on every override, but do
+  not invent a registry-race history for PR #47190.
 
 ### Schedule runs in reverse / wrong side of the boundary
 - **Symptom:** dark mode active during the day and light at night — the schedule is inverted; or the
   wrap-around window is mishandled around midnight.
 - **Where:** `LightSwitchUtils.h::ShouldBeLight`; boundary math in `EvaluateAndApplyIfNeeded`;
   `DetectAndHandleExternalThemeChange`.
-- **Root cause:** off-by-one / inverted comparison in the light-vs-dark window, especially the
-  wrap-around case where light starts in the evening and dark in the morning.
-- **Guardrail:** keep the two `ShouldBeLight` cases explicit (normal `light<dark`, and wrap-around)
-  and normalize all three inputs into `[0,1439]`; add a unit/UI test per boundary and per wrap
-  direction. Evidence: [#45723](https://github.com/microsoft/PowerToys/issues/45723) ("works in
-  reverse"), [#45860](https://github.com/microsoft/PowerToys/issues/45860) ("position check bug")
-  — confirm in source; issue bodies unavailable.
+- **Root cause:** unverified. The symptom report localizes investigation to normal versus
+  wrap-around `ShouldBeLight` behavior but does not prove an off-by-one or inverted comparison.
+- **Guardrail:** if this path changes, keep the two cases explicit (normal `light<dark`, and
+  wrap-around), verify inputs remain in `[0,1439]`, and add tests at both boundaries. Evidence:
+  [#45723](https://github.com/microsoft/PowerToys/issues/45723) is symptom-only.
 
-### Sunrise/sunset math wrong for polar / edge coordinates
-- **Symptom:** garbage or never-switching times at high latitudes (sun never rises/sets); or the L
-  (ecliptic longitude) value wraps incorrectly at year/day extremes.
+### Sunrise/sunset math wrong for polar coordinates
+- **Symptom:** garbage or never-switching times at high latitudes where the sun never rises/sets.
 - **Where:** `ThemeScheduler.cpp::CalculateSunriseSunset` — `cosH > 1 || cosH < -1` returns `-1`
-  (then treated as a real time by `toLocal`); `L`/`RA` clamped with single `if (L<0) L+=360; if
-  (L>360) L-=360;` instead of a true modulo (`fmod`).
-- **Root cause:** single-pass ±360 normalization can't wrap values that overshoot by >360; the
-  polar sentinel `-1` is not handled by callers.
-- **Guardrail:** use `fmod`-style modulo for angle normalization; propagate/handle the polar
-  "no sunrise/sunset" sentinel instead of feeding `-1` into `toLocal`. Evidence:
-  [#46957](https://github.com/microsoft/PowerToys/issues/46957) (single-pass vs fmod),
-  [#46954](https://github.com/microsoft/PowerToys/issues/46954) (polar garbage) — grounded in
-  `ThemeScheduler.cpp`.
+  (then treated as a real time by `toLocal`). `L`/`RA` use single-pass ±360 normalization, but
+  validated module inputs keep those values within one adjustment.
+- **Root cause:** the polar sentinel `-1` is not handled by callers.
+- **Guardrail:** propagate/handle the "no sunrise/sunset" sentinel instead of feeding `-1` into
+  `toLocal`. Treat `fmod` normalization as optional hardening, not a reachable current defect,
+  unless a test demonstrates an out-of-range input. Evidence:
+  [#46954](https://github.com/microsoft/PowerToys/issues/46954) (polar garbage);
+  [#46957](https://github.com/microsoft/PowerToys/issues/46957) is retained as an unreachable
+  hardening suggestion under current validation.
 
 ### `(0,0)` rejected as invalid coordinate
 - **Symptom:** a user legitimately on the equator/prime-meridian (Gulf of Guinea) can't use Sun mode.
@@ -142,15 +140,17 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#46955](https://github.com/microsoft/PowerToys/issues/46955) — grounded in source.
 
 ### Changing a PowerDisplay profile setting has no effect until restart
-- **Symptom:** editing dark/light profile bindings in Settings doesn't take effect live.
-- **Where:** `LightSwitchSettings.cpp::LoadSettings` (profile fields) vs `SettingsConstants.h`
-  `enum class SettingId`.
-- **Root cause:** `SettingId` stops at `ChangeApps` — it has **no** entries for
-  `enableDarkModeProfile` / `enableLightModeProfile` / `darkModeProfile` / `lightModeProfile`, so
-  those branches update the struct but never `NotifyObservers`.
-- **Guardrail:** when adding a persisted setting that observers must react to, add a `SettingId`
-  **and** call `NotifyObservers` in `LoadSettings`. Evidence:
-  [#46956](https://github.com/microsoft/PowerToys/issues/46956) — grounded in source.
+- **Symptom:** editing dark/light profile bindings in Settings appears not to take effect live.
+- **Where:** settings-file watcher/debounce, `LightSwitchSettings::LoadSettings`,
+  the settings-event handler in `LightSwitchService.cpp`, and
+  `LightSwitchStateManager::OnSettingsChanged`.
+- **Current-source interpretation:** the service handles the settings event, reloads the full
+  settings object, and calls the state manager. Missing per-field `SettingId` entries are therefore
+  not a supported root cause for this report.
+- **Guardrail:** reproduce through the complete file-watcher → service → state-manager path before
+  attributing a profile-refresh failure. Preserve the whole-settings reload and direct
+  `OnSettingsChanged` call. Evidence: [#46956](https://github.com/microsoft/PowerToys/issues/46956)
+  is retained as a symptom report, not proof of the earlier observer-ID hypothesis.
 
 ### Apps theme unchanged while System theme changes (or vice-versa)
 - **Symptom:** Windows shell flips but apps stay on the old theme (mixed light/dark: Task Manager,
@@ -172,11 +172,12 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `GetGeoLocation_Click` (`GeoLocationTimeout` = 10 s, a `CancellationTokenSource`, and
   `geolocator.GetGeopositionAsync().AsTask(cts.Token)`); error UI `LocationErrorText` in
   `LightSwitchPage.xaml`.
-- **Root cause:** `Geolocator.GetGeopositionAsync()` was awaited with **no timeout** and no
-  availability/permission pre-check, so it hangs indefinitely when the location service can't answer.
-- **Guardrail:** bound `GetGeopositionAsync` with a `CancellationTokenSource` timeout, pre-check
-  `Geolocator` availability/permission before calling, and surface a user-facing error with an
-  "enter coordinates manually" fallback instead of a spinner. Evidence:
+- **Root cause:** `Geolocator.GetGeopositionAsync()` was awaited with **no timeout**, so it could
+  hang when the location service could not answer. The click handler already requested access and
+  required `Allowed`; PR #45887 additionally added an earlier dialog-open availability check.
+- **Guardrail:** retain the existing permission request, bound `GetGeopositionAsync` with a
+  `CancellationTokenSource` timeout, pre-check availability when opening the dialog, and surface a
+  user-facing error with an "enter coordinates manually" fallback instead of a spinner. Evidence:
   [#45860](https://github.com/microsoft/PowerToys/issues/45860) →
   [PR #45887](https://github.com/microsoft/PowerToys/pull/45887).
 
@@ -184,19 +185,18 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 Enforce these when reviewing or authoring LightSwitch changes:
 
-- **Every new persisted setting needs a `SettingId` + `NotifyObservers`.** Adding a field to
-  `LightSwitchConfig` and reading it in `LoadSettings` is not enough — without a `SettingId`
-  (`SettingsConstants.h`) and a `NotifyObservers` call, live updates silently do nothing (#46956).
-- **Normalize angles with real modulo, not single-pass ±360.** In `ThemeScheduler.cpp`, a lone
-  `if (x>360) x-=360;` can't correct overshoots >360; use `fmod` and handle the polar `cosH` out-of-
-  range sentinel (#46957, #46954).
+- **Preserve the whole-settings reload contract.** The settings-event handler reloads settings and
+  calls `LightSwitchStateManager::OnSettingsChanged`. Do not infer that every persisted field
+  requires a `SettingId`; use observer IDs only where a real observer consumes them (#46956).
+- **Handle the polar `cosH` sentinel.** Do not feed the no-sunrise/no-sunset `-1` result into
+  `toLocal` (#46954). Single-pass angle normalization is not a reachable defect under current
+  validated inputs; treat `fmod` as hardening only (#46957).
 - **Never overload `(0,0)` (or any valid value) as an "unset" sentinel** — it rejects a real
   location; represent unset separately (#46955).
-- **Notify inter-module consumers on every state change, not only on entry.** `NotifyPowerDisplay`
-  must fire on every override/apply; direction-specific named events avoid registry read races
-  ([PR #47190](https://github.com/microsoft/PowerToys/pull/47190)).
+- **Notify inter-module consumers on every manual override, not only on entry.** PR #47190 fixed
+  the every-other-hotkey gate. Preserve the direction-specific events introduced by PR #42642.
 - **Do the schedule decision through `ShouldBeLight` and keep both wrap cases + `[0,1439]`
-  normalization** — don't re-implement boundary math ad hoc in new call sites (#45723, #45860).
+  normalization** — don't re-implement boundary math ad hoc in new call sites (#45723).
 - **Do not depend on undocumented internal Windows APIs.** The wallpaper-switching feature was
   reverted precisely because it used undocumented internal APIs with no compatibility guarantee —
   in a Microsoft project that implicitly signals an unsupported approach as blessed. Prefer

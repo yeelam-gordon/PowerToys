@@ -38,7 +38,8 @@ paths the diff actually touches.
 
 ## If adding a low-level keyboard hook (e.g. for Ctrl+W after WebView2 focus — #48274 / PR #48293)
 - [ ] Real module handle to `SetWindowsHookEx` (not `IntPtr.Zero`); return validated; `Marshal.GetLastWin32Error()` logged on failure.
-- [ ] Handler subscription idempotent (remove before add); fast-path `vkCode` filter before marshalling `KBDLLHOOKSTRUCT`.
+- [ ] Handler subscription idempotent (remove before add); hook structure marshalled safely before
+      current-source `vkCode` filtering.
 - [ ] Win key treated as modifier (don't swallow Win+Arrow snapping); Shift semantics match XAML accelerators.
 - [ ] Key consumed only when `DispatcherQueue.TryEnqueue` succeeds; hook uninstalled in `Dispose`.
 

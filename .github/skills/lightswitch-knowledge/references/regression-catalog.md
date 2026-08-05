@@ -1,98 +1,111 @@
-# LightSwitch Regression & Decision Catalog
+# LightSwitch — Evidence and Decision Ledger
 
-Progressive-disclosure companion to `SKILL.md`. LightSwitch is a **young module** (first shipped
-~PowerToys 0.98–0.100); history is thin and many reports are still open or not yet assessed. Where an entry
-rests only on an issue **title** (issue bodies were unavailable at distill time), it is marked
-*(title-only — confirm in source)*.
+[Return to actionable playbooks](../SKILL.md).
 
-## Key decisions (from PR/issue history)
+This file owns historical evidence, chronology, review decisions, open issue clusters, and
+confidence caveats. `SKILL.md` owns the current module map, review rules, and operational guidance.
+LightSwitch is young (first shipped around PowerToys 0.98–0.100), so title-only reports remain
+unverified symptoms.
 
-- **Wallpaper switching reverted for using undocumented internal Windows APIs.**
-  [PR #44588](https://github.com/microsoft/PowerToys/pull/44588) reverted the "switch desktop
-  wallpapers with Light/Dark mode" feature. Maintainer rationale (vanzue, MEMBER): the internal APIs
-  are "undocumented and come with no compatibility guarantees … in a Microsoft project like PowerToys
-  [this] could be misleading, as it may implicitly signal that this is a supported or stable
-  approach." Durable lesson: **prefer documented registry keys / public APIs**; internal-API
-  features are release blockers. (Re-worked without internal APIs in follow-ups.)
+## Decision evidence
 
-- **Startup must decide *and* apply, not just cache state.**
-  [PR #45304](https://github.com/microsoft/PowerToys/pull/45304) (closes
-  [#45291](https://github.com/microsoft/PowerToys/issues/45291)) split the overloaded init function
-  into `SyncInitialThemeState()` which syncs cached system/apps/Night-Light state **and** calls
-  `EvaluateAndApplyIfNeeded` so the correct theme is applied at startup. Also removed an unnecessary
-  `OnTick` parameter.
+### LS-D1 — Undocumented wallpaper APIs were release-blocking
 
-- **Inter-module notifications use direction-specific named events.**
-  [PR #47190](https://github.com/microsoft/PowerToys/pull/47190) fixed the LightSwitch↔PowerDisplay
-  integration: (1) restored the "Apply monitor settings" Settings UI that had been commented out in
-  #46160; (2) made `NotifyPowerDisplay` fire on *every* hotkey override (was gated on
-  `isManualOverride` `false→true`, dropping every even press). Uses separate
-  `LIGHT_SWITCH_LIGHT_THEME_EVENT` / `LIGHT_SWITCH_DARK_THEME_EVENT` (in
-  `src/common/interop/shared_constants.h`) so PowerDisplay never reads a half-written registry.
+- **Decision:** Revert wallpaper switching implemented with undocumented internal Windows APIs;
+  prefer documented registry keys and public APIs.
+- **Review rationale:** @vanzue noted that internal APIs have no compatibility guarantee and their
+  use in a Microsoft project could misleadingly imply support or stability.
+- **Chronology/evidence:** Feature implementation → revert
+  [PR #44588](https://github.com/microsoft/PowerToys/pull/44588) → unsuccessful rework attempt
+  [PR #44598](https://github.com/microsoft/PowerToys/pull/44598) (closed without merge).
+  [#49110](https://github.com/microsoft/PowerToys/issues/49110) is a later closed duplicate request;
+  current source has no wallpaper-switching implementation.
 
-- **Repo-wide build conventions apply here too.** Project references use `$(RepoRoot)` and deps go
-  through `Directory.Packages.props` ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639));
-  the module rode .NET 10 ([#41280](https://github.com/microsoft/PowerToys/pull/41280)), VS 2026
-  ([#44304](https://github.com/microsoft/PowerToys/pull/44304)), CppWinRT
-  ([#45420](https://github.com/microsoft/PowerToys/pull/45420)), and spdlog→vcpkg
-  ([#48039](https://github.com/microsoft/PowerToys/pull/48039)) migrations.
+### LS-D2 — Startup synchronizes state and applies the decision
 
-## Source-grounded code bugs (precise, verifiable in tree)
+- **Source:** `LightSwitchStateManager.cpp`, `SyncInitialThemeState`,
+  `EvaluateAndApplyIfNeeded`.
+- **Finding:** Initialization cached system/apps/Night-Light state without necessarily applying the
+  schedule.
+- **Decision:** Split the overloaded initialization path; startup must sync state and immediately
+  evaluate/apply. Remove the unused `OnTick` parameter.
+- **Chronology/evidence:** [issue #45291](https://github.com/microsoft/PowerToys/issues/45291) →
+  [PR #45304](https://github.com/microsoft/PowerToys/pull/45304).
 
-These four are grounded directly in current source, not just issue text:
+### LS-D3 — PowerDisplay notifications carry direction and fire every override
 
-1. **`ThemeScheduler.cpp` single-pass angle normalization** — `L` and `RA` use
-   `if (x<0) x+=360; if (x>360) x-=360;`, which cannot correct an overshoot greater than 360°. Use
-   `fmod`. ([#46957](https://github.com/microsoft/PowerToys/issues/46957))
-2. **Polar sentinel unhandled** — `CalculateSunriseSunset` returns `-1` when `cosH` is out of
-   `[-1,1]` (sun never rises/sets), but `toLocal` treats `-1` as a real UT hour.
-   ([#46954](https://github.com/microsoft/PowerToys/issues/46954))
-3. **`CoordinatesAreValid` rejects real `(0,0)`** — `!(latVal == 0 && lonVal == 0)` overloads the
-   equator/prime-meridian point as an "unset" sentinel.
-   ([#46955](https://github.com/microsoft/PowerToys/issues/46955))
-4. **`SettingId` enum missing profile entries** — it ends at `ChangeApps`; the profile fields
-   (`enableDarkModeProfile`, `enableLightModeProfile`, `darkModeProfile`, `lightModeProfile`) are
-   read in `LoadSettings` but never `NotifyObservers`, so live edits don't propagate.
-   ([#46956](https://github.com/microsoft/PowerToys/issues/46956))
+- **Source:** `LightSwitchStateManager.cpp`, `NotifyPowerDisplay`, `OnManualOverride`;
+  `src/common/interop/shared_constants.h`.
+- **Findings:** PR #47190 found notification gated on `isManualOverride` false→true, dropping every
+  even hotkey press. Direction-specific events already existed from PowerDisplay integration.
+- **Decision:** Synchronize cached state and notify on every hotkey override. Preserve
+  `LIGHT_SWITCH_LIGHT_THEME_EVENT` / `LIGHT_SWITCH_DARK_THEME_EVENT` as the existing contract.
+- **Additional accepted change:** Restore the “Apply monitor settings” UI commented out in #46160.
+- **Chronology/evidence:** direction events [PR #42642](https://github.com/microsoft/PowerToys/pull/42642);
+  every-other-override fix [PR #47190](https://github.com/microsoft/PowerToys/pull/47190).
 
-## Open issue index (triage aid — mostly title-only)
+### LS-D4 — Detect-location operations are bounded
 
-Scheduling / correctness:
-- [#45723](https://github.com/microsoft/PowerToys/issues/45723) schedule works in reverse *(title-only)*
-- [#45860](https://github.com/microsoft/PowerToys/issues/45860) "position check" = **geolocation detect hangs** (no timeout) → fixed by [PR #45887](https://github.com/microsoft/PowerToys/pull/45887): 10 s timeout + location-availability pre-check in `LightSwitchPage.xaml.cs`
-- [#45291](https://github.com/microsoft/PowerToys/issues/45291) light returns after restart w/ Follow Night Light (fixed PR#45304)
+- **Source:** `LightSwitchPage.xaml.cs`, `GetGeoLocation_Click`, `GeoLocationTimeout`;
+  `LightSwitchPage.xaml`, `LocationErrorText`.
+- **Finding:** `Geolocator.GetGeopositionAsync()` could wait indefinitely. The click handler already
+  requested permission and required `Allowed`; the missing protection was a bounded wait, while an
+  earlier dialog-open availability pre-check was added separately.
+- **Decision:** Add the availability pre-check, apply a 10-second cancellation timeout, show an
+  error, and retain manual coordinate entry.
+- **Chronology/evidence:** [issue #45860](https://github.com/microsoft/PowerToys/issues/45860) →
+  [PR #45887](https://github.com/microsoft/PowerToys/pull/45887).
 
-Theme reverts / default-on:
-- [#47566](https://github.com/microsoft/PowerToys/issues/47566) reverts to scheduled after update even if set manually *(title-only)*
-- [#46159](https://github.com/microsoft/PowerToys/issues/46159) auto-switches dark→light *(title-only)*
-- [#44619](https://github.com/microsoft/PowerToys/issues/44619) light turns on after restart *(title-only)*
-- [#48537](https://github.com/microsoft/PowerToys/issues/48537) install switches to light system-wide *(title-only)*
-- [#45781](https://github.com/microsoft/PowerToys/issues/45781) / [#45562](https://github.com/microsoft/PowerToys/issues/45562) unexpected theme change *(title-only)*
-- [#45044](https://github.com/microsoft/PowerToys/issues/45044) / [#44652](https://github.com/microsoft/PowerToys/issues/44652) should be off by default *(title-only)*
+## Source-grounded findings
 
-Half-switched / repaint:
-- [#48257](https://github.com/microsoft/PowerToys/issues/48257) only changes Windows, not apps *(title-only)*
-- [#48082](https://github.com/microsoft/PowerToys/issues/48082) Task Manager mixed light/dark *(title-only)*
-- [#48692](https://github.com/microsoft/PowerToys/issues/48692) taskbar thumbnail theme alternates *(title-only)*
-- [#46374](https://github.com/microsoft/PowerToys/issues/46374) window elements become invisible *(title-only)*
+| ID | Source/symbol | Finding | Decision status / evidence interpretation | Evidence |
+|---|---|---|---|---|
+| LS-E2 | `ThemeScheduler.cpp`, `CalculateSunriseSunset`, `toLocal` | `cosH` outside `[-1,1]` returns `-1`, and current callers pass it to `toLocal` as a real UT hour. | Known current violation verified in source; issue closed completed April 19, 2026. | [#46954](https://github.com/microsoft/PowerToys/issues/46954) |
+| LS-E3 | `LightSwitchStateManager.cpp`, `CoordinatesAreValid` | `!(latVal == 0 && lonVal == 0)` rejects the real equator/prime-meridian coordinate. | Open issue; the evidence distinguishes a real `(0,0)` coordinate from an unset-value representation. | [#46955](https://github.com/microsoft/PowerToys/issues/46955) |
+| LS-E4 | `LightSwitchSettings.cpp`, `LoadSettings`; settings-event handler in `LightSwitchService.cpp`; `LightSwitchStateManager.cpp`, `OnSettingsChanged` | Profile-setting refresh report. Current source handles the settings event, reloads the full settings object, and calls the state manager, so missing per-field `SettingId` entries are not a supported root cause. | Open symptom evidence; reproduce the complete watcher/service/state-manager path before assigning causality. | [#46956](https://github.com/microsoft/PowerToys/issues/46956) |
+| LS-E5 | `LightSwitchUtils.h`, `ShouldBeLight`; `LightSwitchStateManager.cpp`, `EvaluateAndApplyIfNeeded`, `DetectAndHandleExternalThemeChange` | Reports describe reversed scheduling or the wrong side of a midnight boundary. | Symptom evidence; normal/wrap-around boundary handling is the investigation area, but the root cause is unverified. | [#45723](https://github.com/microsoft/PowerToys/issues/45723) |
+| LS-E6 | `LightSwitchService.cpp`, `ApplyTheme`; `EvaluateAndApplyIfNeeded` | System and apps themes are independently gated by `changeSystem` / `changeApps`; mixed output may be configuration rather than failure. | Symptom evidence; no single repaint/apply defect is established because the two configuration axes can intentionally differ. | [#48257](https://github.com/microsoft/PowerToys/issues/48257), [#48082](https://github.com/microsoft/PowerToys/issues/48082), [#48692](https://github.com/microsoft/PowerToys/issues/48692) |
 
-Service / ops:
-- [#48212](https://github.com/microsoft/PowerToys/issues/48212) service log grows to GB, no rotation *(title-only)*
-- [#45434](https://github.com/microsoft/PowerToys/issues/45434) doesn't work when PowerToys in background *(title-only)*
-- [#46072](https://github.com/microsoft/PowerToys/issues/46072) no effect under admin account *(title-only)*
-- [#45142](https://github.com/microsoft/PowerToys/issues/45142) do the checkup on Windows start *(title-only)*
+## Evidence clusters (lifecycle noted)
 
-PowerDisplay integration:
-- [#48774](https://github.com/microsoft/PowerToys/issues/48774) profile switch not triggering on wake from sleep *(title-only)*
-- [#47354](https://github.com/microsoft/PowerToys/issues/47354) hide profile comboboxes when no PowerDisplay profiles *(title-only)*
+Unless a fix is named, these entries preserve symptoms and must be confirmed in source.
 
-Other:
-- [#49310](https://github.com/microsoft/PowerToys/issues/49310) crash opening shortcut editor while changing system theme *(title-only)*
-- [#49110](https://github.com/microsoft/PowerToys/issues/49110) wallpaper switch (dup; feature reverted #44588)
+- [#46957](https://github.com/microsoft/PowerToys/issues/46957) questions one-pass angle
+  normalization, but valid longitude/date inputs keep the calculated values within one adjustment.
+  No reachable module defect or durable fix decision is established.
 
-## Excluded as noise (not distilled)
-- Build/deps/infra PRs with no LightSwitch-specific lesson (#48039 spdlog→vcpkg, #41280 .NET 10,
-  #47119 check-spelling, #45420 CppWinRT, #44304 VS2026, #42642 PowerDisplay intro except its shared
-  events, #44795 Awake).
-- Pure nitpick review comments (e.g. trailing-whitespace suggestion on #44588).
-- Non-English/duplicate/triage-only reports with no actionable detail.
+| Cluster | Reports and chronology |
+|---|---|
+| Scheduling/correctness | [#45723](https://github.com/microsoft/PowerToys/issues/45723) reverse-schedule symptom; [#45860](https://github.com/microsoft/PowerToys/issues/45860) geolocation hang → fixed by [PR #45887](https://github.com/microsoft/PowerToys/pull/45887); [#45291](https://github.com/microsoft/PowerToys/issues/45291) restart/Follow Night Light → fixed by [PR #45304](https://github.com/microsoft/PowerToys/pull/45304) |
+| Revert/default-on | [#47566](https://github.com/microsoft/PowerToys/issues/47566) returns to schedule after update (open when distilled); [#46159](https://github.com/microsoft/PowerToys/issues/46159) dark→light and [#44619](https://github.com/microsoft/PowerToys/issues/44619) light after restart (closed completed when distilled); [#48537](https://github.com/microsoft/PowerToys/issues/48537) install switches system-wide; [#45781](https://github.com/microsoft/PowerToys/issues/45781), [#45562](https://github.com/microsoft/PowerToys/issues/45562) unexpected changes; [#45044](https://github.com/microsoft/PowerToys/issues/45044), [#44652](https://github.com/microsoft/PowerToys/issues/44652) should be off by default |
+| Half-switched/repaint | [#48257](https://github.com/microsoft/PowerToys/issues/48257) Windows but not apps; [#48082](https://github.com/microsoft/PowerToys/issues/48082) mixed Task Manager; [#48692](https://github.com/microsoft/PowerToys/issues/48692) alternating taskbar thumbnails; [#46374](https://github.com/microsoft/PowerToys/issues/46374) invisible window elements |
+| Service/operations | [#48212](https://github.com/microsoft/PowerToys/issues/48212) unbounded GB-scale log; [#45434](https://github.com/microsoft/PowerToys/issues/45434) background failure; [#46072](https://github.com/microsoft/PowerToys/issues/46072) no effect under admin; [#45142](https://github.com/microsoft/PowerToys/issues/45142) startup check |
+| PowerDisplay | [#48774](https://github.com/microsoft/PowerToys/issues/48774) wake-from-sleep profile switch; [#47354](https://github.com/microsoft/PowerToys/issues/47354) hide profile boxes without profiles |
+| Other open reports | None retained in this row. |
+
+Resolved history: shortcut-editor theme crash
+[#49310](https://github.com/microsoft/PowerToys/issues/49310) was fixed by
+[PR #49334](https://github.com/microsoft/PowerToys/pull/49334); wallpaper request
+[#49110](https://github.com/microsoft/PowerToys/issues/49110) closed completed after the reverted and
+unmerged work described in LS-D1.
+
+## Exclusion decisions
+
+- Omit build/dependency/infra PRs with no LightSwitch-specific lesson:
+  [#44639](https://github.com/microsoft/PowerToys/pull/44639),
+  [#48039](https://github.com/microsoft/PowerToys/pull/48039),
+  [#41280](https://github.com/microsoft/PowerToys/pull/41280), #47119,
+  [#45420](https://github.com/microsoft/PowerToys/pull/45420),
+  [#44304](https://github.com/microsoft/PowerToys/pull/44304), #42642 except shared events, and
+  #44795.
+- Omit pure nitpick review comments such as trailing whitespace on #44588.
+- Omit non-English, duplicate, or triage-only reports without actionable detail, except where a
+  duplicate is relevant to chronology.
+
+## Caveats
+
+- Issue-body evidence establishes reported symptoms, not a root cause or current status.
+- Source-grounded findings were precise when distilled but may move or be fixed; verify the current
+  tree and issue state.
+- `SystemUsesLightTheme` and `AppsUseLightTheme` are separate axes, so mixed themes can be
+  configuration rather than a defect.

@@ -61,6 +61,11 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 [references/regression-catalog.md](./references/regression-catalog.md).
 
 ### OCR language pack not installed (offline / standalone)
+- **Known current violation:** current `ImageMethods.ExtractText` and
+  `OcrExtensions.GetOcrResultFromImageAsync` assign `OcrEngine.TryCreateFromLanguage(...)` to a
+  non-null variable and immediately call `RecognizeAsync`. Both paths can throw
+  `NullReferenceException` when Windows cannot create an engine for the selected language. Treat
+  this as an existing defect to detect or fix, not as a guard the module already implements.
 - **Symptom:** "No possible OCR languages are installed" message box, or empty result; happens on
   fresh/offline machines and non-English SKUs.
 - **Where:** `ImageMethods.GetOCRLanguage` / `ExtractText`; `OcrEngine.AvailableRecognizerLanguages`,
@@ -69,8 +74,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   ([`Windows.Media.Ocr`](https://learn.microsoft.com/en-us/uwp/api/windows.media.ocr.ocrengine)) —
   PowerToys ships none. No pack → `AvailableRecognizerLanguages` is empty and `TryCreateFromLanguage`
   can return `null`.
-- **Guardrail:** never assume a language is installed; null-check `TryCreateFromLanguage`, handle the
-  empty-list case without crashing, and surface an actionable "install a language pack" hint. Evidence:
+- **Guardrail:** never assume a language is installed; null-check `TryCreateFromLanguage` in both
+  OCR paths, handle the empty-list case without crashing, and surface an actionable "install a
+  language pack" hint. Evidence:
   issues [#46030](https://github.com/microsoft/PowerToys/issues/46030),
   [#41969](https://github.com/microsoft/PowerToys/issues/41969).
 
@@ -134,7 +140,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#42784](https://github.com/microsoft/PowerToys/issues/42784),
   [#44069](https://github.com/microsoft/PowerToys/issues/44069).
 
-### Small-region OCR preprocessing (PadImage) + GDI+ bitmap disposal ordering
+### Small-region OCR preprocessing (`PadImage`) and bitmap ownership
 - **Symptom:** OCR of a very small selection (a single short word / tiny region) returns nothing or is
   unreliable; and/or intermittent GDI+ `ArgumentException`/`ExternalException` in the image path.
 - **Where:** `ImageMethods.PadImage` (`internal static bool PadImage(Bitmap image,
@@ -146,20 +152,27 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   offset (8,8). [PR #44906](https://github.com/microsoft/PowerToys/pull/44906) refactored it from
   *always returning a new Bitmap* to a **bool + `out` + `[NotNullWhen(true)]`** contract (a `TryPad`
   shape): it returns `false` (and `paddedBitmap = null`) when the image is already big enough, so no
-  bitmap is allocated. Callers only replace **and dispose** the original when `PadImage` returns
-  `true` — fixing the dispose-ordering leak where a `Graphics` created from a `Bitmap` was disposed
-  after its backing bitmap.
+  bitmap is allocated. The PR establishes this padding/allocation contract; it does **not** establish
+  correct `Graphics`/`Bitmap` disposal ordering.
+- **Known current violation:** `GetRegionAsBitmap` can dispose `bmp` while a `Graphics` created from
+  it remains in scope. Treat strict Graphics-before-Bitmap lifetime as an existing defect, not as a
+  fix attributed to PR #44906.
 - **Guardrail:** preserve the `bool`/`out`/`[NotNullWhen(true)]` contract — treat `PadImage` like
   `TryPad`; the caller disposes the original bitmap **only** when it returns `true` and swaps in the
-  padded one. Don't reintroduce an always-allocate return. Scope any `Graphics` strictly inside its
-  backing `Bitmap`'s lifetime. Evidence: [PR #44906](https://github.com/microsoft/PowerToys/pull/44906).
+  padded one. Don't reintroduce an always-allocate return. Independently ensure each `Graphics` ends
+  before its backing `Bitmap`; current source does not always satisfy that lifetime. Evidence for the
+  padding contract: [PR #44906](https://github.com/microsoft/PowerToys/pull/44906).
 
 ## Review Rules
 
 Enforce these when reviewing or authoring Text Extractor changes:
 
 - **Never assume an OCR language is installed.** Guard `OcrEngine.AvailableRecognizerLanguages`
-  (empty) and `OcrEngine.TryCreateFromLanguage` (null) — offline machines have no packs
+  (empty) and `OcrEngine.TryCreateFromLanguage` (null) in both `ImageMethods.ExtractText` and
+  `OcrExtensions.GetOcrResultFromImageAsync`. **Current source violates the second requirement**;
+  when a diff changes OCR-engine creation or null handling, reviewers should require both paths to
+  be safe rather than describing null handling as already present. Do not file the pre-existing
+  defect against an unrelated edit
   ([Windows.Media.Ocr](https://learn.microsoft.com/en-us/uwp/api/windows.media.ocr.ocrengine); #46030).
 - **Respect `OcrEngine.MaxImageDimension`.** Upscaling is gated to 1.5× only when the result stays
   under the cap (`ImageMethods.ExtractText`, `OcrExtensions.GetRegionsTextAsTableAsync`); don't remove the gate.
@@ -175,8 +188,8 @@ Enforce these when reviewing or authoring Text Extractor changes:
   `string.Join` words.
 - **Honor the GPO gate in both entry points.** `GetConfiguredTextExtractorEnabledValue() == Disabled`
   must exit in `App.xaml.cs`, and the module interface must respect enablement.
-- **Scope `Graphics` within its backing `Bitmap`.** Avoid dispose-ordering GDI+ faults
-  ([PR #44906](https://github.com/microsoft/PowerToys/pull/44906)).
+- **Scope `Graphics` within its backing `Bitmap`.** **Current `GetRegionAsBitmap` violates this
+  lifetime.** PR #44906 supports the padding contract, not the disposal-order claim.
 - **No bare relative paths in project files.** Use `$(RepoRoot)`, not `..\..\..\`
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 - **Mind the name split.** Directory/namespace/class are `PowerOCR`; settings folder, logs, and

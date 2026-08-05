@@ -45,4 +45,5 @@ maps to the Regression Playbook / Review Rule it enforces.
 
 ## Plugin-specific data discovery (VSCodeWorkspaces, Program, Indexer, Folder)
 - [ ] External data paths resolved per app variant/version; UNC / long paths handled (#47505, #48922).
-- [ ] Windows Search / filesystem queries degrade gracefully when unavailable (#48449).
+- [ ] Windows Search / filesystem queries degrade gracefully when unavailable. Treat #48449 as
+      ambiguous cross-product evidence until reproduced in PowerToys Run.

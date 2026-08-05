@@ -8,7 +8,7 @@ confirm in source**, not ground truth (a thin map row can anchor you onto a wron
 | Space opens Peek while renaming a file/folder in Explorer | `FileExplorerHelper.CaretVisible`; `dllmain.cpp` Space-mode `on_hotkey` | Suppress when focused class contains `Edit`/`Input`. #45133, #45137, #45383, #45642, #45667 |
 | Space in Explorer search box triggers Peek | `FileExplorerHelper.CaretVisible` | Search box is also an Edit/Input control. #45886 |
 | Space interrupts Chinese/Japanese IME candidate selection | `FileExplorerHelper.CaretVisible`; activation path | IME composition ≠ Edit focus signal. #45346, #48189 |
-| Regresses after toggling the Space switch off then on | `dllmain.cpp` `m_enableSpaceToActivate` / hotkey revert logic (lines ~140-190) | State restore of previous combo / bare-space. #49013 |
+| Regresses after disabling and re-enabling Peek | module `enable`/`disable`, hook installation, and `FileExplorerHelper.CaretVisible` eligibility | Correlation only; investigate lifecycle and focus eligibility without assuming hotkey-state restoration. #49013 |
 | Ctrl+W / Esc / arrows stop working after clicking into preview | `MainWindow.xaml(.cs)` `KeyboardAccelerator`s; hosted WebView2/shell preview focus | XAML accelerators bypassed by hosted content. #48274, PR #48293 |
 | Preview-handler file leaks / stays locked / host process lingers / crash on close | `ShellPreviewHandlerPreviewer.cs` `LoadPreviewAsync`/`Clear`/`ReleaseHandlerFactories` | RCW/`LockServer` lifecycle; `TryRemove` drain. PR #48564 |
 | Peek crashes on close (fail-fast) | `MainWindow.xaml.cs` `AppWindow_Closing`, `TryRunUninitializeStep` | WinRT callback throw → CsWinRT fail-fast. PR #48564 |

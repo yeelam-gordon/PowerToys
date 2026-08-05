@@ -5,15 +5,15 @@ issue titles; the Module Map is a hypothesis, not ground truth).
 
 | Symptom | Start here | Notes / evidence |
 |---|---|---|
-| Theme reverts to light/scheduled after reboot or PT update | `LightSwitchStateManager.cpp::SyncInitialThemeState` → `EvaluateAndApplyIfNeeded` | Startup must re-apply. #45291/PR#45304; open #47566, #46159, #44619 |
-| Schedule runs in reverse / wrong at midnight | `LightSwitchUtils.h::ShouldBeLight`; boundary math in `EvaluateAndApplyIfNeeded` | Check both cases + `[0,1439]` normalize. #45723, #45860 |
-| Wrong/never switching times at high latitude | `ThemeScheduler.cpp::CalculateSunriseSunset` (`cosH` polar `-1`) | #46954 |
-| Sun times drift / L normalization wrong | `ThemeScheduler.cpp` (`L`/`RA` single-pass ±360) | Use `fmod`. #46957 |
+| Theme reverts to light/scheduled after reboot or PT update | `LightSwitchStateManager.cpp::SyncInitialThemeState` → `EvaluateAndApplyIfNeeded` | Startup must re-apply. #45291/PR#45304; #47566 open; #46159/#44619 closed completed |
+| Schedule runs in reverse / wrong at midnight | `LightSwitchUtils.h::ShouldBeLight`; boundary math in `EvaluateAndApplyIfNeeded` | Check both cases + `[0,1439]` normalize. #45723 |
+| Wrong/never switching times at high latitude | `ThemeScheduler.cpp::CalculateSunriseSunset` (`cosH` polar `-1`) | Known current violation: callers feed the sentinel to `toLocal`. #46954 |
 | Sun mode unusable at (0,0) | `LightSwitchStateManager.cpp::CoordinatesAreValid` | Don't reject real (0,0). #46955 |
 | Only system OR only apps theme changes | `LightSwitchService.cpp::ApplyTheme`; `changeSystem`/`changeApps` | Independent toggles. #48257, #48082, #48692 |
 | PowerDisplay profile applied every other hotkey press | `LightSwitchStateManager.cpp::OnManualOverride` → `NotifyPowerDisplay` | Notify on every press. PR#47190 |
-| PowerDisplay applies wrong profile (race) | `NotifyPowerDisplay`; `LIGHT_SWITCH_*_THEME_EVENT` | Direction-specific events. PR#47190; #48774 |
-| Profile setting change has no live effect | `LightSwitchSettings.cpp::LoadSettings` vs `SettingsConstants.h SettingId` | Missing SettingId/NotifyObservers. #46956 |
+| PowerDisplay profile does not switch after wake | wake/resume evaluation, current theme state, and `NotifyPowerDisplay` path | Manual switching works in #48774; reproduce the resume-trigger path rather than assuming a registry race. |
+| Profile setting change has no live effect | settings watcher → `LightSwitchSettings::LoadSettings` → service settings-event handler → `LightSwitchStateManager::OnSettingsChanged` | Reproduce the full reload path; missing `SettingId` is not established as the cause. #46956 |
+| Detect location spins or never completes | `LightSwitchPage.xaml.cs::GetGeoLocation_Click`, `GeoLocationTimeout` | #45860 / PR #45887 timeout and availability fix |
 | LightSwitch doesn't run in background | `dllmain.cpp::enable` (`CreateProcessW`, `SearchPathW`); GPO gate | Service launch/locate failure. #45434 |
 | Theme switched unexpectedly on install | default `ScheduleMode`/`changeSystem`/`changeApps`; settings.json | Default-on behavior. #48537, #44619, #45781, #45562 |
 | Manual override doesn't stick / clears too soon | `EvaluateAndApplyIfNeeded` override branch (boundary crossing, midnight wrap) | #47566 |

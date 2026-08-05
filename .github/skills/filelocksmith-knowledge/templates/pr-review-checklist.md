@@ -18,12 +18,14 @@ the diff actually touches.
 - [ ] Matching done in kernel-name space (`path_to_kernel_name`), not raw Win32 paths.
 
 ## UI (`FileLocksmithUI/`)
-- [ ] `PidToIconConverter` guards `Icon.ExtractAssociatedIcon` with `try/catch` + placeholder + `File.Exists` fast-path (#48693).
+- [ ] `PidToIconConverter` guards `Icon.ExtractAssociatedIcon` with `try/catch` + placeholder
+      (#48693); note that the suggested `File.Exists` fast path is not implemented.
 - [ ] `EndTask` / `WatchProcess` handle "process already gone" without throwing to the UI.
 - [ ] Startup keeps the GPO gate and (when elevated) `SetDebugPrivilege`.
 
 ## Context menu / registration (`FileLocksmithExt/`, `FileLocksmithContextMenu/`)
-- [ ] Win11 sparse-MSIX and Win10 classic registration stay mutually exclusive (no double entry — #44394).
+- [ ] Windows 11 sparse-package plus classic registration management and the older-system classic
+      path remain consistently gated and do not create duplicate visible entries (#44394).
 - [ ] Both handlers gate identically on `GetEnabled()` and `GetShowInExtendedContextMenu()`.
 - [ ] `CreateProcessW` / `ShellExecuteExW` / `RunNonElevatedEx` return values are checked (#46950).
 

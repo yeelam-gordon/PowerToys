@@ -1,108 +1,78 @@
-# Shortcut Guide — Regression Catalog & Conventions
+# Shortcut Guide Evidence and Decision Ledger
 
-Fuller, progressively-disclosed companion to `SKILL.md`. Everything here is grounded in the
-module source, the manifest spec, or the mined PR/issue history. Root:
-`src/modules/ShortcutGuide/`.
+[Return to actionable playbooks](../SKILL.md).
 
-## Architecture at a glance (v0.100 rewrite)
+This file is the historical evidence store behind `SKILL.md`.
 
-Shortcut Guide was rewritten from the legacy Win-key-hold overlay into a **WinGet-manifest
-interpreter**:
+**Role split:** `SKILL.md` owns the current engineering and manifest-authoring playbooks, review
+rules, and actionable guardrails. This ledger retains provenance: source locations, issue/PR
+evidence, chronology, maintainer decisions, unresolved clusters, and evidence caveats. Do not
+duplicate the playbook mechanics here; confirm observations against `src/modules/ShortcutGuide/`
+and the current manifest specification before acting.
 
-- **C++ module interface** (`ShortcutGuideModuleInterface/dllmain.cpp`) owns the hotkey
-  (default **Win+Shift+/**, `VK_OEM_2`), the GPO gate, and the process lifecycle. `OnHotkeyEx`
-  **toggles** the UI process; `disable`/`destroy` terminate it.
-- **WinUI 3 C# app** (`ShortcutGuide.Ui`, `PowerToys.ShortcutGuide.exe`) is launched via
-  `ShellExecute` with args `<powertoys_pid> [telemetry]`. It is single-instance
-  (`AppInstance.FindOrRegisterForKey`) and force-exits with `Environment.Exit(0)`.
-- **Manifests** live per-user at `%LocalAppData%\Microsoft\WinGet\KeyboardShortcuts`. On each
-  launch the app copies bundled `Assets/ShortcutGuide/Manifests/*.yml` there, runs
-  `IndexYmlGenerator.exe` to (re)build `index.yml`, then `PowerToysShortcutsPopulator.Populate`
-  injects enabled PowerToys modules' current hotkeys into `Microsoft.PowerToys.en-US.yml`.
-- **Matching:** `ManifestInterpreter.GetAllCurrentApplicationIds` resolves the foreground
-  window's process module name and running background processes against each manifest's
-  `WindowFilter` (exact `.exe` or `*`), producing the side-nav list.
+## Evidence ledger
 
-## Regression catalog
+| ID | Evidence / observation | Source location | History / provenance | Caveat |
+|---|---|---|---|---|
+| SG-E01 | The v0.100 architecture replaced the Win-key-hold overlay with a C++ hotkey/process module plus a single-instance WinUI 3 manifest interpreter. The default hotkey is Win+Shift+/; activation toggles the UI process. | `ShortcutGuideModuleInterface/dllmain.cpp`; `ShortcutGuide.Ui/Program.cs` | Source verification of the v0.100 rewrite | Legacy hold-timing constants remain but are not the current activation path. |
+| SG-E02 | Each launch copies bundled manifests to `%LocalAppData%\Microsoft\WinGet\KeyboardShortcuts`, invokes `IndexYmlGenerator.exe`, and injects enabled PowerToys hotkeys into the marked region of `Microsoft.PowerToys.en-US.yml`. | `Program.cs` · `CopyAndIndexGenerationThread`; `PowerToysShortcutsPopulator.Populate` | Source verification | Launch-path work and external index generation are relevant to latency and empty-index failures. |
+| SG-E03 | Application matching compares the foreground process and eligible background processes with manifest `WindowFilter`; index entries are grouped by `(WindowFilter, BackgroundProcess)`. | `ManifestInterpreter.GetAllCurrentApplicationIds`; `ShortcutGuide.IndexYmlGenerator/IndexYmlGenerator.cs` | Source verification | Process access can fail and is intentionally caught. |
+| SG-E04 | Section navigation could enter a reentrant activation/positioning path in which `App.TaskBarWindow.AppWindow` was null and an exception propagated into initialization, closing the overlay. | `ShortcutGuideXAML/MainWindow.xaml.cs` · `WindowSelector_SelectionChanged`, `Window_Activated`, `SetWindowPosition`, `InitializeNavItemsAsync` | Reports [#48441](https://github.com/microsoft/PowerToys/issues/48441), [#48448](https://github.com/microsoft/PowerToys/issues/48448), [#48522](https://github.com/microsoft/PowerToys/issues/48522) → fix [PR #48481](https://github.com/microsoft/PowerToys/pull/48481) | Do not assume every empty-close report shares this cause. |
+| SG-E05 | `ResourceLoader.GetString` can return an empty string without throwing; an empty native title on the custom-title-bar window was associated with deferred WinUI failure. | `ShortcutGuideXAML/MainWindow` title assignment; WinUI title-bar path | Current-source verification and fix [PR #49069](https://github.com/microsoft/PowerToys/pull/49069) | The generalized WinUI class-of-bug conclusion comes from source/fix analysis; no cited issue is used as direct attribution. |
+| SG-E06 | Bare numeric YAML keys are interpreted as virtual-key codes; literal digits use `<N>` and are rendered without brackets. | `ShortcutDescriptionToKeysConverter.cs`; `Controls/KeyVisual.xaml.cs`; manifest schema | Convention surfaced in #48461 → data sweep [PR #48757](https://github.com/microsoft/PowerToys/pull/48757), changing 91 keys across 14 manifests | The schema is authoritative; PowerToys rendering behavior should still be checked when token handling changes. |
+| SG-E07 | Maintainer review repeatedly required spec tokens for special keys, rejected modifier-only shortcuts, required `+` on both filename and `PackageName` when no WinGet package exists, and required PR section counts to match the manifest. | Bundled manifests; `doc/specs/WinGet Manifest Keyboard Shortcuts schema.md` | Review push-back on PRs [#48652](https://github.com/microsoft/PowerToys/pull/48652), [#48821](https://github.com/microsoft/PowerToys/pull/48821), [#48959](https://github.com/microsoft/PowerToys/pull/48959), [#48960](https://github.com/microsoft/PowerToys/pull/48960) | These are review decisions, not merely parser capabilities. |
+| SG-E08 | PowerToys bundles `<PackageId>.<locale>.yml`, while the specification's canonical extension is `.KBSC.yaml`; names without a WinGet package use a leading `+`, and `+WindowsNT*` is reserved for OS/shell manifests. | Bundled `Assets/ShortcutGuide/Manifests`; manifest schema | Source/spec comparison | Do not normalize one convention into the other without checking the ingestion path. |
+| SG-E09 | Manifest keys support exact executable names or `*`; special section names such as `<TASKBAR1-9>` drive interpreter-specific displays; `index.yml` uses `+WindowsNT.Shell` as the default shell. | Manifest schema; `ManifestInterpreter`; `IndexYmlGenerator.cs`; taskbar window code | Source/spec verification | Interpreters that do not understand a special section may omit it. |
+| SG-E10 | Manifest records include `PackageName`, `WindowFilter`, optional `BackgroundProcess`, and `Shortcuts` containing `SectionName` plus properties such as `Name`, optional descriptive fields, recommendation state, and one or more shortcut chords. `Name` and `SectionName` use sentence case; a label such as `1 - 8` is free-form text rather than a key token. | `doc/specs/WinGet Manifest Keyboard Shortcuts schema.md`; bundled manifests | Source/spec verification | Field availability and canonical spelling follow the current schema; re-check it before adding data. |
+| SG-E11 | Win+Q and Win+S had duplicate “Open search” labels; Copilot+ hardware changes Win+Q semantics to Click to Do. | `+WindowsNT.Shell.en-US.yml` | Issue [#48427](https://github.com/microsoft/PowerToys/issues/48427) → fix [PR #48439](https://github.com/microsoft/PowerToys/pull/48439) | Static OS shortcut text can vary by SKU, hardware, or release. |
+| SG-E12 | The resx-to-rc build step failed when PowerShell profile/module-autoload warnings reached stderr and when unquoted `$(MSBuildThisFileDirectory)` contained spaces. | `ShortcutGuideModuleInterface.vcxproj` and repo-wide conversion invocation | Issue [#46618](https://github.com/microsoft/PowerToys/issues/46618) → fix [PR #46729](https://github.com/microsoft/PowerToys/pull/46729) | This was a repo-wide build reliability change retained because it touched the module interface. |
+| SG-E13 | The UI process force-exits, GPO is checked in both native and managed entry paths, index caching uses `index.yml` last-write time, and dynamic PowerToys content is bounded by populate markers. | `Program.cs`; `dllmain.cpp`; `ManifestInterpreter.GetCachedIndexYamlFile`; `PowerToysShortcutsPopulator` | Source verification | These are current architecture decisions and may change only with coordinated lifecycle/cache work. |
+| SG-E14 | Key conversion has focused unit coverage for VK codes and `<N>`/special tokens. | `ShortcutGuide.UnitTests/ConvertersTests/ShortcutDescriptionToKeysConverterTests.cs` | Source verification | Coverage is focused on conversion and does not validate every manifest or overlay behavior. |
+| SG-E15 | `CopyAndIndexGenerationThread` logs a bundled-manifest copy exception but continues into index generation, so mixed old/new files can feed a stale or partial index. The generator deletes the existing `index.yml` before parsing, so malformed input can leave no prior index to reuse. | `ShortcutGuide.Ui/Program.cs`; `ShortcutGuide.IndexYmlGenerator/IndexYmlGenerator.cs`; `ManifestInterpreter.GetCachedIndexYamlFile` | Known current-source violation | Require atomic replacement or preservation/restoration of the previous valid index; do not attribute unrelated navigation/positioning reports to manifest corruption. |
 
-### R1 — Overlay crash on section navigation (#48448, #48441, #48522, #49131 → PR #48481)
-Root cause: reentrant `Activate → Window_Activated → BringToFront` left
-`App.TaskBarWindow.AppWindow` null; `SetWindowPosition` threw; the exception propagated into the
-async init catch which closes the window as "InitializationFailed". Fix: null-guard the taskbar
-window, and wrap selection + positioning in logging try/catch so exceptions never tear down the
-overlay. Crash logs also showed a follow-up coreclr access violation from escaping exceptions —
-hence the broader hardening.
+## Decision ledger
 
-### R2 — Empty-title startup fault (#49131 empty-then-close, launch crashes #48170/#48638 → PR #49069)
-`ResourceLoader.GetString` returns `""` (does not throw) when the resource map can't be resolved.
-A WinUI `TitleBar` (with `ExtendsContentIntoTitleBar`) reads `AppWindow.Title` during a deferred
-layout pass and faults on empty. Fix: guard with a non-empty literal fallback. This is a **class**
-of bug across PowerToys WinUI windows, not SG-only.
+| ID | Decision / review outcome | Basis | Status |
+|---|---|---|---|
+| SG-D01 | Null taskbar-window state and positioning exceptions must not tear down overlay navigation. | #48441/#48448/#48522 → PR #48481 | Accepted and implemented |
+| SG-D02 | Native custom-title-bar windows require a non-empty fallback title. | Current source and PR #49069 | Accepted and implemented |
+| SG-D03 | Literal digits use `<N>`; special keys use schema tokens; modifier-only entries are rejected. | #48461 → PR #48757; PR reviews #48652/#48821/#48959/#48960 | Maintainer authoring decision |
+| SG-D04 | No-WinGet-package manifests prefix both filename and `PackageName` with `+`; `+WindowsNT` remains OS-reserved. | Manifest schema and PR reviews #48821/#48959 | Maintainer authoring decision |
+| SG-D05 | Conditional or hardware-dependent shell shortcuts need disambiguating text rather than duplicate static labels. | #48427 → PR #48439 | Accepted content decision |
+| SG-D06 | Resource conversion invokes PowerShell without profiles, avoids module autoload, and quotes path arguments. | #46618 → PR #46729 | Accepted build decision |
+| SG-D07 | Keep toggle activation, single-instance UI, forced process exit, and the two GPO gates coherent. | Native/managed lifecycle source | Current architecture decision |
+| SG-D08 | Treat the populate-marker region as generated content, not hand-authored manifest data. | `PowerToysShortcutsPopulator.Populate` | Established review decision |
 
-### R3 — Literal digit keys mis-rendered (#48461 convention → PR #48757)
-A bare number in `Keys:` is a virtual-key code (VK `9`=Tab, `1`=left mouse button, `0`=undefined).
-Literal digits must be the `<N>` token; the renderer (`KeyVisual`) strips brackets. PR #48757 was
-a data-only sweep of 91 keys across 14 manifests.
+## Evidence clusters (lifecycle noted)
 
-### R4 — Manifest token authoring (review push-back #48821, #48959, #48960, #48652)
-Recurring maintainer corrections on community manifest PRs:
-- No WinGet package → prefix filename **and** `PackageName` with `+`.
-- Use spec `<...>` tokens for special keys (`<Delete>`, `<Tab>`, `<Space>`, `<Insert>`,
-  `<Escape>`, `<PageUp>`, `<PageDown>`); `Back`/bare `Delete`/bare digits are wrong.
-- A modifier alone (e.g. `Shift` with `Keys: [Shift]`) is not a usable shortcut.
-- Keep PR description section counts in sync with the manifest.
+- **Resolved overlay-rewrite cluster:** startup latency [#49200](https://github.com/microsoft/PowerToys/issues/49200),
+  Windows 10 crash [#48773](https://github.com/microsoft/PowerToys/issues/48773), and moved-taskbar
+  behavior [#48435](https://github.com/microsoft/PowerToys/issues/48435) were closed completed by
+  [PR #48683](https://github.com/microsoft/PowerToys/pull/48683) on July 27, 2026.
+- **Settings crash:** [#49173](https://github.com/microsoft/PowerToys/issues/49173) remains distinct
+  from the #48481, #49069, and #48683 paths until reproduced.
+- **Ambiguous empty-close report:** [#49131](https://github.com/microsoft/PowerToys/issues/49131)
+  was closed as a duplicate of #48773 without diagnostic evidence tying it to either #48481 or
+  #49069. Keep it unresolved rather than using it as fix attribution.
+- **Home-screen labels and conflicts:** [#49311](https://github.com/microsoft/PowerToys/issues/49311),
+  [#44830](https://github.com/microsoft/PowerToys/issues/44830), and
+  [#44141](https://github.com/microsoft/PowerToys/issues/44141) form an unresolved ambiguity/conflict
+  cluster around the “Shortcuts” widget.
+- **Hard-coded Windows shortcut remaps:** [#47950](https://github.com/microsoft/PowerToys/issues/47950)
+  records the inability to display some remaps such as Win+C.
+- **Taskbar geometry:** [#48435](https://github.com/microsoft/PowerToys/issues/48435) records moved
+  or vertical taskbar behavior and was closed completed by PR #48683.
 
-### R5 — Shell label drift on Copilot+ PCs (#48427 → PR #48439)
-Win+Q and Win+S both read "Open search"; Win+Q is Click to Do on Copilot+ PCs. Fix in
-`+WindowsNT.Shell.en-US.yml` with a clarifying description.
+## Evidence caveats
 
-### R6 — resx→rc PowerShell build reliability (#46618 → PR #46729)
-`Exec` invoking `convert-resx-to-rc.ps1` failed because PowerShell profile/module-autoload
-warnings hit stderr (treated as errors) and unquoted `$(MSBuildThisFileDirectory)` split on
-spaces. Fix: `-NoProfile -NonInteractive`, disable module autoload, quote path args. Touches
-`ShortcutGuideModuleInterface.vcxproj` among many.
-
-## Open / recurring themes (not yet fixed at capture time)
-
-- Startup latency — "Showing shortcut-guide takes too long" (#49200): manifest copy + external
-  index generation + process enumeration are on the launch path.
-- Crash opening Settings from the overlay (#49173); crashes on Windows 10 (#48773).
-- Home-screen "Shortcuts" widget label ambiguity / spurious conflicts (#49311, #44830, #44141).
-- Can't display remaps for "hard-coded" Windows shortcuts like Win+C (#47950).
-- Overlay behavior with a moved/vertical taskbar (#48435).
-
-## Manifest authoring conventions (from `doc/specs/WinGet Manifest Keyboard Shortcuts schema.md`)
-
-- **Save location:** `%LocalAppData%/Microsoft/WinGet/KeyboardShortcuts` (per-user).
-- **Filename:** `<PackageId>.<locale>.yml` in this repo's bundled assets (spec's canonical
-  extension is `.KBSC.yaml`; PowerToys ships `.<locale>.yml`). No WinGet package → leading `+`.
-  `+WindowsNT*` reserved for the OS/shell.
-- **Fields:** `PackageName`, `WindowFilter` (exact exe or `*`), `BackgroundProcess` (default
-  false), `Shortcuts` → `SectionName` + `Properties` → `Name`, optional `Description`,
-  `AdditionalInfo`, `Recommended`, and `Shortcut` (array; supports sequential chords) with
-  `Win`/`Ctrl`/`Shift`/`Alt` + `Keys`.
-- **Keys:** bare number = virtual-key code; literal digit = `<N>`; special keys = `<...>` tokens;
-  quote bracketed tokens for consistency (`"<Enter>"`). A range like `1 - 8` is a free-form label,
-  not a key.
-- **Special sections:** section names in `<...>` (e.g. `<TASKBAR1-9>`) are special displays;
-  interpreters that don't understand a special section omit it.
-- **Casing:** sentence case for `Name`/`SectionName`.
-- **index.yml:** generated locally (`IndexYmlGenerator`), groups manifests by `(WindowFilter,
-  BackgroundProcess)`, `DefaultShellName = "+WindowsNT.Shell"`.
-
-## Key decisions / invariants
-
-- **Toggle activation**, single-instance UI, forced `Environment.Exit(0)` (dispatcher won't quit
-  cleanly).
-- **GPO checked in two places** (module interface + Program.cs).
-- **Index cache** keyed on `index.yml` last-write-time (`ManifestInterpreter.GetCachedIndexYamlFile`).
-- **PowerToys shortcuts are dynamic**, injected between `# <Populate start>`/`# <Populate end>`
-  from live settings — never hand-edit that region.
-- **Robust foreground detection**: `GetAllCurrentApplicationIds` swallows access-denied/exited
-  process exceptions; excluded windows short-circuit launch
-  (`IsCurrentWindowExcludedFromShortcutGuide`).
-
-## Tests
-
-- `ShortcutGuide.UnitTests/ConvertersTests/ShortcutDescriptionToKeysConverterTests.cs` — key
-  conversion (VK codes, `<N>`/special tokens, arrows). Add cases here when changing token handling.
+- [#48170](https://github.com/microsoft/PowerToys/issues/48170) concerns missing manifests, while
+  [#48638](https://github.com/microsoft/PowerToys/issues/48638) followed the overlay-rewrite
+  crash path resolved by PR #48683. Neither is direct evidence for PR #49069's title fallback.
+- The manifest schema is authoritative for authoring semantics; bundled `.yml` naming is a
+  PowerToys integration convention and intentionally differs from the canonical `.KBSC.yaml`
+  extension.
+- Several issue reports share “opens empty/closes/crashes” wording. Preserve chronology and avoid
+  collapsing them into one cause without logs or reproduction.
+- Source locations describe the inspected v0.100-era implementation and may move.
+- The ledger intentionally omits repeated symptom → root cause → guardrail instructions already
+  maintained in `SKILL.md`.

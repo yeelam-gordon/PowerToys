@@ -159,11 +159,13 @@ Enforce these when reviewing or authoring AlwaysOnTop changes:
   [`RegisterHotKey`](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey),
   `SetWindowPos`, `SetLayeredWindowAttributes`, `SetWindowLong` can fail and leave inconsistent
   state; log on failure. Evidence: [PR #44815 review](https://github.com/microsoft/PowerToys/pull/44815).
-- **Keep C++ and C# defaults in lockstep.** `Settings.h` (comment: *"kept in sync with
+- **Known current violation:** C++ and C# defaults currently diverge. Keep them in lockstep.
+  `Settings.h` (comment: *"kept in sync with
   AlwaysOnTopProperties.cs"*) and `AlwaysOnTopProperties.cs` must agree — the default frame color
   currently diverges (`#00ADEF` vs `#0099cc`). Evidence:
   [#46961](https://github.com/microsoft/PowerToys/issues/46961).
-- **Don't pass `string_view::data()` to APIs needing a null-terminated string.**
+- **Known current violation:** `HexToRGB` passes `std::wstring_view::data()` to an API requiring a
+  null-terminated string. Do not pass `std::wstring_view::data()` to such APIs.
   `HexToRGB` calls `std::stoll(hex.data())` on a
   [`std::wstring_view`](https://en.cppreference.com/w/cpp/string/basic_string_view/data) (not
   guaranteed null-terminated) — construct a `std::wstring` first. Evidence:

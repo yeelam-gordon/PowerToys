@@ -35,7 +35,10 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
 - [ ] GPO-disabled short-circuits in **both** the C++ module and `Program.cs`.
 - [ ] Single-instance guard (`AppInstance.FindOrRegisterForKey`) preserved.
 - [ ] Manifest copy + `IndexYmlGenerator.exe` + `PowerToysShortcutsPopulator` ordering intact on
-      the background thread; failures logged, not fatal to the whole launch.
+      the background thread; copy/start/non-zero-exit failures log the stage and abort that refresh
+      rather than indexing mixed old/new manifests.
+- [ ] Index generation preserves the previous valid `index.yml` until a complete replacement is
+      ready; current delete-before-parse behavior can leave no fallback after malformed input.
 - [ ] Hotkey toggle semantics preserved (`OnHotkeyEx` terminates a running instance).
 
 ## Always

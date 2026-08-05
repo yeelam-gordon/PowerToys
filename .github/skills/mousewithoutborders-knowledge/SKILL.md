@@ -45,7 +45,7 @@ below). Root: `src/modules/MouseWithoutBorders/`.
 | Key derivation from shared secret | `Encryption.cs` `GenLegalKey` = `Rfc2898DeriveBytes.Pbkdf2(MyKey, salt, KeyDerivationIterations=50000, SHA512, DerivedKeyLength=32)` |
 | **Per-connection random salt + IV** (cleartext header) | `Encryption.cs` `GetEncryptedStream`/`GetDecryptedStream` build a `SaltSize(16)+SymAlBlockSize(16)` header via `RandomNumberGenerator.Fill`, exchanged by `ExchangeEncryptionHeader` |
 | Tolerant header exchange (expected disconnect handling) | `Encryption.cs` `ExchangeEncryptionHeader` (swallows `EndOfStream`/`SocketException`/`ObjectDisposedException`) |
-| Shared-key packet auth token | `Encryption.cs` `Get24BitHash` → `Encryption.MagicNumber` (SHA512 iterated 50000×), checked in `SocketStuff.ProcessReceivedDataEx` |
+| Shared-key packet auth token | `Encryption.cs` `Get24BitHash` → `Encryption.MagicNumber` (four hash bytes; one initial SHA-512 plus 50,000 rehash rounds), with the upper 16 bits checked on the wire in `SocketStuff.ProcessReceivedDataEx` |
 | Key generation / validation / display | `Encryption.cs` `CreateRandomKey` (16 chars), `IsKeyValid` (≥16 chars), `KeyDisplayedText` |
 | Regression guard tests | `MouseWithoutBorders.UnitTests/Core/EncryptionTests.cs` |
 
@@ -130,13 +130,14 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
   symmetric, and update `GetEncryptedStream`/`GetDecryptedStream` (and any handshake) together. Do not
   ship a change that only one side understands.
 
-### Packet auth relies on a 24-bit key hash (MagicNumber) — SECURITY
+### Packet auth checks only the upper 16 bits of MagicNumber — SECURITY
 - **Symptom:** packets from a wrong-key/hostile peer must be rejected; a weak or mismatched token
   causes silent accept or total connection failure.
 - **Where:** `Encryption.cs` `Get24BitHash`/`MagicNumber`; validated in `SocketStuff.cs`
   `ProcessReceivedDataEx` (`magic != (MagicNumber & 0xFFFF0000)`).
-- **Root cause:** authentication is a **24-bit** hash of the shared key stamped into each packet — low
-  entropy by design; it gates routing, not confidentiality (confidentiality is the AES layer).
+- **Root cause:** despite the `Get24BitHash` name, the derived value incorporates four hash bytes;
+  packet framing transmits and validates only `MagicNumber & 0xFFFF0000`. The effective wire check
+  is therefore 16 bits and gates routing, not confidentiality (confidentiality is the AES layer).
 - **Guardrail:** don't weaken or bypass the MagicNumber check; keep it derived from `MyKey` and keep
   the shared-key requirement. Any change to key handling must update `MagicNumber` on both ends.
 
@@ -211,8 +212,9 @@ Enforce these when reviewing or authoring MWB changes:
 - **Any wire-format change is a breaking, all-machines-must-update change.** MWB has no version
   negotiation — sender and receiver must change together; call it out explicitly.
 - **Keep the shared-key model intact.** Key derivation = PBKDF2/SHA512, 50000 iterations, 32-byte
-  AES-256 key; `MagicNumber` = 24-bit hash of `MyKey`. Don't lower iteration count, key size, or hash
-  strength without security review. Prefer named constants (`KeyDerivationIterations`,
+  AES-256 key; `MagicNumber` is derived from four hash bytes, while packet validation uses its upper
+  16 bits. Don't lower iteration count, key size, or effective token strength without security
+  review. Prefer named constants (`KeyDerivationIterations`,
   `DerivedKeyLength`, `SaltSize`) over magic numbers ([PR #41280](https://github.com/microsoft/PowerToys/pull/41280) review).
 - **Never log or leak `MyKey`** (the shared secret) or the negotiated key material. Salt/IV are
   intentionally cleartext; the key never is.
@@ -239,8 +241,9 @@ Enforce these when reviewing or authoring MWB changes:
 - **Salt and IV are sent in the clear on purpose** — confidentiality depends only on the shared-key
   PBKDF2 derivation, not on the salt/IV being secret. Do not "harden" by hiding them; do keep them
   **random per connection**.
-- **`MagicNumber` is only a 24-bit routing/auth token**, not encryption. It's a SHA512 hash of `MyKey`
-  iterated 50000×; it gates which packets are accepted, while AES-CBC provides confidentiality.
+- **`MagicNumber` is only a routing/auth token**, not encryption. It is derived from `MyKey` after
+  one initial SHA-512 plus 50,000 rehash rounds, but current framing validates only its upper
+  16 bits; AES-CBC provides confidentiality.
 - **AES padding is `PaddingMode.Zeros`** (not PKCS7) with a 256-bit key / 128-bit block. Round-trip
   tests use lengths that are exact multiples of 16 to avoid trailing-zero ambiguity — remember this
   when writing new crypto tests.

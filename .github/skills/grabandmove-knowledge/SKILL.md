@@ -175,6 +175,30 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   window for target resolution, and don't suppress on Game Mode (fullscreen-notification false
   positives). Evidence: [PR #48999](https://github.com/microsoft/PowerToys/pull/48999).
 
+### Modifier-click leaks or becomes an unintended drag
+- **Symptom:** modifier + click activates/moves a window even though the pointer never crossed the
+  drag threshold; using left and right buttons together leaks an unmatched button-up to the target.
+- **Where:** `main.cpp::MouseProc` pending move/resize state and its calls to `HandleDragMove` /
+  `HandleDragResize`.
+- **Root cause:** committing on button-down loses the distinction between a click and a drag.
+  Overwriting one pending button state with the other also breaks the down/up pairing.
+- **Guardrail:** keep button-down pending until the system drag threshold is crossed. If no drag
+  starts, replay/passthrough the click as a matched pair. Never replace an existing pending
+  move/resize when the other mouse button is pressed. Evidence:
+  [PR #49121](https://github.com/microsoft/PowerToys/pull/49121) and its two-button review fix.
+
+### Hooks stop responding after sleep or hibernation
+- **Symptom:** GrabAndMove no longer moves windows after resume; toggling the module off/on restores
+  behavior.
+- **Where:** hook liveness around `main.cpp::wWinMain`, `KeyboardProc`, `MouseProc`, and
+  `WinEventProc`.
+- **Root cause:** unresolved. Report [#47699](https://github.com/microsoft/PowerToys/issues/47699)
+  establishes a resume-liveness failure but does not prove process teardown runs during sleep or
+  identify which hook/state becomes stale.
+- **Guardrail:** treat resume as a required lifecycle test. Before changing hook setup or foreground
+  reset logic, verify move/resize after sleep and hibernation and determine whether hooks need
+  re-registration or only state reset. Do not misattribute the report to shutdown cleanup.
+
 ### CppWinRT / MSVC toolset mismatch → `LNK2038` (breaks PowerToys CI)
 - **Symptom:** `LNK2038: mismatch detected for 'C++/WinRT version'` linking
   `PowerToys.GrabAndMove.exe`; whole CI leg blocked.
@@ -205,8 +229,18 @@ Enforce these when reviewing or authoring GrabAndMove changes:
   `Windows.UI.Core.CoreWindow` are shared; add exclusions in `IsSystemClass`/`IsExcluded` using the
   documented discovery recipe, not ad-hoc `WindowFromPoint` guesses.
 - **Keep move/resize maximized-restore anchoring consistent** and anchored to the live cursor `pt`.
+- **Preserve pending-click semantics.** Do not begin a drag on button-down or overwrite the pending
+  state when both mouse buttons are used; maintain matched down/up delivery (#49121).
 - **Resize only resizable windows.** Gate resize on `GetWindowLongW(hwnd, GWL_STYLE) & WS_THICKFRAME`;
   respect `MIN_WINDOW_WIDTH/HEIGHT`.
+- **Preserve and extend the existing target-window DPI path.** `PrepareOverlayMetrics` uses
+  `GetDpiForWindow(target)` and scales border thickness/corner radius by `dpi / 96.0f`. Mixed-DPI
+  geometry/text behavior remains an unresolved risk in
+  [#47771](https://github.com/microsoft/PowerToys/issues/47771); do not describe the issue as solved
+  merely because border/radius metrics are scaled.
+- **Keep acquisition and teardown paired in `wWinMain`.** New hooks, events, windows, or worker
+  threads need an explicit cleanup path during parent exit and shutdown. This is separate from the
+  unresolved sleep/hibernation liveness report.
 - **Include STL headers explicitly in `pch.h`.** `main.cpp` uses `std::atomic`; `pch.h` must
   `#include <atomic>` — don't rely on transitive includes (they break silently on toolset changes).
 - **Keep the C++/C# modifier mapping in sync** (`Alt=0`, `Win=1`). A maintainer intentionally kept the

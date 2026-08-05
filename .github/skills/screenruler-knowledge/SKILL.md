@@ -68,8 +68,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 issue tracker are terse — confirm each claim in source (done for the entries below).
 
 ### Pixel edge-detection off-by-one at row/column 0
-- **Symptom:** measured region is 1px short on the top/left; the pixel at row 0 or column 0 is never
-  treated as an edge.
+- **Known current violation:** the current loop excludes index 0 from comparison.
+- **Symptom:** a top/left boundary can be one pixel too wide. If pixel 0 differs while pixel 1
+  matches, the premature break returns 0 instead of the correct last-matching boundary at 1.
 - **Where:** `EdgeDetection.cpp::FindEdge` — start point is `std::clamp(center, 1, dim-2)` and the
   decrement branch breaks on `--x == 0` / `--y == 0` before testing pixel 0.
 - **Root cause:** the loop excludes index 0 from comparison; the outermost pixel is unreachable.
@@ -78,6 +79,7 @@ issue tracker are terse — confirm each claim in source (done for the entries b
   [#46947](https://github.com/microsoft/PowerToys/issues/46947).
 
 ### Total-mode tolerance truncated to 8 bits (`& 0xFF`)
+- **Known current violation:** the current total-mode path masks the 0–1020 SAD to 8 bits.
 - **Symptom:** with per-color-channel detection **off** (sum-of-channels mode), edge detection behaves
   erratically for large color jumps — a big BGRA difference can wrap and read as "close".
 - **Where:** `BGRATextureView.h::PixelsClose<false>` — `score = _mm_sad_epu8(...) & 0xFF` (masked by
@@ -90,6 +92,7 @@ issue tracker are terse — confirm each claim in source (done for the entries b
   [#46946](https://github.com/microsoft/PowerToys/issues/46946).
 
 ### Unit-conversion math (mm 100× wrong on the DPI-fallback path)
+- **Known current violation:** the current 96-DPI millimetre fallback uses the wrong conversion.
 - **Symptom:** millimetre readings are 100× too small (and historically cm was reported wrong) when a
   physical monitor size isn't available.
 - **Where:** `Measurement.cpp` anonymous `Convert` — the `px2mmRatio <= 0` fallback returns
@@ -106,10 +109,10 @@ issue tracker are terse — confirm each claim in source (done for the entries b
 - **Where:** `PowerToys.MeasureToolCore.cpp::StartMeasureTool` — the per-monitor loop does
   `if (!overlayUI) return;` (aborts **all** remaining monitors), whereas `StartBoundsTool` uses
   `continue`. Overlay creation is per-monitor in `OverlayUI.cpp::CreateInternal`.
-- **Root cause:** a single monitor's failed overlay/D2D init aborts the whole measure session;
-  per-monitor lifecycle isn't isolated.
-- **Guardrail:** treat each monitor independently — a failure on one must `continue`, not abort the
-  set; validate on heterogeneous DPI / mixed-refresh multi-monitor layouts. Evidence:
+- **Investigation hypothesis:** a failed overlay/D2D initialization could abort the remaining
+  monitor loop, but the cited reports do not prove a null overlay is their shared cause.
+- **Guardrail:** reproduce which setup branch fails before changing `return` to `continue`; validate
+  any change on heterogeneous DPI / mixed-refresh multi-monitor layouts. Evidence signals:
   [#39195](https://github.com/microsoft/PowerToys/issues/39195),
   [#33345](https://github.com/microsoft/PowerToys/issues/33345),
   [#32205](https://github.com/microsoft/PowerToys/issues/32205).
@@ -151,14 +154,16 @@ Enforce these when reviewing or authoring Screen Ruler changes:
 - **Keep unit conversion consistent across both branches.** In `Measurement::Convert`, the
   physical-ratio path and the 96-DPI fallback must agree (1 in = 25.4 mm = 2.54 cm); unit-test px/in/
   cm/mm (#46945).
-- **Isolate per-monitor failures.** Overlay/capture setup loops must not let one monitor's failure
-  abort the others — `continue`, don't `return` (#39195, #33345).
+- **Treat per-monitor setup-failure behavior as unresolved.** Current loops have differing
+  `return`/`continue` behavior, and #39195/#33345 do not establish null overlay creation as the
+  shared cause or `continue` as an accepted fix.
 - **cursorPosSystemSpace is atomic-only.** Keep it `alignas(8)` and access it via the interlocked
   path; do not read the `POINT` field-by-field across threads
   ([Interlocked alignment rules](https://learn.microsoft.com/en-us/windows/win32/sync/interlocked-variable-access)).
-- **Overlay teardown is all-or-nothing.** Setting `commonState.closeOnOtherMonitors = true` must
-  reliably end every monitor's UI loop and fire `sessionCompletedCallback` exactly once
-  (`OverlayUI.cpp::RunUILoop`); don't add early returns that skip the callback.
+- **Known completion-ownership risk:** setting `commonState.closeOnOtherMonitors = true` ends the
+  monitor UI loops, but each per-monitor overlay thread currently invokes
+  `sessionCompletedCallback()` and there is no once-guard. Do not describe completion as
+  single-owner until the callback contract is made explicit.
 - **Respect fixed text buffers.** `OverlayBoxText::buffer` is `wchar_t[128]` and `Measurement::Print`
   uses `swprintf_s` into a caller buffer — keep bounded formatting; don't overflow on long
   multi-unit strings.

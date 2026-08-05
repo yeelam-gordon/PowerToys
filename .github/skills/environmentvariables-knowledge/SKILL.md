@@ -69,11 +69,11 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   fails to resolve at runtime; an empty native window title faults the windowing layer and kills the
   process. Elevated launches are more exposed to resource-resolution differences.
 - **Guardrail:** never leave the native window `Title` empty — fall back to a non-empty product name
-  before `SetTitleBar`. Evidence: [PR #49069](https://github.com/microsoft/PowerToys/pull/49069);
+  before deferred TitleBar layout can consume it. Do not require a particular ordering relative to
+  `SetTitleBar`. Evidence: [PR #49069](https://github.com/microsoft/PowerToys/pull/49069);
   reports [#48971](https://github.com/microsoft/PowerToys/issues/48971),
-  [#48547](https://github.com/microsoft/PowerToys/issues/48547),
-  [#48519](https://github.com/microsoft/PowerToys/issues/48519),
-  [#41642](https://github.com/microsoft/PowerToys/issues/41642).
+  [#48547](https://github.com/microsoft/PowerToys/issues/48547). Reports #48519 and #41642 have
+  different causes and are not title-fallback evidence.
 
 ### System variables not editable / User vars can't be edited
 - **Symptom:** System variables are read-only; user reports being unable to edit.
@@ -81,7 +81,8 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Root cause:** editing `HKLM` requires elevation; a variable shown as "applied from profile" is
   intentionally locked. Both correctly disable editing but surface as "can't edit".
 - **Guardrail:** when changing edit-gating, preserve both conditions — elevation for System, and the
-  `IsAppliedFromProfile` lock. Evidence: [#45197](https://github.com/microsoft/PowerToys/issues/45197).
+  `IsAppliedFromProfile` lock. This rule is grounded in current source; issue #45197 concerns
+  elevated-launch user identity, not these edit conditions.
 
 ### Drag-and-drop reordering breaks under elevation
 - **Symptom:** variable/value rows can't be dragged, especially when running as admin.
@@ -94,6 +95,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#44631](https://github.com/microsoft/PowerToys/issues/44631).
 
 ### Profile apply/unapply corrupts or "nukes" a User variable (e.g. PATH)
+- **Known current violations:** `ProfileVariablesSet.Apply` can overwrite an existing backup, and
+  `UnapplyVariable` deletes the backup before restoration. The guardrail below is required behavior,
+  not a description of current implementation.
 - **Symptom:** enabling a profile that shadows an existing User var, then editing/disabling it, loses
   the original value (PATH wiped).
 - **Where:** `ProfileVariablesSet.cs::Apply`/`UnApply`/`UnapplyVariable`; `Variable.cs::Update`
@@ -148,9 +152,11 @@ Enforce these when reviewing or authoring Environment Variables changes:
   not the generic `SetVariable`, regardless of `ParentType`
   ([PR #48740](https://github.com/microsoft/PowerToys/pull/48740)).
 - **Gate System edits on elevation.** Any new edit/delete UI path must respect `Variable.IsEditable`
-  (System requires `ElevationHelper.IsElevated`); never write `HKLM` without elevation (#45197).
-- **Never overwrite an existing backup.** Backup only when `GetExisting(backupName) == null`; restore
-  then delete on unapply. Keep `GetBackupVariableName` format stable (renaming orphans backups).
+  (System requires `ElevationHelper.IsElevated`); never write `HKLM` without elevation. Do not cite
+  #45197 for this condition; it concerns which user account an elevated launch runs as.
+- **Never overwrite an existing backup; restore before deleting it.** **Current source violates both
+  requirements** in `ProfileVariablesSet.Apply` / `UnapplyVariable`. Keep
+  `GetBackupVariableName` format stable (renaming orphans backups).
 - **Keep the `WM_SETTINGCHANGE` self-ignore sentinel (`0x12345`) consistent** across
   `NotifyEnvironmentChange` and `MainWindow.WndProc`.
 - **Never leave the native window title empty.** WinUI TitleBar faults on an empty `AppWindow.Title`;

@@ -21,6 +21,8 @@ maps to a Regression Playbook / Review Rule in `SKILL.md`. All paths under `src/
 - [ ] Drag/resize only starts when `IsActivationModifierPressed()` and target passes `ResolveTargetWindow` + `IsExcluded`.
 - [ ] Resize gated on `WS_THICKFRAME`; `MIN_WINDOW_WIDTH/HEIGHT` respected.
 - [ ] Click swallow (`return 1`) balanced — no unmatched button-up reaching the target (two-button case).
+- [ ] Button-down remains pending until the system drag threshold is crossed; a non-drag replays or
+      passes through a matched click, and the second button cannot overwrite pending state. (PR #49121)
 - [ ] Move throttle (`THROTTLE_INTERVAL_MS`) preserved; final position flushed on button-up.
 
 ## Thread-safety (`WinEventProc`, `LoadSettingsFromFile`, `SettingsWatcherThread`)
@@ -29,6 +31,13 @@ maps to a Regression Playbook / Review Rule in `SKILL.md`. All paths under `src/
 - [ ] Excluded-apps list shared via `atomic<shared_ptr<const vector<wstring>>>` snapshot, not a mutable container.
 - [ ] `WinEventProc` resets both `g_heldNonAltKeyCount` and `g_keyHeld` on foreground change.
 - [ ] No new shared global written from >1 thread without atomics/marshalling.
+- [ ] New hooks/events/windows/worker threads have paired cleanup in `wWinMain`; acquisition and
+      teardown order is explicit.
+
+## Resume lifecycle
+- [ ] Move and resize are manually verified after both sleep and hibernation. Treat #47699 as an
+      unresolved liveness report; determine whether re-registration or state reset is needed rather
+      than assuming shutdown cleanup caused it.
 
 ## Window filtering (`ResolveTargetWindow`, `IsSystemClass`, `IsExcluded`)
 - [ ] New shell surface excluded by class **and** process path (not `WindowFromPoint` guessing).

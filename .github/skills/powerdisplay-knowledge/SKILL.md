@@ -151,6 +151,43 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#47951](https://github.com/microsoft/PowerToys/issues/47951); open dup case
   [#48977](https://github.com/microsoft/PowerToys/issues/48977).
 
+### Cancelled discovery is converted into an empty successful result
+- **Known current violation:** `SafeDiscoverAsync` catches `Exception`, which also catches
+  `OperationCanceledException`, and converts cancellation into an empty successful result. Treat
+  cancellation propagation as an existing defect when this path is touched.
+- **Symptom:** a cancellation request becomes an empty controller result instead of stopping.
+- **Where:** `MonitorManager.DiscoverMonitorsAsync` / `SafeDiscoverAsync`;
+  `MainViewModel.InitializeAsync` and `RefreshMonitorsAsync`.
+- **Root cause:** `SafeDiscoverAsync` catches every `Exception`, including
+  `OperationCanceledException`, and returns an empty collection. WMI and DDC discovery are awaited
+  sequentially and independently; there is no parallel all-or-nothing failure model.
+- **Guardrail:** keep ordinary controller failures isolated while rethrowing cancellation so the
+  existing lifetime token retains cancellation semantics. This does not create per-refresh
+  newest-wins behavior; no such generation guard exists. Verify directly in `SafeDiscoverAsync`;
+  it is unrelated to the
+  monitor-retention work in PR #47712.
+
+### Verify physical monitor handle ownership when changing map updates
+- **Classification:** source-derived review heuristic, not a proven current regression or complete
+  description of implemented safeguards.
+- **Risk:** handle count can grow after repeated rescans, or a VCP operation can fail if ownership
+  is duplicated or a still-used handle is destroyed.
+- **Where:** `PhysicalMonitorHandleManager.UpdateHandleMap`, `CleanupUnusedHandles`, and `Dispose`.
+- **Review heuristic:** trace every returned handle from discovery through map replacement and
+  disposal. Verify which handles are reused, newly adopted, rejected, and destroyed; do not assume
+  deduplication, zero-handle rejection, or idempotence unless current code/tests prove it.
+
+### Preserve implemented wake and hot-plug rescan safeguards
+- **Classification:** implemented invariant, not a demonstrated regression.
+- **Where:** `DisplayChangeWatcher.OnDeviceAdded`, `OnDeviceRemoved`,
+  `HandleDisplayStateChange`, and `NotifyAndSchedule`.
+- **Current behavior:** the watcher ignores events before initial enumeration and routes device/wake
+  signals through a cancelling debounce. These safeguards predate PR #47876; that PR added the
+  console-display-state wake rescan.
+- **Guardrail:** preserve pre-enumeration suppression and the existing debounce when changing wake
+  or hot-plug behavior. Do not describe this as a known duplicate-rescan defect or as a per-refresh
+  newest-wins generation guard.
+
 ### Power state was one-directional (couldn't wake a monitor)
 - **Symptom:** Power Display could sleep a monitor (Standby/Suspend/Off) but selecting **On** did
   nothing.
@@ -188,6 +225,16 @@ Enforce these when reviewing or authoring Power Display changes. Read the diff c
 - **Prefer the shared debounce (`SliderCommitScheduler.Schedule`) over per-feature timers.** Linked
   brightness duplicated debounce logic and was consolidated in review
   ([PR #48207](https://github.com/microsoft/PowerToys/pull/48207)).
+- **Discovery is partial-failure tolerant, but cancellation is currently swallowed.** Preserve
+  successful results from other controllers and rethrow `OperationCanceledException` to preserve
+  the existing lifetime token's semantics; do not claim per-refresh cancellation/newest-wins.
+- **Audit physical-monitor handle ownership when map logic changes.** Trace adoption, reuse, and
+  destruction against current code/tests rather than assuming safeguards are implemented.
+- **Coalesce display-change signals.** Ignore initial watcher enumeration and debounce wake/hot-plug
+  notifications before starting a refresh. These safeguards predate PR #47876; that PR added the
+  console-display-state wake signal.
+- **Identity migrations cover every side file.** Changes to `Monitor.Id` must update settings,
+  `profiles.json`, and `monitor_state.json`, not only the in-memory monitor list (#47977).
 - **Don't over-engineer seed/selection logic.** Maintainer pushed back on a complex initial-brightness
   planner; the accepted rule is "lowest Windows DISPLAY number, Id ordering as fallback"
   ([PR #48207](https://github.com/microsoft/PowerToys/pull/48207)).

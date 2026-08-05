@@ -90,9 +90,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#45383](https://github.com/microsoft/PowerToys/issues/45383),
   [#45642](https://github.com/microsoft/PowerToys/issues/45642),
   [#45667](https://github.com/microsoft/PowerToys/issues/45667),
-  [#45886](https://github.com/microsoft/PowerToys/issues/45886),
-  [#49013](https://github.com/microsoft/PowerToys/issues/49013) (regresses after toggling the Space
-  switch off/on); fix [PR #44995](https://github.com/microsoft/PowerToys/pull/44995).
+  [#45886](https://github.com/microsoft/PowerToys/issues/45886); fix
+  [PR #44995](https://github.com/microsoft/PowerToys/pull/44995). Disable/re-enable report #49013
+  remains a separate lifecycle/focus-eligibility investigation without an established cause.
 
 ### Space interrupts IME (Chinese/Japanese) candidate selection
 - **Symptom:** with the Space activation shortcut and an East-Asian IME, pressing Space to pick a
@@ -118,7 +118,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Guardrail:** restoring the shortcuts requires a mechanism above the XAML focus tree (e.g. a
   low-level keyboard hook while Peek is foreground) — and such a hook must follow repo hook
   conventions (see Review Rules). Evidence: issue
-  [#48274](https://github.com/microsoft/PowerToys/issues/48274); fix in progress
+  [#48274](https://github.com/microsoft/PowerToys/issues/48274); merged fix
   [PR #48293](https://github.com/microsoft/PowerToys/pull/48293).
 
 ### Preview-handler COM factory leak / fail-fast on teardown
@@ -200,7 +200,7 @@ Enforce these when reviewing or authoring Peek changes:
 - **Follow repo global-hook conventions if you add a low-level keyboard hook.** Pass a real module
   handle to `SetWindowsHookEx` (not `IntPtr.Zero`) and validate the return; log
   `Marshal.GetLastWin32Error()` on failure; make handler subscriptions idempotent (remove before add);
-  fast-path filter the `vkCode` before marshalling `KBDLLHOOKSTRUCT`; include the **Win** key as a
+  marshal `KBDLLHOOKSTRUCT`, then filter `vkCode` as current source does; include the **Win** key as a
   modifier so Win+Arrow snapping is not swallowed; only consume a key when `DispatcherQueue.TryEnqueue`
   succeeds — mirror `cmdpal`/`ColorPicker` hook patterns
   ([PR #48293](https://github.com/microsoft/PowerToys/pull/48293) review;
@@ -221,7 +221,7 @@ Enforce these when reviewing or authoring Peek changes:
 - **The default activation is a bare Space** (`EnableSpaceToActivate`, first-run default ON in
   `dllmain.cpp`). It is the single most common source of "Peek opens while I'm renaming" reports;
   the only thing standing between Space and a rename is `FileExplorerHelper.CaretVisible` (#45133,
-  #45642, #49013).
+  #45642). Do not fold unresolved disable/re-enable report #49013 into this established cause.
 - **`CaretVisible` fails open.** If `GetGUIThreadInfo` fails it returns `false` (allows activation) on
   purpose — don't "fix" that into fail-closed without understanding it blocks transient-failure
   lockout.

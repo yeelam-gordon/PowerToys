@@ -19,6 +19,7 @@ is new; expect gaps. All paths under `src/modules/GrabAndMove/`.
 | Plain key (e.g. `G`) unresponsive until re-pressed | `main.cpp::KeyboardProc` held-key tracking | Swallowed keyup | Stuck modifier |
 | Alt no longer opens app menu / Win no longer opens Start | `main.cpp::KeyboardProc`, `ReplayAbsorbedModifier` | Missing replay | Absorbed modifier |
 | A Win/Alt shortcut in another app breaks | `main.cpp::KeyboardProc` absorb/replay; `IsExcluded` | Modifier absorb | Absorbed modifier |
+| Modifier-click starts an unintended drag / a two-button click is lost | `main.cpp::MouseProc` pending button state and drag-threshold transition | Pending click overwritten or drag starts before threshold | Pending-click playbook (#49121) |
 | Desktop icons / wallpaper get dragged | `main.cpp::IsSystemClass` (Progman); `ResolveTargetWindow` | Target filter | Wrong target |
 | Start / Search / Quick Settings / Widgets get moved | `main.cpp::IsExcluded` (CoreWindow by process) | Shell surface filter | Wrong target |
 | Command Palette / a specific app is draggable | `main.cpp::IsExcluded`; user `excluded_apps` | Exclusion gap | Wrong target |
@@ -27,7 +28,7 @@ is new; expect gaps. All paths under `src/modules/GrabAndMove/`.
 | Overlay corners rounded wrongly over RDP | `main.cpp::CornerRadiusForWindow`, `PrepareOverlayMetrics` | Remote-session corners | Remote overlay |
 | Wrong window grabbed in a remote session | `main.cpp::ResolveTargetWindow` (`SM_REMOTESESSION`) | Remote hit-testing | Remote overlay |
 | Overlay preview blurry / wrong DPI | `main.cpp::PrepareOverlayMetrics` (DPI scale), `RenderOverlayContent` | DPI scaling | (Module Map) |
-| Not working after wake from hibernation | `main.cpp::wWinMain` hook install; `WinEventProc` | Hook lifetime | (Pitfalls) |
+| Not working after wake from hibernation | `main.cpp::wWinMain` hook install; `KeyboardProc`, `MouseProc`, `WinEventProc` state/reset paths | Unresolved resume liveness; investigate hook registration and stale state without assuming either cause | Resume-liveness playbook |
 | Doesn't work in a game / fullscreen app | `main.cpp::IsSuppressedByGameMode` | Game Mode gate | Remote overlay |
 | Resize does nothing on some windows | `MouseProc` `WS_THICKFRAME` gate | Non-resizable window | Review Rules |
 | Build fails `LNK2038 'C++/WinRT version'` | `GrabAndMove.vcxproj` CppWinRT NuGet import | Toolset mismatch | CppWinRT LNK2038 |

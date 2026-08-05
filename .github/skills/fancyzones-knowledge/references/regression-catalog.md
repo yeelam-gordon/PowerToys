@@ -1,70 +1,63 @@
-# FancyZones Regression Catalog (Progressive Disclosure)
+# FancyZones Evidence and Decision Ledger
 
-Fuller regression + decision list. Read the row for the area your change touches; confirm each
-claim in source before acting. Symptoms map to `src/modules/fancyzones/`.
+[Return to actionable playbooks](../SKILL.md).
 
-## Key Decisions (context for the playbooks)
+## Role split
 
-- **Host process is hook-driven; work is posted to its own window.** WinEvent-hook callbacks post
-  `WM_PRIV_*` messages to the FancyZones tool window; `WndProc`/`HandleWinHookEvent` dispatch them.
-  A `WM_PRIV_*` branch is dead unless the matching `EVENT_*` is registered (`FancyZones.cpp`).
-- **Each monitor owns a `WorkArea`, which owns a `Layout` + a `ZonesOverlay`.** Overlays render on a
-  dedicated D2D thread (`ZonesOverlay::RenderLoop`) and their HWNDs come from a reusable pool
-  (`FreeZonesOverlayWindow`/`NewZonesOverlayWindow`). Teardown order is safety-critical (PR #48473).
-- **Monitor state changes rebuild the work-area map.** `FancyZones::UpdateWorkAreas` +
-  `WorkAreaConfiguration::Clear()` run on display changes and the `SpanZonesAcrossMonitors` toggle;
-  anything holding a `WorkArea*` across this must be torn down first (PR #48473).
-- **Drag state is explicit and must never strand.** `DraggingState` tracks the active flag / Shift /
-  Ctrl; `MoveSizeEnd()` always disables it. A stuck flag steals number keys via quick-layout
-  switching (PR #48569).
-- **Layouts, hotkeys, and per-app zone history persist as JSON** under `FancyZonesLib/FancyZonesData/`
-  (`AppliedLayouts`, `CustomLayouts`, `DefaultLayouts`, `LayoutTemplates`, `LayoutHotkeys`,
-  `AppZoneHistory`). These are shared on disk — writes need error handling (#48374).
-- **Virtual-desktop ids are read from the registry** (`VirtualDesktop.cpp`) and synced into zone
-  history (`AppZoneHistory::SyncVirtualDesktops`); registry layout varies by OS build (#49057).
-- **No unit-test harness for the live hook/drag path.** Native logic has `FancyZonesTests`, the editor
-  has `FancyZonesEditor.UnitTests`, and there are `*.UITests`, but drag/hook fixes are validated
-  manually (PR #48569).
+`SKILL.md` owns current symptom, root-cause, and guardrail guidance. This catalog preserves the
+historical evidence trail, source anchors, reviewer decisions, unresolved reports, and caveats used
+to audit or refresh that guidance. Confirm source anchors before relying on them.
 
-## Regression Table
+## Evidence ledger
 
-| Class | Symptom | Where (file · function) | Root cause | Fix / Guardrail | Evidence |
-|---|---|---|---|---|---|
-| Teardown race | Host crash/hang on display/monitor change or exit | `ZonesOverlay.cpp` dtor; `WorkArea.cpp::~WorkArea`; `OnThreadExecutor.cpp` dtor | join on non-joinable thread; HWND freed before render stops; shutdown flag set outside mutex | `joinable()` guard; reset overlay before pool free; write flag under `_task_mutex` | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473) |
-| Teardown race | Crash toggling span-across / monitor change mid-drag | `FancyZones.cpp::UpdateWorkAreas`; `WorkAreaConfiguration::Clear` | `WindowMouseSnap` holds dangling `WorkArea*`/`const&` across `Clear()` | Call `MoveSizeEnd()` before every `Clear()` | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473) |
-| Stuck drag | Overlays stay up + number/Shift keys swallowed after closing window mid-drag | `FancyZones.cpp` `EVENT_OBJECT_DESTROY` / `WM_PRIV_WINDOWDESTROYED` / `OnKeyDown`; `WindowMouseSnap::Abort` | destroy event never subscribed → drag state strands; any digit switched layouts | subscribe `EVENT_OBJECT_DESTROY`; `Abort()` on dragged-window destroy; always clear drag in `MoveSizeEnd()`; require Win+Ctrl+Alt+digit; swallow only bare Shift | [PR #48569](https://github.com/microsoft/PowerToys/pull/48569) |
-| Override snap | Win+arrow snaps native first / extra hotkeys / no override | `FancyZones.cpp::ShouldProcessSnapHotkey` + `OnKeyDown`; `Settings.overrideSnapHotkeys`; `WindowKeyboardSnap.cpp` | swallow decision vs. monitor topology + move-by-position setting | keep swallow decision consistent with snap; honor setting; confirm candidate | (open) [#47580](https://github.com/microsoft/PowerToys/issues/47580), [#48387](https://github.com/microsoft/PowerToys/issues/48387), [#48048](https://github.com/microsoft/PowerToys/issues/48048) |
-| Last known zone | All app windows collapse into one zone; blank/black on multi-monitor | `AppZoneHistory.cpp::GetAppLastZoneIndexSet`; new-window handling in `FancyZones.cpp` | history keyed per app+work-area+layout, not per window; work-area id routed to wrong monitor | match work-area/layout id to target monitor; beware per-process keys | (open) [#47010](https://github.com/microsoft/PowerToys/issues/47010), [#48234](https://github.com/microsoft/PowerToys/issues/48234), [#49209](https://github.com/microsoft/PowerToys/issues/49209) |
-| VD / JSON | Per-desktop layouts stop working; `applied-layouts.json` access denied | `AppliedLayouts.cpp`; `VirtualDesktop.cpp`; `AppZoneHistory::SyncVirtualDesktops` | VD GUIDs move across OS builds; unguarded/locked JSON write | resolve VD id defensively; serialize + error-handle writes; sync ids on desktop change | (open) [#49057](https://github.com/microsoft/PowerToys/issues/49057), [#48374](https://github.com/microsoft/PowerToys/issues/48374) |
-| Shift drag | Hold-Shift-to-activate disables Shift while typing / doesn't stick | `FancyZones.cpp::OnKeyDown`; `DraggingState.cpp` | over-broad Shift swallow / drag state timing | swallow only bare Shift during an active drag | (open) [#47823](https://github.com/microsoft/PowerToys/issues/47823), [#47780](https://github.com/microsoft/PowerToys/issues/47780), [#48641](https://github.com/microsoft/PowerToys/issues/48641) |
-| Editor | Ctrl+Tab shortcut misbehaves; spacing/highlight labels inaccurate | `editor/FancyZonesEditor/` view-models, models | UX + localization gaps | translator comments; match native layout math | [PR #47226](https://github.com/microsoft/PowerToys/pull/47226); (open) [#48315](https://github.com/microsoft/PowerToys/issues/48315), [#47959](https://github.com/microsoft/PowerToys/issues/47959) |
-| CLI | `{GUID}` fails in PowerShell | `FancyZonesCLI/CommandLine/Commands/` | PowerShell parses `{...}` as script block | accept brace-less GUID; friendly error; subcommand `--help` | [PR #44676](https://github.com/microsoft/PowerToys/pull/44676) (#44633, #44675) |
+| Sequence | Evidence | Source anchors | Recorded outcome / reviewer decision |
+|---|---|---|---|
+| Teardown investigation and fix | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473) | `ZonesOverlay.cpp::~ZonesOverlay`; `WorkArea.cpp::~WorkArea`; `OnThreadExecutor.cpp` destructor/worker; `FancyZones.cpp::UpdateWorkAreas`; `WorkAreaConfiguration::Clear` | Accepted changes guarded thread joins, stopped overlays before returning HWNDs to the pool, synchronized the shutdown flag with `_task_mutex`, and ended an active snap before clearing work areas. |
+| Destroyed-window drag fix | [PR #48569](https://github.com/microsoft/PowerToys/pull/48569) | `FancyZones.cpp::HandleWinHookEvent`, `WM_PRIV_WINDOWDESTROYED`, `MoveSizeEnd`, `OnKeyDown`; `WindowMouseSnap::Abort`; `DraggingState` | Accepted changes registered `EVENT_OBJECT_DESTROY`, used `Abort()` for the destroyed dragged HWND, always cleared drag state, required Win+Ctrl+Alt for digit layout switching, and limited Shift swallowing to bare Shift during drag. |
+| Live hook validation decision | [PR #48569](https://github.com/microsoft/PowerToys/pull/48569) | `FancyZonesTests`, `FancyZonesEditor.UnitTests`, `*.UITests` | Review recorded no unit-test harness for the live hook/drag path; that portion was validated manually while existing harnesses remained applicable elsewhere. |
+| Editor review | [PR #47226](https://github.com/microsoft/PowerToys/pull/47226) | `editor/FancyZonesEditor/` view-models and models | Reviewer outcome retained translator context and alignment between editor labels/math and native layout behavior. |
+| CLI chronology | Issues [#44633](https://github.com/microsoft/PowerToys/issues/44633), [#44675](https://github.com/microsoft/PowerToys/issues/44675) → [PR #44676](https://github.com/microsoft/PowerToys/pull/44676) | `FancyZonesCLI/CommandLine/Commands/` | The CLI accepted brace-less GUIDs, added a PowerShell-aware error path, and exposed per-subcommand help. |
+| Hook architecture | Source verification | `FancyZones.cpp::HandleWinHookEvent`, `WndProc`, `OnKeyDown` | WinEvent callbacks post `WM_PRIV_*` messages to the tool window. A private-message branch has no effect unless its matching `EVENT_*` is registered. |
+| Overlay/work-area ownership | Source verification plus [PR #48473](https://github.com/microsoft/PowerToys/pull/48473) | `WorkArea.cpp`; `ZonesOverlay.cpp::RenderLoop`; `NewZonesOverlayWindow`, `FreeZonesOverlayWindow` | Each monitor work area owns its layout/overlay; pooled HWND lifetime is ordered after render-thread teardown. |
+| Persistence architecture | Source verification | `FancyZonesLib/FancyZonesData/AppliedLayouts.cpp`, `CustomLayouts.cpp`, `DefaultLayouts.cpp`, `LayoutTemplates.cpp`, `LayoutHotkeys.cpp`, `AppZoneHistory.cpp` | Layout, hotkey, and app-zone-history records are shared JSON state; access and migration assumptions require source confirmation. |
+| Virtual desktop binding | Source verification | `VirtualDesktop.cpp::GetCurrentVirtualDesktopIdFromRegistry`, `GetVirtualDesktopIdsFromRegistry`; `AppZoneHistory::SyncVirtualDesktops` | Virtual-desktop identifiers are registry-derived and synchronized into history rather than treated as fixed constants. |
 
-## Common Practices (enforced in review)
+## Decision ledger
 
-- **Race-safe teardown.** Guard `join()` with `joinable()`; stop render threads before recycling
-  HWNDs; pair `cv` shutdown-flag writes with the waiter's mutex; tear down the snapper before
-  clearing the work-area map (PR #48473).
-- **Narrow key-swallowing.** `OnKeyDown` returns true only for genuine snap/quick-layout hotkeys and
-  the bare Shift during a drag; digit layout switch needs Win+Ctrl+Alt (PR #48569).
-- **Subscribe before you dispatch.** Register the `EVENT_*` for any `WM_PRIV_*` you handle.
-- **Defensive monitor/VD id resolution.** Registry-sourced VD ids and multi-monitor work-area ids
-  drive layout binding and zone-history lookup; mismatches route windows to the wrong monitor silently (#49057, #47010).
-- **Guarded JSON persistence.** Shared data files under `FancyZonesLib/FancyZonesData/` must serialize and
-  error-handle writes (#48374).
-- **Localize editor strings with translator context** (PR #47226).
-- **Testing.** Use `FancyZonesTests` / `FancyZonesEditor.UnitTests` / `*.UITests` where a harness
-  exists; document manual steps for the hook/drag path (PR #48569).
+| Decision | Status | Evidence / anchor |
+|---|---|---|
+| Guard every optional render thread before joining. | Accepted | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473); `ZonesOverlay.cpp` |
+| Tear down an overlay before recycling its HWND. | Accepted | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473); `WorkArea.cpp::~WorkArea` |
+| Change the executor shutdown flag under the waiter's mutex. | Accepted | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473); `OnThreadExecutor.cpp` |
+| End active mouse snapping before `WorkAreaConfiguration::Clear()`. | Accepted | [PR #48473](https://github.com/microsoft/PowerToys/pull/48473); `FancyZones.cpp::UpdateWorkAreas` |
+| Abort rather than complete a drag after its HWND is destroyed. | Accepted | [PR #48569](https://github.com/microsoft/PowerToys/pull/48569); `WindowMouseSnap::Abort` |
+| Keep key swallowing restricted to confirmed snap/layout commands and bare Shift during drag. | Accepted | [PR #48569](https://github.com/microsoft/PowerToys/pull/48569); `FancyZones.cpp::OnKeyDown` |
+| Resolve monitor and virtual-desktop identity defensively before history/layout lookup. | Accepted; open reports remain | `MonitorUtils.cpp`; `VirtualDesktop.cpp`; `AppZoneHistory.cpp` |
+| Applied-layout writes have an access-denied report; concurrency versus permissions is unresolved. | Open evidence, not an accepted fix | `AppliedLayouts.cpp`; [#48374](https://github.com/microsoft/PowerToys/issues/48374) |
 
-## Excluded as noise (not durable FancyZones lessons)
+## Open-issue ledger
 
-Build/infra PRs in the mined corpus that carry no module-specific engineering lesson:
-`.NET 10` upgrade (#41280), VS 2026 support (#44304), CppWinRT bump (#45420), WinRT coroutine
-refactor (#45522), `$(RepoRoot)` path cleanup (#44639), MTP migration (#37651), PowerShell build-script
-reliability (#46729), and UI-test fixups (#44754). These are repo-wide plumbing, not FancyZones
-behavior.
+| Area | Open evidence | Source anchors | Evidence caveat / unresolved question |
+|---|---|---|---|
+| Override Windows Snap | [#47580](https://github.com/microsoft/PowerToys/issues/47580), [#48387](https://github.com/microsoft/PowerToys/issues/48387), [#48048](https://github.com/microsoft/PowerToys/issues/48048) | `FancyZones.cpp::ShouldProcessSnapHotkey`, `OnKeyDown`; `Settings.overrideSnapHotkeys`; `WindowKeyboardSnap.cpp` | Reports cover different topology/settings combinations; they do not establish one shared defect without reproduction. |
+| Last-known-zone restore | [#47010](https://github.com/microsoft/PowerToys/issues/47010), [#48234](https://github.com/microsoft/PowerToys/issues/48234), [#49209](https://github.com/microsoft/PowerToys/issues/49209) | `AppZoneHistory.cpp::GetAppLastZoneIndexSet`; new-window handling in `FancyZones.cpp` | History is keyed by app, work area, and layout rather than HWND. Confirm target-monitor identity and app-specific behavior before changing the key model. |
+| Virtual desktops / JSON | [#49057](https://github.com/microsoft/PowerToys/issues/49057), [#48374](https://github.com/microsoft/PowerToys/issues/48374) | `AppliedLayouts.cpp`; `VirtualDesktop.cpp`; `AppZoneHistory::SyncVirtualDesktops` | One report concerns OS-dependent desktop identifiers and one concerns file access; do not collapse them into a single cause. |
+| Shift behavior | [#47823](https://github.com/microsoft/PowerToys/issues/47823), [#47780](https://github.com/microsoft/PowerToys/issues/47780), [#48641](https://github.com/microsoft/PowerToys/issues/48641) | `FancyZones.cpp::OnKeyDown`; `DraggingState.cpp` | Reports span key swallowing and activation timing. Reproduce against current drag state before revising the accepted PR #48569 behavior. |
+| Editor behavior | [#48315](https://github.com/microsoft/PowerToys/issues/48315), [#47959](https://github.com/microsoft/PowerToys/issues/47959) | `editor/FancyZonesEditor/` | UX reports require comparison with native layout math and localized strings; PR #47226 is prior review context, not proof of the open reports' causes. |
+
+## Corpus caveats
+
+- The durable FancyZones signal was concentrated in PRs
+  [#48473](https://github.com/microsoft/PowerToys/pull/48473),
+  [#48569](https://github.com/microsoft/PowerToys/pull/48569),
+  [#47226](https://github.com/microsoft/PowerToys/pull/47226), and
+  [#44676](https://github.com/microsoft/PowerToys/pull/44676).
+- Repo-wide plumbing was excluded: .NET 10 #41280, VS 2026 #44304, CppWinRT #45420, WinRT
+  coroutine refactor #45522, `$(RepoRoot)` cleanup #44639, MTP migration #37651, PowerShell
+  build-script reliability #46729, and UI-test fixups #44754.
+- Automated review comments dominated the mined review corpus; source verification is required
+  before treating a comment as an accepted maintainer decision.
 
 ---
-*Corpus: 12 merged PRs, ~100 review comments (mostly automated), 30 bug issues + source verification
-against `src/modules/fancyzones`. FancyZones-specific signal concentrated in PR #48473, #48569,
-#47226, #44676; the rest is build/infra noise (see above).*
+*Corpus: 12 merged PRs, approximately 100 review comments, 30 bug issues, plus source verification
+against `src/modules/fancyzones`.*

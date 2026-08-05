@@ -1,87 +1,55 @@
-# Color Picker Regression Catalog
+# Color Picker Regression Evidence Ledger
 
-Fuller regression/issue list backing the Regression Playbooks in `SKILL.md`. Each entry:
-symptom class → where in source → root cause → guardrail → evidence. Confirm in source before acting.
+[Return to actionable playbooks](../SKILL.md).
 
-## 1. GDI screen capture is sRGB — wrong color on HDR / wide-gamut
-- **Where:** `ColorPickerUI/Mouse/MouseInfoProvider.cs::GetPixelColor` — `Graphics.CopyFromScreen`
-  into a 1×1 `Bitmap(Format32bppArgb)`, `GetPixel(0,0)`.
-- **Root cause:** GDI reads the composited **sRGB 8-bpc** desktop; HDR (scRGB/10-bit) and wide-gamut
-  content is tone-mapped/clamped before GDI, so the sample ≠ on-screen value.
-- **Guardrail:** treat HDR color accuracy as a known display-pipeline gap; verify any capture change on
-  real HDR hardware before claiming a fix.
-- **Evidence:** #44329 (closed), #41107 (closed), #45446, #43170 (closed), #38220 (Lab-by-numbers).
+> **Split:** `SKILL.md` owns the reusable symptom-to-guardrail playbooks and review rules. This
+> catalog preserves the underlying PR/issue evidence, exact source anchors, reviewer decisions,
+> unresolved clusters, chronology, and limitations.
 
-## 2. Zoom captures the Color Picker window itself
-- **Where:** `ColorPickerUI/Helpers/ZoomWindowHelper.cs::SetZoomImage` +
-  `Helpers/WindowCaptureExclusionHelper.cs`.
-- **Root cause:** the magnifier grabs a cursor-centered screen rect while the picker window is visible.
-- **Guardrail:** `SetWindowDisplayAffinity(WDA_EXCLUDEFROMCAPTURE)` before capture, restore `WDA_NONE`
-  in `finally`; Win10 2004+ only; log-once on failure (`hasLoggedFailure`), never crash.
-- **Evidence:** PR #48762 ("Fix the main window UI appearing in the zoomed-in view").
+## Decision and fix chronology
 
-## 3. Dual activation architecture (+ a third session hook)
-- **Where:** Runner: `ColorPicker/dllmain.cpp` `parse_hotkey`/`on_hotkey`/`get_hotkeys` →
-  `SHOW_COLOR_PICKER_SHARED_EVENT`; app: `ViewModels/MainViewModel.cs` `NativeEventWaiter`;
-  standalone: `Keyboard/KeyboardMonitor.cs` + `Keyboard/GlobalKeyboardHook.cs`.
-- **Details:** Runner-launched builds do **not** run `KeyboardMonitor` permanently; a lightweight hook
-  is started per active session (via `AppStateHandler` events) to catch Esc/Space/Enter/arrows.
-  Standalone/detached (`App.IsRunningDetachedFromPowerToys()`) runs the permanent hook.
-- **Root cause of bugs:** the mechanisms are maintained separately; string-based key matching must be
-  re-derived on setting change (`SetActivationKeys`); global low-level hook observes editor keystrokes.
-- **Guardrail:** keep both in sync; empty shortcut arms nothing; preserve `_activationShortcutPressed`
-  latch; fallback default Win+Shift+C in `parse_hotkey`.
-- **Evidence:** #43791/#43250 (editor flashing, closed/open), #44963 (partial-key trigger),
-  #44404 (keys don't work), #48822 (only works with PT window focused), #41806 (shared-hook modifier
-  release across modules), #40900 ("only pick a color" activation option request).
+| Evidence | Decision or observed regression | Exact source anchor | Reviewer decision / caveat |
+|---|---|---|---|
+| [#38220](https://github.com/microsoft/PowerToys/issues/38220), [#41107](https://github.com/microsoft/PowerToys/issues/41107), [#43170](https://github.com/microsoft/PowerToys/issues/43170), [#44329](https://github.com/microsoft/PowerToys/issues/44329), [#45446](https://github.com/microsoft/PowerToys/issues/45446) | Wrong sampled colors on HDR, wide-gamut, or high-bit-depth displays established a persistent capture-accuracy cluster. | `ColorPickerUI/Mouse/MouseInfoProvider.cs::GetPixelColor`; `Graphics.CopyFromScreen` into `Bitmap(Format32bppArgb)`, then `GetPixel(0,0)` | Source proves the GDI/32-bpp capture path, but not tone-mapping, color-space, or clamping behavior. Real HDR hardware and authoritative platform evidence are required before assigning a cause. |
+| [#39194](https://github.com/microsoft/PowerToys/issues/39194), [#39196](https://github.com/microsoft/PowerToys/issues/39196), [#40643](https://github.com/microsoft/PowerToys/issues/40643), [#43283](https://github.com/microsoft/PowerToys/issues/43283), [#45446](https://github.com/microsoft/PowerToys/issues/45446) | Recorded active-monitor, mixed-DPI positioning, missing drag-line, caption-button, startup-outline, and refresh/capture symptoms. | `ColorPickerUI/Helpers/MonitorResolutionHelper.cs::{AllMonitors,IsPrimary,GetCurrentMonitorDpi}`; `ZoomWindowHelper.ShowZoomWindow`; `MouseInfoProvider.GetMainDisplayRefreshRate` | WPF DIPs and physical pixels differ by monitor. The zoom code's iterative `PointFromScreen` centering and primary-monitor refresh-rate assumption are source facts; the issue set does not establish one shared root cause. |
+| [#41806](https://github.com/microsoft/PowerToys/issues/41806), [#43250](https://github.com/microsoft/PowerToys/issues/43250), [#43791](https://github.com/microsoft/PowerToys/issues/43791), [#44404](https://github.com/microsoft/PowerToys/issues/44404), [#44963](https://github.com/microsoft/PowerToys/issues/44963), [#48822](https://github.com/microsoft/PowerToys/issues/48822) | Activation failures include editor flashing, partial-key triggers, lost modifiers across hook-based modules, focus dependence, and shortcuts not firing. | Runner `ColorPicker/dllmain.cpp::{parse_hotkey,on_hotkey,get_hotkeys}` → `SHOW_COLOR_PICKER_SHARED_EVENT`; `ColorPickerUI/ViewModels/MainViewModel.cs`; standalone `Keyboard/KeyboardMonitor.cs::{Hook_KeyboardPressed,SetActivationKeys}`; `Keyboard/GlobalKeyboardHook.cs`; session hook via `AppStateHandler` events | There are two activation mechanisms plus a lightweight active-session hook. Issue symptoms must be assigned to the correct path before diagnosis. |
+| [#40900](https://github.com/microsoft/PowerToys/issues/40900) | Requested an “only pick a color” activation option. | Activation-action settings and `AppStateHandler` session routing | Feature request, not regression evidence. |
+| [#42261](https://github.com/microsoft/PowerToys/issues/42261) → [#45367](https://github.com/microsoft/PowerToys/pull/45367) | Fixed insufficient contrast in the Color Utility dialog. | `ColorPickerUI/Views/*.xaml`; `ColorPickerUI/Controls/*.xaml` | The other accessibility reports [#42237](https://github.com/microsoft/PowerToys/issues/42237), [#42238](https://github.com/microsoft/PowerToys/issues/42238), and [#42257](https://github.com/microsoft/PowerToys/issues/42257) remain open and are not resolved by this PR. |
+| [#44639](https://github.com/microsoft/PowerToys/pull/44639) | Standardized project paths on `$(RepoRoot)` and centralized toolset handling. | Color Picker `.vcxproj` project imports/properties | Reviewer decision: a local `PlatformToolset` exception needs documentation and a follow-up; preserve `Microsoft.Cpp.*.props` ordering. Cross-cutting build evidence, not Color Picker behavior. |
+| [#46679](https://github.com/microsoft/PowerToys/pull/46679) | Corrected Decimal test expectations and misleading CIELAB/Natural Color test names. `%Dv` is packed BGR: `R + G*256 + B*65536` (red `255`, blue `16711680`). | `src/common/ManagedCommon/ColorFormatHelper.cs::{GetStringRepresentation,GetDefaultFormat}`; `ColorPickerUI/Helpers/ColorRepresentationHelper.cs`; `ColorPickerUI.UnitTests/Helpers/ColorFormatConversionTest.cs` | Reviewer evidence: expected values and test names must reflect channel order/axis actually asserted. Shared helper changes affect consumers outside Color Picker. |
+| [#46729](https://github.com/microsoft/PowerToys/pull/46729) | Preserved PowerShell warning visibility by redirecting warning stream `3>&1` instead of suppressing it. | Color Picker-touching build scripts | Cross-cutting build convention only. |
+| [#47892](https://github.com/microsoft/PowerToys/issues/47892), [#48299](https://github.com/microsoft/PowerToys/issues/48299) | Reported virtual/working-set memory growth during Color Picker sessions. | `MouseInfoProvider.GetPixelColor` per-tick `Bitmap`/`Graphics`; `ZoomWindowHelper` static `_bmp`/`_graphics`; show/hide timer lifecycle | High-frequency allocation is observable in source, but the reports do not prove the static zoom objects are leaks. |
+| [#48467](https://github.com/microsoft/PowerToys/pull/48467), [#48842](https://github.com/microsoft/PowerToys/pull/48842) | Added/adjusted UI-test infrastructure touching Color Picker. | Test `.csproj`; hidden UIA `TextBlock` hooks in XAML | Reviewer decisions: test-only hooks use `AutomationProperties.AccessibilityView="Raw"`; retain repository `TreatWarningsAsErrors=true`. Cross-cutting test evidence. |
+| [#48762](https://github.com/microsoft/PowerToys/pull/48762) | Fixed the picker window appearing inside its own zoom image by excluding the HWND from capture around `CopyFromScreen`. | `ColorPickerUI/Helpers/ZoomWindowHelper.cs::SetZoomImage`; `WindowCaptureExclusionHelper.cs::{Exclude,Include}` | Restore `WDA_NONE` in `finally`; exclusion requires Windows 10 2004+ (build 19041). Failure is logged once (`hasLoggedFailure`) and must not crash. |
 
-## 4. Color-format specifier strings
-- **Where:** `src/common/ManagedCommon/ColorFormatHelper.cs` (`GetStringRepresentation`,
-  `GetDefaultFormat`, char map incl. `Dv` = "Decimal value (BGR) int"); wrapper + name localization in
-  `ColorPickerUI/Helpers/ColorRepresentationHelper.cs`.
-- **Root cause:** `%Dv` packs **BGR** (`R + G*256 + B*65536`) → Red=255, Blue=16711680; CIELAB/NCol
-  axis naming is easy to get backwards.
-- **Guardrail:** confirm channel order; name tests after the asserted axis; test known colors.
-- **Evidence:** PR #46679 — swapped Decimal expected values fixed; `ConvertToCIELAB_Blue_HasNegativeA`
-  renamed to `HasNegativeB`; `ConvertToNaturalColor_*_ReturnsX0` renamed to `HueStartsWithX`.
+## Open and environment-specific symptom clusters
 
-## 5. Multi-monitor / per-monitor DPI
-- **Where:** `ColorPickerUI/Helpers/MonitorResolutionHelper.cs` (`AllMonitors`, `IsPrimary`,
-  `GetCurrentMonitorDpi`); `ZoomWindowHelper.ShowZoomWindow` (iterative `PointFromScreen` centering);
-  `MouseInfoProvider.GetMainDisplayRefreshRate` (primary-monitor `EnumDisplaySettingsW`).
-- **Root cause:** DIP vs physical-pixel mismatch across monitors of different DPI.
-- **Guardrail:** keep the convergence loop; convert at boundaries; refresh rate is primary-only.
-- **Evidence:** #39194 (open on active monitor, closed), #45446, #39196 (drag line missing),
-  #43283 (caption buttons), #40643 (selector outlines taskbar icon on startup).
+| Report | Observed symptom | Investigation anchor | Status / caveat |
+|---|---|---|---|
+| [#43018](https://github.com/microsoft/PowerToys/issues/43018) | White rectangle stuck at startup. | App initialization; `AppStateHandler`; `MainWindow` | Closed; root cause not retained. |
+| [#42781](https://github.com/microsoft/PowerToys/issues/42781) | Settings crash. | Settings/window initialization | Closed; broad symptom. |
+| [#38602](https://github.com/microsoft/PowerToys/issues/38602) | First click registers incorrectly. | Mouse/session state | Root cause not retained. |
+| [#38236](https://github.com/microsoft/PowerToys/issues/38236) | Sampled color value differs from the expected value. | Capture sampling, color conversion, and displayed format | Color-value discrepancy evidence; root cause is not retained, so verify the issue and current conversion path before use. |
 
-## 6. Memory / GDI resource growth
-- **Where:** `MouseInfoProvider.GetPixelColor` (per-tick `Bitmap`+`Graphics`, refresh-rate cadence);
-  `ZoomWindowHelper` static `_bmp`/`_graphics`.
-- **Root cause:** high-frequency GDI allocation while the picker is shown.
-- **Guardrail:** per-tick objects in `using`; timer bound to show/hide lifecycle.
-- **Evidence:** #47892 (virtual memory leak), #48299 (~230MB).
+## Stable source facts that qualify the evidence
 
-## 7. Startup / window state
-- **Where:** app init, `AppStateHandler` show/hide, `MainWindow`.
-- **Evidence:** #43018 (white rectangle stuck at startup, closed), #42781 (settings crash, closed),
-  #38602 (first click registers incorrectly), #38236.
+- Runner-launched mode uses the centralized Runner hook and shared event; detached mode installs the
+  permanent `GlobalKeyboardHook`; an active session separately hooks Esc/Space/Enter/arrows.
+- `KeyboardMonitor.SetActivationKeys` re-derives string key names. `_activationShortcutPressed`
+  suppresses repeats, and an empty shortcut intentionally matches nothing.
+- `MouseInfoProvider.GetMainDisplayRefreshRate` reads the primary monitor, not necessarily the monitor
+  under the cursor.
+- `ZoomWindowHelper` deliberately reuses static bitmap/graphics objects. `GetPixelColor` creates and
+  disposes 1×1 GDI objects per timer tick while the picker is shown.
 
-## 8. Accessibility
-- **Where:** `Views/*.xaml`, `Controls/*.xaml`; test-only UIA hooks need `AccessibilityView="Raw"`.
-- **Evidence:** #42261 (contrast, closed), #42257 (settings button non-interactive),
-  #42238 ("Add New Format" not associated with label), #42237 (heading not defined),
-  PR #48467 (Raw UIA hook review), PR #45367 (contrast fix).
+## Evidence boundaries
 
-## Build / infra conventions (cross-cutting, ColorPicker-touching)
-- `$(RepoRoot)` over bare relative paths; PlatformToolset unified centrally — PR #44639 (DHowett:
-  document + follow-up bug if a local `PlatformToolset` is truly required).
-- Keep C# `TreatWarningsAsErrors=true`; don't override in new test csproj — PR #48467/#48842.
-- Build-script warning suppression: redirect PowerShell warning stream (`3>&1`) instead of hiding it —
-  PR #46729.
-- `TreatWarningsAsErrors` / StyleCop (SA1512/SA1515), CA1866/CA1310 (`StartsWith(char)`) — PR #46679.
-
-## Notes on signal
-Most raw PRs in this module's history are cross-cutting build/CI/UITest-framework changes
-(#48467, #48842, #44304, #41280, #45420, #37651) that merely *touch* ColorPicker project files; they
-were **excluded** from the playbooks as non-durable to Color Picker behavior. The durable signal is in
-the source code + the bug issues above.
+- Cross-cutting build/CI/UI-test PRs ([#48467](https://github.com/microsoft/PowerToys/pull/48467),
+  [#48842](https://github.com/microsoft/PowerToys/pull/48842),
+  [#44304](https://github.com/microsoft/PowerToys/pull/44304),
+  [#41280](https://github.com/microsoft/PowerToys/pull/41280),
+  [#45420](https://github.com/microsoft/PowerToys/pull/45420),
+  [#37651](https://github.com/microsoft/PowerToys/pull/37651)) are retained only when they yielded a
+  concrete reviewer decision; touching a project file does not make them behavioral evidence.
+- HDR accuracy, mixed-DPI behavior, and memory growth require representative hardware and runtime
+  measurement. Issue links identify symptom history, not proof of the proposed mechanism.

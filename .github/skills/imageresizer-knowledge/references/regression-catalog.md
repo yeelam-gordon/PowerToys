@@ -1,76 +1,87 @@
-# ImageResizer Regression Catalog (Progressive Disclosure)
+# ImageResizer Evidence and Decision Ledger
 
-Fuller regression + decision list. Read the row for the area your change touches; confirm each
-claim in source before acting. Symptoms map to `src/modules/imageresizer/`.
+[Return to actionable playbooks](../SKILL.md).
 
-## Key Decisions (context for the playbooks)
+Historical evidence for PowerToys **ImageResizer**. Source anchors are under
+`src/modules/imageresizer/`.
 
-- **Migrated to WinUI 3.** [PR #45288](https://github.com/microsoft/PowerToys/pull/45288) rewrote the
-  editor from WPF to WinUI 3 (much AI-generated, then hand-reviewed). This is the root of the
-  JPEG-quality, PNG-encoder, and settings-JSON regressions below — behaviors that WPF handled were
-  re-implemented on the WinRT/WIC APIs. Maintainers standardize on **WinUIEx** for windowing.
-- **WIC encode: transcode vs fresh-encode.** `EncodeToStreamAsync` transcodes (re-encode via
-  `BitmapTransform`, all metadata preserved) only when output codec == input codec, `RemoveMetadata`
-  is false, and `forceFresh` is false. If not, it fresh-encodes and carries over only
-  `KnownMetadataProperties`. JPEG resize forces fresh encode so `ImageQuality` applies — a deliberate
-  metadata/quality trade-off (`ResizeOperation.cs`).
-- **Metadata handling is best-effort + explicit.** Known props (DateTaken, CameraModel/Manufacturer,
-  Orientation, ColorSpace, Comment) are re-read/re-written in try/catch; formats that don't support
-  `BitmapProperties` (BMP) are ignored. `RemoveMetadata` keeps only orientation + colorspace
-  (rendering-critical).
-- **Codec set is fixed; unknown decoders fall back.** `CodecHelper` maps JPEG/PNG/BMP/TIFF/GIF/JXR
-  only; a decoder with no matching encoder (ICO, HEIF/WebP without Store codec) uses
-  `FallbackEncoder` (default JPEG container GUID `19e4a5aa-...`).
-- **Settings snapshot per batch.** `ResizeBatch.ProcessAsync` captures `Settings.Default` once before
-  `Parallel.ForEachAsync`; mid-batch edits don't apply until the next run — a deliberate
-  predictability/perf choice.
-- **Live settings reload.** [PR #45266](https://github.com/microsoft/PowerToys/pull/45266) added a
-  debounced `FileSystemWatcher` that reloads settings and marshals property updates onto the UI
-  dispatcher (`ReloadCore`). Also migrates the legacy settings directory on `Reload`.
-- **`%`-token filename format.** `Settings.FileName` (default `"%1 (%2)"`) is converted to a
-  composite `{0..5}` format; `%1`=original name, `%2`=size name, `%3/%4`=selected W/H, `%5/%6`=output
-  W/H. Output is sanitized for illegal/reserved names.
-- **CLI + telemetry.** [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) added CLI
-  telemetry; command name must reflect the real op and be logged before returning/terminating the
-  process. Migrated toward MTP test tooling ([PR #37651](https://github.com/microsoft/PowerToys/pull/37651), closed stale).
+> **Role split:** `SKILL.md` owns current mechanics, guardrails, and review workflow. This ledger owns
+> provenance: chronology, issue/PR evidence, exact source anchors, reviewer decisions, unresolved
+> clusters, and caveats. Confirm current behavior in source before applying historical conclusions.
 
-## Regression Table
+## Chronology and evidence ledger
 
-| Class | Symptom | Where (file · function) | Root cause | Fix / Guardrail | Evidence |
-|---|---|---|---|---|---|
-| JPEG quality | Quality % has no effect after WinUI3 | `ResizeOperation.cs` `EncodeToStreamAsync`/`GetEncoderPropertySet` | Transcode path ignores codec options | Force fresh encode for JPEG (`forceFresh`); apply options in `CreateFreshEncoderAsync`; test 2 quality levels | [#47135](https://github.com/microsoft/PowerToys/issues/47135), [#45484](https://github.com/microsoft/PowerToys/issues/45484), [PR #47134](https://github.com/microsoft/PowerToys/pull/47134) |
-| Settings round-trip | Sizes/quality/PNG settings revert or read 0 | `Settings.cs`, `ResizeSize.cs`, `AiSize.cs` | `[ObservableProperty]` didn't forward `[JsonPropertyName]`; PNG opts unplumbed | `[property: JsonPropertyName]`; thread PNG opts; round-trip tests incl. `AiSize.Scale` | [#47055](https://github.com/microsoft/PowerToys/issues/47055), [#45484](https://github.com/microsoft/PowerToys/issues/45484), [PR #47056](https://github.com/microsoft/PowerToys/pull/47056), [PR #46695](https://github.com/microsoft/PowerToys/pull/46695) |
-| EXIF/metadata | EXIF lost on resize (Remove metadata OFF) | `ResizeOperation.cs` `TranscodeAsync`/`CopyKnownMetadataAsync` | Transcode drops EXIF for large/unusual metadata blocks | Re-set `KnownMetadataProperties` after transcode; best-effort try/catch | [#47693](https://github.com/microsoft/PowerToys/issues/47693) |
-| EXIF/metadata | GPS not stripped with Remove metadata ON | `ResizeOperation.cs` `RenderingMetadataProperties`, `FreshEncodeAsync` | Fresh encode keeps only orientation+colorspace; GPS not present but source copy path leaked | Verify only rendering-critical props survive; test GPS removal | [#46317](https://github.com/microsoft/PowerToys/issues/46317) |
-| Orientation | Rotated/incorrectly sized portrait/landscape | `ResizeOperation.cs` `CalculateDimensions` (swap), `EncodeFramesAsync` | Missing target W/H swap; double EXIF rotation | Swap when orientation mismatch; keep `IgnoreExifOrientation` on read | (see `Settings` default `IgnoreOrientation=true`) |
-| HEIC/WebP | HEIC/WebP won't save or falls back | `CodecHelper.cs` `GetEncoderIdForDecoder`/`CanEncode` | No built-in WIC encoder without Store codec | Extend codec maps together; degrade gracefully | [#47840](https://github.com/microsoft/PowerToys/issues/47840), [#45474](https://github.com/microsoft/PowerToys/issues/45474), [#46665](https://github.com/microsoft/PowerToys/issues/46665) |
-| Context menu | Entry missing after update / Win11 | `dll/dllmain.cpp` enable/UpdateRegistration; `RuntimeRegistration.h`; `ContextMenuHandler.cpp` | Sparse-MSIX version-check/registration lifecycle | Idempotent, version-aware register; honor GPO/enabled at ctor | [#45521](https://github.com/microsoft/PowerToys/issues/45521), [#43782](https://github.com/microsoft/PowerToys/issues/43782), [#45458](https://github.com/microsoft/PowerToys/issues/45458) |
-| Reserved filename | Bad/duplicate output name | `ResizeOperation.cs` `GetDestinationPath` (`_avoidFilenames`) | User-controlled tokens → reserved/illegal names | Sanitize chars→`_`, append `_` for reserved, de-duplicate `(n)` | (source-verified; [naming a file](https://learn.microsoft.com/windows/win32/fileio/naming-a-file)) |
-| UI-thread / a11y | Editor stalls; icon buttons unnamed; hardcoded sizes | `ui/ImageResizerXAML/*`, `ui/ViewModels/*` | Blocking picker call; missing `AutomationProperties.Name`; non-ThemeResource colors | Async view contract; add automation names; ThemeResource | [PR #45288](https://github.com/microsoft/PowerToys/pull/45288), [PR #47752](https://github.com/microsoft/PowerToys/pull/47752) |
-| CLI telemetry | Wrong/missing telemetry command | `ImageResizerCLI/Program.cs`; `ui/Cli/*` | Hardcoded `"resize"`; logged after process return/termination | Derive command from parsed options; log before exit | [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) |
+| Sequence | Evidence | Decision or observed regression | Exact source anchors |
+|---|---|---|---|
+| 1 | [PR #37651](https://github.com/microsoft/PowerToys/pull/37651) (merged Feb 14, 2026) | Migrated Image Resizer tests toward Microsoft Testing Platform; this is landed test-tooling chronology, not abandoned intent. | ImageResizer test project configuration |
+| 2 | [PR #45266](https://github.com/microsoft/PowerToys/pull/45266) | Added debounced live settings reload, dispatcher-marshalled property updates, and legacy settings-directory migration. | `ui/Properties/Settings.cs::InitializeWatcher`, `Reload`, `ReloadCore` |
+| 3 | [PR #45288](https://github.com/microsoft/PowerToys/pull/45288) | Migrated the editor from WPF to WinUI 3. Review standardized on WinUIEx, asynchronous picker/view contracts, ThemeResource colors, scalable controls, and accessible names. The migration is the common predecessor of later encoder/settings regressions. | `ui/ImageResizerXAML/*`; `ui/ViewModels/*`; windowing and picker paths |
+| 4 | [PR #46695](https://github.com/microsoft/PowerToys/pull/46695), reports [#45484](https://github.com/microsoft/PowerToys/issues/45484) | Restored PNG/encoder-option plumbing missed during migration. | `ui/Models/ResizeOperation.cs::GetEncoderPropertySet`; PNG/TIFF settings path |
+| 5 | [PR #46872](https://github.com/microsoft/PowerToys/pull/46872) | Added CLI telemetry. Review required the command to reflect parsed operation and telemetry to run before process return/termination. | `ImageResizerCLI/Program.cs`; `ui/Cli/*` |
+| 6 | [PR #47056](https://github.com/microsoft/PowerToys/pull/47056), issue [#47055](https://github.com/microsoft/PowerToys/issues/47055) | Fixed settings fields reverting/reading as zero because source-generated observable properties lacked forwarded JSON names. Round-trip coverage expanded beyond `Name`/`Count`, including numeric/enum fields and `AiSize.Scale`. | `ui/Properties/Settings.cs`; `ui/Models/ResizeSize.cs`; `ui/Models/AiSize.cs`; `[property: JsonPropertyName]`; `SettingsTests` |
+| 7 | [PR #47134](https://github.com/microsoft/PowerToys/pull/47134), issues [#47135](https://github.com/microsoft/PowerToys/issues/47135) and [#45484](https://github.com/microsoft/PowerToys/issues/45484) | Fixed JPEG quality being ignored by forcing transformed JPEGs onto fresh encode, where codec options apply. This deliberately trades full transcode metadata preservation for the explicit known-property copy. | `ui/Models/ResizeOperation.cs::EncodeToStreamAsync`, `GetEncoderPropertySet`, `CreateFreshEncoderAsync`; `forceFresh` |
+| 8 | [PR #47752](https://github.com/microsoft/PowerToys/pull/47752) | Continued WinUI accessibility cleanup, including names for icon-only controls. | `ui/ImageResizerXAML/*`; `AutomationProperties.Name` |
+| 9 | Issues [#47693](https://github.com/microsoft/PowerToys/issues/47693), [#46317](https://github.com/microsoft/PowerToys/issues/46317) | Metadata evidence split into two concerns: unusual/large EXIF could disappear even on transcode, while remove-metadata must strip GPS yet preserve rendering-critical orientation/colorspace. The accepted implementation re-sets known properties best-effort and limits retained properties when stripping. | `ResizeOperation.cs::TranscodeAsync`, `CopyKnownMetadataAsync`, `FreshEncodeAsync`, `ReadMetadataAsync`, `WriteMetadataAsync`; `KnownMetadataProperties`; `RenderingMetadataProperties` |
 
-## Common Practices (enforced in review)
+## Issue evidence by area
 
-- **Encoder options only on fresh encode.** `GetEncoderPropertySet` is used solely by
-  `CreateFreshEncoderAsync`; never assume the transcode path applies JPEG/PNG/TIFF settings (#47134).
-- **Best-effort metadata.** Keep `ReadMetadataAsync`/`WriteMetadataAsync` in try/catch; add preserved
-  fields to `KnownMetadataProperties` with tests (#47693, #46317).
-- **JSON forwarding for generated props.** Always `[property: JsonPropertyName]` on
-  `[ObservableProperty]` fields; add round-trip tests, not just `Name`/`Count` (#47056).
-- **Per-batch settings snapshot.** Don't re-read settings inside `Parallel.ForEachAsync`
-  (`ResizeBatch.ProcessAsync`).
-- **Build hygiene.** On CppWinRT/.NET bumps attach clean-build evidence (x64+ARM64, Debug+Release);
-  quote MSBuild PowerShell path args; don't blanket-suppress script warnings (PR #45420, #41280, #46729).
-- **Testing.** Regressions ship with tests in `src/modules/imageresizer/tests`
-  (`ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, `tests/Cli/*`).
+| Area | Reports | What the evidence establishes | Exact source anchors |
+|---|---|---|---|
+| HEIC/WebP | [#47840](https://github.com/microsoft/PowerToys/issues/47840), [#45474](https://github.com/microsoft/PowerToys/issues/45474), [#46665](https://github.com/microsoft/PowerToys/issues/46665) | Repeated failures/fallbacks occur where WIC has a decoder but no matching built-in encoder without Store codec extensions. No accepted evidence here adds HEIC/WebP to the fixed encoder map. | `ui/Utilities/CodecHelper.cs::GetEncoderIdForDecoder`, `CanEncode`, `GetEncoderIdFromLegacyGuid`; `FallbackEncoder` |
+| Context-menu registration | [#45521](https://github.com/microsoft/PowerToys/issues/45521), [#43782](https://github.com/microsoft/PowerToys/issues/43782), [#45458](https://github.com/microsoft/PowerToys/issues/45458) | Missing entries after update/under Windows 11 point to sparse-MSIX version and registration lifecycle; classic COM remains separately gated. | `dll/dllmain.cpp::enable`, `disable`, `UpdateRegistration`; `dll/RuntimeRegistration.h`; `dll/ContextMenuHandler.cpp`; `ImageResizerContextMenu/dllmain.cpp` |
+| Orientation | Source-verified; no unique PR/issue retained in the corpus | Correct sizing depends on a conditional target-dimension swap and avoiding double EXIF application. | `ResizeOperation.cs::CalculateDimensions`; `EncodeFramesAsync`; `ExifOrientationMode.IgnoreExifOrientation`; `Settings.IgnoreOrientation` |
+| Destination names | Source-verified; [Win32 naming rules](https://learn.microsoft.com/windows/win32/fileio/naming-a-file) | User-controlled `%1..%6` tokens can resolve to illegal/reserved or duplicate names. | `ResizeOperation.cs::GetDestinationPath`; `_avoidFilenames`; `Settings.cs::FileNameFormat` |
 
-## Anti-anchoring note (source-verified)
+## Source-backed design decisions
 
-On [PR #47134](https://github.com/microsoft/PowerToys/pull/47134), Copilot review comments claimed
-`forceFresh` drops metadata and that codec options are no longer applied on transcode; maintainer
-`moooyo` marked both **"incorrect."** The fresh-encode path is intentional and does carry known
-metadata via `CopyKnownMetadataAsync`. Verify claims against source before acting on them.
+These facts disambiguate the evidence; operating guidance remains in `SKILL.md`.
+
+- **Encode-path split:** `EncodeToStreamAsync` transcodes only when output codec equals input codec,
+  `RemoveMetadata` is false, and `forceFresh` is false. Otherwise it fresh-encodes and copies only
+  `KnownMetadataProperties`. JPEG transform sets `forceFresh` so `ImageQuality` applies.
+- **Metadata scope:** known preservation covers DateTaken, camera model/manufacturer, orientation,
+  color space, and comment. Unsupported `BitmapProperties` operations, including format-specific BMP
+  behavior, are intentionally best-effort.
+- **Fixed codec map:** JPEG, PNG, BMP, TIFF, GIF, and JXR are mapped. An unmatched decoder uses
+  `FallbackEncoder`, whose default is JPEG container GUID `19e4a5aa-...`.
+- **Batch consistency:** `ResizeBatch.ProcessAsync` captures `Settings.Default` once before
+  `Parallel.ForEachAsync`; mid-batch settings edits apply to the next run.
+- **Filename contract:** `%1` original name, `%2` size name, `%3/%4` selected width/height, and
+  `%5/%6` output width/height are converted to composite formatting before sanitization and
+  de-duplication.
+
+## Reviewer decision ledger
+
+- **Anti-anchoring correction:** on [PR #47134](https://github.com/microsoft/PowerToys/pull/47134),
+  Copilot comments claimed `forceFresh` dropped metadata and codec options no longer applied on
+  transcode. Maintainer `moooyo` marked both **“incorrect.”** The source shows fresh encode copies
+  known metadata, while codec options intentionally apply only to fresh encoders.
+- **WinUI review:** [#45288](https://github.com/microsoft/PowerToys/pull/45288) standardized on
+  WinUIEx, rejected blocking picker calls/`async void` command paths, required ThemeResource colors
+  and scalable sizing, and required accessible names for icon-only buttons.
+- **Settings tests:** [#47056](https://github.com/microsoft/PowerToys/pull/47056) established that
+  serialization tests must exercise generated numeric/enum properties, not only collection names and
+  counts.
+- **Build evidence:** CppWinRT/.NET changes were expected to carry clean x64 and ARM64,
+  Debug and Release evidence; PowerShell path arguments must be quoted and warnings must not be
+  blanket-suppressed ([PR #45420](https://github.com/microsoft/PowerToys/pull/45420),
+  [PR #41280](https://github.com/microsoft/PowerToys/pull/41280),
+  [PR #46729](https://github.com/microsoft/PowerToys/pull/46729)).
+- **Test location:** regression coverage belongs in `src/modules/imageresizer/tests`, including
+  `ResizeOperationTests`, `ResizeSizeTests`, `ResizeBatchTests`, `SettingsTests`, and `tests/Cli/*`.
+
+## Open clusters and caveats
+
+- HEIC/WebP reports establish a compatibility cluster, not an accepted new encoder implementation.
+  Availability still depends on the installed WIC codec set.
+- Context-menu reports establish registration-lifecycle risk, but the corpus contains no single
+  confirmed root cause shared by all three issues.
+- Orientation and reserved-name entries are source-verified decisions without unique regression PRs
+  in the retained corpus; do not manufacture historical attribution for them.
+- The WPF-to-WinUI migration was substantially AI-generated and then hand-reviewed. Treat migration
+  parity claims as requiring source and test verification.
 
 ---
-*Corpus: 12 merged/closed PRs, 67 review comments, 76 conversation comments, 30 bug issues +
+
+*Corpus: 12 merged/closed PRs, 67 review comments, 76 conversation comments, 30 bug issues, plus
 source verification against `src/modules/imageresizer`.*

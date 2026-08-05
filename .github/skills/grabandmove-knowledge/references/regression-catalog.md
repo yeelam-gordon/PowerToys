@@ -1,88 +1,77 @@
-# GrabAndMove Regression Catalog (Progressive Disclosure)
+# GrabAndMove Evidence and Decision Ledger
 
-Fuller regression + decision list for the PowerToys **GrabAndMove** module. Read the row for the area
-your change touches; confirm each claim in source before acting. Symptoms map to
-`src/modules/GrabAndMove/`. Issues/PRs are on `microsoft/PowerToys`.
+[Return to actionable playbooks](../SKILL.md).
 
-> **Honesty note:** GrabAndMove is a **new** module (first landed
-> [PR #47024](https://github.com/microsoft/PowerToys/pull/47024), Apr 2026). Its history is short —
-> ~11 PRs and a burst of open bug reports — and it has **no dedicated unit-test suite**. Most durable
-> lessons come from PR review comments and the source itself, not from long-lived regression cycles.
-> Treat the open-issue rows as *symptom clusters to verify*, not confirmed root-caused regressions.
+Historical evidence for the PowerToys **GrabAndMove** module. Issues and PRs are in
+`microsoft/PowerToys`; source anchors are under `src/modules/GrabAndMove/`.
 
-## Key Decisions (context for the playbooks)
+> **Role split:** `SKILL.md` owns current mechanics, guardrails, and review workflow. This ledger owns
+> provenance: chronology, exact source anchors, reviewer decisions, unresolved report clusters, and
+> caveats. Confirm current behavior in source before applying historical evidence.
 
-- **Separate process driven by global hooks.** The module interface (`dllmain.cpp`) launches
-  `PowerToys.GrabAndMove.exe`; `main.cpp` installs `WH_KEYBOARD_LL` + `WH_MOUSE_LL` + a
-  `WINEVENT_OUTOFCONTEXT` foreground hook. Nearly all behavior — and nearly all bugs — live in those
-  hook callbacks and their shared globals.
-- **Modifier is Alt or Win, selectable.** `enum class GrabAndMoveModifier { Alt = 0, Win = 1 }`;
-  `LoadSettingsFromFile` maps int `modifierKey`. Move = modifier + left-drag, resize = modifier +
-  right-drag (`useAltResize` gates resize). Added in
-  [PR #47052](https://github.com/microsoft/PowerToys/pull/47052) (Win modifier + coord improvements).
-- **Absorb-and-replay the modifier.** With `shouldAbsorbAlt` (and always for Win), the modifier
-  keydown is swallowed to avoid a Start-menu/app-menu flash, then **replayed** if no drag/resize
-  consumed it. This is the single most fragile area — see the stuck-key and absorb playbooks.
-- **Foreground change is a reset point.** `WinEventProc` clears the held-key counter + `g_keyHeld` and
-  invalidates `g_excludedCache` on every foreground switch, because other apps/OS can swallow a keyup
-  (e.g. Win+L). A maintainer confirmed `WINEVENT_OUTOFCONTEXT` dispatches on the installing thread's
-  pump, so it does not race the LL hooks.
-- **Excluded-apps as an immutable snapshot.** `g_excludedApps` is an
-  `atomic<shared_ptr<const vector<wstring>>>`; the per-HWND `g_excludedCache` is confined to the main
-  thread and invalidated via `PostMessage(WM_INVALIDATE_EXCLUDED_CACHE)`. This was the fix for the
-  settings-thread vs main-thread data race.
-- **Remote Desktop is special-cased.** `SM_REMOTESESSION` forces square overlay corners
-  ([PR #48999](https://github.com/microsoft/PowerToys/pull/48999)), prefers foreground-based target
-  resolution, and disables Game Mode suppression.
-- **Overlay is a persistent GDI+ window.** Created once (`EnsureOverlayWindow`), shown/repositioned
-  per drag; border + rounded corners drawn with GDI+; warning-gold fill/border introduced in
-  [PR #48474](https://github.com/microsoft/PowerToys/pull/48474).
+> **Evidence caveat:** GrabAndMove is a new module, first landed in
+> [PR #47024](https://github.com/microsoft/PowerToys/pull/47024) in April 2026. The corpus is roughly
+> 11 PRs plus a burst of reports, with no dedicated unit-test suite. Open issues below are symptom
+> clusters, not confirmed root causes.
 
-## Regression / Symptom Table
+## Chronology and evidence ledger
 
-| Area | Symptom | Where (file · function) | Root cause / guardrail | Evidence |
-|---|---|---|---|---|
-| Concurrency | Rare crash; stale excluded-apps | `IsExcluded` `g_excludedCache`; `LoadSettingsFromFile`; `WinEventProc` | `unordered_map` race across settings/main thread → confine to main thread, `PostMessage` invalidation, atomic snapshot list | review on [#47052](https://github.com/microsoft/PowerToys/pull/47052), commit `ea37c3a` |
-| Stuck keys | Modifier stops working; plain key unresponsive | `KeyboardProc` `g_keyHeld`/`g_heldNonAltKeyCount`; `WinEventProc` | `KF_REPEAT` misread off LL hook struct + swallowed keyup left counter >0 → transition tracking + foreground reset | [#47052](https://github.com/microsoft/PowerToys/pull/47052); reports [#48190](https://github.com/microsoft/PowerToys/issues/48190), [#47802](https://github.com/microsoft/PowerToys/issues/47802), [#49037](https://github.com/microsoft/PowerToys/issues/49037), [#48215](https://github.com/microsoft/PowerToys/issues/48215) |
-| Stuck modifier (absorbed Alt) | Alt held, another key pressed → Alt behaves as still held | `KeyboardProc` else-branch: `if (g_altAbsorbed && !g_dragConsumedAlt)` non-Alt-key path | Branch cleared `g_altAbsorbed` and replayed Alt but left paired `g_altPressed == true` → internal state thinks Alt still down. Fix adds `g_altPressed = false;` before `ReplayAbsorbedModifier(false)` | [#47261](https://github.com/microsoft/PowerToys/pull/47261) (closes [#47257](https://github.com/microsoft/PowerToys/issues/47257)) |
-| Modifier absorb | Alt/Win normal use breaks in other apps | `KeyboardProc`, `ReplayAbsorbedModifier` | Swallowed keydown not replayed → replay down (+up for Win) when no drag consumed it | [#47326](https://github.com/microsoft/PowerToys/pull/47326); reports [#47585](https://github.com/microsoft/PowerToys/issues/47585), [#47787](https://github.com/microsoft/PowerToys/issues/47787), [#47774](https://github.com/microsoft/PowerToys/issues/47774), [#48121](https://github.com/microsoft/PowerToys/issues/48121), [#47715](https://github.com/microsoft/PowerToys/issues/47715) |
-| Target filter | Desktop/taskbar/shell/palette dragged | `ResolveTargetWindow`, `IsSystemClass`, `IsExcluded` | Shared classes (`CoreWindow`) → filter by class + process path; normalize `GA_ROOT` | [#47302](https://github.com/microsoft/PowerToys/pull/47302); reports [#47926](https://github.com/microsoft/PowerToys/issues/47926), [#48056](https://github.com/microsoft/PowerToys/issues/48056), [#47832](https://github.com/microsoft/PowerToys/issues/47832), [#48081](https://github.com/microsoft/PowerToys/issues/48081), [#47667](https://github.com/microsoft/PowerToys/issues/47667) |
-| Maximized | Window jumps from cursor on grab | `HandleDragMove`/`HandleDragResize` restore branch | Re-anchor proportionally to current `pt` after `SW_RESTORE`; keep move/resize consistent | [#49118](https://github.com/microsoft/PowerToys/pull/49118); report [#49123](https://github.com/microsoft/PowerToys/issues/49123) |
-| Remote/overlay | Rounded corners over RDP; wrong target | `CornerRadiusForWindow`, `ResolveTargetWindow`, `IsSuppressedByGameMode` | `SM_REMOTESESSION` → square corners, foreground target, no game suppression | [#48999](https://github.com/microsoft/PowerToys/pull/48999) |
-| Two-button | Unmatched button-up reaches target | `MouseProc` pending-press logic | Guard against overwriting an existing pending drag/resize when both buttons used | review on [#49121](https://github.com/microsoft/PowerToys/pull/49121) |
-| Build | `LNK2038 'C++/WinRT version'` breaks CI | `GrabAndMove.vcxproj` | Missing CppWinRT NuGet import → mirror canonical pinned wiring | [#47910](https://github.com/microsoft/PowerToys/pull/47910) |
-| Build hygiene | Fragile transitive include | `pch.h` | `std::atomic` used but `<atomic>` not included → include STL headers explicitly | review on [#47052](https://github.com/microsoft/PowerToys/pull/47052) |
-| OOBE/assets | Missing OOBE + icons | `src/settings-ui/Settings.UI/Assets/Settings/Icons/GrabAndMove.png`; `src/settings-ui/Settings.UI/Assets/Settings/Modules/GrabAndMove.png`; `src/settings-ui/Settings.UI/Assets/Settings/Modules/OOBE/GrabAndMove.gif` | Wire OOBE + module assets for the new module | [#47033](https://github.com/microsoft/PowerToys/pull/47033) |
+| Sequence | Evidence | Decision or observed regression | Exact source anchors |
+|---|---|---|---|
+| 1 | [PR #47024](https://github.com/microsoft/PowerToys/pull/47024) | Initial module landed as a separate executable driven by global low-level keyboard/mouse hooks and a foreground WinEvent hook. | `GrabAndMoveModuleInterface/dllmain.cpp`; `GrabAndMove/main.cpp::wWinMain`, `KeyboardProc`, `MouseProc`, `WinEventProc` |
+| 2 | [PR #47033](https://github.com/microsoft/PowerToys/pull/47033) | Added the module/OOBE assets omitted from the initial integration. | `src/settings-ui/Settings.UI/Assets/Settings/Icons/GrabAndMove.png`; `.../Modules/GrabAndMove.png`; `.../Modules/OOBE/GrabAndMove.gif` |
+| 3 | [PR #47052](https://github.com/microsoft/PowerToys/pull/47052), commit `ea37c3a` | Added Win as a selectable modifier and coordinate improvements. Review found two durable defects: `KF_REPEAT` was incorrectly inferred from the LL-hook flags, and the settings thread raced the main thread on `g_excludedCache`. The accepted design uses transition-based held-key state, foreground reset, an immutable excluded-app snapshot, and message-based cache invalidation. | `main.cpp::KeyboardProc`; `g_keyHeld`; `g_heldNonAltKeyCount`; `WinEventProc`; `LoadSettingsFromFile`; `IsExcluded`; `g_excludedApps`; `g_excludedCache`; `WM_INVALIDATE_EXCLUDED_CACHE` |
+| 4 | [PR #47261](https://github.com/microsoft/PowerToys/pull/47261), closes [#47257](https://github.com/microsoft/PowerToys/issues/47257) | Fixed absorbed Alt remaining internally pressed after another key arrived. The accepted fix clears `g_altPressed` with `g_altAbsorbed` before replay. | `main.cpp::KeyboardProc`, non-Alt-key branch containing `g_altAbsorbed`, `g_dragConsumedAlt`, and `ReplayAbsorbedModifier(false)` |
+| 5 | [PR #47302](https://github.com/microsoft/PowerToys/pull/47302) | Hardened target filtering for desktop/Explorer and shell surfaces. Class-only filtering was insufficient because shell processes share generic classes. | `main.cpp::ResolveTargetWindow`; `IsSystemClass`; `IsExcluded`; `GetAncestor(..., GA_ROOT)` |
+| 6 | [PR #47326](https://github.com/microsoft/PowerToys/pull/47326) | Completed modifier replay behavior, including replaying Win down and up when no drag consumed it. | `main.cpp::KeyboardProc`; `ReplayAbsorbedModifier` |
+| 7 | [PR #47910](https://github.com/microsoft/PowerToys/pull/47910) | Fixed CI `LNK2038` C++/WinRT-version mismatch by restoring canonical pinned CppWinRT NuGet wiring. Review also rejected relying on transitive STL includes and preferred dependency patches over bundled compatibility shims. | `GrabAndMove/GrabAndMove.vcxproj`; `GrabAndMove/pch.h`; historical `deps/spdlog-msvc-fix` discussion |
+| 8 | [PR #48474](https://github.com/microsoft/PowerToys/pull/48474) | Introduced the warning-gold overlay appearance; wording was later cited in review as an example of comments that should remain plain and factual. | `main.cpp::RenderOverlayContent`; overlay fill/border state |
+| 9 | [PR #48999](https://github.com/microsoft/PowerToys/pull/48999) | Established Remote Desktop exceptions: square overlay corners, foreground-based target selection, and no Game Mode suppression. | `main.cpp::CornerRadiusForWindow`; `PrepareOverlayMetrics`; `ResolveTargetWindow`; `IsSuppressedByGameMode`; `SM_REMOTESESSION` branches |
+| 10 | [PR #49118](https://github.com/microsoft/PowerToys/pull/49118), report [#49123](https://github.com/microsoft/PowerToys/issues/49123) | Review found maximized-window restoration anchored move to stale `g_dragStart` rather than live `pt`; move and resize were aligned on proportional cursor anchoring. | `main.cpp::HandleDragMove`; `HandleDragResize`; `SW_RESTORE` branches |
+| 11 | Review on [PR #49121](https://github.com/microsoft/PowerToys/pull/49121) | Prevented a second mouse button from overwriting an existing pending drag/resize and leaking an unmatched button-up to the target. | `main.cpp::MouseProc`; pending-press state |
 
-## Open symptom clusters (verify before acting — not yet root-caused here)
+## Issue evidence by resolved area
 
-These are recurring **user reports** at the time of distillation; they point at areas above but have no
-confirmed fix. Reason from the symptom and confirm in source.
+| Area | Reports | What the reports establish | Source anchors |
+|---|---|---|---|
+| Held/stuck keys | [#48190](https://github.com/microsoft/PowerToys/issues/48190), [#47802](https://github.com/microsoft/PowerToys/issues/47802), [#49037](https://github.com/microsoft/PowerToys/issues/49037), [#48215](https://github.com/microsoft/PowerToys/issues/48215) | Repeated user-visible failures around modifiers/plain keys support the held-state and foreground-reset review findings from #47052; individual reports do not independently prove the same root cause. | `KeyboardProc`; `g_keyHeld`; `g_heldNonAltKeyCount`; `WinEventProc` |
+| Modifier absorb/replay | [#47585](https://github.com/microsoft/PowerToys/issues/47585), [#47787](https://github.com/microsoft/PowerToys/issues/47787), [#47774](https://github.com/microsoft/PowerToys/issues/47774), [#48121](https://github.com/microsoft/PowerToys/issues/48121), [#47715](https://github.com/microsoft/PowerToys/issues/47715) | Normal Alt/Win behavior or foreign shortcuts broke while absorption was enabled; #47261/#47326 contain the confirmed replay decisions. | `KeyboardProc`; `ReplayAbsorbedModifier` |
+| Target filtering | [#47926](https://github.com/microsoft/PowerToys/issues/47926), [#48056](https://github.com/microsoft/PowerToys/issues/48056), [#47832](https://github.com/microsoft/PowerToys/issues/47832), [#48081](https://github.com/microsoft/PowerToys/issues/48081), [#47667](https://github.com/microsoft/PowerToys/issues/47667) | Desktop, taskbar, Start, shell, and Command Palette reports motivated class-plus-process filtering. | `ResolveTargetWindow`; `IsSystemClass`; `IsExcluded` |
 
-- **Resize axis bias / undesirable edges:** [#48313](https://github.com/microsoft/PowerToys/issues/48313),
+## Reviewer decision ledger
+
+- **Thread ownership:** confine hook/cache state to the main message-pump thread. The settings thread
+  posts invalidation; `g_excludedApps` crosses threads only as
+  `atomic<shared_ptr<const vector<wstring>>>` ([#47052](https://github.com/microsoft/PowerToys/pull/47052),
+  `ea37c3a`).
+- **Event model:** use key transitions, not `KF_REPEAT`. A maintainer also confirmed
+  `WINEVENT_OUTOFCONTEXT` callbacks dispatch on the installing thread's pump, so `WinEventProc` does
+  not race the LL hooks; the proven race was settings-thread cache mutation.
+- **Settings contract scope:** keep `Alt=0`, `Win=1` synchronized across C++ and C#. Review rejected
+  converting the C# integer to an enum inside the two-value bugfix as unrelated churn (#47052).
+- **Build dependency policy:** mirror canonical pinned CppWinRT imports; include `<atomic>` explicitly;
+  prefer vcpkg plus a patch over a bundled shim header (#47910).
+- **Comment style:** reviewers repeatedly rejected hyphenated/ornamental wording such as
+  “warning-gold” and “literal equivalent”; comments should be plain and factual.
+
+## Open symptom clusters
+
+These remain investigation leads, not root-caused regressions:
+
+- **Resize axis/edge selection:** [#48313](https://github.com/microsoft/PowerToys/issues/48313),
   [#47733](https://github.com/microsoft/PowerToys/issues/47733),
-  [#47544](https://github.com/microsoft/PowerToys/issues/47544) → `GetClosestHandle`/`HandleDragResize`.
-- **DPI awareness of the preview:** [#47771](https://github.com/microsoft/PowerToys/issues/47771) →
-  `PrepareOverlayMetrics` DPI scaling.
-- **Conflicts with other PowerToys/apps:** Keyboard Manager
+  [#47544](https://github.com/microsoft/PowerToys/issues/47544). Anchors:
+  `GetClosestHandle`, `HandleDragResize`.
+- **Preview DPI:** [#47771](https://github.com/microsoft/PowerToys/issues/47771). Anchor:
+  `PrepareOverlayMetrics`.
+- **Cross-utility/app conflicts:** Keyboard Manager
   [#49127](https://github.com/microsoft/PowerToys/issues/49127), FancyZones
   [#47774](https://github.com/microsoft/PowerToys/issues/47774), Command Palette
-  [#47787](https://github.com/microsoft/PowerToys/issues/47787),
-  [#47832](https://github.com/microsoft/PowerToys/issues/47832) → modifier absorb/replay + `IsExcluded`.
-- **Stops after sleep/hibernation:** [#47699](https://github.com/microsoft/PowerToys/issues/47699) →
-  hook lifetime in `wWinMain`/`WinEventProc`.
-- **WSLg / Task Manager / elevated targets not honored:**
-  [#48304](https://github.com/microsoft/PowerToys/issues/48304),
-  [#47658](https://github.com/microsoft/PowerToys/issues/47658) → target resolution / integrity level.
-
-## Maintainer conventions surfaced in review
-
-- Confine shared hook state to one thread; marshal cross-thread work with `PostMessage`.
-- Track held keys by transition, never `KF_REPEAT`.
-- Include STL headers explicitly in `pch.h`.
-- Keep the C++/C# modifier mapping (`Alt=0`,`Win=1`) as a simple int for a two-value bugfix; don't
-  churn it into an enum in an unrelated PR (scope-creep push-back).
-- New native `.vcxproj` mirrors the canonical CppWinRT NuGet wiring.
-- Prefer vcpkg + patch file over bundled shim headers for toolset compat.
-- Keep code comments plain — a maintainer repeatedly rejected hyphenated compound nouns and flowery
-  phrasing.
+  [#47787](https://github.com/microsoft/PowerToys/issues/47787) and
+  [#47832](https://github.com/microsoft/PowerToys/issues/47832). Anchors:
+  modifier absorb/replay and `IsExcluded`.
+- **Stops after sleep/hibernate:** [#47699](https://github.com/microsoft/PowerToys/issues/47699).
+  Anchors: hook lifetime in `wWinMain`, `WinEventProc`.
+- **WSLg, Task Manager, elevated targets:** [#48304](https://github.com/microsoft/PowerToys/issues/48304),
+  [#47658](https://github.com/microsoft/PowerToys/issues/47658). Anchors: target resolution and
+  integrity level.

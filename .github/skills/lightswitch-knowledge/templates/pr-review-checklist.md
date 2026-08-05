@@ -4,12 +4,12 @@ Apply after reading the diff cold (see anti-anchoring note in SKILL.md). Only ch
 files/areas the PR actually touches.
 
 ## Scheduling & time math
-- [ ] Angle/time normalization uses real modulo (`fmod` / `% 1440` with the `+1440` guard), **not**
-      single-pass `if (x>360) x-=360;` (`ThemeScheduler.cpp`, `LightSwitchUtils.h`). (#46957)
+- [ ] Minute values retain `% 1440` normalization. Treat `fmod` for validated solar angles as
+      optional hardening unless a test demonstrates an input outside one ±360 adjustment. (#46957)
 - [ ] `CalculateSunriseSunset` polar sentinel (`cosH` out of range → `-1`) is handled, not fed into
       `toLocal` as a real time. (#46954)
 - [ ] `ShouldBeLight` still covers both the normal (`light<dark`) and wrap-around cases; new call
-      sites route through it rather than re-deriving boundaries. (#45723, #45860)
+      sites route through it rather than re-deriving boundaries. (#45723)
 - [ ] Coordinate validation does not reject a real `(0,0)`; "unset" is represented separately. (#46955)
 
 ## Theme application (registry)
@@ -19,15 +19,15 @@ files/areas the PR actually touches.
 - [ ] `ColorPrevalence` reset on light-mode switch is preserved/understood if `ThemeHelper.cpp` changes.
 
 ## Settings & observers
-- [ ] Every new persisted setting has a `SettingId` (`SettingsConstants.h`) **and** a
-      `NotifyObservers` call in `LoadSettings`. (#46956)
+- [ ] The service settings-event handler still reloads the whole settings object and calls
+      `LightSwitchStateManager::OnSettingsChanged`; add observer IDs only for actual consumers. (#46956)
 - [ ] Settings reload path still debounces (`InitFileWatcher`); no assumption of instant reload.
 
 ## Service & inter-module
 - [ ] GPO gate (`getConfiguredLightSwitchEnabledValue`) honored before starting the service.
 - [ ] Service launch/teardown correct; self-terminates when parent PID exits (`--pid`).
 - [ ] `NotifyPowerDisplay` fires on **every** override/apply, not only on `false→true` entry. (#47190)
-- [ ] Direction-specific named events used so consumers don't read a half-written registry. (#47190)
+- [ ] Direction-specific LightSwitch events remain compatible with PowerDisplay consumers. (#42642)
 - [ ] Manual-override sticky/clear logic (boundary crossing, midnight wrap) unchanged or tested.
 - [ ] New/changed logging is size-bounded (long-running service). (#48212)
 

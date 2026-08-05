@@ -98,8 +98,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `App.xaml.cs::App_UnhandledException` and fast-fails.
 - **Root cause:** the image path is non-empty but the file is gone, so `ExtractAssociatedIcon` throws.
 - **Guardrail:** wrap the extraction in `try/catch`, log a warning, and fall back to a placeholder
-  `BitmapImage`. Because the converter re-runs during virtualization, prefer a `File.Exists`
-  fast-path so the common case doesn't rely on (expensive, log-flooding) exceptions. Evidence:
+  `BitmapImage`. Because the converter re-runs during virtualization, a `File.Exists` fast path was
+  suggested to avoid expensive/log-flooding exceptions, but **current source does not implement
+  that suggestion**. Evidence:
   [#48693](https://github.com/microsoft/PowerToys/issues/48693) →
   [PR #48719](https://github.com/microsoft/PowerToys/pull/48719).
 
@@ -119,12 +120,13 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   (`package::IsWin11OrGreater` → `RegisterSparsePackage(FileLocksmithContextMenuPackage.msix)`)
   handled by `FileLocksmithContextMenu/dllmain.cpp`; Win10 classic path
   `RuntimeRegistration.h` (registry `ContextMenuHandlers`) handled by `ExplorerCommand.cpp`.
-- **Root cause:** two independent registration mechanisms gated on OS version + settings; a mismatch
-  (both registered → **double entry**; neither → **missing**) breaks the menu. Both handlers also
+- **Root cause:** sparse-package registration is added on Windows 11, then classic registration
+  management still runs; older systems use only the classic path. A mismatch can produce a
+  **double entry** or a **missing** entry. Both handlers also
   gate on `GetEnabled()` and `GetShowInExtendedContextMenu()` — the classic one returns `E_FAIL`
   unless `CMF_EXTENDEDVERBS` when extended-only; the MSIX one sets `ECS_HIDDEN`.
-- **Guardrail:** keep Win11=sparse-package and Win10=classic mutually exclusive; keep the
-  enabled/extended-only checks identical in both handlers. Evidence:
+- **Guardrail:** do not assume the registration mechanisms are OS-exclusive. Keep the
+  enabled/extended-only checks identical in both handlers and prevent duplicate visible entries. Evidence:
   [#48951](https://github.com/microsoft/PowerToys/issues/48951),
   [#45863](https://github.com/microsoft/PowerToys/issues/45863),
   [#44394](https://github.com/microsoft/PowerToys/issues/44394) (double entry),
@@ -156,20 +158,20 @@ Enforce these when reviewing or authoring File Locksmith changes:
 - **Check stream/handle state after opening.** `std::ofstream` does not throw on failure — verify
   `is_open()` and return `E_FAIL`; don't wrap it in a no-op `try/catch` (#46948).
 - **Guard `Icon.ExtractAssociatedIcon`.** It runs per-row during virtualization; an unhandled throw
-  fast-fails via `App_UnhandledException`. Keep the `try/catch` + placeholder + `File.Exists`
-  fast-path (#48693 / PR #48719).
+  fast-fails via `App_UnhandledException`. Keep the merged `try/catch` + placeholder. Treat the
+  `File.Exists` fast path as an unimplemented review suggestion (#48693 / PR #48719).
 - **Never remove the handle-enumeration hang watchdog.** `NtQueryObject`/`GetFileType` can hang and
   have no timeout API; keep the offload-thread + `TerminateThread` progress loop in `handles`.
 - **Keep the directory-prefix `\` boundary** in `kernel_paths_contain`; a bare prefix match reports
   false positives on sibling directories.
-- **Keep Win10-classic and Win11-sparse-MSIX registration mutually exclusive** and gated identically
-  on `GetEnabled()` / `GetShowInExtendedContextMenu()` in both handlers (#44394 double entry,
-  #48951/#44374 missing).
+- **Do not assume classic and sparse-MSIX registration are OS-exclusive.** Windows 11 registers the
+  sparse package and still runs classic registration management. Keep both handlers gated
+  consistently and prevent duplicate visible entries (#44394, #48951, #44374).
 - **Elevated scans require `SetDebugPrivilege`.** To see handles held by other users / system
   processes the elevated UI enables `SE_DEBUG_NAME` in `App.xaml.cs::OnLaunched`; the module is also
   GPO-gated (`GetConfiguredFileLocksmithEnabledValue`) — respect both.
-- **Check `CreateProcessW`/`ShellExecuteExW` return values** in the launch/elevation paths; failures
-  are currently swallowed in `LaunchUI` (#46950).
+- **Known current violation:** `LaunchUI` currently swallows `CreateProcessW` failure. Check
+  `CreateProcessW`/`ShellExecuteExW` return values in launch/elevation paths (#46950).
 - **Use `$(RepoRoot)`, not bare relative paths, in project files**
   ([PR #44639](https://github.com/microsoft/PowerToys/pull/44639)).
 

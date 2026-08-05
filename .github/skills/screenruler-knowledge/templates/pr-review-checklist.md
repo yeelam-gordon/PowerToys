@@ -21,10 +21,10 @@ maps to the Regression Playbook / Review Rule it enforces. Source root: `src/mod
 - [ ] `Width()/Height()` still add the inclusive `+1` pixel; `Print` stays within the caller buffer.
 
 ## Multi-monitor / session lifecycle (`PowerToys.MeasureToolCore.cpp`, `OverlayUI.cpp`)
-- [ ] Per-monitor setup loop `continue`s on a single-monitor failure — never `return`/abort all
-      (#39195, #33345).
-- [ ] `closeOnOtherMonitors = true` reliably ends every UI loop and fires `sessionCompletedCallback`
-      exactly once.
+- [ ] If per-monitor setup behavior changes, investigate the existing `return`/`continue`
+      difference; the cited reports do not prove one universal fix (#39195, #33345).
+- [ ] Verify completion ownership when `closeOnOtherMonitors = true`; current overlay threads each
+      invoke `sessionCompletedCallback`, and no exactly-once contract is established.
 - [ ] Overlay window styles / virtual-desktop coverage unchanged unless intended (#33841).
 
 ## Capture (`ScreenCapturing.cpp`, `DxgiAPI.cpp`, `D2DState.cpp`)

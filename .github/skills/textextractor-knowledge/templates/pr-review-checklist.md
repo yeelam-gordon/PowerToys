@@ -7,7 +7,8 @@ paths the diff actually touches.
 - [ ] `OcrEngine.TryCreateFromLanguage` result null-checked; empty `AvailableRecognizerLanguages` handled without crash (#46030, #41969).
 - [ ] Upscaling still gated by `OcrEngine.MaxImageDimension` (1.5× only under the cap).
 - [ ] Text assembly goes through `GetTextFromOcrLine` + `IsLanguageSpaceJoining`; RTL reversal path preserved.
-- [ ] `Graphics` scoped within its backing `Bitmap`'s lifetime (no dispose-ordering GDI+ fault — PR #44906).
+- [ ] **Known current violation checked:** `Graphics` is scoped within its backing `Bitmap`'s
+      lifetime; PR #44906 established the padding try-pattern, not this disposal ordering.
 - [ ] Bitmap disposal / `GC.Collect()` intent preserved for large captures.
 
 ## Language selection

@@ -1,139 +1,68 @@
-# Peek — Regression Catalog
+# Peek — Evidence and Decision Ledger
 
-Fuller, progressively-disclosed list behind the SKILL.md playbooks. Every entry is grounded in the
-module source under `src/modules/peek/` and/or the mined issue/PR history. Confirm in source before
-acting — several mined issue bodies were sparse (non-English or terse), so entries marked
-"grounding: title(s)+source" lean on issue titles plus verified source behavior.
+[Return to actionable playbooks](../SKILL.md).
 
-## Activation: Space vs typing (the dominant issue cluster)
+This catalog is the progressive-disclosure evidence record for `SKILL.md`. Source anchors are under
+`src/modules/peek/`.
 
-- **Space fires (or pops an error window) during Explorer inline rename / search box.** The
-  first-run default is single-Space activation (`dllmain.cpp` `m_enableSpaceToActivate`,
-  `JSON_KEY_ENABLE_SPACE_TO_ACTIVATE`). The upstream gate that keeps Space out of a text field is
-  `FileExplorerHelper.CaretVisible`: it reads `GetGUIThreadInfo`, restricts to the same top-level
-  window (`gi.hwndActive == hwnd`), treats any focused control whose class name contains `Edit` or
-  `Input` as "typing" (returns true → `GetSelectedItems` returns `null`), and falls back to the
-  `GUI_CARETBLINKING` flag. It **fails open** (returns false) when `GetGUIThreadInfo` fails. The
-  actual bug fixed by [PR #44995](https://github.com/microsoft/PowerToys/pull/44995) was **not** in
-  `CaretVisible` but in `MainWindow.xaml.cs::Initialize`: [PR #44703](https://github.com/microsoft/PowerToys/pull/44703)
-  had added an error window in the `ViewModel.CurrentItem == null` branch (`ShowError` + `this.Show()`
-  + `WindowHelpers.BringToForeground`) for empty virtual folders, and because the typing-suppression
-  also yields `CurrentItem == null`, that window popped during rename/search and stole focus. #44995
-  restores the silent `return`. Evidence: [#45133](https://github.com/microsoft/PowerToys/issues/45133),
-  [#45137](https://github.com/microsoft/PowerToys/issues/45137),
-  [#45145](https://github.com/microsoft/PowerToys/issues/45145),
-  [#45383](https://github.com/microsoft/PowerToys/issues/45383),
-  [#45642](https://github.com/microsoft/PowerToys/issues/45642),
-  [#45667](https://github.com/microsoft/PowerToys/issues/45667),
-  [#45886](https://github.com/microsoft/PowerToys/issues/45886) (search box); fix
-  [PR #44995](https://github.com/microsoft/PowerToys/pull/44995). Grounding: source + issue titles.
+> **Role split:** `SKILL.md` owns actionable symptom → root-cause → guardrail guidance. This file
+> owns provenance: exact source anchors, historical decisions, reviewer rationale, unresolved issue
+> clusters, chronology, and confidence caveats. Do not duplicate the playbook prose here.
 
-- **Regression after toggling the Space switch off/on.** `init_settings` in `dllmain.cpp` forces a
-  bare-Space hotkey when the toggle is ON and stores/reverts the previous combination; the
-  off→on→off transitions have their own revert policy (lines ~140-190). A user reported Space
-  re-triggering during rename after toggling the switch. Evidence:
-  [#49013](https://github.com/microsoft/PowerToys/issues/49013). Grounding: source + title.
+## Verified source-anchor ledger
 
-- **IME (CJK) candidate selection interrupted by Space.** With an East-Asian IME, Space commits a
-  candidate; because the IME candidate UI is not the rename `Edit` control, the class-name heuristic
-  can miss it and Space leaks to activation. Evidence:
-  [#45346](https://github.com/microsoft/PowerToys/issues/45346),
-  [#48189](https://github.com/microsoft/PowerToys/issues/48189). Grounding: titles + source.
+| Area | Exact source anchors | Evidence retained |
+|---|---|---|
+| Space activation/settings | `dllmain.cpp`: `m_enableSpaceToActivate`, `JSON_KEY_ENABLE_SPACE_TO_ACTIVATE`, `init_settings` | First-run Space mode and off/on restoration logic live runner-side. |
+| Typing suppression | `Peek.UI/Helpers/FileExplorerHelper.cs::CaretVisible`, `GetSelectedItems` | Uses `GetGUIThreadInfo`, same top-level active-window check, `Edit`/`Input` class matching, then `GUI_CARETBLINKING`; failure returns “not typing.” |
+| Empty selection | `Peek.UI/PeekXAML/MainWindow.xaml.cs::Initialize` | `ViewModel.CurrentItem == null` returns without showing or foregrounding Peek. |
+| Hosted-content shortcuts | `MainWindow` `KeyboardAccelerator`s: `CloseInvoked`, `PreviousNavigationInvoked`, `NextNavigationInvoked`; hosted WebView2/Monaco and shell preview-handler window | Parent WinUI accelerators do not necessarily receive keys after hosted content owns focus. |
+| Shell preview-handler COM | `ShellPreviewHandlerPreviewer.LoadPreviewAsync`, `Clear`, `ReleaseHandlerFactories`; `MainWindow.Uninitialize`, `AppWindow_Closing` | Cached factories are `LockServer(true)` local servers; teardown drains via `TryRemove`, mirrors `LockServer(false)`, and final-releases RCWs. |
+| Media lifecycle | `VideoPreviewer`, `AudioPreviewer`: `Dispose`, `Unload`, `OnPreviewChanged` | `MediaSource` backs media playback and SMTC registration; source disposal is explicit. |
+| Archive encoding | `ArchivePreviewer` zip path | Forced CP437 acts as a reversible probe; unknown encoding is detected with `UtfUnknown`; EFS/UTF-8-resolved keys remain as supplied by SharpCompress. |
+| Formatting | `Peek.Common/Helpers/MathHelper.cs::NumberOfDigits`; `ReadableStringHelper.GetPrecision` | `Math.Abs(int.MinValue)` can throw; caller includes a `double`→`int` conversion. |
+| Tooltip setting | `FilePreview.UpdateTooltipAsync`; `MainWindow.Initialize` | Async work rechecks the setting before assigning `InfoTooltip`; setting value is copied per initialization, not live-propagated. |
 
-- **Silent no-op when there's nothing to preview.** `MainWindow.xaml.cs::Initialize` early-returns
-  (`if (ViewModel.CurrentItem == null) return;`) when selection is empty/suppressed (typing in
-  rename/search, or virtual folders) specifically to avoid stealing focus. History: #44703 briefly
-  replaced this silent return with a focus-stealing error window for empty virtual folders (Home/Recent);
-  [PR #44995](https://github.com/microsoft/PowerToys/pull/44995) reverted it back to the silent return.
-  Guardrail: never surface Peek UI (`Show`/`BringToForeground`/`ShowError`) on an empty selection.
-  Grounding: source + PR diff.
+## Decision chronology
 
-## Keyboard shortcuts vs hosted content
+Ordered by the repository history represented in this corpus.
 
-- **Ctrl+W / Esc / arrows die after focus enters the preview.** Peek's shortcuts are XAML
-  `KeyboardAccelerator`s (`MainWindow` `CloseInvoked`, `PreviousNavigationInvoked`,
-  `NextNavigationInvoked`). Hosted WebView2/Monaco content and the out-of-process shell preview-handler
-  window capture keyboard focus and bypass the parent WinUI focus tree. Evidence:
-  [#48274](https://github.com/microsoft/PowerToys/issues/48274); in-progress fix via a low-level
-  keyboard hook [PR #48293](https://github.com/microsoft/PowerToys/pull/48293). Grounding: source + issue/PR.
+| Change | Evidence | Decision / reviewer record |
+|---|---|---|
+| Empty virtual-folder error UI introduced | [PR #44703](https://github.com/microsoft/PowerToys/pull/44703) | Added error/show/foreground behavior when no current item existed; this later proved to overlap with typing suppression. |
+| Archive encoding fix | [#44790](https://github.com/microsoft/PowerToys/issues/44790), [PR #44799](https://github.com/microsoft/PowerToys/pull/44799) | Reviewer decision: when strict CP437 round-trip succeeds, do not default to UTF-8 on low detector confidence; UTF-8 is known wrong for those non-ASCII fallback bytes. |
+| Empty-selection focus regression reverted | [PR #44995](https://github.com/microsoft/PowerToys/pull/44995) | Restored the silent return in `Initialize`; no `ShowError`, `Show`, or `BringToForeground` for empty/suppressed selection. |
+| Tooltip async race/settings semantics | [PR #46624](https://github.com/microsoft/PowerToys/pull/46624) | Recheck `ShowFilePreviewTooltip` before final assignment. Maintainers rejected live propagation while Peek is open as inconsistent with other settings. |
+| Media/SMTC teardown | [PR #46899](https://github.com/microsoft/PowerToys/pull/46899) | Dispose media sources when preview changes or Peek closes; do not rely on GC for player/session teardown. |
+| Hosted-content shortcut hook fix | [PR #48293](https://github.com/microsoft/PowerToys/pull/48293) (merged July 9, 2026) | Landed with reviewer decisions: real validated module handle; log `Marshal.GetLastWin32Error()`; idempotent `KeyUp` subscription; marshal the hook structure and then filter `vkCode`; include LWin/RWin; consume only after successful `DispatcherQueue.TryEnqueue`; uninstall in `Dispose`. See [low-level hook documentation](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc). |
+| Preview-handler teardown hardening | [PR #48564](https://github.com/microsoft/PowerToys/pull/48564) | Drain cache with `TryRemove`, not snapshot+`Clear`; release per-load handler/stream/item ownership in `finally`; isolate `Unload` from final release; keep teardown best-effort; prevent exceptions escaping `AppWindow_Closing`. |
 
-- **Global-hook conventions (from PR #48293 review).** If restoring shortcuts with a low-level hook:
-  use a real module handle (not `IntPtr.Zero`) and validate it; log `Marshal.GetLastWin32Error()`;
-  make the content `KeyUp` subscription idempotent (Peek re-`Initialize`s while visible when the
-  selected file changes, so `this.Content.KeyUp += ...` can double-subscribe); fast-path filter
-  `vkCode` before marshalling `KBDLLHOOKSTRUCT`; include LWin/RWin as modifiers (don't swallow
-  Win+Arrow snapping); only mark a key handled when `DispatcherQueue.TryEnqueue` succeeds; uninstall
-  in `Dispose`. Mirrors `cmdpal`/`ColorPicker`/`Mouse` hook patterns in-repo.
-  ([lowlevelkeyboardproc](https://learn.microsoft.com/en-us/windows/win32/winmsg/lowlevelkeyboardproc)).
-  Grounding: review comments + repo patterns.
+## Symptom-cluster ledger (lifecycle noted)
 
-## Preview-handler COM lifecycle (PR #48564)
+These reports retain symptom grouping and source-localization clues without asserting a shared root
+cause.
 
-- **Factory cache is a locked local server.** `ShellPreviewHandlerPreviewer` caches `IClassFactory`
-  RCWs in a static `HandlerFactories` `ConcurrentDictionary` and `LockServer(true)`s them.
-  `ReleaseHandlerFactories` must drain via `TryRemove` (a prior snapshot+`Clear` raced a concurrent
-  `LoadPreviewAsync` `AddOrUpdate`, dropping an entry without its `LockServer(false)`/`FinalRelease`
-  → leaked locked host). Each drained factory gets `LockServer(false)` then `FinalReleaseComObject`,
-  both wrapped (RCW may be unreachable during teardown).
+| Cluster | Reports | Current evidence boundary |
+|---|---|---|
+| Space during rename/search | [#45133](https://github.com/microsoft/PowerToys/issues/45133), [#45137](https://github.com/microsoft/PowerToys/issues/45137), [#45145](https://github.com/microsoft/PowerToys/issues/45145), [#45383](https://github.com/microsoft/PowerToys/issues/45383), [#45642](https://github.com/microsoft/PowerToys/issues/45642), [#45667](https://github.com/microsoft/PowerToys/issues/45667), [#45886](https://github.com/microsoft/PowerToys/issues/45886) | Historical focus-steal cause is established for PR #44703/#44995. Current reports still require checking `CaretVisible`, active window/control class, and empty-selection UI behavior. |
+| Disable/re-enable regression | [#49013](https://github.com/microsoft/PowerToys/issues/49013) | Report follows module off/on transitions; investigate `enable`/`disable`, hook installation, and eligibility recomputation. Do not classify it as a Space-setting or hotkey-revert defect without reproduction. |
+| IME composition | [#45346](https://github.com/microsoft/PowerToys/issues/45346), [#48189](https://github.com/microsoft/PowerToys/issues/48189) | IME candidate selection may not appear as the rename `Edit` control. Evidence is issue-title plus verified heuristic, not a verified Windows IME-state implementation. |
+| Shortcuts after preview focus | [#48274](https://github.com/microsoft/PowerToys/issues/48274) (closed completed July 9, 2026) | Hosted-content focus is the localized mechanism; PR #48293 is the merged fix chronology. |
+| Integer formatting overflow | [#46960](https://github.com/microsoft/PowerToys/issues/46960) | Source confirms the `Math.Abs(int.MinValue)` hazard; the exact user input path and fix status must be checked in current source. |
 
-- **Per-load cleanup.** `LoadPreviewAsync` uses an `ownsHandler` flag in `try/finally`: on
-  cancellation or init failure before assigning `Preview`, it `FinalReleaseComObject`s the handler and
-  disposes `fileStream`. The `IInitializeWithItem` path releases the `IShellItem` created by
-  `SHCreateItemFromParsingName` after `Initialize`.
+## Caveats and exclusions
 
-- **`Clear` splits `Unload()` and `FinalReleaseComObject`** into separate try blocks: if the
-  preview-handler host process crashed mid-teardown and `Unload` throws, the RCW must still be
-  released or the cache/process can't tear down cleanly.
-
-- **Best-effort teardown + no fail-fast.** `MainWindow.Uninitialize` runs each step through
-  `TryRunUninitializeStep` so a failure (e.g. `Restore`/`Hide` on a window mid-teardown) doesn't skip
-  `ReleaseHandlerFactories()`; the `finally` preserves `_exitAfterClose` → `Environment.Exit(0)`.
-  `AppWindow_Closing` is fully wrapped because a throw in a CsWinRT event callback marshals as a
-  failed HRESULT and CFlat fail-fasts the process. Grounding: source + PR #48564 review.
-
-## Media / SMTC (PR #46899)
-
-- **Player/media session outlives the window.** `MediaSource` (backing `MediaPlayerElement`, which
-  registers System Media Transport Controls) must be disposed when the previewer changes or Peek
-  closes; `VideoPreviewer`/`AudioPreviewer` `Dispose`/`Unload` and `OnPreviewChanged` drive this. The
-  original bug: audio kept playing / Peek persisted as a media player after close, plus a redundant
-  SMTC registration. Grounding: source (`_mediaSource?.Dispose()`) + PR #46899 title/discussion.
-
-## Archive encoding (PR #44799)
-
-- **CP437 probe pipeline.** `ArchivePreviewer` opens `.zip` with `ArchiveEncoding.Forced = CP437`; a
-  strict CP437 (`EncoderExceptionFallback`/`DecoderExceptionFallback`) round-trip of the joined entry
-  keys distinguishes "SharpCompress used our CP437 fallback (encoding unknown → run `UtfUnknown`
-  `CharsetDetector`, re-decode from raw CP437 bytes)" from "SharpCompress already resolved UTF-8 via
-  EFS bit 11 (`EncoderFallbackException` thrown → use keys as-is)". Reviewer note: when the strict
-  round-trip succeeds, UTF-8 is guaranteed wrong for non-ASCII names, so don't fall back to UTF-8 on
-  low detection confidence. Evidence: [#44790](https://github.com/microsoft/PowerToys/issues/44790),
-  [PR #44799](https://github.com/microsoft/PowerToys/pull/44799). Grounding: source + review.
-
-## Formatting / math
-
-- **`Math.Abs(int.MinValue)` overflow.** `MathHelper.NumberOfDigits(int)` calls `Math.Abs(num)`,
-  which throws `OverflowException` for `int.MinValue`; reached via `ReadableStringHelper.GetPrecision`
-  ((int)number cast). Evidence: [#46960](https://github.com/microsoft/PowerToys/issues/46960).
-  Grounding: source + issue title.
-
-## Metadata tooltip toggle (PR #46624)
-
-- **Async re-attach race + read-at-Initialize.** `FilePreview.UpdateTooltipAsync` checks
-  `ShowFilePreviewTooltip` at start; if toggled off during in-flight async work it could still assign
-  a non-null `InfoTooltip` and re-attach the tooltip — a second check before the final assign fixes
-  it. The setting is copied into `FilePreviewer` only in `MainWindow.Initialize`, so toggling while a
-  Peek window is open is intentionally not live (maintainers rejected live propagation as inconsistent
-  with other Peek settings). Grounding: source + PR #46624 review.
-
-## Excluded as noise (not distilled)
-
-- Repo-wide build/infra PRs that merely touched Peek among many modules: .NET 10 upgrade
-  ([#41280](https://github.com/microsoft/PowerToys/pull/41280)), CppWinRT bump
-  ([#45420](https://github.com/microsoft/PowerToys/pull/45420)), VS 2026 support
-  ([#44304](https://github.com/microsoft/PowerToys/pull/44304)); the `$(RepoRoot)` path convention
-  ([#44639](https://github.com/microsoft/PowerToys/pull/44639)) is captured as a one-line Review Rule.
-- Pure style/formatting nits (e.g. SA1513 blank-line, spell-check punctuation rules), "LGTM", and
-  release-label/versioning chatter.
-- Duplicate / non-actionable user reports ("Peek not working", "Peek issue") lacking a reproducible,
-  generalizable lesson.
+- Several issue bodies were sparse, terse, or non-English. Rows marked by issue evidence should be
+  treated as title-plus-source grounding unless a PR decision is also cited.
+- `CaretVisible` intentionally fails open when `GetGUIThreadInfo` fails. That is verified behavior,
+  not evidence that every activation report originates there.
+- PR #48293 merged July 9, 2026; its reviewer decisions and implementation are shipped chronology.
+- COM teardown observations are specific to cached `IClassFactory` RCWs, per-load preview handlers,
+  `IShellItem`, streams, and CsWinRT closing callbacks; do not generalize them to unrelated previewers.
+- Repo-wide infrastructure PRs were excluded as behavioral evidence: .NET 10
+  ([#41280](https://github.com/microsoft/PowerToys/pull/41280)), C++/WinRT
+  ([#45420](https://github.com/microsoft/PowerToys/pull/45420)), VS 2026
+  ([#44304](https://github.com/microsoft/PowerToys/pull/44304)). The project-path convention from
+  [#44639](https://github.com/microsoft/PowerToys/pull/44639) remains review context only.
+- Pure style/formatting comments, LGTM/versioning chatter, and duplicate non-actionable “Peek not
+  working” reports were excluded.

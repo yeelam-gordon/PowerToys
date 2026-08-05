@@ -1,113 +1,75 @@
-# CmdNotFound Regression & Decision Catalog
+# CmdNotFound Evidence & Decision Ledger
 
-Progressive-disclosure companion to SKILL.md. Every entry is grounded in PowerToys source and
-issue/PR history. Fix PRs verified via `git log` on the module files.
+[Return to actionable playbooks](../SKILL.md).
 
-## Architecture decisions (durable)
+> **Split:** `SKILL.md` owns the actionable symptom → cause → guardrail playbooks. This catalog
+> retains provenance, source coordinates, chronology, migration/reviewer decisions, unresolved
+> clusters, and evidence caveats without repeating those explanations.
 
-- **CmdNotFound is a profile-registered PowerShell module, not a daemon.** The native
-  `CmdNotFoundModuleInterface` DLL only shells out to `pwsh.exe` running `EnableModule.ps1` /
-  `DisableModule.ps1` on GPO-driven enable/disable; runtime behavior lives entirely in the user's
-  `$PROFILE` and the external suggestion module. Introduced [#26319](https://github.com/microsoft/PowerToys/pull/26319).
-- **The suggestion module moved out of PowerToys** into its own repo, built/signed and published to
-  the PowerShell Gallery as **`Microsoft.WinGet.CommandNotFound`**. PowerToys switched from bundling
-  `WinGetCommandNotFound.psd1` to registering the Gallery module, with an in-place `$PROFILE` upgrade
-  path. [#32766](https://github.com/microsoft/PowerToys/pull/32766) (upgrade + ARM64 re-enable).
-- **Two profile-marker GUIDs form a contract:** current `f45873b3-b655-43a6-b217-97c00aa0db58`,
-  legacy `34de4b3d-13a8-4540-b76d-b9e8d3851756`. String-searched in `EnableModule.ps1` /
-  `DisableModule.ps1` / `CheckCmdNotFoundRequirements.ps1`. Never regenerate.
-- **Requirement detection is stdout-string matching.** `CmdNotFoundViewModel` reads `pwsh.exe`
-  stdout and branches on English `Contains(...)` substrings; each such line is annotated in the
-  `.ps1` as a compared string. This couples script wording and C# tightly by design.
-- **WinGet.Client version floor = `1.8.1133`**, checked identically in
-  `CheckCmdNotFoundRequirements.ps1`, `InstallWinGetClientModule.ps1`, and `EnableModule.ps1`.
-- **Minimal persisted settings.** `CmdNotFoundSettings` (`Version = "1"`, name `CmdNotFound`) stores
-  almost nothing; enable state is driven by GPO + profile presence, not a settings flag.
+## Product and migration chronology
 
-## Regression classes (with evidence)
+Ordered by the referenced PR sequence; no merge dates are asserted here.
 
-### 1. Offline / DNS-failure startup crash (highest frequency)
-- Issues: [#33065](https://github.com/microsoft/PowerToys/issues/33065),
-  [#33061](https://github.com/microsoft/PowerToys/issues/33061),
-  [#34286](https://github.com/microsoft/PowerToys/issues/34286),
-  [#33251](https://github.com/microsoft/PowerToys/issues/33251),
-  [#33304](https://github.com/microsoft/PowerToys/issues/33304),
-  [#33669](https://github.com/microsoft/PowerToys/issues/33669),
-  [#39302](https://github.com/microsoft/PowerToys/issues/39302).
-- Root cause: suggestion/WinGet lookup exceptions propagate into pwsh startup.
-- Mitigations: log + runtime error-handling in the C# predictor
-  [#30745](https://github.com/microsoft/PowerToys/pull/30745) (see class 1b below);
-  migration to the maintained Gallery module [#32766](https://github.com/microsoft/PowerToys/pull/32766).
+| Artifact | Exact source locations | Recorded outcome / decision |
+|---|---|---|
+| [PR #26319](https://github.com/microsoft/PowerToys/pull/26319) | `CmdNotFoundModuleInterface/dllmain.cpp`; historical bundled PowerShell module | Introduced Command Not Found. |
+| [PR #30727](https://github.com/microsoft/PowerToys/pull/30727) | Settings install flow and bundled scripts | Installation-workflow improvement; inspect the PR diff for the exact revision because the prior catalog did not preserve more detail. |
+| [PR #30745](https://github.com/microsoft/PowerToys/pull/30745) | Historical `src/modules/cmdNotFound/CmdNotFound/WinGetCommandNotFoundFeedbackPredictor.cs`, constructor and `GetFeedback(FeedbackContext, CancellationToken)` | Added `Logger.InitializeLogger("\\CmdNotFound\\Logs")`, exception logging, and a graceful `FeedbackItem`; the source file later left this repo in #32766. |
+| [PR #30759](https://github.com/microsoft/PowerToys/pull/30759) | PowerShell installation/platform gating | Disabled ARM64 while a PowerShell 7.4 MSI was unavailable. |
+| [PR #32034](https://github.com/microsoft/PowerToys/pull/32034) | `CmdNotFoundViewModel.RunPowerShellOrPreviewScript`; `pwsh-preview.cmd` discovery | Added PowerShell Preview support. |
+| [PR #32766](https://github.com/microsoft/PowerToys/pull/32766) | `Assets/Settings/Scripts/EnableModule.ps1`, `DisableModule.ps1`, `CheckCmdNotFoundRequirements.ps1`; removed historical predictor project | Migrated registration to the PowerShell Gallery package `Microsoft.WinGet.CommandNotFound`, retained an in-place legacy-profile upgrade, and re-enabled ARM64. Discussion distinguished `Update-Module` for an installed module from `Install-Module` when absent. |
+| [PR #32892](https://github.com/microsoft/PowerToys/pull/32892) | CmdNotFound Settings page initialization | Fixed page initialization on ARM. |
+| [PR #37690](https://github.com/microsoft/PowerToys/pull/37690) | `Assets/Settings/Scripts/EnableModule.ps1` | Gated `Enable-ExperimentalFeature` calls on feature discovery. |
+| [PR #44639](https://github.com/microsoft/PowerToys/pull/44639) | Module project files | Carried the repo-wide `$(RepoRoot)` path convention into this module. |
 
-### 1b. GetFeedback runtime failure — no logging, exception not caught
-- Fix: [#30745](https://github.com/microsoft/PowerToys/pull/30745) "[CmdNotFound] Log and runtime error handling".
-- Where: `WinGetCommandNotFoundFeedbackPredictor.cs` — method `GetFeedback(FeedbackContext, CancellationToken)`
-  and the `WinGetCommandNotFoundFeedbackPredictor(string guid)` constructor (historical path
-  `src/modules/cmdNotFound/CmdNotFound/`; file later removed from the repo by #32766 when the module
-  moved to the PSGallery release).
-- Mechanism: before the fix, `GetFeedback` executed `FindPackages` and built the `winget install --id …`
-  candidate list with **no try/catch and no logger**, so any runtime error (e.g. WinGet COM
-  unavailable when PS7 is installed from the Store/MSIX) threw uncaught and silently. The fix:
-  (1) constructor calls `Logger.InitializeLogger("\\CmdNotFound\\Logs")`; (2) the `GetFeedback` body is
-  wrapped in `try { … } catch (Exception ex) { Logger.LogError("GetFeedback failed to execute", ex);
-  return new FeedbackItem("Failed to execute PowerToys Command Not Found. …", …); }` — it logs and
-  returns a graceful user-facing `FeedbackItem` (naming the known PS7 Store/MSIX limitation) instead of
-  throwing into the prompt. Verified against the PR diff.
+## Contract and decision ledger
 
-### 2. Unwanted `$PROFILE` creation
-- Issues: [#32508](https://github.com/microsoft/PowerToys/issues/32508) (prevent empty `$PROFILE`
-  unless installed), [#42365](https://github.com/microsoft/PowerToys/issues/42365) (creating
-  `Documents\PowerShell` breaks Explorer address-bar `powershell`).
-- Where: `Test-Path $PROFILE` + `New-Item` in both `CheckCmdNotFoundRequirements.ps1` and
-  `EnableModule.ps1`. The check path is the offender.
+| Contract / decision | Exact source locations | Evidence |
+|---|---|---|
+| Native enable/disable shells out to PowerShell scripts; runtime suggestions are not served by a daemon. | `CmdNotFoundModuleInterface/dllmain.cpp` constructor, `install_module()`, `uninstall_module()`; `EnableModule.ps1`, `DisableModule.ps1` | [PR #26319](https://github.com/microsoft/PowerToys/pull/26319), current-source inspection recorded by the original catalog |
+| Current and legacy profile markers are stable migration identifiers: `f45873b3-b655-43a6-b217-97c00aa0db58` and `34de4b3d-13a8-4540-b76d-b9e8d3851756`. | `EnableModule.ps1`, `DisableModule.ps1`, `CheckCmdNotFoundRequirements.ps1` | [PR #32766](https://github.com/microsoft/PowerToys/pull/32766) |
+| Requirement state is derived from invariant stdout strings consumed by C# `Contains(...)` checks. | Compared `Write-Host` lines in `CheckCmdNotFoundRequirements.ps1` / install scripts; `CmdNotFoundViewModel.CheckCommandNotFoundRequirements()` | Current-source inspection recorded by the original catalog |
+| WinGet.Client floor is `1.8.1133`. | `CheckCmdNotFoundRequirements.ps1`, `InstallWinGetClientModule.ps1`, `EnableModule.ps1` | Current-source inspection recorded by the original catalog |
+| Persisted settings are minimal (`Version = "1"`, name `CmdNotFound`); operational state comes from GPO/profile presence. | `Settings.UI.Library/CmdNotFoundSettings.cs`; native and managed GPO checks | Current-source inspection recorded by the original catalog |
 
-### 3. UI-thread / slow install
-- Issues: [#38197](https://github.com/microsoft/PowerToys/issues/38197) (installs on UI thread),
-  [#33179](https://github.com/microsoft/PowerToys/issues/33179),
-  [#33178](https://github.com/microsoft/PowerToys/issues/33178) (install too long).
-- Where: `CmdNotFoundViewModel` ctor → synchronous `RunPowerShellScript` stdout loop.
+## Issue and unresolved-cluster ledger
 
-### 4. Encoding / localization of install output
-- Issues: [#37663](https://github.com/microsoft/PowerToys/issues/37663) (weird characters),
-  [#34856](https://github.com/microsoft/PowerToys/issues/34856) (Chinese env garbled log).
-- Where: `RunPowerShellScript` (`NO_COLOR=1`) + English-substring detection contract.
+| Cluster | Evidence | Exact source locations | Ledger status |
+|---|---|---|---|
+| Offline/DNS/startup failures | [#33065](https://github.com/microsoft/PowerToys/issues/33065), [#33061](https://github.com/microsoft/PowerToys/issues/33061), [#34286](https://github.com/microsoft/PowerToys/issues/34286), [#33251](https://github.com/microsoft/PowerToys/issues/33251), [#33304](https://github.com/microsoft/PowerToys/issues/33304), [#33669](https://github.com/microsoft/PowerToys/issues/33669), [#39302](https://github.com/microsoft/PowerToys/issues/39302); mitigations [#30745](https://github.com/microsoft/PowerToys/pull/30745), [#32766](https://github.com/microsoft/PowerToys/pull/32766) | Historical predictor `GetFeedback`; current external `Microsoft.WinGet.CommandNotFound`; profile registration in `EnableModule.ps1` | Repeated issue cluster spans both the removed in-repo predictor and external Gallery era. This repository alone cannot prove current external-module resolution. |
+| Predictor runtime diagnostics / Store-MSIX limitation | [PR #30745](https://github.com/microsoft/PowerToys/pull/30745) | Historical `WinGetCommandNotFoundFeedbackPredictor` constructor and `GetFeedback` | Fix verified against the PR diff in the original collection; file removed from current source by #32766. |
+| Unwanted `$PROFILE` creation | [#32508](https://github.com/microsoft/PowerToys/issues/32508), [#42365](https://github.com/microsoft/PowerToys/issues/42365) | `CheckCmdNotFoundRequirements.ps1` and `EnableModule.ps1`, `Test-Path $PROFILE` / `New-Item` branches | The requirements-check path was identified as the opt-in boundary concern. Confirm current script contents and issue state before asserting resolution. |
+| Synchronous Settings/OOBE work | [#38197](https://github.com/microsoft/PowerToys/issues/38197), [#33179](https://github.com/microsoft/PowerToys/issues/33179), [#33178](https://github.com/microsoft/PowerToys/issues/33178) | `CmdNotFoundViewModel.InitializeEnabledValue`, `CheckCommandNotFoundRequirements`, `RunPowerShellScript` | Issue cluster; the prior catalog did not identify a closing fix PR. |
+| Encoding/localization output | [#37663](https://github.com/microsoft/PowerToys/issues/37663), [#34856](https://github.com/microsoft/PowerToys/issues/34856) | `CmdNotFoundViewModel.RunPowerShellScript` (`NO_COLOR=1`, stdout capture); compared script status lines | Issue cluster; invariant string matching remains a source contract. |
+| ARM64, Preview, and Store packaging | [#30759](https://github.com/microsoft/PowerToys/pull/30759), [#32034](https://github.com/microsoft/PowerToys/pull/32034), [#32766](https://github.com/microsoft/PowerToys/pull/32766), [#32892](https://github.com/microsoft/PowerToys/pull/32892), [#31935](https://github.com/microsoft/PowerToys/issues/31935), [#36494](https://github.com/microsoft/PowerToys/issues/36494) | `InstallPowerShell7.ps1`; `RunPowerShellOrPreviewScript`; Settings page initialization; historical predictor/WinGet COM boundary | ARM64 and Preview have explicit PR history; Store/packaged-install reports remain separate evidence and may involve the external module. |
+| WinGet.Client acquisition/trust | [#31914](https://github.com/microsoft/PowerToys/issues/31914), [#31378](https://github.com/microsoft/PowerToys/issues/31378) | `InstallWinGetClientModule.ps1`; requirement and enable scripts | Issue evidence only in this catalog; no closing fix PR is recorded. |
 
-### 5. Experimental-feature enablement
-- Fix: [#37690](https://github.com/microsoft/PowerToys/pull/37690) — only enable
-  `PSFeedbackProvider` / `PSCommandNotFoundSuggestion` if `Get-ExperimentalFeature` lists them.
+## Reviewer and migration decisions
 
-### 6. Platform coverage (ARM64 / PS Preview / Store)
-- [#30759](https://github.com/microsoft/PowerToys/pull/30759) disabled on ARM64 (no PS 7.4 MSI);
-  re-enabled in [#32766](https://github.com/microsoft/PowerToys/pull/32766).
-- PS-Preview support [#32034](https://github.com/microsoft/PowerToys/pull/32034); ARM64 page-init
-  fix [#32892](https://github.com/microsoft/PowerToys/pull/32892).
-- Store/packaged install failures: [#31935](https://github.com/microsoft/PowerToys/issues/31935),
-  [#36494](https://github.com/microsoft/PowerToys/issues/36494).
+- [PR #32766](https://github.com/microsoft/PowerToys/pull/32766) records that the suggestion module is
+  built/signed outside PowerToys and published through the PowerShell Gallery; PowerToys owns
+  installation, profile registration, detection, upgrade, and removal.
+- The same PR preserves legacy-marker detection so existing profiles can be upgraded in place.
+- Its discussion distinguishes module update from first installation: `Update-Module` when present,
+  `Install-Module` when absent.
+- [PR #30745](https://github.com/microsoft/PowerToys/pull/30745) records the user-facing fallback for
+  predictor exceptions and identifies PowerShell 7 Store/MSIX WinGet availability as a known case.
 
-### 7. WinGet.Client acquisition
-- [#31914](https://github.com/microsoft/PowerToys/issues/31914) (install error),
-  [#31378](https://github.com/microsoft/PowerToys/issues/31378) ("untrusted repository").
+## Evidence-quality notes
 
-## Grounded fix/feature PRs (from `git log` on module files)
-
-| PR | What |
-|---|---|
-| [#26319](https://github.com/microsoft/PowerToys/pull/26319) | Introduce Command Not Found module |
-| [#30727](https://github.com/microsoft/PowerToys/pull/30727) | Improve installation workflow |
-| [#30745](https://github.com/microsoft/PowerToys/pull/30745) | Log + runtime error handling in `GetFeedback` (C# predictor): init logger, try/catch, graceful `FeedbackItem` |
-| [#30759](https://github.com/microsoft/PowerToys/pull/30759) | Disable on ARM64 (no PS 7.4 MSI yet) |
-| [#32034](https://github.com/microsoft/PowerToys/pull/32034) | Support PowerShell Preview installation |
-| [#32766](https://github.com/microsoft/PowerToys/pull/32766) | Upgrade to PSGallery release + support ARM64 |
-| [#32892](https://github.com/microsoft/PowerToys/pull/32892) | Fix CmdNotFound page init on ARM |
-| [#37690](https://github.com/microsoft/PowerToys/pull/37690) | Only enable experimental features if they exist |
-| [#44639](https://github.com/microsoft/PowerToys/pull/44639) | Repo-wide `$(RepoRoot)` path convention (touched module project) |
-
-## Excluded as noise (not distilled)
-- Cross-cutting build/deps PRs that merely swept the module: CppWinRT bumps
-  ([#45420](https://github.com/microsoft/PowerToys/pull/45420),
-  [#31396](https://github.com/microsoft/PowerToys/pull/31396)), PCH unification
-  ([#31055](https://github.com/microsoft/PowerToys/pull/31055)), VS 2026 support
-  ([#44304](https://github.com/microsoft/PowerToys/pull/44304)) — their review threads (IAsyncAction
-  `.get()`, coroutine ABI, toolset conditionals) are general C++/WinRT concerns, not CmdNotFound
-  logic. The one durable carry-over is the `$(RepoRoot)` path rule (kept above).
-- `/azp run`, "LGTM", "Amazing work", merge-conflict coordination, and other CI/process chatter.
+- “Fix PRs verified via `git log` on module files” is retained from the original catalog's
+  collection method; this refactor did not independently replay that history.
+- Historical predictor evidence applies to code removed by
+  [PR #32766](https://github.com/microsoft/PowerToys/pull/32766). Current suggestion behavior belongs
+  to the external `Microsoft.WinGet.CommandNotFound` package and must not be inferred solely from old
+  PowerToys source.
+- Issue reports establish observed environments and symptoms, not a single cause or current
+  reproducibility. Where no fix PR is listed, this ledger deliberately leaves resolution open.
+- Excluded as module-noise: CppWinRT sweeps
+  [#45420](https://github.com/microsoft/PowerToys/pull/45420) and
+  [#31396](https://github.com/microsoft/PowerToys/pull/31396), PCH unification
+  [#31055](https://github.com/microsoft/PowerToys/pull/31055), and VS 2026 support
+  [#44304](https://github.com/microsoft/PowerToys/pull/44304). Their review comments concern general
+  C++/WinRT/build behavior; only the durable `$(RepoRoot)` decision is retained above.
+- CI commands, approvals, praise, merge coordination, and formatting-only comments were not treated
+  as behavioral evidence.

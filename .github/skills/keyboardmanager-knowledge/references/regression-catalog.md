@@ -1,109 +1,128 @@
-# Keyboard Manager — Regression Catalog
+# Keyboard Manager — Evidence and Decision Ledger
 
-Progressive-disclosure companion to `SKILL.md`. Fuller list of grounded regressions/decisions plus
-open reports that indicate live risk areas. Every fixed entry cites a real PR/issue; verify in
-source before relying on a claim.
+[Return to actionable playbooks](../SKILL.md).
 
-## Fixed regressions (with guardrails)
+This file owns historical evidence: regressions, chronology, review decisions, open issue clusters,
+and confidence caveats. `SKILL.md` owns the current module map, review rules, and operational
+guidance. Read a diff cold before consulting this ledger, and verify claims against current source.
 
-### 1. Stale AltGr flag → sticky Ctrl
-- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleShortcutRemapEvent`, `static bool isAltRightKeyInvoked`).
-- **Root cause:** flag set on AltGr (RAlt + LCtrl) but reset only in a branch requiring an active
-  shortcut; a bare AltGr press/release left it `true` permanently, blocking modifier restoration at
-  ~13 sites and `break`-ing on LCtrl key-up.
-- **Guardrail:** reset on `VK_RMENU` key-up regardless of invoked state; set only on key-down.
-- **Evidence:** [#46693](https://github.com/microsoft/PowerToys/issues/46693) → [PR #46672](https://github.com/microsoft/PowerToys/pull/46672).
+## Regression evidence
 
-### 2. Modifier → non-modifier injected as WM_SYSKEYDOWN
-- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`).
-- **Root cause:** `SendInput` runs in the hook while the source modifier is still down, so the OS
-  stamps the injected key with Alt/system context. E.g. LAlt → Backspace deletes whole words.
-- **Guardrail:** inject a `KEYEVENTF_KEYUP` with `KEYBOARDMANAGER_SUPPRESS_FLAG` to reset modifier
-  state before injecting the target — the same mechanism used for the Caps Lock case (issue #3397).
-- **Evidence:** [#47191](https://github.com/microsoft/PowerToys/issues/47191) → [PR #47192](https://github.com/microsoft/PowerToys/pull/47192).
+### KBM-E1 — Stale AltGr state caused sticky Ctrl
 
-### 3. WM_SYSKEYDOWN dropped while Alt held; stuck modifiers on key-to-text
-- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyToTextRemapEvent`), `common/Input.h`, `common/Helpers.cpp`.
-- **Root cause(s):** (a) key-down guard accepted only `WM_KEYDOWN`; (b) lone Win/Alt key-up release
-  triggered Start Menu / menu bar; (c) re-pressing released modifiers could strand them down.
-- **Guardrail:** accept `WM_SYSKEYDOWN` too; precede modifier releases with a dummy key event and
-  only inject them when a modifier is actually held; never re-press released modifiers; route
-  `SendTextInput` through `InputInterface` (mockable, per-character flush preserved).
-- **Evidence:** [PR #48571](https://github.com/microsoft/PowerToys/pull/48571). Test seam:
-  `MockedInput::SetSendVirtualInputShouldFail`; new tests
-  `RemappedKey_ShouldPassOriginalKeyThrough_WhenInjectionFails`,
+- **Observed:** A bare AltGr press/release could leave LCtrl effectively stuck for shortcut remaps.
+- **Source:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp`,
+  `HandleShortcutRemapEvent`, `static bool isAltRightKeyInvoked`.
+- **Finding:** The flag was set for AltGr (RAlt + LCtrl), but reset only while a shortcut was
+  actively invoked. The stale value blocked modifier restoration at roughly 13 sites and broke on
+  LCtrl key-up.
+- **Decision:** Set only on key-down; reset on `VK_RMENU` key-up regardless of invoked state.
+- **Chronology/evidence:** [issue #46693](https://github.com/microsoft/PowerToys/issues/46693) →
+  [PR #46672](https://github.com/microsoft/PowerToys/pull/46672).
+
+### KBM-E2 — Modifier remap target inherited Alt/system context
+
+- **Observed:** LAlt → Backspace deleted whole words because the target arrived as
+  `WM_SYSKEYDOWN`.
+- **Source:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp`,
+  `HandleSingleKeyRemapEvent`.
+- **Finding:** `SendInput` ran inside the hook while the source modifier was still down.
+- **Decision:** Inject a suppress-tagged `KEYEVENTF_KEYUP` before the target, matching the Caps Lock
+  mechanism from issue #3397.
+- **Chronology/evidence:** [issue #47191](https://github.com/microsoft/PowerToys/issues/47191) →
+  [PR #47192](https://github.com/microsoft/PowerToys/pull/47192).
+
+### KBM-E3 — Alt-held key-to-text dropped events and stranded modifiers
+
+- **Observed:** Key-to-text could do nothing while Alt was held; modifier release/re-press handling
+  could trigger Start/menu UI or leave modifiers down.
+- **Source:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp`,
+  `HandleSingleKeyToTextRemapEvent`; `common/Input.h`; `common/Helpers.cpp`.
+- **Finding:** The guard accepted only `WM_KEYDOWN`; lone Win/Alt releases lacked a preceding dummy
+  event; re-pressing released modifiers could strand them.
+- **Decision:** Accept `WM_KEYDOWN` and `WM_SYSKEYDOWN`; release only held modifiers, precede
+  Win/Alt release with a dummy event, never re-press released modifiers, and route
+  `SendTextInput` through `InputInterface` while preserving per-character flush.
+- **Chronology/evidence:** [PR #48571](https://github.com/microsoft/PowerToys/pull/48571).
+- **Test evidence:** `MockedInput::SetSendVirtualInputShouldFail`;
+  `RemappedKey_ShouldPassOriginalKeyThrough_WhenInjectionFails`;
   `HandleSingleKeyToTextRemapEvent_ShouldFireAndReleaseAlt_WhenAltIsHeld`.
 
-### 4. Empty SendVirtualInput → false "injection blocked" error
-- **Files:** `common/Input.h` (`SendVirtualInput`); text branch of `HandleShortcutRemapEvent`.
-- **Root cause:** empty vector → `SendInput(0, …)` returns 0, read as "blocked by UIPI" by the new
-  failure-detection logic → spurious error on every successful shortcut→text remap.
-- **Guardrail:** early-return `true` on empty input; don't call `SendVirtualInput` when there are no
-  key events to inject (single-key→text branch drops the redundant call).
-- **Evidence:** [PR #48571](https://github.com/microsoft/PowerToys/pull/48571) review (@MuyuanMS).
+### KBM-E4 — Empty injection batch reported a false UIPI failure
 
-### 5. UIPI injection failure → key stranded DOWN / eaten
-- **Files:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp` (`HandleSingleKeyRemapEvent`), `KeyboardManagerEngineLibrary/State.cpp` (`ConsumeSingleKeyRemapInjectionFailed`).
-- **Root cause:** when injection into a higher-integrity foreground window failed, the original key
-  was still swallowed.
-- **Guardrail:** on failure `return 0` to pass the original through; record the failed key-down so
-  the matching key-up (a separate hook event) is also passed through, avoiding a stranded-down key.
-- **Evidence:** in-source failure branch; hardened in [PR #48571](https://github.com/microsoft/PowerToys/pull/48571).
+- **Observed:** Successful shortcut-to-text remaps emitted an “injection blocked” error.
+- **Source:** `common/Input.h`, `SendVirtualInput`; text branch of
+  `HandleShortcutRemapEvent`.
+- **Finding:** `SendInput(0, …)` returns 0, which failure detection interpreted as UIPI blocking.
+- **Decision:** Return `true` for an empty batch and omit redundant empty-batch calls.
+- **Chronology/evidence:** Maintainer review by @MuyuanMS on
+  [PR #48571](https://github.com/microsoft/PowerToys/pull/48571).
 
-### 6. Multiline text replacement inconsistency (0.98.0 regression)
-- **Files:** `Helpers::SendTextInput`; text path of the remap handlers.
-- **Root cause:** the Ctrl+V multiline approach added in 0.98.0 was inconsistent across apps.
-- **Guardrail:** revert to per-character injection; send Shift+Enter for newline indicators.
-- **Evidence:** [PR #46794](https://github.com/microsoft/PowerToys/pull/46794) closes
+### KBM-E5 — UIPI failure swallowed a physical key pair
+
+- **Observed:** Against a higher-integrity foreground window, a remapped key was eaten or left down.
+- **Source:** `KeyboardManagerEngineLibrary/KeyboardEventHandlers.cpp`,
+  `HandleSingleKeyRemapEvent`; `KeyboardManagerEngineLibrary/State.cpp`,
+  `ConsumeSingleKeyRemapInjectionFailed`.
+- **Finding:** Injection failure still suppressed the original event; down/up are separate hook
+  callbacks.
+- **Decision:** Return 0 on failed injection, record the failed key-down, and pass its matching
+  key-up through.
+- **Chronology/evidence:** Existing source failure branch, hardened by
+  [PR #48571](https://github.com/microsoft/PowerToys/pull/48571).
+
+### KBM-E6 — Multiline text replacement was inconsistent across apps
+
+- **Observed:** The Ctrl+V multiline path introduced in 0.98.0 behaved inconsistently.
+- **Source:** `Helpers::SendTextInput`; text paths in the remap handlers.
+- **Decision:** Restore per-character injection and emit Shift+Enter for newline indicators.
+- **Chronology/evidence:** 0.98.0 regression →
+  [PR #46794](https://github.com/microsoft/PowerToys/pull/46794), closing
   [#46498](https://github.com/microsoft/PowerToys/issues/46498),
-  [#46440](https://github.com/microsoft/PowerToys/issues/46440),
+  [#46440](https://github.com/microsoft/PowerToys/issues/46440), and
   [#46366](https://github.com/microsoft/PowerToys/issues/46366).
 
-### 7. New WinUI editor manual-key-selection hardening
-- **Files:** `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`,
-  `KeyboardManagerEditorUI/Controls/UnifiedMappingControl.xaml.cs`,
-  `KeyboardManagerEditorUI/Controls/KeyDropDownButton.xaml.cs`,
-  `KeyboardManagerEditorUI/Helpers/ServiceStatusHelper.cs`,
-  `KeyboardManagerEditorUI/Settings/SettingsManager.cs`,
-  `KeyboardManagerEditorUI/Helpers/KeyboardHookHelper.cs`.
-- **Fixes:** filter synthetic `None`/keycode 0 from the picker; `ValidateDropDownSelection` skips
-  empty placeholder slots; dedicated `ValidateDisableMapping`; centralized `VK_DISABLED`
-  (`src/common/interop/shared_constants.h`) plus WinUI `VkDisabled`/`VkDisabledString`
-  (`KeyboardManagerEditorUI/Pages/MainPage.xaml.cs`); binding-safe revert via `ObservableCollection.RemoveAt`+`Insert` (not setting the
-  bound DP); dispose `Process` handles from the 3s polling timer; read-only mode when the native
-  service is down; localized dialog titles; broadened hook-init `catch`; select ComboBox item by Tag
-  (not hard-coded index).
-- **Evidence:** [PR #46377](https://github.com/microsoft/PowerToys/pull/46377).
-- **Design note:** maintainers **declined** validation that would forbid remapping/disabling
-  modifier-only or "protected" shortcuts (e.g. Win+L) — these are legitimate use cases
-  ([discussion](https://github.com/microsoft/PowerToys/pull/46377), @CrazyGunman2C4U).
+### KBM-E7 — WinUI editor manual-selection hardening
 
-## Key decisions / conventions
+- **Source:** `KeyboardManagerEditorUI/Pages/MainPage.xaml.cs` (`SaveDisableMapping`,
+  `VkDisabled`, `VkDisabledString`); `Controls/UnifiedMappingControl.xaml.cs`
+  (`*KeyDown_KeyChanged`, `ValidateDropDownSelection`);
+  `Controls/KeyDropDownButton.xaml.cs` (`GetKeyList`);
+  `Helpers/ServiceStatusHelper.cs`; `Settings/SettingsManager.cs`;
+  `Helpers/KeyboardHookHelper.cs`; `src/common/interop/shared_constants.h`.
+- **Accepted changes:** Filter synthetic `None`/keycode 0; skip empty placeholder slots in
+  `ValidateDropDownSelection`; add `ValidateDisableMapping`; centralize `VK_DISABLED` and WinUI
+  `VkDisabled`/`VkDisabledString`; revert bound values through
+  `ObservableCollection.RemoveAt`+`Insert`; dispose polled `Process` handles; use read-only mode
+  when the service is down; localize dialog titles; broaden hook-init `catch`; select ComboBox items
+  by Tag rather than index.
+- **Review decision:** Maintainers declined validation that forbade modifier-only or “protected”
+  shortcuts such as Win+L because those are legitimate remap/disable cases.
+- **Chronology/evidence:** [PR #46377](https://github.com/microsoft/PowerToys/pull/46377),
+  including @CrazyGunman2C4U discussion.
 
-- **New WinUI 3 editor is default** since [PR #48245](https://github.com/microsoft/PowerToys/pull/48245);
-  the legacy XAML-islands editor (`KeyboardManagerEditorLibrary`) still ships. Keep validation
-  behavior consistent across both.
-- **Single-key remaps have priority over shortcuts** and suppress the event before shortcut handlers
-  run (`HandleKeyboardHookEvent`).
-- **All KBM-injected events are tagged** via `dwExtraInfo` (`KEYBOARDMANAGER_SINGLEKEY_FLAG`,
-  `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`) and filtered by `GeneratedByKBM` to prevent self-remapping.
+## Decision ledger
 
-## Open reports (live risk areas — confirm before trusting)
+| Decision | Evidence | Consequence |
+|---|---|---|
+| New WinUI 3 editor is the default; legacy XAML-islands editor still ships. | [PR #48245](https://github.com/microsoft/PowerToys/pull/48245) | Keep validation behavior aligned across `KeyboardManagerEditorUI` and `KeyboardManagerEditorLibrary`. |
+| Single-key remaps precede shortcut handlers. | `HandleKeyboardHookEvent` | A handler returning 1 suppresses later handlers; priority changes are behavioral changes. |
+| KBM injection is tagged and self-filtered. | `dwExtraInfo`; `KEYBOARDMANAGER_SINGLEKEY_FLAG`, `_SHORTCUT_FLAG`, `_SUPPRESS_FLAG`; `GeneratedByKBM` | New injection paths must preserve reentrancy protection. |
 
-Detection/reliability: [#49307](https://github.com/microsoft/PowerToys/issues/49307) (fails after
-sleep/startup), [#48854](https://github.com/microsoft/PowerToys/issues/48854) (loses effect over
-time), [#49254](https://github.com/microsoft/PowerToys/issues/49254),
-[#48864](https://github.com/microsoft/PowerToys/issues/48864) (inconsistent).
-Text/key-to-text: [#48611](https://github.com/microsoft/PowerToys/issues/48611) (plain `h` triggers
-mapping and breaks input), [#48900](https://github.com/microsoft/PowerToys/issues/48900) (unexpected
-char mid-text). Specific keys/layouts: [#49135](https://github.com/microsoft/PowerToys/issues/49135)
-/ [#48882](https://github.com/microsoft/PowerToys/issues/48882) (`/` key),
-[#49227](https://github.com/microsoft/PowerToys/issues/49227) (Copilot key),
-[#49228](https://github.com/microsoft/PowerToys/issues/49228) (Caps/LCtrl/Win chain). Editor/config:
-[#48936](https://github.com/microsoft/PowerToys/issues/48936) (config corrupted rebinding `}`),
-[#48945](https://github.com/microsoft/PowerToys/issues/48945) (deleted shortcut still shows),
-[#48943](https://github.com/microsoft/PowerToys/issues/48943) (key order),
-[#48711](https://github.com/microsoft/PowerToys/issues/48711) /
-[#48856](https://github.com/microsoft/PowerToys/issues/48856) (runtime/component required),
-[#48921](https://github.com/microsoft/PowerToys/issues/48921) (editor self-edits). Resource:
-[#49052](https://github.com/microsoft/PowerToys/issues/49052) (suspected memory leak).
+## Open evidence clusters
+
+These are reports, not established causes; confirm status and reproduce before relying on them.
+
+| Cluster | Reports |
+|---|---|
+| Detection/reliability | [#49307](https://github.com/microsoft/PowerToys/issues/49307) after sleep/startup; [#48854](https://github.com/microsoft/PowerToys/issues/48854) loses effect over time; [#49254](https://github.com/microsoft/PowerToys/issues/49254); [#48864](https://github.com/microsoft/PowerToys/issues/48864) inconsistent behavior |
+| Text/key-to-text | [#48611](https://github.com/microsoft/PowerToys/issues/48611) plain `h` triggers mapping/breaks input; [#48900](https://github.com/microsoft/PowerToys/issues/48900) unexpected character mid-text |
+| Keys/layouts | [#49135](https://github.com/microsoft/PowerToys/issues/49135), [#48882](https://github.com/microsoft/PowerToys/issues/48882) `/`; [#49227](https://github.com/microsoft/PowerToys/issues/49227) Copilot key; [#49228](https://github.com/microsoft/PowerToys/issues/49228) Caps/LCtrl/Win chain |
+| Editor/config | [#48936](https://github.com/microsoft/PowerToys/issues/48936) corrupted config rebinding `}`; [#48945](https://github.com/microsoft/PowerToys/issues/48945) deleted shortcut remains; [#48943](https://github.com/microsoft/PowerToys/issues/48943) key order; [#48711](https://github.com/microsoft/PowerToys/issues/48711) runtime/component report closed completed July 27, 2026; [#48856](https://github.com/microsoft/PowerToys/issues/48856) runtime/component required; [#48921](https://github.com/microsoft/PowerToys/issues/48921) editor self-edits |
+| Resource use | [#49052](https://github.com/microsoft/PowerToys/issues/49052) suspected memory leak |
+
+## Caveats
+
+- Fixed entries describe historical failure modes, not proof that current code still has them.
+- Open reports may be duplicates, stale, environment-specific, or missing a verified root cause.
+- Source paths and symbols are retained for localization but must be checked after refactors.

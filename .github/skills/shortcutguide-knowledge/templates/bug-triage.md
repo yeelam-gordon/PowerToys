@@ -8,7 +8,7 @@ legacy overlay.
 |---|---|---|
 | Crashes / closes when clicking between sidebar sections | `MainWindow.xaml.cs` `WindowSelector_SelectionChanged`, `SetWindowPosition` | `App.TaskBarWindow?.AppWindow` null during reentrant Activate→BringToFront; exception escaping into `InitializeNavItemsAsync` catch (#48448/#48481) |
 | Crashes immediately on launch | `MainWindow` ctor `Title`; `Program.cs Main` | empty native title faulting `TitleBar` (#49069); or index/manifest init exception |
-| Opens empty then closes | `Program.cs CopyAndIndexGenerationThread`; `IndexYmlGenerator.cs` | a corrupt `.yml` → non-zero index exit; `GetAllCurrentApplicationIds` found no match (#49131, #48892) |
+| Opens empty then closes | Logs and `_closeType`; then `Program.cs CopyAndIndexGenerationThread`, `IndexYmlGenerator.cs`, and `MainWindow` initialization | Cause is ambiguous. Check for a non-zero generator exit or YAML parse error before assigning a manifest cause; #49131/#48892 do not establish corrupt YAML. |
 | Still shows the **old** Shortcut Guide | packaging/registration; `dllmain.cpp StartProcess` path (`WinUI3Apps\PowerToys.ShortcutGuide.exe`) | stale install / wrong exe launched (#48462) |
 | Slow to appear | `Program.cs` background thread; `ManifestInterpreter.GetAllCurrentApplicationIds` (process enumeration) | manifest copy + index generation + process scan on the critical path (#49200) |
 | Wrong / duplicated shortcut label | manifest `*.en-US.yml` (e.g. `+WindowsNT.Shell`) | OS/SKU drift, e.g. Win+Q on Copilot+ PCs (#48427/#48439); ambiguous Home-screen values (#44830) |

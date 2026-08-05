@@ -89,12 +89,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   throw) when the resource map can't be resolved; the WinUI `TitleBar` control reads the empty
   `AppWindow.Title` during a deferred layout pass and faults.
 - **Guardrail:** never assign an empty native title — fall back to a non-empty literal
-  (`"Shortcut Guide"`) when the resolved string is null/empty. Evidence: issue
-  [#49131](https://github.com/microsoft/PowerToys/issues/49131) (overview opens empty then
-  immediately closes); fix
-  [PR #49069](https://github.com/microsoft/PowerToys/pull/49069). Related launch-crash reports:
-  [#48170](https://github.com/microsoft/PowerToys/issues/48170),
-  [#48638](https://github.com/microsoft/PowerToys/issues/48638).
+  (`"Shortcut Guide"`) when the resolved string is null/empty. Evidence:
+  [PR #49069](https://github.com/microsoft/PowerToys/pull/49069) and current source. Reports #48170
+  and #48638 belong to different manifest/overlay-rewrite paths and are not title-fallback evidence.
 
 ### Literal digit keys render as the wrong key
 - **Symptom:** a number-key shortcut (e.g. "switch to last tab", `9`) renders wrong or blank.
@@ -142,6 +139,29 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   [#46618](https://github.com/microsoft/PowerToys/issues/46618); fix
   [PR #46729](https://github.com/microsoft/PowerToys/pull/46729).
 
+### Manifest refresh leaves a stale or partially generated index
+- **Known current violation:** `CopyAndIndexGenerationThread` logs a bundled-manifest copy exception
+  but continues into index generation. A partial copy can therefore publish an index assembled from
+  mixed old/new manifest files. Treat the fail-fast copy requirement below as an existing defect,
+  not current behavior.
+- **Symptom:** the overlay opens empty, shows an old application list, or omits newly shipped
+  shortcuts after a manifest update.
+- **Where:** `Program.cs::CopyAndIndexGenerationThread` and
+  `ManifestInterpreter.GetCachedIndexYamlFile`.
+- **Root cause:** launch performs an ordered external pipeline: copy bundled manifests, run
+  `IndexYmlGenerator.exe`, then populate dynamic PowerToys shortcuts. Continuing after a copy/start/
+  non-zero-exit failure can consume a stale or partial `index.yml`. The generator deletes the
+  existing index before parsing, so malformed input can also leave no prior index to fall back to;
+  the interpreter caches the deserialized `IndexFile`, keyed by `index.yml` last-write time.
+- **Guardrail:** preserve copy → successful index generation → populate ordering. Treat
+  `Process.Start`, wait, and exit-code failures as terminal for that refresh and log the failed
+  stage. Generate to a temporary file and atomically replace the accepted index, or otherwise
+  preserve/restore the previous valid index on failure. Invalidate/re-read the cache whenever the
+  accepted `index.yml` changes; validate every shipped YAML file before merge so one corrupt
+  manifest cannot poison the launch pipeline.
+  This playbook is grounded in the current pipeline and cache implementation; do not attribute
+  unrelated navigation/positioning crash reports to manifest corruption.
+
 ## Review Rules
 
 Enforce these when reviewing or authoring Shortcut Guide changes:
@@ -163,6 +183,13 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
   `App.TaskBarWindow`/`AppWindow` as possibly null — escaping exceptions close the overlay (#48481).
 - **Never assign an empty native `Title`** to a WinUI window with `ExtendsContentIntoTitleBar`;
   `ResourceLoader.GetString` returns `""` (not an exception) on failure — guard it (#49069).
+- **Treat manifest refresh as a transaction.** When a diff changes copy/index/populate behavior,
+  do not populate or publish a new index after copy, child-process start, wait, YAML parse, or
+  non-zero-exit failure. **Current source continues after a copy exception**; do not file that
+  pre-existing defect against an unrelated edit unless the diff introduces, worsens, or claims to
+  fix it. Refresh the mtime-keyed cache only from the accepted `index.yml`.
+- **Validate YAML before merge.** Runtime index generation is not an adequate validator because one
+  malformed shipped manifest can invalidate the shared generated index.
 - **New manifest = add spellcheck words** to `.github/actions/spell-check/expect.txt` (raised on
   #48652), and keep the `<N>`/special-key convention.
 - **Ship a test with logic changes.** Suite: `ShortcutGuide.UnitTests`
@@ -175,7 +202,8 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
 - **Manifests are copied to the per-user dir on every launch** (`%LocalAppData%\Microsoft\WinGet\
   KeyboardShortcuts`) and the index is rebuilt by a **separate exe** (`IndexYmlGenerator.exe`) on
   a background thread. A **single corrupt `.yml`** makes index generation exit non-zero and the
-  overlay can open empty (#49131, #48892). Validate YAML before shipping a manifest.
+  shared index cannot be refreshed. Validate YAML before shipping a manifest; do not attribute
+  unrelated empty-close reports to corrupt YAML without diagnostics.
 - **The index cache is keyed on file modification time** (`GetCachedIndexYamlFile`); an unchanged
   mtime serves the cached, possibly stale, index within a session.
 - **The taskbar number-key window only appears** when a manifest section name starts with

@@ -23,8 +23,9 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
 
 - [ ] `MainPaneControl` and `TaskbarPaneControl` remain hosted in the single `OverlayWindow`; no
       second native taskbar window or cross-window activation is introduced.
-- [ ] App-list initialization failure still raises `InitializationFailed`; taskbar enumeration or
-      layout failure hides the taskbar pane without corrupting main-pane navigation.
+- [ ] App-list initialization failure still raises `InitializationFailed`; taskbar enumeration
+      failure/no-buttons returns no layout and hides the taskbar pane. Broader layout exceptions
+      need explicit handling rather than assumed containment.
 - [ ] No empty native `Title` assigned with `ExtendsContentIntoTitleBar`; `ResourceLoader.GetString`
       result guarded for `""`/null (#49069).
 - [ ] `RepositionToCursorMonitor` and `UpdateTaskbarPaneLayout` keep physical/DIP conversions,
@@ -39,7 +40,8 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
       rather than indexing mixed old/new manifests.
 - [ ] Index generation preserves the previous valid `index.yml` until a complete replacement is
       ready; current delete-before-parse behavior can leave no fallback after malformed input.
-- [ ] Hotkey toggle semantics preserved (`OnHotkeyEx` terminates a running instance).
+- [ ] `OnHotkeyEx` starts the process only when inactive and signals `triggerEvent`; `App` toggles
+      the persistent overlay. Win-key hold settings and disable-time process termination remain coherent.
 
 ## Always
 

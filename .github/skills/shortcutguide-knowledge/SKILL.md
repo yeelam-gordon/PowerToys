@@ -33,7 +33,7 @@ anti-anchoring below). Root: `src/modules/ShortcutGuide/`.
 
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
-| Hotkey + process lifecycle (C++ module) | `ShortcutGuideModuleInterface/dllmain.cpp` `ShortcutGuideModule::OnHotkeyEx`, `StartProcess` (ShellExecutes `WinUI3Apps\PowerToys.ShortcutGuide.exe`), `disable` (TerminateProcess) |
+| Hotkey + process lifecycle (C++ module) | `ShortcutGuideModuleInterface/dllmain.cpp` `ShortcutGuideModule::OnHotkeyEx` (start if inactive, then signal `triggerEvent`), `StartProcess`, `disable` (TerminateProcess) |
 | Default hotkey + settings parse | `dllmain.cpp` `ParseSettings` — default **Win+Shift+/** (`MOD_SHIFT\|MOD_WIN` + `VK_OEM_2`); reads `properties.open_shortcutguide` |
 | GPO enable/disable gate | `dllmain.cpp` `gpo_policy_enabled_configuration`; **also** re-checked in `Program.cs Main` |
 | UI process entry / startup | `ShortcutGuide.Ui/Program.cs` `Main` — arg parse `<pid> [telemetry]`, single-instance `AppInstance.FindOrRegisterForKey`, `IsCurrentWindowExcludedFromShortcutGuide`, `Environment.Exit(0)` |
@@ -45,7 +45,7 @@ anti-anchoring below). Root: `src/modules/ShortcutGuide/`.
 | Single overlay host, positioning, and close lifecycle | `ShortcutGuideXAML/OverlayWindow.xaml.cs` `ShowOverlay`, `RepositionToCursorMonitor`, `CloseAnimated`, `UpdateTaskbarPaneLayout` |
 | Main shortcut pane and navigation | `ShortcutGuideXAML/Controls/MainPaneControl.xaml.cs` `Open`, `InitializeNavItemsAsync`, `WindowSelector_SelectionChanged`, `Hide` |
 | Multi-monitor / DPI / taskbar layout | `OverlayWindow.RepositionToCursorMonitor`, `ApplyMainPaneAlignment`, `UpdateTaskbarPaneLayout`; `Helpers/DisplayHelper.cs`, `Helpers/DpiHelper.cs`, `Helpers/TasklistPositions.cs` |
-| Taskbar number-key (`Win+1..9`) pseudo-window | `Controls/TaskbarPaneControl.*`, `Controls/TaskbarIndicator.*`, `Helpers/TasklistPositions.cs`, `TasklistButton.cs` — hosted inside `OverlayWindow` and shown when a section starts `<TASKBAR1-9>` |
+| Taskbar number-key (`Win+1..9`) pseudo-window | `Controls/TaskbarPaneControl.*`, `Controls/TaskbarIndicator.*`, `Helpers/TasklistPositions.cs`, `TasklistButton.cs` — hosted inside `OverlayWindow`; shown for a selected `<TASKBAR1-9>` section or directly by Win-key `TaskbarIndicators` mode |
 | Key rendering (tokens → visual) | `Converters/ShortcutDescriptionToKeysConverter.cs`, `Controls/KeyVisual.xaml.cs` (`<N>`/special-token strip, VK code→name), `Controls/KeyCharPresenter.*` |
 | Shortcut list page | `ShortcutGuideXAML/Pages/ShortcutsPage.xaml.cs`; `ViewModels/ShortcutListItem*.cs` |
 | Data models | `Models/ShortcutFile.cs`, `ShortcutCategory.cs`, `ShortcutDescription.cs`, `ShortcutEntry.cs`, `IndexFile.cs` |
@@ -54,11 +54,12 @@ anti-anchoring below). Root: `src/modules/ShortcutGuide/`.
 | Manifest data (shipped) | `ShortcutGuide.Ui/Assets/ShortcutGuide/Manifests/*.yml` |
 | Manifest spec (authoritative) | `doc/specs/WinGet Manifest Keyboard Shortcuts schema.md` |
 
-**Activation model (critical):** the C++ module is hotkey-driven. `OnHotkeyEx` **toggles** —
-if the SG process is already running it `TerminateProcess`es it; otherwise it launches the UI
-exe. The UI process is single-instance and force-exits with `Environment.Exit(0)` because the
-WinUI dispatcher does not terminate cleanly. Legacy Win-key **hold-timing** constants remain in
-`dllmain.cpp` but are unused by the current activation path.
+**Activation model (critical):** the C++ module keeps one event-driven UI process. `OnHotkeyEx`
+starts the process only when inactive, then signals `triggerEvent`; `App.ListenForLaunchedEvents`
+shows or hides the persistent `OverlayWindow`. Win-key hold is an active path:
+`keep_track_of_pressed_win_key()` returns true, the configured hold duration is exposed by
+`milliseconds_win_key_must_be_pressed()`, and `App` selects Off, taskbar-indicators-only, or full
+Shortcut Guide behavior from settings. Module disable still terminates the process.
 
 ## Regression Playbooks
 
@@ -74,8 +75,10 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   visibility; `OverlayWindow.UpdateTaskbarPaneLayout` positions the pseudo-window without activating
   a second native window.
 - **Guardrail:** do not reintroduce separate native-window activation or taskbar-window ownership.
-  Keep initialization failures explicit through `MainPaneControl.InitializationFailed`, and keep
-  taskbar layout failure local by hiding `TaskbarPaneControl` rather than tearing down navigation.
+  Keep initialization failures explicit through `MainPaneControl.InitializationFailed`.
+  `TaskbarPaneControl.UpdateTasklistButtons` catches enumeration failure and returns no layout when
+  no buttons are available; do not claim broader layout failures are contained without adding
+  explicit handling.
   Historical evidence: issues
   [#48448](https://github.com/microsoft/PowerToys/issues/48448),
   [#48441](https://github.com/microsoft/PowerToys/issues/48441),
@@ -199,8 +202,9 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
 
 ## Pitfalls
 
-- **The hotkey toggles the process.** Pressing the Shortcut Guide hotkey while it is open
-  **terminates** the process (`OnHotkeyEx` → `TerminateProcess`); it does not just refocus.
+- **The hotkey signals a persistent process.** `OnHotkeyEx` starts the process only when needed and
+  always signals `triggerEvent`; `App` toggles the overlay visibility. Process termination belongs
+  to module disable or actual window closure, not each hotkey toggle.
 - **Manifests are copied to the per-user dir on every launch** (`%LocalAppData%\Microsoft\WinGet\
   KeyboardShortcuts`) and the index is rebuilt by a **separate exe** (`IndexYmlGenerator.exe`) on
   a background thread. A **single corrupt `.yml`** makes index generation exit non-zero and the
@@ -208,8 +212,9 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
   unrelated empty-close reports to corrupt YAML without diagnostics.
 - **The index cache is keyed on file modification time** (`GetCachedIndexYamlFile`); an unchanged
   mtime serves the cached, possibly stale, index within a session.
-- **The taskbar number-key window only appears** when a manifest section name starts with
-  `<TASKBAR1-9>`; missing that token is why Win+number taskbar shortcuts don't show (#44474).
+- **Taskbar indicators have two entry paths.** A selected app exposes them through a
+  `<TASKBAR1-9>` section; Win-key `TaskbarIndicators` mode opens the taskbar pane directly. Do not
+  require the manifest token for the settings-driven taskbar-only path (#44474).
 - **`Environment.Exit(0)` is deliberate** — the WinUI/WinRT dispatcher thread doesn't quit
   cleanly; don't "fix" it into a graceful shutdown without verifying the process actually exits.
 - **GPO is checked twice** (C++ `gpo_policy_enabled_configuration` **and** `Program.cs`); a

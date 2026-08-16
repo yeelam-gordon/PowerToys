@@ -33,8 +33,8 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 |---|---|
 | Resize/encode core (decode → transform → encode → post) | `ui/Models/ResizeOperation.cs` `ExecuteAsync` |
 | Transcode vs fresh-encode decision | `ResizeOperation.cs` `EncodeToStreamAsync` (`canTranscode` = same codec, keep-metadata, no `forceFresh`) |
-| Transcode path (preserves all metadata via `CreateForTranscodingAsync`) | `ResizeOperation.cs` `TranscodeAsync` + `CopyKnownMetadataAsync` |
-| Fresh-encode path (applies codec options / strips metadata) | `ResizeOperation.cs` `FreshEncodeAsync`, `EncodeFramesAsync` |
+| Transcode path (best-effort metadata plus known-property reapplication) | `ResizeOperation.cs` `TranscodeAsync` + `CopyKnownMetadataAsync` |
+| Fresh-encode path (codec options; known metadata or rendering-only metadata) | `ResizeOperation.cs` `FreshEncodeAsync`, `EncodeFramesAsync` |
 | Dimension math (Fit/Fill/Stretch, %, DPI, crop, ShrinkOnly, orientation swap) | `ResizeOperation.cs` `CalculateDimensions` |
 | Unit → pixel conversion, `HasAuto`, PositiveInfinity for Fit-auto | `ui/Models/ResizeSize.cs` `ConvertToPixels`, `GetPixelWidth/Height` |
 | Size preset model + `$small$/$medium$/$large$/$phone$` name tokens | `ResizeSize.cs` `_tokenKeys`, `ReplaceTokens`; defaults in `ui/Properties/Settings.cs` ctor |
@@ -56,12 +56,14 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Win10 classic COM context-menu handler | `dll/ContextMenuHandler.cpp` `CContextMenuHandler` |
 | Win11 sparse-MSIX runtime (un)registration | `dll/RuntimeRegistration.h` `ImageResizerRuntimeRegistration::EnsureRegistered/Unregister`; `ImageResizerContextMenu/dllmain.cpp` |
 
-**Encode-path invariant (critical):** in `EncodeToStreamAsync`, ImageResizer **transcodes**
-(re-encodes via `BitmapTransform`, preserving all metadata) only when the output codec equals the
-input codec, `RemoveMetadata` is false, and `forceFresh` is false. If not, it takes the
-**fresh-encode** path, which manually carries over only `KnownMetadataProperties`. JPEG resize
-forces fresh encode (`forceFresh = JpegEncoderId && transform needed`) so the quality setting
-applies — a deliberate metadata/quality trade-off, not a bug (PR #47134).
+**Encode-path invariant (critical):** in `EncodeToStreamAsync`, ImageResizer **transcodes** only
+when the output codec equals the input codec, `RemoveMetadata` is false, and `forceFresh` is false.
+`CreateForTranscodingAsync` preserves metadata only on a best-effort basis, so
+`CopyKnownMetadataAsync` reapplies the known set. Otherwise Image Resizer takes the
+**fresh-encode** path: it copies `KnownMetadataProperties` when metadata is retained, or only
+`RenderingMetadataProperties` when `RemoveMetadata` is true. JPEG resize forces fresh encode
+(`forceFresh = JpegEncoderId && transform needed`) so the quality setting applies — a deliberate
+metadata/quality trade-off, not a bug (PR #47134).
 
 ## Regression Playbooks
 

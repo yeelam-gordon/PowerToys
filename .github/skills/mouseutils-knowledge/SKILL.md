@@ -50,7 +50,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 |---|---|
 | Module interface, settings, hotkey | `MouseHighlighter/dllmain.cpp` `MouseHighlighter` class, `get_key`, `parse` |
 | Global click capture | `MouseHighlighter.cpp` `MouseHookProc` / `SetWindowsHookEx(WH_MOUSE_LL, …)` |
-| Overlay window + DispatcherQueue/Compositor/DesktopWindowTarget | `MouseHighlighter.cpp` `CreateHighlighter`, `MyRegisterClass` (ex-style `WS_EX_TRANSPARENT|WS_EX_LAYERED|WS_EX_NOREDIRECTIONBITMAP|WS_EX_TOOLWINDOW`) |
+| Overlay window + DispatcherQueue/Compositor/DesktopWindowTarget | `MouseHighlighter.cpp` `CreateHighlighter`, `MyRegisterClass` (ex-style `WS_EX_TRANSPARENT\|WS_EX_LAYERED\|WS_EX_NOREDIRECTIONBITMAP\|WS_EX_TOOLWINDOW`) |
 | Click-fade mode (left/right colored dots) | `AddDrawingPoint`, `StartDrawingPointFading`, `UpdateDrawingPointPosition` |
 | Spotlight mode (radial mask, press animation) | `UpdateSpotlightMask`, `SpotlightAnimatePress`, `SpotlightAnimateRelease` |
 | Ripple mode (hold ring + glow, release pulse, drag trail) | `SpawnRippleHoldDot`, `FadeRippleHoldDot`, `EmitSingleRipple` |

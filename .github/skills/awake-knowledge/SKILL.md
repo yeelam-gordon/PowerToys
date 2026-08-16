@@ -39,7 +39,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Process-scoped keep-awake (bind to PID / parent PID) | `Program.cs` `HandleProcessScopedKeepAwake`; `Manager.GetParentProcess` (`NtQueryInformationProcess`) |
 | Settings file-watcher (live config) | `Program.cs` `SetupFileSystemWatcher` (Rx `Throttle(25ms)`), `HandleAwakeConfigChange`, `ProcessSettings` |
 | Settings → mode mapping + past-expiry correction | `Program.cs` `ProcessSettings` (`switch settings.Properties.Mode`) |
-| **Execution-state core (keep-awake)** | `Awake/Core/Manager.cs` `SetAwakeState` (`Bridge.SetThreadExecutionState`), `ComputeAwakeState` (`ES_SYSTEM_REQUIRED [| ES_DISPLAY_REQUIRED] | ES_CONTINUOUS`) |
+| **Execution-state core (keep-awake)** | `Awake/Core/Manager.cs` `SetAwakeState` (`Bridge.SetThreadExecutionState`), `ComputeAwakeState` (`ES_SYSTEM_REQUIRED [\| ES_DISPLAY_REQUIRED] \| ES_CONTINUOUS`) |
 | State monitor thread (serializes state changes) | `Manager.cs` `StartMonitor`/`StopMonitor` (`BlockingCollection<ExecutionState> _stateQueue`) |
 | Indefinite mode | `Manager.cs` `SetIndefiniteKeepAwake` |
 | Timed mode + countdown tray update | `Manager.cs` `SetTimedKeepAwake` (Rx `Observable.Interval(1s)` + `targetExpiryTime`; `TakeWhile(remaining>0)` completes at zero → `Subscribe(onNext, () => HandleTimerCompletion("timed"))` — completion callback MUST be parameterless `()`, not `_ =>`, or it binds to the onError overload and never expires), `HandleTimerCompletion` |

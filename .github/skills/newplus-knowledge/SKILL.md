@@ -41,7 +41,7 @@ anti-anchoring below). Root: `src/modules/NewPlus/`. Unqualified files live unde
 | Template item model: menu title, target filename, **leading-digit stripping** | `template_item.cpp` `get_menu_title`, `get_target_filename`, `remove_starting_digits_from_filename` |
 | Copy template → create file/folder, unique name, telemetry, rename | `new_utilities.h` `copy_template`; `template_item.cpp` `copy_object_to` (`SHFileOperation` FO_COPY) |
 | Unique-name generation ` (1)`, ` (2)`… | `helpers_filesystem.h` `make_unique_path_name` |
-| Valid-filename sanitize (strip `\ / : * ? " < > |`) | `helpers_filesystem.h` `make_valid_filename` |
+| Valid-filename sanitize (strip `\ / : * ? " < > \|`) | `helpers_filesystem.h` `make_valid_filename` |
 | Filename variables: `$PARENT_FOLDER_NAME`, `%ENV%`, date/time tokens | `helpers_variables.h` `resolve_variables_in_filename`, `resolve_variables_in_path`, `resolve_environment_variables`, `resolve_parent_folder`, `resolve_date_time_variables` |
 | Date/time token engine (`$YYYY $MM $DD $hh $mm $ss $fff $TT`…) | `Helpers.cpp` `GetDatedFileName` (copied subset of PowerRename) |
 | Recursive variable resolution + rename inside copied folders (leaf-first) | `helpers_variables.h` `resolve_variables_in_filename_and_rename_files` |

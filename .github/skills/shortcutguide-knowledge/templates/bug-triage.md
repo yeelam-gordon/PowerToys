@@ -6,23 +6,23 @@ legacy overlay.
 
 | Symptom | Start here | Likely cause / check |
 |---|---|---|
-| Crashes / closes when clicking between sidebar sections | `MainWindow.xaml.cs` `WindowSelector_SelectionChanged`, `SetWindowPosition` | `App.TaskBarWindow?.AppWindow` null during reentrant Activate→BringToFront; exception escaping into `InitializeNavItemsAsync` catch (#48448/#48481) |
-| Crashes immediately on launch | `MainWindow` ctor `Title`; `Program.cs Main` | empty native title faulting `TitleBar` (#49069); or index/manifest init exception |
-| Opens empty then closes | Logs and `_closeType`; then `Program.cs CopyAndIndexGenerationThread`, `IndexYmlGenerator.cs`, and `MainWindow` initialization | Cause is ambiguous. Check for a non-zero generator exit or YAML parse error before assigning a manifest cause; #49131/#48892 do not establish corrupt YAML. |
+| Crashes / closes when clicking between sidebar sections | `MainPaneControl.WindowSelector_SelectionChanged`; `OverlayWindow.OnMainPaneTaskbarVisibilityChanged`, `UpdateTaskbarPaneLayout` | Current architecture has one native overlay; investigate pane events/layout without applying the removed `App.TaskBarWindow` cause (#48448/#48481 is historical). |
+| Crashes immediately on launch | `OverlayWindow` ctor `Title`; `Program.cs Main` | empty native title faulting `TitleBar` (#49069); or index/manifest initialization exception |
+| Opens empty then closes | Logs and `OverlayWindow.CloseType`; then `Program.cs CopyAndIndexGenerationThread`, `IndexYmlGenerator.cs`, and `MainPaneControl.InitializeNavItemsAsync` | Cause is ambiguous. Check for a non-zero generator exit or YAML parse error before assigning a manifest cause; #49131/#48892 do not establish corrupt YAML. |
 | Still shows the **old** Shortcut Guide | packaging/registration; `dllmain.cpp StartProcess` path (`WinUI3Apps\PowerToys.ShortcutGuide.exe`) | stale install / wrong exe launched (#48462) |
 | Slow to appear | `Program.cs` background thread; `ManifestInterpreter.GetAllCurrentApplicationIds` (process enumeration) | manifest copy + index generation + process scan on the critical path (#49200) |
 | Wrong / duplicated shortcut label | manifest `*.en-US.yml` (e.g. `+WindowsNT.Shell`) | OS/SKU drift, e.g. Win+Q on Copilot+ PCs (#48427/#48439); ambiguous Home-screen values (#44830) |
 | Number-key shortcut renders wrong / blank | manifest `Keys:`; `ShortcutDescriptionToKeysConverter.cs`, `KeyVisual.xaml.cs` | bare digit read as VK code; must be `<N>` (#48757) |
 | Special key (Delete/Tab/…) not rendering | manifest `Keys:`; `KeyVisual.xaml.cs` token map | missing `<...>` spec token (#48959/#48960) |
-| Win+number **taskbar** shortcuts missing | manifest `<TASKBAR1-9>` section; `TaskbarWindow.xaml.cs`, `TasklistPositions.cs` | section token absent; taskbar button enumeration (#44474) |
-| Overlay misplaced with moved/vertical taskbar | `MainWindow.xaml.cs SetWindowPosition`; `DisplayHelper.cs` | taskbar-overlap / work-area math (#48435) |
+| Win+number **taskbar** shortcuts missing | manifest `<TASKBAR1-9>` section; `TaskbarPaneControl.UpdateTasklistButtons`, `TasklistPositions.cs` | section token absent; taskbar button enumeration (#44474) |
+| Overlay misplaced with moved/vertical taskbar | `OverlayWindow.RepositionToCursorMonitor`, `ApplyMainPaneAlignment`, `UpdateTaskbarPaneLayout`; `DisplayHelper.cs` | work-area or taskbar-edge layout math (#48435) |
 | Shortcut not listed at all for an app | `GetAllCurrentApplicationIds`, `IndexYmlGenerator.cs` | `WindowFilter` mismatch (exact exe or `*` only); `BackgroundProcess` flag |
 | Spurious "shortcut conflicts" on Home screen | `PinnedShortcutsHelper.cs`; Settings Home integration | duplicate/ambiguous entries (#44141, #44830) |
 | Doesn't launch under GPO | `dllmain.cpp gpo_policy_enabled_configuration`; `Program.cs` GPO check | one of the two gates |
 
 ## Triage steps
 
-1. Reproduce and capture the exact close reason. `MainWindow` sets `_closeType`
+1. Reproduce and capture the exact close reason. `OverlayWindow` sets `_closeType`
    (`Escape` / `Deactivated` / `InitializationFailed` / `Unknown`) and logs errors — check the
    Shortcut Guide logs first.
 2. Determine the layer: **manifest data** (YAML), **UI/overlay** (WinUI C#), **index/startup**

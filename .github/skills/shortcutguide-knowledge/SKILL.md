@@ -42,9 +42,10 @@ anti-anchoring below). Root: `src/modules/ShortcutGuide/`.
 | Which apps to show (foreground+bg match) | `ManifestInterpreter.GetAllCurrentApplicationIds` — foreground window process module + background processes vs `WindowFilter`; `*` = default shell |
 | index.yml generation | `ShortcutGuide.IndexYmlGenerator/IndexYmlGenerator.cs` `CreateIndexYmlFile` — groups by `(WindowFilter, BackgroundProcess)`; `DefaultShellName = "+WindowsNT.Shell"` |
 | PowerToys dynamic shortcuts | `Helpers/PowerToysShortcutsPopulator.cs` `Populate` — rewrites `Microsoft.PowerToys.en-US.yml` between `# <Populate start>`/`# <Populate end>` from enabled modules' hotkeys |
-| Overlay window, positioning, crash hardening | `ShortcutGuideXAML/MainWindow.xaml.cs` `SetWindowPosition`, `Window_Activated`, `WindowSelector_SelectionChanged`, `InitializeNavItemsAsync` |
-| Multi-monitor / DPI / taskbar-overlap layout | `MainWindow.xaml.cs SetWindowPosition` + `Helpers/DisplayHelper.cs`, `Helpers/DpiHelper.cs`, `NativeMethods.GetCursorPos` |
-| Taskbar number-key (`Win+1..9`) window | `ShortcutGuideXAML/TaskbarWindow.xaml.cs`, `Controls/TaskbarIndicator.*`, `Helpers/TasklistPositions.cs` (`GetTasklistButtons` P/Invoke), `TasklistButton.cs` — shown only when a section starts `<TASKBAR1-9>` |
+| Single overlay host, positioning, and close lifecycle | `ShortcutGuideXAML/OverlayWindow.xaml.cs` `ShowOverlay`, `RepositionToCursorMonitor`, `CloseAnimated`, `UpdateTaskbarPaneLayout` |
+| Main shortcut pane and navigation | `ShortcutGuideXAML/Controls/MainPaneControl.xaml.cs` `Open`, `InitializeNavItemsAsync`, `WindowSelector_SelectionChanged`, `Hide` |
+| Multi-monitor / DPI / taskbar layout | `OverlayWindow.RepositionToCursorMonitor`, `ApplyMainPaneAlignment`, `UpdateTaskbarPaneLayout`; `Helpers/DisplayHelper.cs`, `Helpers/DpiHelper.cs`, `Helpers/TasklistPositions.cs` |
+| Taskbar number-key (`Win+1..9`) pseudo-window | `Controls/TaskbarPaneControl.*`, `Controls/TaskbarIndicator.*`, `Helpers/TasklistPositions.cs`, `TasklistButton.cs` — hosted inside `OverlayWindow` and shown when a section starts `<TASKBAR1-9>` |
 | Key rendering (tokens → visual) | `Converters/ShortcutDescriptionToKeysConverter.cs`, `Controls/KeyVisual.xaml.cs` (`<N>`/special-token strip, VK code→name), `Controls/KeyCharPresenter.*` |
 | Shortcut list page | `ShortcutGuideXAML/Pages/ShortcutsPage.xaml.cs`; `ViewModels/ShortcutListItem*.cs` |
 | Data models | `Models/ShortcutFile.cs`, `ShortcutCategory.cs`, `ShortcutDescription.cs`, `ShortcutEntry.cs`, `IndexFile.cs` |
@@ -64,18 +65,18 @@ WinUI dispatcher does not terminate cleanly. Legacy Win-key **hold-timing** cons
 Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller catalog in
 [references/regression-catalog.md](./references/regression-catalog.md).
 
-### Overlay crashes / closes on section navigation
-- **Symptom:** overlay crashes or silently closes when clicking between sidebar sections (e.g.
-  select PowerToys, then click the Windows icon); also "opens empty, immediately closes".
-- **Where:** `MainWindow.xaml.cs::WindowSelector_SelectionChanged` → `SetWindowPosition`.
-- **Root cause:** `App.TaskBarWindow.Activate()` runs a **reentrant** `Window_Activated →
-  BringToFront → TaskbarWindow.Activated` chain that leaves `App.TaskBarWindow.AppWindow`
-  momentarily `null`; `SetWindowPosition` dereferenced it and threw. The exception escaped into
-  `InitializeNavItemsAsync`'s catch, which treats *any* exception from the initial selection as a
-  fatal init failure and closes the window.
-- **Guardrail:** null-check `App.TaskBarWindow?.AppWindow` and skip the taskbar-overlap
-  adjustment when unobservable; wrap `WindowSelector_SelectionChanged` and `SetWindowPosition`
-  bodies in try/catch that **logs instead of tearing down** the overlay. Evidence: issues
+### Historical dual-window navigation crash; preserve the single-overlay replacement
+- **Historical symptom:** the former `MainWindow` + `TaskbarWindow` design could close while
+  switching sidebar sections because reentrant activation temporarily exposed a null taskbar
+  `AppWindow`. PR #48481 hardened that removed architecture.
+- **Current design:** `OverlayWindow` hosts `MainPaneControl` and `TaskbarPaneControl` in one XAML
+  tree and one dispatcher. `MainPaneControl.WindowSelector_SelectionChanged` publishes taskbar
+  visibility; `OverlayWindow.UpdateTaskbarPaneLayout` positions the pseudo-window without activating
+  a second native window.
+- **Guardrail:** do not reintroduce separate native-window activation or taskbar-window ownership.
+  Keep initialization failures explicit through `MainPaneControl.InitializationFailed`, and keep
+  taskbar layout failure local by hiding `TaskbarPaneControl` rather than tearing down navigation.
+  Historical evidence: issues
   [#48448](https://github.com/microsoft/PowerToys/issues/48448),
   [#48441](https://github.com/microsoft/PowerToys/issues/48441),
   [#48522](https://github.com/microsoft/PowerToys/issues/48522); fix
@@ -83,7 +84,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 ### Empty native window title faults the process at startup
 - **Symptom:** process crashes on launch (0xc0000005 access violations, "V2 crashes on launch").
-- **Where:** `MainWindow` constructor `Title` assignment (any WinUI window using
+- **Where:** `OverlayWindow` constructor `Title` assignment (any WinUI window using
   `ExtendsContentIntoTitleBar`).
 - **Root cause:** `ResourceLoader.GetString("Title")` returns an **empty string** (it does not
   throw) when the resource map can't be resolved; the WinUI `TitleBar` control reads the empty
@@ -178,9 +179,10 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
   only (spec §3.1).
 - **`WindowFilter` supports only an exact exe name or `*`** — no other wildcard patterns; matching
   strips `.exe` and is case-insensitive (`ManifestInterpreter.GetAllCurrentApplicationIds`, spec).
-- **Never let an exception escape overlay navigation/positioning.** Any change to
-  `WindowSelector_SelectionChanged` / `SetWindowPosition` must keep its try/catch and treat
-  `App.TaskBarWindow`/`AppWindow` as possibly null — escaping exceptions close the overlay (#48481).
+- **Preserve the single-overlay architecture.** Keep `MainPaneControl` and `TaskbarPaneControl`
+  hosted in `OverlayWindow`; do not restore cross-window activation or `App.TaskBarWindow`
+  ownership. Taskbar enumeration/layout failure should hide the taskbar pane, while app-list
+  initialization failure is surfaced through `InitializationFailed` (#48481 is historical evidence).
 - **Never assign an empty native `Title`** to a WinUI window with `ExtendsContentIntoTitleBar`;
   `ResourceLoader.GetString` returns `""` (not an exception) on failure — guard it (#49069).
 - **Treat manifest refresh as a transaction.** When a diff changes copy/index/populate behavior,

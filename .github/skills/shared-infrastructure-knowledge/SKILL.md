@@ -21,7 +21,7 @@ cold first; then enumerate consumers before applying these playbooks.
 
 | Contract | Producers / implementations | Representative consumers / verification |
 |---|---|---|
-| Native WinUI window title | `EnvironmentVariablesXAML/MainWindow.xaml.cs`, `ShortcutGuideXAML/MainWindow.xaml.cs` | Demonstrated custom-title-bar implementations using localized native titles; launch under missing/broken resource maps |
+| Native WinUI window title | `EnvironmentVariablesXAML/MainWindow.xaml.cs`, `ShortcutGuideXAML/OverlayWindow.xaml.cs` | Demonstrated custom-title-bar implementations using localized native titles; launch under missing/broken resource maps |
 | Color conversion/format strings | `src/common/ManagedCommon/ColorFormatHelper.cs` | Color Picker UI/module services, `Settings.UI.Library/ColorPicker*`, `ColorFormatConversionTest.cs` |
 | Settings JSON models | `src/settings-ui/Settings.UI.Library/*Properties.cs` plus module readers | Settings UI round-trip, module hot reload, older `settings.json` without new fields |
 | Persistent module state | Module-specific JSON stores such as FancyZones layouts and PowerDisplay profiles | Migration, corruption recovery, atomic write, identity stability |

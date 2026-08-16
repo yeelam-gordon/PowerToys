@@ -19,16 +19,16 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
 - [ ] Spellcheck: new product/app words added to `.github/actions/spell-check/expect.txt`.
 - [ ] PR description's category/section count matches the file (reviewers flag mismatches).
 
-## If the PR touches the overlay UI (`ShortcutGuideXAML/MainWindow.xaml.cs`, TaskbarWindow)
+## If the PR touches the overlay UI (`OverlayWindow`, `MainPaneControl`, `TaskbarPaneControl`)
 
-- [ ] `WindowSelector_SelectionChanged` and `SetWindowPosition` keep their **try/catch that logs,
-      not closes** — escaping exceptions tear down the overlay (#48448/#48481).
-- [ ] `App.TaskBarWindow` and `App.TaskBarWindow?.AppWindow` treated as **possibly null** during
-      the reentrant Activate→BringToFront chain.
+- [ ] `MainPaneControl` and `TaskbarPaneControl` remain hosted in the single `OverlayWindow`; no
+      second native taskbar window or cross-window activation is introduced.
+- [ ] App-list initialization failure still raises `InitializationFailed`; taskbar enumeration or
+      layout failure hides the taskbar pane without corrupting main-pane navigation.
 - [ ] No empty native `Title` assigned with `ExtendsContentIntoTitleBar`; `ResourceLoader.GetString`
       result guarded for `""`/null (#49069).
-- [ ] Multi-monitor/DPI math still uses work-area + DPI scale (`DisplayHelper`, `DpiHelper`);
-      taskbar-overlap adjustment skipped when the taskbar window isn't observable.
+- [ ] `RepositionToCursorMonitor` and `UpdateTaskbarPaneLayout` keep physical/DIP conversions,
+      mixed-DPI behavior, and moved/vertical taskbar-edge alignment correct.
 
 ## If the PR touches startup / lifecycle (`Program.cs`, `dllmain.cpp`)
 

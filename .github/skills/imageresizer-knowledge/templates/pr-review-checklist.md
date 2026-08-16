@@ -24,7 +24,7 @@ maps to the Regression Playbook / Review Rule it enforces.
 
 ## Codecs / extensions (`CodecHelper.cs`)
 - [ ] New container format extends `DecoderIdToEncoderId`, `EncoderExtensions`, `LegacyGuidToEncoderId` together.
-- [ ] Graceful fall back to `FallbackEncoder` when decoder has no encoder (HEIC/WebP/ICO).
+- [ ] Falls back gracefully to `FallbackEncoder` when the decoder has no encoder (HEIC/WebP/ICO).
 
 ## Filename / output (`GetDestinationPath`)
 - [ ] `%1..%6` tokens still map via `Settings.FileNameFormat` (`%`→`{}`).

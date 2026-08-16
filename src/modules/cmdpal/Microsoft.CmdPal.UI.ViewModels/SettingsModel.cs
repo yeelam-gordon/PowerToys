@@ -11,7 +11,7 @@ namespace Microsoft.CmdPal.UI.ViewModels;
 
 public record SettingsModel
 {
-    // LOAD BEARING: Some SettingsChanged subscribers react selectively (e.g.
+    // LOAD BEARNING: Some SettingsChanged subscribers react selectively (e.g.
     // MainWindow.MainWindowSettingsComparer, DockWindowManager.OnSettingsChanged). If a new
     // setting needs a live reaction, add it there too - otherwise it won't take effect.
 

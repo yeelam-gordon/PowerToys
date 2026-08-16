@@ -355,7 +355,7 @@ public static class TestHelper
     {
         ClearClipboard();
 
-        // Park the cursor on the primary-monitor centre so the Measure Tool initializes tracking at a
+        // Park the cursor on the primary-monitor centre so the Measure Tool initialises tracking at a
         // predictable on-screen spot before activation (the cursor can otherwise be anywhere).
         var (cx, cy) = ScreenCenter();
         MouseHelper.MoveTo(cx, cy);

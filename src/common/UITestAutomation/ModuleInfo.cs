@@ -31,7 +31,7 @@ namespace Microsoft.PowerToys.UITest
         /// the exe. This adapts to any build-output nesting — the local flattened
         /// <c>&lt;root&gt;\&lt;plat&gt;\&lt;cfg&gt;\tests\&lt;project&gt;\&lt;tfm&gt;\</c> layout AND the deeper
         /// per-project CI artifact layout — instead of hard-coding the walk-up depth. The old fixed
-        /// <c>\..\..\..</c> offset resolved to a nonexistent path on CI, so every legacy test failed to
+        /// <c>\..\..\..</c> offset resolved to a non-existent path on CI, so every legacy test failed to
         /// launch PowerToys there; this mirrors the .Next harness's resolver. When no ancestor holds the
         /// exe, it returns the historical fixed-depth path (made absolute) so a launch failure still names
         /// a concrete location.

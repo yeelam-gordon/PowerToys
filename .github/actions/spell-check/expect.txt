@@ -11,6 +11,7 @@ ACCESSDENIED
 ACCESSTOKEN
 acfs
 ACIE
+ACRYLICBLURBEHIND
 acrt
 ACTIVATEAPP
 ACTIVATEOPTIONS
@@ -40,15 +41,17 @@ ALLINPUT
 Allman
 Allmodule
 ALLNOISE
+allowlist
+allowlisted
 ALLOWUNDO
 ALLVIEW
 ALPHATYPE
 altkey
 amr
-ANDSCANS
 animatedvisuals
 Animnate
 AOC
+AOCB
 aocfnapldcnfbofgmbbllojgocaelgdd
 aot
 AOTP
@@ -95,6 +98,7 @@ ASSOCSTR
 ASYNCWINDOWPLACEMENT
 ASYNCWINDOWPOS
 atl
+AWC
 ATRIOX
 aumid
 AUO
@@ -120,6 +124,8 @@ backticks
 Badflags
 Badmode
 Badparam
+basename
+basenames
 bbwe
 BCIE
 Belarusian
@@ -139,7 +145,6 @@ BITMAPINFO
 BITMAPINFOHEADER
 BITSPERPEL
 BITSPIXEL
-Bitwarden
 bla
 Blackmagic
 BLENDFUNCTION
@@ -185,6 +190,7 @@ CALG
 callbackptr
 calpwstr
 Cangjie
+canonicalize
 CANRENAME
 Canvascustomlayout
 CAPTUREBLT
@@ -192,6 +198,8 @@ CAPTURECHANGED
 CARETBLINKING
 carlos
 Carlseibert
+cascadia
+caseinsensitive
 caub
 CBN
 cch
@@ -241,7 +249,7 @@ closesocket
 clp
 CLSCTX
 CLSIDs
-Clsids
+CLOSEAPP
 clsids
 Clusion
 cmb
@@ -320,7 +328,6 @@ CREATESCHEDULEDTASK
 CREATESTRUCT
 CREATEWINDOWFAILED
 creativecommons
-CRECT
 CRH
 critsec
 cropandlock
@@ -373,14 +380,14 @@ DCBA
 DCOM
 DCR
 ddc
-Ddcci
+DDCCI
 DDEIf
 Deact
 debouncer
 debugbreak
 decryptor
 Dedup
-dedup
+deduped
 Deduplicator
 DEFAULTBOOTSTRAPPERINSTALLFOLDER
 DEFAULTCOLOR
@@ -398,7 +405,6 @@ DELA
 DELD
 deld
 DELETEDKEYIMAGE
-DELETESCANS
 DEMOTYPE
 DENORMAL
 depersist
@@ -456,6 +462,7 @@ downsampling
 downscale
 DPICHANGED
 DPIs
+dpm
 DPMS
 DPSAPI
 DQTAT
@@ -468,10 +475,8 @@ drivedetectionwarning
 DRM
 DROPFILES
 DSPDLOG
-DSTINVERT
 DString
 dto
-DUMMYUNIONNAME
 dumpbin
 dutil
 DVASPECT
@@ -485,6 +490,7 @@ dwm
 dwmapi
 DWMCOLORIZATIONCOLORCHANGED
 DWMCOMPOSITIONCHANGED
+DWMSBT
 DWMNCRENDERINGCHANGED
 Dwmp
 DWMSENDICONICLIVEPREVIEWBITMAP
@@ -517,6 +523,8 @@ endgroup
 ENDSESSION
 endtask
 ENSUREVISIBLE
+ENTERIDLE
+ENTERMENULOOP
 ENTERSIZEMOVE
 ENTRYW
 ENU
@@ -550,6 +558,8 @@ EXECUTEDEFAULT
 executionpolicy
 exename
 exf
+EXITCOMMAND
+EXITMENULOOP
 EXITSIZEMOVE
 exlist
 EXPCMDFLAGS
@@ -675,6 +685,7 @@ GRABANDMOVEMODULEINTERFACE
 gradians
 GRC
 grctlext
+Greenshot
 GRGX
 Gridcustomlayout
 gridlines
@@ -686,6 +697,7 @@ gwl
 GWLP
 GWLSTYLE
 hangeul
+Hanguel
 Hantai
 Hanzi
 Harddisk
@@ -704,18 +716,22 @@ hbr
 HBRBACKGROUND
 hbrush
 hcblack
+HCCE
 HCRYPTHASH
 HCRYPTPROV
 hcursor
 hcwhite
 hdc
 HDEVNOTIFY
+hdmi
 hdr
 HDROP
 hdwwiz
 Headered
 Helpline
 helptext
+HELPTEXTA
+HELPTEXTW
 hgdiobj
 HGFE
 hglobal
@@ -840,6 +856,7 @@ imageresizerinput
 imageresizersettings
 imagingdevices
 ime
+IMEAceept
 imgflip
 inapp
 inbox
@@ -855,6 +872,8 @@ INITCOMMONCONTROLSEX
 INITDIALOG
 INITGUID
 initialfile
+INITMENU
+INITMENUPOPUP
 INITTOLOGFONTSTRUCT
 inkscape
 INLINEPREFIX
@@ -962,6 +981,7 @@ Lclean
 Ldone
 Ldr
 LEFTALIGN
+LEFTBUTTON
 leftclick
 LEFTSCROLLBAR
 LEFTTEXT
@@ -993,6 +1013,7 @@ lng
 LOADFROMFILE
 LOBYTE
 localappdata
+localmdimages
 localpackage
 LOCALSYSTEM
 LOCATIONCHANGE
@@ -1017,11 +1038,9 @@ LPCLSID
 lpcmi
 LPCMINVOKECOMMANDINFO
 LPCREATESTRUCT
-LPCRECT
 LPCTSTR
 lpdw
 lpfn
-LPINPUT
 LPITEMIDLIST
 lpmi
 LPMINMAXINFO
@@ -1030,6 +1049,7 @@ LPOSVERSIONINFOEXW
 LPQUERY
 lprc
 LPSAFEARRAY
+LPSECURITY
 lpstr
 lpsz
 LPTHREAD
@@ -1092,8 +1112,7 @@ meme
 memicmp
 MENUITEMINFO
 MENUITEMINFOW
-MERGECOPY
-MERGEPAINT
+MENUSELECT
 Metacharacter
 metadatamatters
 Metadatas
@@ -1168,6 +1187,7 @@ MSIRESTARTMANAGERCONTROL
 MSIs
 msixbundle
 MSIXCA
+msll
 MSLLHOOKSTRUCT
 Mso
 mspub
@@ -1247,7 +1267,6 @@ NOASYNC
 NOCHANGEDIR
 NOCLIP
 NOCLOSEPROCESS
-NOCOALESCE
 NOCOMM
 NOCONFIRMMKDIR
 NOCOPYBITS
@@ -1265,10 +1284,10 @@ NOLINKINFO
 nologo
 NOMCX
 NOMINMAX
-NOMIRRORBITMAP
 nomove
 NONANTIALIASED
 nonclient
+Nonconvert
 NONCLIENTMETRICSW
 NONELEVATED
 nonspace
@@ -1298,8 +1317,6 @@ NOTIFYICONDATAW
 NOTIMPL
 NOTOPMOST
 NOTRACK
-NOTSRCCOPY
-NOTSRCERASE
 Notupdated
 notwindows
 NOTXORPEN
@@ -1324,7 +1341,10 @@ nwc
 ocr
 Ocrsettings
 odbccp
+Oemcomma
 OEMCONVERT
+Oemplus
+Oemtilde
 officehubintl
 OFN
 ofs
@@ -1351,7 +1371,6 @@ openxmlformats
 OPTIMIZEFORINVOKE
 Optronics
 ORPHANEDDIALOGTITLE
-ORSCANS
 oss
 OSVERSIONINFO
 OSVERSIONINFOEX
@@ -1382,15 +1401,9 @@ PARENTRELATIVEFORADDRESSBAR
 PARENTRELATIVEFORUI
 PARENTRELATIVEPARSING
 parray
+parseable
 PARTIALCONFIRMATIONDIALOGTITLE
-pasteas
-pasteasjson
-pasteasmarkdown
-pasteasplaintex
-PATCOPY
 PATHMUSTEXIST
-PATINVERT
-PATPAINT
 pbc
 pbi
 PBP
@@ -1447,6 +1460,7 @@ PJT
 PKBDLLHOOKSTRUCT
 pkgfamily
 PKI
+PKIX
 plib
 ploc
 ploca
@@ -1460,6 +1474,7 @@ PNMLINK
 Poc
 POCOs
 Podcasts
+PARGB
 POINTERID
 POINTERUPDATE
 Pokedex
@@ -1631,11 +1646,13 @@ REMAPSUCCESSFUL
 REMAPUNSUCCESSFUL
 Remotable
 remotedesktop
+remotehost
 remoteip
 Removelnk
 renamable
 RENAMEONCOLLISION
 RENDERFULLCONTENT
+renumbers
 reparented
 reparenting
 reportfileaccesses
@@ -1650,6 +1667,7 @@ resmimetype
 RESOURCEID
 respawns
 RESTORETOMAXIMIZED
+resx
 RETURNONLYFSDIRS
 Revalidates
 RGBQUAD
@@ -1667,7 +1685,6 @@ RIGHTBUTTON
 RIGHTSCROLLBAR
 riid
 rollups
-rop
 ROUNDSMALL
 rpcrt
 RRF
@@ -1783,6 +1800,7 @@ shortdate
 SHORTPATH
 shortsplit
 showcolorname
+SHOWCONTEXTMENU
 SHOWDEFAULT
 SHOWELEVATIONPROMPT
 SHOWMAGNIFIEDCURSOR
@@ -1829,6 +1847,7 @@ SNAPPROCESS
 snk
 snwprintf
 softline
+softpub
 SOURCECLIENTAREAONLY
 sourced
 sourcedoc
@@ -1845,12 +1864,8 @@ spsi
 spsia
 spsrm
 spsv
-SRCAND
 SRCCOPY
-SRCERASE
 Srch
-SRCINVERT
-SRCPAINT
 SResize
 srme
 srre
@@ -1941,6 +1956,7 @@ SYSLIB
 sysmenu
 systemai
 SYSTEMAPPS
+SYSTEMBACKDROP
 SYSTEMMODAL
 systemroot
 SYSTEMTIME
@@ -2019,6 +2035,8 @@ tracerpt
 trackbar
 trafficmanager
 transicc
+TRAYICON
+TRANSIENTWINDOW
 transitioning
 TRAYMOUSEMESSAGE
 triaging
@@ -2036,6 +2054,8 @@ TYPEMOUSE
 TYPESHORTCUT
 UAC
 UACUI
+UAHINITMENU
+UAHMEASUREMENUITEM
 UAL
 uap
 UBR
@@ -2057,8 +2077,11 @@ uncompilable
 uncomposited
 UNCPRIORITY
 UNDNAME
+unescaped
+unforgeable
 ungroup
 UNICODETEXT
+UNINITMENUPOPUP
 unins
 uninsdeletekey
 Uninstaller
@@ -2072,7 +2095,7 @@ unparsable
 unremapped
 Unsend
 Unsubscribes
-unsubscribes
+untampered
 untriaged
 unvirtualized
 unwide
@@ -2097,6 +2120,8 @@ uwp
 uxt
 uxtheme
 vabdq
+VALIDATEA
+VALIDATEW
 validmodulename
 valuegenerator
 vanzue
@@ -2113,6 +2138,7 @@ VCRT
 vcruntime
 vcvars
 vdupq
+VERBA
 VERBSONLY
 VERBW
 VERIFYCONTEXT
@@ -2127,8 +2153,6 @@ vgetq
 viewmodels
 virama
 VIRTKEY
-VIRTUALDESK
-VIRTUALSCREEN
 VISEGRADRELAY
 visiblecolorformats
 visio
@@ -2165,7 +2189,7 @@ WANTPALM
 WASDK
 watsonportal
 wbem
-Wca
+wca
 WCE
 wcex
 WCRAPI
@@ -2193,6 +2217,7 @@ winappcli
 winappsdk
 windir
 WINDOWCREATED
+WINDOWCOMPOSITIONATTRIBDATA
 WINDOWDESTROYED
 windowedge
 WINDOWINFO
@@ -2226,6 +2251,7 @@ winrt
 winsdk
 winsta
 WINTHRESHOLD
+wintrust
 WINVER
 winword
 winxamlmanager
@@ -2291,6 +2317,7 @@ xcopy
 xdf
 xfd
 xhair
+XMN
 xmp
 Xoshiro
 xsi

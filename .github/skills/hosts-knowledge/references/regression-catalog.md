@@ -41,7 +41,7 @@ These details disambiguate the evidence; their operating instructions remain in 
 | Formatting ownership | Invalid entries use their original `Line`; owned disabled entries gain `# `, optional alignment changes leading spaces, columns are padded, comments are appended, and trailing whitespace is trimmed. | `HostsService.WriteAsync`; `Entry.Line`; `Entry.Valid`; `NoLeadingSpaces` |
 | Host splitting | Reads clone entries in chunks when the host list exceeds nine; the UI exposes that split. | `HostsService.ReadAsync`; `Consts.MaxHostsCount`; `ShowSplittedEntriesTooltip` |
 | Template exclusion | The Windows sample lines are deliberately rejected as entries. | `Entry.Validate`; `102.54.94.97 rhino.acme.com`; `38.25.63.10 x.acme.com` |
-| Duplicate semantics | Same type plus a shared host is duplicate; same type/address across multiple sub-limit entries is duplicate. Loopbacks are excluded unless `LoopbackDuplicates` is enabled. Work runs on a queue thread and returns through `DispatcherQueue`. | `HostsUILib/Helpers/DuplicateService.cs::SetDuplicate`; `_loopbackAddresses`; `IUserSettings.LoopbackDuplicates` |
+| Duplicate semantics | Same type plus a shared host is duplicate; same type/address across multiple sub-limit entries is duplicate. Loopback addresses are excluded unless `LoopbackDuplicates` is enabled. Work runs on a queue thread and returns through `DispatcherQueue`. | `HostsUILib/Helpers/DuplicateService.cs::SetDuplicate`; `_loopbackAddresses`; `IUserSettings.LoopbackDuplicates` |
 | Backup identity | `hosts_PowerToysBackup_<yyyyMMddHHmmss>` files under `BackupPath` are discovered by `*_PowerToysBackup_*`. | `BackupManager.Create`; `DeleteByCount`; `DeleteByAge` |
 
 ## Reviewer decision ledger

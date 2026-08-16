@@ -10,7 +10,7 @@
 
 - Confirm every anchor against the current branch before changing code.
 - Most issue records in the mined corpus were title-level. Rows marked **issue signal** support
-  prioritization, not a proven mechanism.
+  priority, not a proven mechanism.
 - Source observations describe the reviewed snapshot; they are stronger than issue-title inference
   but can become stale.
 - Product/settings/log names use **TextExtractor**; source directory and namespace use **PowerOCR**.

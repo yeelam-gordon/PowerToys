@@ -170,7 +170,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### Verify physical monitor handle ownership when changing map updates
 - **Classification:** source-derived review heuristic, not a proven current regression or complete
   description of implemented safeguards.
-- **Risk:** handle count can grow after repeated rescans, or a VCP operation can fail if ownership
+- **Risk:** handle count can grow after repeated scans, or a VCP operation can fail if ownership
   is duplicated or a still-used handle is destroyed.
 - **Where:** `PhysicalMonitorHandleManager.UpdateHandleMap`, `CleanupUnusedHandles`, and `Dispose`.
 - **Review heuristic:** trace every returned handle from discovery through map replacement and

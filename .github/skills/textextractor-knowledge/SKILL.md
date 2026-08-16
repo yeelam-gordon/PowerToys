@@ -65,7 +65,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `OcrExtensions.GetOcrResultFromImageAsync` assign `OcrEngine.TryCreateFromLanguage(...)` to a
   non-null variable and immediately call `RecognizeAsync`. Both paths can throw
   `NullReferenceException` when Windows cannot create an engine for the selected language. Treat
-  this as an existing defect to detect or fix, not as a guard the module already implements.
+  this as an existing defect to detect or fix, not as a guardrail already implemented by the module.
 - **Symptom:** "No possible OCR languages are installed" message box, or empty result; happens on
   fresh/offline machines and non-English SKUs.
 - **Where:** `ImageMethods.GetOCRLanguage` / `ExtractText`; `OcrEngine.AvailableRecognizerLanguages`,
@@ -171,7 +171,7 @@ Enforce these when reviewing or authoring Text Extractor changes:
   (empty) and `OcrEngine.TryCreateFromLanguage` (null) in both `ImageMethods.ExtractText` and
   `OcrExtensions.GetOcrResultFromImageAsync`. **Current source violates the second requirement**;
   when a diff changes OCR-engine creation or null handling, reviewers should require both paths to
-  be safe rather than describing null handling as already present. Do not file the pre-existing
+  be safe rather than describing null handling as already present. Do not file the existing
   defect against an unrelated edit
   ([Windows.Media.Ocr](https://learn.microsoft.com/en-us/uwp/api/windows.media.ocr.ocrengine); #46030).
 - **Respect `OcrEngine.MaxImageDimension`.** Upscaling is gated to 1.5× only when the result stays

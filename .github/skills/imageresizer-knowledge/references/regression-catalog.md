@@ -37,7 +37,7 @@ Historical evidence for PowerToys **ImageResizer**. Source anchors are under
 These facts disambiguate the evidence; operating guidance remains in `SKILL.md`.
 
 - **Encode-path split:** `EncodeToStreamAsync` transcodes only when output codec equals input codec,
-  `RemoveMetadata` is false, and `forceFresh` is false. Otherwise it fresh-encodes and copies only
+  `RemoveMetadata` is false, and `forceFresh` is false. Otherwise, it fresh-encodes and copies only
   `KnownMetadataProperties`. JPEG transform sets `forceFresh` so `ImageQuality` applies.
 - **Metadata scope:** known preservation covers DateTaken, camera model/manufacturer, orientation,
   color space, and comment. Unsupported `BitmapProperties` operations, including format-specific BMP

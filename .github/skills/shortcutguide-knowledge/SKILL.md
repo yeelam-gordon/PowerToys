@@ -186,7 +186,7 @@ Enforce these when reviewing or authoring Shortcut Guide changes:
 - **Treat manifest refresh as a transaction.** When a diff changes copy/index/populate behavior,
   do not populate or publish a new index after copy, child-process start, wait, YAML parse, or
   non-zero-exit failure. **Current source continues after a copy exception**; do not file that
-  pre-existing defect against an unrelated edit unless the diff introduces, worsens, or claims to
+  existing defect against an unrelated edit unless the diff introduces, worsens, or claims to
   fix it. Refresh the mtime-keyed cache only from the accepted `index.yml`.
 - **Validate YAML before merge.** Runtime index generation is not an adequate validator because one
   malformed shipped manifest can invalidate the shared generated index.

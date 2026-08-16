@@ -76,7 +76,7 @@ cold first; then enumerate consumers before applying these playbooks.
 
 - Search all consumers before modifying shared code; do not infer blast radius from the file's folder.
 - Run consumer tests, not only the declaring library's tests.
-- Label known live violations explicitly; never present an aspirational guardrail as current behavior.
+- Label known live violations explicitly; never present a proposed guardrail as current behavior.
 - Keep module-specific mechanics in module skills and shared contract/blast-radius checks here.
 - For persisted data, review compatibility, migration, corruption recovery, and concurrent writes as
   one contract.

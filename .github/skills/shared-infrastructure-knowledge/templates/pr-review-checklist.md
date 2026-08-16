@@ -10,4 +10,4 @@
 - [ ] For separate processes, check policy at every entry point required by the module's verified
       contract, plus reverse-order cleanup; do not invent an executable-side gate.
 - [ ] Run the smallest tests for every affected consumer, not only the declaring project.
-- [ ] Mark aspirational rules and known current violations honestly.
+- [ ] Mark proposed rules and known current violations honestly.

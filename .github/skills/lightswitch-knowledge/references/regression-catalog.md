@@ -34,7 +34,7 @@ unverified symptoms.
 
 ### LS-D3 — PowerDisplay notifications carry direction and fire every override
 
-- **Source:** `LightSwitchStateManager.cpp`, `NotifyPowerDisplay`, `OnManualOverride`;
+- **Source:** `LightSwitchStateManager.cpp`, `NotifyPowerDisplayThemeChanged`, `OnManualOverride`;
   `src/common/interop/shared_constants.h`.
 - **Findings:** PR #47190 found notification gated on `isManualOverride` false→true, dropping every
   even hotkey press. Direction-specific events already existed from PowerDisplay integration.

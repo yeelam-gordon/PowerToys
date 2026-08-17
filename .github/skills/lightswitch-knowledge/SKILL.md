@@ -53,7 +53,7 @@ Source root: `src/modules/LightSwitch/`.
 | Settings load / schema / defaults | `src/modules/LightSwitch/LightSwitchService/LightSwitchSettings.cpp` `LoadSettings`; `src/modules/LightSwitch/LightSwitchService/LightSwitchSettings.h` `struct LightSwitchConfig`, `enum class ScheduleMode`, `FromString`/`ToString` |
 | Settings file-watcher + debounce (3 s) | `LightSwitchSettings.cpp::InitFileWatcher` (`FileWatcher` + `std::jthread` debounce → `m_settingsChangedEvent`) |
 | Settings observer registration IDs | `src/modules/LightSwitch/LightSwitchService/SettingsConstants.h` `enum class SettingId`; `SettingsObserver.h` |
-| PowerDisplay profile notify (light/dark events) | `LightSwitchStateManager.cpp::NotifyPowerDisplay` → `CommonSharedConstants::LIGHT_SWITCH_LIGHT_THEME_EVENT` / `..._DARK_THEME_EVENT` |
+| PowerDisplay profile notify (light/dark events) | `LightSwitchStateManager.cpp::NotifyPowerDisplayThemeChanged` → `CommonSharedConstants::LIGHT_SWITCH_LIGHT_THEME_EVENT` / `..._DARK_THEME_EVENT` |
 | Telemetry | `src/modules/LightSwitch/LightSwitchModuleInterface/trace.cpp` (`ShortcutInvoked`, `Enable`); `src/modules/LightSwitch/LightSwitchService/trace.cpp` (`ScheduleModeToggled`, `ThemeTargetChanged`) |
 | Settings UI view-model (C#) | `src/settings-ui/Settings.UI/ViewModels/LightSwitchViewModel.cs` (+ page/XAML) |
 | UI tests | `src/modules/LightSwitch/Tests/LightSwitch.UITests/` (`TestGeolocation`, `TestOffset`, `TestShortcut`, `TestUpdateManualTime`, `TestUserSelectedLocation`) |
@@ -89,16 +89,16 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 ### PowerDisplay profile only applied on every *other* hotkey press
 - **Symptom:** binding a monitor profile per theme via PowerDisplay, the profile only follows the
   theme on odd-numbered hotkey presses; even presses flip the theme but leave the profile stuck.
-- **Where:** `LightSwitchStateManager.cpp::OnManualOverride` → `NotifyPowerDisplay`.
+- **Where:** `LightSwitchStateManager.cpp::OnManualOverride` → `NotifyPowerDisplayThemeChanged`.
 - **Root cause:** the notify was gated on `isManualOverride` transitioning `false→true`; the toggle
   flips the bool every press, so every second call skipped the notify.
 - **Guardrail:** ModuleInterface flips the Windows theme *before* signaling; sync cached state and
-  call `NotifyPowerDisplay` on **every** override, not only when "entering" override. Evidence:
+  call `NotifyPowerDisplayThemeChanged` on **every** override, not only when "entering" override. Evidence:
   [PR #47190](https://github.com/microsoft/PowerToys/pull/47190) (see the in-code comment in
   `OnManualOverride`).
 
 ### Preserve direction-specific PowerDisplay events
-- **Where:** `NotifyPowerDisplay` event names; `CommonSharedConstants` in
+- **Where:** `NotifyPowerDisplayThemeChanged` event names; `CommonSharedConstants` in
   `src/common/interop/shared_constants.h`.
 - **Chronology:** direction-specific `LIGHT_SWITCH_LIGHT_THEME_EVENT` /
   `LIGHT_SWITCH_DARK_THEME_EVENT` events came from PowerDisplay integration

@@ -32,7 +32,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | App bootstrap / single instance / crash reporting | `PowerLauncher/App.xaml.cs`; ``PowerLauncher/Helper/SingleInstance`1.cs``; `Helper/ErrorReporting.cs` |
 | Recoverable DWM composition crash guard | `PowerLauncher/Helper/ExceptionHelper.cs` `IsRecoverableDwmCompositionException` (`DWM_E_COMPOSITIONDISABLED = 0x80263001`); consumed in `ErrorReporting.cs` |
 | Main window / search box / results view | `PowerLauncher/MainWindow.xaml.cs`, `CustomSearchBox.cs`, `ResultList.xaml.cs` |
-| Query orchestration, debounce, cancellation | `PowerLauncher/ViewModel/MainViewModel.cs` `Query`, `QueryResults(bool? delayedExecution)`; `_updateSource`/`_updateToken` (`CancellationTokenSource`) |
+| Query orchestration, debounce, cancellation | `PowerLauncher/ViewModel/MainViewModel.cs` `Query`, `QueryResults(bool? delayedExecution)`; `_currentQuerySession` / `_updateToken`; `ViewModel/QuerySession.cs` |
 | Activation hotkey (global hotkey + centralized keyboard hook) | `MainViewModel.cs` `RegisterHotkey`, `OnHotkey`; `NativeEventWaiter.WaitForEventLoop(Constants.PowerLauncherSharedEvent()...)`; `_usingGlobalHotKey`, `NativeMethods.RegisterHotKey/UnregisterHotKey` |
 | Result list model, incremental update, final sort | `MainViewModel.cs` `UpdateResultView`; `ViewModel/ResultsViewModel.cs` `Results.Sort(queryTuning)`; `Helper/ResultCollection.cs` |
 | Result ranking formula | `Wox.Plugin/Result.cs` `Score` + `Metadata.WeightBoost + Score + (SelectedCount * selectedItemMultiplier)` |
@@ -67,8 +67,8 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | VSCodeWorkspaces | `Community...VSCodeWorkspaces/VSCodeHelper/VSCodeInstances.cs`, `WorkspacesHelper/VSCodeWorkspacesApi.cs` | Recent-workspace discovery (storage.json / UNC) |
 | Registry / System / WindowsSettings / WindowsTerminal / TimeDate / History / OneNote / Service | respective plugin roots | Utility result providers |
 
-**Query pipeline (critical order):** `MainViewModel.QueryResults` cancels the prior
-`_updateSource`, builds the `Query` (`QueryBuilder`), then runs **fast** plugins
+**Query pipeline (critical order):** `MainViewModel.QueryResults` cancels and disposes the prior
+`_currentQuerySession`, builds the `Query` (`QueryBuilder`), then runs **fast** plugins
 (`PluginManager.QueryForPlugin`) on a background `Task`, pushing incremental results via
 `UpdateResultView(..., _updateToken)`; **delayed-execution** plugins
 (`IDelayedExecutionPlugin`) run second. Results are sorted by the ranking formula, optionally

@@ -52,7 +52,7 @@ interface: `PowerDisplay/` (WinUI flyout app), `PowerDisplay.Lib/` (drivers + se
 | Flyout windows / UI | `PowerDisplay/PowerDisplayXAML/MainWindow.xaml(.cs)`, `IdentifyWindow`, `MonitorIcon` |
 | Global hotkey | `PowerDisplay/Helpers/HotkeyService.cs` (`Initialize`, `HandleMessage`, `ReloadSettings`) |
 | Profiles (per-monitor snapshots) | `PowerDisplay.Models/PowerDisplayProfile(s).cs`, `ProfileHelper.cs`, `ProfileStore.cs`; application in `PowerDisplay/ViewModels/MainViewModel.Settings.cs` `ApplyProfileByIdAsync` / `ApplyProfileAsync` |
-| LightSwitch theme→profile link | `PowerDisplay/Services/LightSwitchService.cs` (`GetProfileForTheme`) |
+| LightSwitch theme→profile link | `PowerDisplay/Services/LightSwitchService.cs` (`GetProfileIdForTheme`) |
 | Tray icon | `PowerDisplay/Helpers/TrayIconService.cs` |
 | Settings data model (persisted to `settings.json`) | `src/settings-ui/Settings.UI.Library/PowerDisplayProperties.cs`; Settings page `src/settings-ui/Settings.UI/.../PowerDisplayViewModel`/`PowerDisplayPage.xaml` |
 | Runner module interface / process lifecycle / IPC events | `PowerDisplayModuleInterface/dllmain.cpp`, `PowerDisplayProcessManager.{cpp,h}`, `Trace.cpp` |

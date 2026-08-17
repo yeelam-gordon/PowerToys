@@ -33,34 +33,34 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 | Sub-feature | Implementation (file · function) |
 |---|---|
 | PowerToys module wrapper, GPO gate, enable/disable, launch ZoomIt.exe | `ZoomItModuleInterface/dllmain.cpp` `enable/disable`, `gpo_policy_enabled_configuration` → `getConfiguredZoomItEnabledValue` |
-| Hotkey IDs (all 22) | `Zoomit.cpp:83-104` `ZOOM_HOTKEY..WEBCAM_TOGGLE_HOTKEY` |
-| Central hotkey registration + logging lambda | `Zoomit.cpp:3569` `RegisterAllHotkeys` (local `registerHotkey`) |
-| **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT` (3606-3612); `LIVE_DRAW = g_LiveZoomToggleMod ^ MOD_SHIFT` (3580); `DEMOTYPE_RESET = g_DemoTypeToggleMod ^ MOD_SHIFT` (3586) |
-| Other 3 registration sites (must stay in sync) | Options-dialog validation `OptionsProc` (~`Zoomit.cpp:5520-5620`); startup `MainWndProc WM_CREATE` (~`7691-7708`); `WM_USER_RELOAD_SETTINGS` (~`10356-10373`) |
-| Main window message pump / hotkey dispatch | `Zoomit.cpp:7501` `MainWndProc`, `WM_HOTKEY` (~`7870`) |
-| Zoom mode (static zoom + pan/draw) | `MainWndProc` `ZOOM_HOTKEY` path; `DrawWndProc`/draw state in `Zoomit.cpp` |
-| Live Zoom (real-time magnifier) | `g_hWndLiveZoom`/`g_hWndLiveZoomMag` (`Zoomit.cpp:188-189`) via Magnification API `pMagSetWindowSource/pMagSetWindowTransform` (225-243); `g_ZoomOnLiveZoom` |
-| LiveDraw (annotate over live zoom, layered window) | `LIVE_DRAW_HOTKEY`; layered-window note `Zoomit.cpp:5941`; pen-width scaling by `g_LiveZoomLevel` (~6428-6438) |
-| Draw / annotate shapes, blur, highlight | `Zoomit.cpp:1135` `DrawBlurredShape`, `:1300` `DrawHighlightedShape`; pen/marker state globals |
+| Hotkey IDs (all 22) | `Zoomit.cpp` `ZOOM_HOTKEY` through `WEBCAM_TOGGLE_HOTKEY` |
+| Central hotkey registration + logging lambda | `Zoomit.cpp::RegisterAllHotkeys` (local `registerHotkey`) |
+| **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT`; `LIVE_DRAW` and `DEMOTYPE_RESET` modifier derivation |
+| Other 3 registration sites (must stay in sync) | Options-dialog validation `OptionsProc`; startup `MainWndProc` `WM_CREATE`; `WM_USER_RELOAD_SETTINGS` |
+| Main window message pump / hotkey dispatch | `Zoomit.cpp::MainWndProc`, `WM_HOTKEY` |
+| Zoom mode (static zoom + pan/draw) | `MainWndProc` `ZOOM_HOTKEY` path and drawing state/handlers in `Zoomit.cpp` |
+| Live Zoom (real-time magnifier) | `g_hWndLiveZoom` / `g_hWndLiveZoomMag` via Magnification API `pMagSetWindowSource` / `pMagSetWindowTransform`; `g_ZoomOnLiveZoom` |
+| LiveDraw (annotate over live zoom, layered window) | `LIVE_DRAW_HOTKEY`; layered-window creation and pen-width scaling by `g_LiveZoomLevel` in `Zoomit.cpp` |
+| Draw / annotate shapes, blur, highlight | `Zoomit.cpp::DrawBlurredShape`, `DrawHighlightedShape`; pen/marker state globals |
 | Break timer (countdown screen) | `ZoomItBreak/BreakTimer.cpp`, `BreakTimer.h`; `BREAK_HOTKEY`; `g_BreakTimerPosition` |
 | DemoType (typed-text playback) | `DemoType.cpp/.h`; `DEMOTYPE_HOTKEY`/`DEMOTYPE_RESET_HOTKEY`; `TypeModeState` |
 | Screen recording (MP4) session | `VideoRecordingSession.cpp/.h` `Create`; orchestrated by `Zoomit.cpp` `StartRecordingAsync` (`winrt::fire_and_forget`) |
 | GIF recording session | `GifRecordingSession.cpp/.h` `Create`; `g_GifRecordingSession` |
 | Frame capture (Windows.Graphics.Capture) | `CaptureFrameWait.cpp/.h` |
-| Audio capture + generation (mic + system loopback) | `AudioSampleGenerator.cpp/.h` `InitializeAsync`; `LoopbackCapture.cpp/.h`; started early in `StartRecordingAsync` (~`Zoomit.cpp:6996-7001`) |
+| Audio capture + generation (mic + system loopback) | `AudioSampleGenerator.cpp/.h` `InitializeAsync`; `LoopbackCapture.cpp/.h`; started early in `Zoomit.cpp::StartRecordingAsync` |
 | Mic noise cancellation (RNNoise) | `NoiseSuppressor.cpp/.h`; flag `g_NoiseCancellation` |
 | Webcam overlay capture + compositing | `WebcamCapture.cpp/.h`, `WebcamPreviewWindow.cpp/.h`, `WebcamComposite.hlsl`/`WebcamCompositePS.h`/`WebcamCompositeVS.h`; `WEBCAM_TOGGLE_HOTKEY` |
 | Webcam background blur (mediapipe selfie segmentation) | `BackgroundBlur.cpp/.h`, `BoxBlurCS.hlsl`/`BoxBlurCS.h`, model `selfie_segmentation.onnx` |
-| Unique recording filename (timestamp vs numeric suffix) | `Zoomit.cpp:6893` `GetUniqueRecordingFilename`, `IsDefaultRecordingFilename`, `GetTimestampSuffix` |
+| Unique recording filename (timestamp vs numeric suffix) | `Zoomit.cpp::GetUniqueRecordingFilename`, `IsDefaultRecordingFilename`, `GetTimestampSuffix` |
 | Unique screenshot filename | `Zoomit.cpp` `GetUniqueScreenshotFilename` |
 | Screenshot save/copy + WebP/JPG/PNG encoding | `ImageEncoder.cpp/.h`; `SAVE_IMAGE_HOTKEY`/`SAVE_CROP_HOTKEY`/`COPY_IMAGE_HOTKEY`/`COPY_CROP_HOTKEY` |
 | Snip (region select) | `SelectRectangle.cpp/.h`; `SNIP_HOTKEY`/`SNIP_SAVE_HOTKEY` |
-| OCR / text extraction from snip | `Zoomit.cpp:1558` `OcrFromHBITMAP` (Windows.Media.Ocr `OcrEngine::TryCreateFromUserProfileLanguages`, `MaxImageDimension`); `SNIP_OCR_HOTKEY` |
+| OCR / text extraction from snip | `Zoomit.cpp::OcrFromHBITMAP` (Windows.Media.Ocr `OcrEngine::TryCreateFromUserProfileLanguages`, `MaxImageDimension`); `SNIP_OCR_HOTKEY` |
 | Panorama (scrolling screenshot) | `PanoramaCapture.cpp/.h`; `SNIP_PANORAMA_HOTKEY`/`SNIP_PANORAMA_SAVE_HOTKEY` |
-| DPI scaling of options dialog | `GetDpiForWindowHelper`, `ScaleDialogForDpi`, `ScaleForDpi`, `WM_DPICHANGED`, `DPI_BASELINE` (`Zoomit.cpp` throughout) |
-| Multi-monitor targeting | `MonitorFromPoint(MONITOR_DEFAULTTONEAREST)` + `GetMonitorInfo` (~`Zoomit.cpp:2258`) |
+| DPI scaling of options dialog | `Utility.cpp` `GetDpiForWindowHelper`, `ScaleDialogForDpi`, `ScaleForDpi`; `Zoomit.cpp` `WM_DPICHANGED`; `DPI_BASELINE` |
+| Multi-monitor targeting | `Zoomit.cpp` `MonitorFromPoint(MONITOR_DEFAULTTONEAREST)` + `GetMonitorInfo` |
 | Registry-backed settings model | `ZoomItSettings.h` `REG_SETTING RegSettings[]`; `Registry.h` |
-| Settings reload from PowerToys | `MainWndProc` `WM_USER_RELOAD_SETTINGS` (~`Zoomit.cpp:10356`) |
+| Settings reload from PowerToys | `Zoomit.cpp::MainWndProc` `WM_USER_RELOAD_SETTINGS` |
 | Settings UI (WinUI 3) | `src/settings-ui/Settings.UI/ViewModels/ZoomItViewModel.cs`, `.../SettingsXAML/Views/ZoomItPage.xaml` (was `.../Views/ZoomItPage.xaml`); native bridge `ZoomItSettingsInterop/ZoomItSettings.cpp/.idl` |
 | Telemetry | `ZoomItModuleInterface/trace.cpp` |
 
@@ -145,7 +145,7 @@ corpus are terse (title-level); technical rows were verified against source.
 ### Recording/screenshot filename suffix handling
 - **Symptom:** ZoomIt strips a numeric suffix from a user-chosen recording name (`Clip1.mp4` →
   `Clip.mp4`), risking overwrite; default names don't sort chronologically.
-- **Where:** `GetUniqueRecordingFilename` (`Zoomit.cpp:6893`), `IsDefaultRecordingFilename`,
+- **Where:** `Zoomit.cpp::GetUniqueRecordingFilename`, `IsDefaultRecordingFilename`,
   `GetTimestampSuffix`; screenshots in `GetUniqueScreenshotFilename`.
 - **Root cause:** suffix logic was applied unconditionally instead of only to the *default* filename.
 - **Guardrail:** only the default filename gets a timestamp; custom names get a numeric `(n)` suffix

@@ -45,7 +45,7 @@ below were added by the July 2026 PRs cited).
 | XAML bind transformers (visibility/converters) | `Microsoft.CmdPal.UI/Helpers/BindTransformers.cs`; `Converters/` |
 | **Dock** (pin-capable band host) | `Microsoft.CmdPal.UI/Dock/DockControl.xaml.cs` `InvokeItem`, `IsPageCommand`; `DockWindow*.cs`, `DockWindowManager.cs`, `PinToDockDialogContent.xaml.cs` |
 | Dock band view-models | `Microsoft.CmdPal.UI.ViewModels/Dock/` |
-| **Toast** notification window | `Microsoft.CmdPal.UI/ToastWindow.xaml(.cs)` `PositionBottomCenter` / `PositionWindow`; VM `Microsoft.CmdPal.UI.ViewModels/ToastViewModel.cs`, `Messages/ShowToastMessage.cs` |
+| **Toast** notification window | `Microsoft.CmdPal.UI/ToastWindow.xaml(.cs)` `PositionWindow`; VM `Microsoft.CmdPal.UI.ViewModels/ToastViewModel.cs`, `Messages/ShowToastMessage.cs` |
 | Command dispatch pipeline | `Microsoft.CmdPal.UI.ViewModels/Messages/PerformCommandMessage.cs`, `ShellViewModel.cs` |
 | **Settings window + breadcrumb navigation** | `Microsoft.CmdPal.UI/Settings/SettingsWindow.xaml.cs` `Navigate`, `BreadCrumbs`; pages under `Settings/` |
 | Theme / monitor services | `Microsoft.CmdPal.UI/Services/ThemeService.cs`, `MonitorService.cs`, `WindowThemeSynchronizer.cs` |

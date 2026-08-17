@@ -12,7 +12,7 @@ All anchors are hypotheses to confirm in the current `src/modules/launcher/` tre
 
 | Approximate chronology | Evidence | Source anchors | Historical finding or decision |
 |---|---|---|---|
-| Earlier architecture | invariant in source | `MainViewModel.QueryResults`; `_updateSource`; `_updateToken`; `QueryBuilder`; `PluginManager.QueryForPlugin`; `IDelayedExecutionPlugin`; `UpdateResultView` | Query fan-out is debounced and cancellable; fast plugins precede delayed plugins and stale result pushes are token-gated. |
+| Query architecture | invariant in source | `MainViewModel.QueryResults`; `_currentQuerySession`; `_updateToken`; `QuerySession`; `QueryBuilder`; `PluginManager.QueryForPlugin`; `IDelayedExecutionPlugin`; `UpdateResultView` | Query fan-out is debounced and cancellable; fast plugins precede delayed plugins and stale result pushes are token-gated. |
 | Earlier architecture | invariant in source | `Wox.Plugin/Result.cs`; `StringMatcher.FuzzySearch`; `UserSelectedRecord`; `Results.Sort(queryTuning)` | Ranking is centralized as `Metadata.WeightBoost + Score + SelectedCount * selectedItemMultiplier`, with optional final sorting under `SearchWaitForSlowResults`. |
 | Earlier architecture | invariant in source | `PluginManager.InitializePlugins`; `PluginLoadContext : AssemblyLoadContext`; `GlobalPlugins`; `NonGlobalPlugins`; `PluginMetadata.IsGlobal` | Plugin initialization is parallel and fault-isolated; each plugin has an assembly load context; action-keyword and global plugins have distinct routing. |
 | Earlier architecture | invariant in source | `MainViewModel.RegisterHotkey`; `Constants.PowerLauncherSharedEvent()`; `NativeEventWaiter.WaitForEventLoop`; `_usingGlobalHotKey`; `RegisterHotKey` | Activation primarily uses native shared events/centralized hooks, with Win32 global-hotkey fallback. |
@@ -33,7 +33,7 @@ All anchors are hypotheses to confirm in the current `src/modules/launcher/` tre
 
 | Area | Decision | Evidence retained |
 |---|---|---|
-| Query freshness | A newer query invalidates all older continuations and result pushes. | `_updateSource`/`_updateToken` flow in `QueryResults` and `UpdateResultView`. |
+| Query freshness | A newer query invalidates all older continuations and result pushes. | `_currentQuerySession`/`_updateToken` flow in `QueryResults`, `QuerySession`, and `UpdateResultView`. |
 | Ranking | Keep one host-level ranking formula and one sorting path; plugins contribute scores rather than independently reordering the list. | `Result.cs`, `UserSelectedRecord`, `Results.Sort(queryTuning)`. |
 | Plugin resilience | A plugin failure is logged and contained; it must not abort initialization or querying for other plugins. | `Parallel.ForEach` with per-plugin `try/catch`; `PluginLoadContext`. |
 | Shell execution | Escaping is defined by the target command parser, not by generic CreateProcess/C-runtime conventions. | PR #45554 review of `Main.cs`. |

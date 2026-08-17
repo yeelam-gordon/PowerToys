@@ -9,7 +9,8 @@ maps to the Regression Playbook / Review Rule it enforces.
 - [ ] Correct plugin identified as owner of the behavior (plugin vs core host).
 
 ## Query pipeline / threading (`MainViewModel.cs`, `PluginManager.cs`)
-- [ ] Every result push / continuation gates on `_updateToken`; prior `_updateSource` is cancelled.
+- [ ] Every result push / continuation gates on `_updateToken`; prior `_currentQuerySession` is
+      cancelled and disposed safely.
 - [ ] Long/blocking work runs off the UI thread; UI mutations marshal via the Dispatcher.
 - [ ] Fast vs `IDelayedExecutionPlugin` ordering preserved; no stale-result flicker.
 - [ ] No ad-hoc re-sort — ranking stays `WeightBoost + Score + SelectedCount*multiplier` + `Results.Sort(queryTuning)`.

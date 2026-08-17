@@ -62,7 +62,7 @@ below). Root: `src/modules/MouseWithoutBorders/`.
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
 | Hard cap of **4** machines | `MachineStuff.cs` `MAX_MACHINE = 4` (`MAX_SOCKET = MAX_MACHINE*2`); enforced in `MachinePool.cs` (`list.Count >= 4` throws) |
-| Add/track machines in the pool | `MachineStuff.cs` `AddToMachinePool`; `MachinePool.cs` (`Initialize`, `TryAddMachine`) |
+| Add/track machines in the pool | `MachineStuff.cs` `AddToMachinePool`; `MachinePool.cs` (`Initialize`, `LearnMachine`, `TryUpdateMachineID`) |
 | Screen-edge → neighbour switching | `MachineStuff.cs` `MoveToMyNeighbourIfNeeded`, `MoveLeft`/`MoveRight`, `NewDesMachineID`/`newDesMachineIdEx` |
 | Machine matrix UI (2×2) | `App/Control/MachineMatrix.*`, `App/Form/frmMatrix.*`, `App/Control/Machine*.cs` |
 | Package routing / handshake types | `Core/Receiver.cs` (`PackageType.Handshake`/`HandshakeAck`), `Core/PackageType.cs` |

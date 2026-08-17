@@ -31,7 +31,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 
 | Sub-feature | Implementation (file · function) |
 |---|---|
-| Runner-side module, settings parse, hotkey, GPO gate, launch/terminate | `peek/dllmain.cpp` `PeekModule` `init_settings`/`parse_hotkey`/`get_hotkeys`/`on_hotkey`, `gpo_policy_enabled_configuration` → `powertoys_gpo::getConfiguredPeekEnabledValue` |
+| Runner-side module, settings parse, hotkey, GPO gate, launch/terminate | `peek/dllmain.cpp` `Peek` `init_settings`/`parse_hotkey`/`get_hotkeys`/`on_hotkey`, `gpo_policy_enabled_configuration` → `powertoys_gpo::getConfiguredPeekEnabledValue` |
 | **Space-to-activate** single-key mode (forces bare Space, stores prev combo; first-run default ON) | `peek/dllmain.cpp` `m_enableSpaceToActivate`, `JSON_KEY_ENABLE_SPACE_TO_ACTIVATE`, foreground hook `g_foregroundHook` (lines ~130-190, 249, 288, 628) |
 | App bootstrap, single-instance, GPO check, Explorer-vs-CLI(`-FilePath`) branch, read foreground HWND pre-activation | `Peek.UI/PeekXAML/App.xaml.cs` `OnLaunched` (reads `GetForegroundWindow()` before activating to avoid focus-steal; `Environment.Exit(0)` guards) |
 | Main window: show/hide, Initialize/Uninitialize, XAML `KeyboardAccelerator`s (Ctrl+W close, arrows navigate, Esc), Delete key, window sizing/centering | `Peek.UI/PeekXAML/MainWindow.xaml.cs` `Initialize`, `Uninitialize`, `Content_KeyUp`, `PreviousNavigationInvoked`/`NextNavigationInvoked`, `CloseInvoked`, `FilePreviewer_PreviewSizeChanged` |

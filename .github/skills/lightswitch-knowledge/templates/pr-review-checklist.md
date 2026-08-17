@@ -26,7 +26,7 @@ files/areas the PR actually touches.
 ## Service & inter-module
 - [ ] GPO gate (`getConfiguredLightSwitchEnabledValue`) honored before starting the service.
 - [ ] Service launch/teardown correct; self-terminates when parent PID exits (`--pid`).
-- [ ] `NotifyPowerDisplay` fires on **every** override/apply, not only on `false→true` entry. (#47190)
+- [ ] `NotifyPowerDisplayThemeChanged` fires on **every** override/apply, not only on `false→true` entry. (#47190)
 - [ ] Direction-specific LightSwitch events remain compatible with PowerDisplay consumers. (#42642)
 - [ ] Manual-override sticky/clear logic (boundary crossing, midnight wrap) unchanged or tested.
 - [ ] New/changed logging is size-bounded (long-running service). (#48212)

@@ -13,7 +13,7 @@ several areas below (Dock, PerfMon) have open, un-root-caused reports, so verify
 | Window frame reappears after clicking another window (compact) | `MainWindow.xaml.cs` frame paint + `RedrawWindow` (`NativeMethods.txt`) | PR #49184 |
 | Compact mode on when it should be off | `Microsoft.CmdPal.UI.ViewModels/SettingsModel.cs` `CompactMode` default | PR #49186 |
 | Breadcrumbs / settings nav broken in non-English UI | `Settings/SettingsWindow.xaml.cs` `Navigate`, `Crumb.Data` | #45855 / PR #49253 |
-| Toast in wrong position / no icon or action button | `ToastWindow.xaml.cs` `PositionWindow`/`PositionBottomCenter`; `ToastViewModel.cs` | PR #49262, #49260 |
+| Toast in wrong position / no icon or action button | `ToastWindow.xaml.cs::PositionWindow`; `ToastViewModel.cs` | PR #49262, #49260 |
 | App/store shortcut missing from results | `ext/Microsoft.CmdPal.Ext.Apps/Programs/Win32Program.cs` `InternetShortcutURLPrefixes` | #49236 / PR #49241 |
 | Dock wrong monitor / position / disappears | `Dock/DockWindow*.cs`, `DockWindowManager.cs`, `Services/MonitorService.cs` (open — verify) | #49295, #49264, #49086 |
 | Dock reloads on every settings change | `Dock/` settings-changed handlers; compare with merged fix | #49168 (closed) / PR #49171 |

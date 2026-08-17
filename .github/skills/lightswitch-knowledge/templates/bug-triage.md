@@ -10,8 +10,8 @@ issue titles; the Module Map is a hypothesis, not ground truth).
 | Wrong/never switching times at high latitude | `ThemeScheduler.cpp::CalculateSunriseSunset` (`cosH` polar `-1`) | Known current violation: callers feed the sentinel to `toLocal`. #46954 |
 | Sun mode unusable at (0,0) | `LightSwitchStateManager.cpp::CoordinatesAreValid` | Don't reject real (0,0). #46955 |
 | Only system OR only apps theme changes | `LightSwitchService.cpp::ApplyTheme`; `changeSystem`/`changeApps` | Independent toggles. #48257, #48082, #48692 |
-| PowerDisplay profile applied every other hotkey press | `LightSwitchStateManager.cpp::OnManualOverride` → `NotifyPowerDisplay` | Notify on every press. PR#47190 |
-| PowerDisplay profile does not switch after wake | wake/resume evaluation, current theme state, and `NotifyPowerDisplay` path | Manual switching works in #48774; reproduce the resume-trigger path rather than assuming a registry race. |
+| PowerDisplay profile applied every other hotkey press | `LightSwitchStateManager.cpp::OnManualOverride` → `NotifyPowerDisplayThemeChanged` | Notify on every press. PR#47190 |
+| PowerDisplay profile does not switch after wake | wake/resume evaluation, current theme state, and `NotifyPowerDisplayThemeChanged` path | Manual switching works in #48774; reproduce the resume-trigger path rather than assuming a registry race. |
 | Profile setting change has no live effect | settings watcher → `LightSwitchSettings::LoadSettings` → service settings-event handler → `LightSwitchStateManager::OnSettingsChanged` | Reproduce the full reload path; missing `SettingId` is not established as the cause. #46956 |
 | Detect location spins or never completes | `LightSwitchPage.xaml.cs::GetGeoLocation_Click`, `GeoLocationTimeout` | #45860 / PR #45887 timeout and availability fix |
 | LightSwitch doesn't run in background | `dllmain.cpp::enable` (`CreateProcessW`, `SearchPathW`); GPO gate | Service launch/locate failure. #45434 |

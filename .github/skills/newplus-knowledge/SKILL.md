@@ -45,7 +45,7 @@ anti-anchoring below). Root: `src/modules/NewPlus/`. Unqualified files live unde
 | Filename variables: `$PARENT_FOLDER_NAME`, `%ENV%`, date/time tokens | `helpers_variables.h` `resolve_variables_in_filename`, `resolve_variables_in_path`, `resolve_environment_variables`, `resolve_parent_folder`, `resolve_date_time_variables` |
 | Date/time token engine (`$YYYY $MM $DD $hh $mm $ss $fff $TT`…) | `Helpers.cpp` `GetDatedFileName` (copied subset of PowerRename) |
 | Recursive variable resolution + rename inside copied folders (leaf-first) | `helpers_variables.h` `resolve_variables_in_filename_and_rename_files` |
-| Enter-Explorer-rename-mode workaround (detached thread + 50 ms sleep) | `template_item.cpp` `enter_rename_mode`/`rename_on_other_thread_workaround`; `new_utilities.h` `explorer_enter_rename_mode` (incl. desktop/multi-monitor repositioning) |
+| Enter-Explorer-rename-mode workaround (detached thread + 50 ms sleep) | `template_item.cpp` `enter_rename_mode`/`rename_on_other_thread_workaround`; `new_utilities.h` `explorer_enter_rename_mode_and_reposition` |
 | Hide/restore built-in Windows "New" (registry) | `new_utilities.h` `disable_built_in_new_via_registry`/`enable_built_in_new_via_registry`; Settings UI `src/settings-ui/Settings.UI/ViewModels/NewPlusViewModel.cs` |
 | Settings JSON load/save, GPO reads, default template location | `settings.cpp` `NewSettings::*`, `GetTemplateLocationDefaultPath` (`…\NewPlus\Templates`) |
 | Settings keys / package names / icon paths / `$PARENT_FOLDER_NAME` literal | `constants.h` |
@@ -172,7 +172,7 @@ Enforce these when reviewing or authoring New+ changes:
   effectively always true for `size_t`. Don't rely on it as a "was the menu shown?" flag.
 - **Explorer rename-mode can't run on the main thread.** `enter_rename_mode` **detaches a thread**
   and sleeps ~50 ms so the icon is drawn first; desktop/multi-monitor creation needs the special
-  `SelectAndPositionItems` path (`explorer_enter_rename_mode`). Don't "simplify" it to a synchronous
+  `SelectAndPositionItems` path (`explorer_enter_rename_mode_and_reposition`). Don't "simplify" it to a synchronous
   call. Related: issue [#46797](https://github.com/microsoft/PowerToys/issues/46797) (multi-monitor).
 - **`SHFILEOPSTRUCT` paths must be double-null-terminated.** `copy_object_to` uses `MAX_PATH + 1`
   buffers and writes a second `\0`; long paths risk truncation.

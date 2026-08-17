@@ -37,7 +37,7 @@ below were added by the July 2026 PRs cited).
 |---|---|
 | App bootstrap + **built-in command-provider registration (DI)** | `Microsoft.CmdPal.UI/App.xaml.cs` `AddBuiltInCommands` (registers every `ICommandProvider`; `IRootPageService` → `PowerToysRootPageService`) |
 | Root page / home service | `Microsoft.CmdPal.UI.ViewModels/IRootPageService.cs`; `Microsoft.CmdPal.UI/PowerToysRootPageService.cs`. Deferred-accessor split — `Microsoft.CmdPal.UI.ViewModels/IRootPageAccessor.cs`, `Microsoft.CmdPal.UI/DeferredRootPageAccessor.cs` (added by [PR #49095](https://github.com/microsoft/PowerToys/pull/49095)) |
-| Built-in "utility" commands provider (quit/settings/dock home) | `Microsoft.CmdPal.UI.ViewModels/Commands/BuiltInsCommandProvider.cs`; `Commands/GoHomeDockCommand.cs` |
+| Built-in utility commands and dock-home band | `Microsoft.CmdPal.UI.ViewModels/Commands/BuiltInsCommandProvider.cs` (`IRootPageAccessor`, `GetDockBands`); toolkit `WrappedDockItem` |
 | Main host window + HWND frame (compact) | `Microsoft.CmdPal.UI/MainWindow.xaml.cs`, `NativeMethods.txt` (P/Invoke incl. `RedrawWindow`) |
 | **ShellPage** — search box, key handling, **Compact/collapsed mode** | `Microsoft.CmdPal.UI/Pages/ShellPage.xaml.cs` `UpdateCompactModeForCurrentPage`, `HandleExpandCompactOnUiThread`, `ShellPage_OnPreviewKeyDown`, `Receive(ExpandCompactModeMessage)`; XAML `Pages/ShellPage.xaml` |
 | Compact-mode setting + toast-position setting | `Microsoft.CmdPal.UI.ViewModels/SettingsModel.cs` (`CompactMode`), `SettingsViewModel.cs` |
@@ -94,8 +94,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   palette after a refactor.
 - **Where:** `Dock/DockControl.xaml.cs` `InvokeItem` → `IsPageCommand`.
 - **Root cause:** the Dock only shows the palette for **page commands**; `IsPageCommand` returns
-  false for a plain invokable command (e.g. `GoHomeDockCommand` returning `CommandResult.GoHome()`),
-  so a home/open item wired as a non-page command silently no-ops the summon.
+  false for a plain invokable command returning `CommandResult.GoHome()`, so a home/open item wired
+  as a non-page command silently no-ops the summon. The former `GoHomeDockCommand` was the historical
+  example; current built-ins expose the root page through `IRootPageAccessor` and `WrappedDockItem`.
 - **Guardrail:** when a Dock item must open the palette, back it with a **page command** (root page)
   or add an explicit summon path — don't assume an invokable command surfaces the window. Evidence:
   [#49089](https://github.com/microsoft/PowerToys/issues/49089) → [PR #49095](https://github.com/microsoft/PowerToys/pull/49095).

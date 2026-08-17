@@ -77,8 +77,8 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Guardrail:** do not reintroduce separate native-window activation or taskbar-window ownership.
   Keep initialization failures explicit through `MainPaneControl.InitializationFailed`.
   `TaskbarPaneControl.UpdateTasklistButtons` catches enumeration failure and returns no layout when
-  no buttons are available; do not claim broader layout failures are contained without adding
-  explicit handling.
+  no buttons are available. Current Win-key `TaskbarIndicators` flow then unconditionally sets the
+  pane visible, so do not describe the no-buttons case as reliably hidden until that caller is fixed.
   Historical evidence: issues
   [#48448](https://github.com/microsoft/PowerToys/issues/48448),
   [#48441](https://github.com/microsoft/PowerToys/issues/48441),

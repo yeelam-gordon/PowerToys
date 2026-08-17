@@ -59,7 +59,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 **Encode-path invariant (critical):** in `EncodeToStreamAsync`, ImageResizer **transcodes** only
 when the output codec equals the input codec, `RemoveMetadata` is false, and `forceFresh` is false.
 `CreateForTranscodingAsync` preserves metadata only on a best-effort basis, so
-`CopyKnownMetadataAsync` reapplies the known set. Otherwise Image Resizer takes the
+`CopyKnownMetadataAsync` reapplies the known set. Otherwise, Image Resizer takes the
 **fresh-encode** path: it copies `KnownMetadataProperties` when metadata is retained, or only
 `RenderingMetadataProperties` when `RemoveMetadata` is true. JPEG resize forces fresh encode
 (`forceFresh = JpegEncoderId && transform needed`) so the quality setting applies — a deliberate

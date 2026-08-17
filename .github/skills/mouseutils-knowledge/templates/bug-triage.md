@@ -13,9 +13,9 @@ sub-utilities the report is about (settings key / screenshot / described gesture
 | Highlighter dot wrong color / missing on click | Highlighter | `MouseHighlighter.cpp` `AddDrawingPoint`, `m_leftClickColor`/`m_rightClickColor`/`m_alwaysColor` |
 | Ripple looks wrong (double ripple, no release pulse) | Highlighter | `SpawnRippleHoldDot`, `FadeRippleHoldDot`, `EmitSingleRipple`; defaults `MouseHighlighter.h` |
 | Spotlight mode mask wrong size / edge | Highlighter | `UpdateSpotlightMask`, `SpotlightAnimatePress/Release` |
-| Mouse Jump preview wrong / teleport to wrong point | Mouse Jump | `MouseJumpUI/MainForm.cs` click→`MouseHelper.SetCursorPosition`; `MouseJump.Common/Helpers/LayoutHelper.cs`, `ScreenHelper.cs` |
-| Mouse Jump preview style/type wrong | Mouse Jump | `MouseJumpUI/Helpers/SettingsHelper.cs` (`PreviewType` Compact/Bezelled/Custom) |
-| Mouse Jump won't launch on hotkey | Mouse Jump | `MouseJump/dllmain.cpp` `m_hotkey`, `ShellExecuteExW("PowerToys.MouseJumpUI.exe")` |
+| Mouse Jump preview wrong / teleport to wrong point | Mouse Jump | `MouseJump.WinUI3/MouseJumpXAML/PreviewWindow.xaml.cs` pointer handling; `MouseJump.Common/Helpers/LayoutHelper.cs`, `ScreenHelper.cs`, `MouseHelper.cs` |
+| Mouse Jump preview style/type wrong | Mouse Jump | `MouseJump.WinUI3/Helpers/SettingsHelper.cs` (`PreviewType` Compact/Bezelled/Custom) |
+| Mouse Jump won't launch on hotkey | Mouse Jump | `MouseJump/dllmain.cpp` `m_hotkey`, `ShellExecuteExW("WinUI3Apps\\PowerToys.MouseJump.WinUI3.exe")` |
 | Crosshair color / thickness / opacity not applied live | Crosshairs | `InclusiveCrosshairs.cpp` `ApplySettings`; parse in `MousePointerCrosshairs/dllmain.cpp` |
 | Gliding cursor doesn't move / can't cancel | Crosshairs | `dllmain.cpp` `HandleGlidingHotkey`, `PositionCursorX/Y`, `CancelGliding`, `WH_KEYBOARD_LL` |
 | A shortcut can't be cleared | Crosshairs (or any) | `dllmain.cpp` hotkey parse + "set default hotkeys if not configured" block |

@@ -18,6 +18,6 @@ doesn't map cleanly, reason from the symptom and verify — the history here is 
 | Brightness slider missing on a monitor | capability gate (VCP 0x10 present); max-compatibility-mode setting | Slider hidden when no 0x10. (PR #47875) |
 | ESC doesn't close flyout | `MainWindow.xaml.cs` KeyDown / RootGrid Escape | (#48016, PR #48026) |
 | Tray icon never appears at startup | `TrayIconService`, module launch in `PowerDisplayModuleInterface` | (#48295) |
-| LightSwitch profile not applied on wake | `LightSwitchService.GetProfileForTheme`, `ProfileService`, wake path | (#48774) |
+| LightSwitch profile not applied on wake | `LightSwitchService.GetProfileForTheme`; `ProfileStore`/`ProfileHelper`; `MainViewModel.ApplyProfileAsync`; wake path | (#48774) |
 | Linked "All Displays" slider jumps monitors on enable | `MainViewModel.LinkedBrightness.cs` suppress flag, `LinkedBrightnessPlanner` | Seed must not write hardware. (PR #48207) |
 | Rotation out of sync with system | `DisplayRotationService` | (#49098) |

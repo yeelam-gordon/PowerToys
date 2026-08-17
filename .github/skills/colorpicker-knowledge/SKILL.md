@@ -51,7 +51,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Cursor swap while picking | `ColorPickerUI/Mouse/CursorManager.cs` (`ChangeCursor` setting) |
 | Settings (default `ActivationShortcut = Win+Shift+C`, `CopiedColorRepresentation`, `ActivationAction`) | `ColorPickerUI/Settings/UserSettings.cs`, `Settings/IUserSettings.cs` |
 | Telemetry (session, settings) | `ColorPickerUI/Telemetry/ColorPickerSession.cs`, `Telemetry/ColorPickerSettings.cs`; `SessionEventHelper.cs` |
-| Unit tests / UI tests | `ColorPickerUI.UnitTests/Helpers/ColorFormatConversionTest.cs`, `ColorConverterTest.cs`; `UITest-ColorPicker/ColorPickerUITest.cs` |
+| Unit tests / UI tests | `ColorPickerUI.UnitTests/Helpers/ColorFormatConversionTest.cs`, `ColorConverterTest.cs`; `ColorPicker.UITests/ColorPickerEndToEndTests.cs` |
 
 **Activation has two independent mechanisms** (confirm which one a bug hits):
 1. **Runner-launched (normal):** Runner's centralized keyboard hook fires the hotkey parsed by

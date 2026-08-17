@@ -23,9 +23,9 @@ files the PR actually touches. Source root: `src/modules/ShortcutGuide/`.
 
 - [ ] `MainPaneControl` and `TaskbarPaneControl` remain hosted in the single `OverlayWindow`; no
       second native taskbar window or cross-window activation is introduced.
-- [ ] App-list initialization failure still raises `InitializationFailed`; taskbar enumeration
-      failure/no-buttons returns no layout and hides the taskbar pane. Broader layout exceptions
-      need explicit handling rather than assumed containment.
+- [ ] App-list initialization failure still raises `InitializationFailed`. For taskbar-only mode,
+      verify a null/no-buttons layout remains hidden; current caller code re-shows the pane after
+      `UpdateTaskbarPaneLayout`, so treat this as a known current violation when that path changes.
 - [ ] No empty native `Title` assigned with `ExtendsContentIntoTitleBar`; `ResourceLoader.GetString`
       result guarded for `""`/null (#49069).
 - [ ] `RepositionToCursorMonitor` and `UpdateTaskbarPaneLayout` keep physical/DIP conversions,

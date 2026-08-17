@@ -81,7 +81,7 @@ Verify both native defaults and C# Settings UI before changing these values.
 | Setting | Baseline/source |
 |---|---|
 | Activation hotkey | Win+Shift+D — `MouseJump/dllmain.cpp` |
-| `previewType` | Bezelled; choices Compact / Bezelled / Custom — `MouseJumpUI/Helpers/SettingsHelper.cs` |
+| `previewType` | Bezelled; choices Compact / Bezelled / Custom — `MouseJump.WinUI3/Helpers/SettingsHelper.cs` |
 
 ## Exclusion decisions
 

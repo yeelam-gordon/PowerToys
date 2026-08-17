@@ -51,7 +51,7 @@ interface: `PowerDisplay/` (WinUI flyout app), `PowerDisplay.Lib/` (drivers + se
 | Flyout ViewModels (monitors, settings, per-monitor) | `PowerDisplay/ViewModels/MainViewModel*.cs`, `MonitorViewModel.cs`, `PowerStateItem.cs`, `InputSourceItem.cs`, `ColorTemperatureItem.cs` |
 | Flyout windows / UI | `PowerDisplay/PowerDisplayXAML/MainWindow.xaml(.cs)`, `IdentifyWindow`, `MonitorIcon` |
 | Global hotkey | `PowerDisplay/Helpers/HotkeyService.cs` (`Initialize`, `HandleMessage`, `ReloadSettings`) |
-| Profiles (per-monitor snapshots) | `PowerDisplay.Models/PowerDisplayProfile(s).cs`, `ProfileHelper.cs`, `PowerDisplay.Lib/Services/ProfileService.cs` |
+| Profiles (per-monitor snapshots) | `PowerDisplay.Models/PowerDisplayProfile(s).cs`, `ProfileHelper.cs`, `ProfileStore.cs`; application in `PowerDisplay/ViewModels/MainViewModel.Settings.cs` `ApplyProfileByIdAsync` / `ApplyProfileAsync` |
 | LightSwitch theme→profile link | `PowerDisplay/Services/LightSwitchService.cs` (`GetProfileForTheme`) |
 | Tray icon | `PowerDisplay/Helpers/TrayIconService.cs` |
 | Settings data model (persisted to `settings.json`) | `src/settings-ui/Settings.UI.Library/PowerDisplayProperties.cs`; Settings page `src/settings-ui/Settings.UI/.../PowerDisplayViewModel`/`PowerDisplayPage.xaml` |

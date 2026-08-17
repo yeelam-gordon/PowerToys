@@ -56,12 +56,12 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Ripple mode (hold ring + glow, release pulse, drag trail) | `SpawnRippleHoldDot`, `FadeRippleHoldDot`, `EmitSingleRipple` |
 | Settings struct + defaults | `MouseHighlighter.h` (`radius` 30, delay/duration 400ms, ripple size 60/intensity 0.7/480ms; `alwaysColor` default **alpha 0**) |
 
-### Mouse Jump (`MouseJump/`, `MouseJumpUI/`, `MouseJump.Common/`) — C++ launcher + C#/.NET WinForms
+### Mouse Jump (`MouseJump/`, `MouseJump.WinUI3/`, `MouseJump.Common/`) — C++ launcher + WinUI 3
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
-| Native module interface, hotkey, launch UI process | `MouseJump/dllmain.cpp` `MouseJump` class (`m_hotkey` default **Win+Shift+D**), `ShellExecuteExW("PowerToys.MouseJumpUI.exe")` |
-| Preview form: show, click-to-teleport, Esc dismiss | `MouseJumpUI/MainForm.cs` `OnKeyDown`(Escape), click → `MouseHelper.SetCursorPosition`, `OnDeactivate` |
-| Entry point / settings watch | `MouseJumpUI/Program.cs`, `MouseJumpUI/Helpers/SettingsHelper.cs` (`PreviewType` Compact/Bezelled/Custom), `ThrottledActionInvoker` |
+| Native module interface, hotkey, launch UI process | `MouseJump/dllmain.cpp` `MouseJump` class (`m_hotkey` default **Win+Shift+D**), `ShellExecuteExW("WinUI3Apps\\PowerToys.MouseJump.WinUI3.exe")` |
+| Preview window: show, click-to-teleport, Esc dismiss | `MouseJump.WinUI3/MouseJumpXAML/PreviewWindow.xaml.cs` pointer/key/activation handlers and `ShowPreviewAsync` |
+| Entry point / settings watch | `MouseJump.WinUI3/Program.cs`, `MouseJumpXAML/App.xaml.cs`, `Helpers/SettingsHelper.cs` (`PreviewType` Compact/Bezelled/Custom), `ThrottledActionInvoker` |
 | Layout / drawing / screen geometry | `MouseJump.Common/Helpers/` (`LayoutHelper`, `DrawingHelper`, `ScreenHelper`, `MouseHelper`, `StyleHelper`) |
 | Screenshot capture services | `MouseJump.Common/Imaging/DesktopImageRegionCopyService.cs`, `StaticImageRegionCopyService.cs` (`IImageRegionCopyService`) |
 | Unit tests (this is the only utility with them) | `MouseJump.Common.UnitTests/` (`LayoutHelperTests`, `DrawingHelperTests`, `MouseHelperTests`, `RectangleInfoTests`) |

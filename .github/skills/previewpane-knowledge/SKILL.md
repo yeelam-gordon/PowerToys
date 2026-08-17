@@ -74,7 +74,8 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Symptom:** Markdown/SVG preview crashes (`ArgumentException`) on files that are ~2 MB on disk
   but under ~1.5 M characters — e.g. CJK-heavy content — because the char-count guard let them
   through.
-- **Where:** `MarkdownPreviewHandlerControl.cs` (~line 187); parallel guard in
+- **Where:** `MarkdownPreviewHandlerControl.cs` `Encoding.UTF8.GetByteCount` guard before
+  `NavigateToString`; parallel guard in
   `SvgThumbnailProvider.cs::GetThumbnailImpl`.
 - **Root cause:** `NavigateToString`'s ~1.5 MB limit is measured in **UTF-8 bytes**, but the guard
   used `string.Length` (UTF-16 code-unit count). Multi-byte characters inflate byte size above the

@@ -5,7 +5,7 @@ provider** and **managed (`<Fmt>PreviewHandler/`) vs native (`<Fmt>PreviewHandle
 
 | Symptom | Start here | Notes |
 |---|---|---|
-| Markdown/SVG preview crashes on large or CJK file | `MarkdownPreviewHandlerControl.cs` (~L187); `SvgThumbnailProvider.cs::GetThumbnailImpl` | Byte-vs-char `NavigateToString` limit — use `Encoding.UTF8.GetByteCount` (#47391) |
+| Markdown/SVG preview crashes on large or CJK file | `MarkdownPreviewHandlerControl.cs` byte-count guard before `NavigateToString`; `SvgThumbnailProvider.cs::GetThumbnailImpl` | Byte-vs-char `NavigateToString` limit — use `Encoding.UTF8.GetByteCount` (#47391) |
 | Clicking a link opens an app / custom protocol | `MarkdownPreviewHandlerControl.cs` `NavigationStarting` | Restrict to http/https (#45801) |
 | Untrusted SVG/HTML runs script or loads remote content | WebView2 `Settings.*` block + `WebResourceRequested` filter in `SvgPreviewControl.cs` / `SvgThumbnailProvider.cs` / `MarkdownPreviewHandlerControl.cs` | Sandbox weakened; keep deny settings |
 | SVG previews as raw text / blank | `SvgPreviewHandlerHelper.cs` `SwapNamespaces`, `AddStyleSVG` | Namespace reorder (#17527) |

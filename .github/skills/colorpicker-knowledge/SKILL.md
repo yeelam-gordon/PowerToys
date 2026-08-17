@@ -10,11 +10,11 @@ Grounded engineering knowledge for the PowerToys **Color Picker** module — a s
 picker. On the activation shortcut it shows a small picker that follows the cursor, samples the
 screen pixel under the mouse in real time, lets the mouse wheel zoom into a magnified pixel grid,
 copies the color in the user's chosen format, and can open an editor with color history and
-multiple format representations. The module has **two projects**: the C# WPF app **ColorPickerUI**
-(`ColorPickerUI/`) that does all the UI/capture, and the C++ **Runner module** (`ColorPicker/`,
-`dllmain.cpp`) that registers the centralized hotkey and launches/terminates the app. Use this to
-localize code fast, avoid known regression traps, and enforce the conventions maintainers already
-established.
+multiple format representations. Production code spans the C# WPF app **ColorPickerUI**
+(`ColorPickerUI/`), shared runner-facing services in **ColorPicker.ModuleServices**, and the C++
+**Runner module** (`ColorPicker/`, `dllmain.cpp`) that registers the centralized hotkey and
+launches/terminates the app. Use this to localize code fast, avoid known regression traps, and
+enforce the conventions maintainers already established.
 
 ## When to Use This Skill
 

@@ -9,10 +9,11 @@ license: Complete terms in LICENSE.txt
 Grounded engineering knowledge for the PowerToys **Workspaces** module — captures a set of running
 desktop applications plus their per-monitor window positions/states into a named "workspace"
 (`workspaces.json`), then relaunches those apps and re-arranges their windows onto the correct
-monitors. It has four cooperating executables: the **Snapshot tool** (capture), the **Editor** (WPF
-UI to edit/preview), the **Launcher** (spawn apps), and the **Window Arranger** (match spawned
-windows back to captured apps and move them). Use this to localize code fast, avoid known regression
-traps, and enforce the conventions maintainers already established.
+monitors. It has five cooperating executables: the **Snapshot tool** (capture), the **Editor** (WPF
+UI to edit/preview), the native **Launcher** (spawn apps), **Launcher UI** (launch progress/status),
+and the **Window Arranger** (match spawned windows back to captured apps and move them). Use this to
+localize code fast, avoid known regression traps, and enforce the conventions maintainers already
+established.
 
 ## When to Use This Skill
 

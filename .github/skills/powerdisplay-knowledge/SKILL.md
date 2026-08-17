@@ -26,13 +26,14 @@ grounded in source + those PRs/issues. Where the map is thin, verify in source (
 ## Module Map (feature -> file/function)
 
 Localization aid. Treat as **hypotheses to confirm in source**, not ground truth (see
-anti-anchoring below). Root: `src/modules/powerdisplay/`. Three C# projects plus a C++ module
-interface: `PowerDisplay/` (WinUI flyout app), `PowerDisplay.Lib/` (drivers + services),
-`PowerDisplay.Models/` (POCOs/serialization), `PowerDisplayModuleInterface/` (runner glue).
+anti-anchoring below). Root: `src/modules/powerdisplay/`. Six production C# projects plus a C++
+module interface: `PowerDisplay/` (WinUI flyout app), `PowerDisplay.Cli/`, `PowerDisplay.Contracts/`,
+`PowerDisplay.Ipc/`, `PowerDisplay.Lib/` (drivers + services), `PowerDisplay.Models/`
+(POCOs/serialization), and `PowerDisplayModuleInterface/` (runner glue).
 
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
-| Monitor enumeration / classification (WMI-first, DDC/CI fallback) | `PowerDisplay/Helpers/MonitorManager.cs` (`InitializeControllers`, discovery); routes to controllers by `CommunicationMethod` |
+| Monitor enumeration / classification (WMI-first, DDC/CI fallback) | `PowerDisplay.Lib/Services/MonitorManager.cs` (`InitializeControllers`, discovery); routes to controllers by `CommunicationMethod` |
 | DDC/CI control (VCP get/set) | `PowerDisplay.Lib/Drivers/DDC/DdcCiController.cs` (`GetBrightnessAsync`/`SetBrightnessAsync`, `Get/SetVcpFeatureAsync`, `SetPowerStateAsync`, `DiscoverMonitorsAsync`) |
 | DDC/CI P/Invoke + capability syscalls | `PowerDisplay.Lib/Drivers/DDC/DdcCiNative.cs`, `MonitorDiscoveryHelper.cs`, `PhysicalMonitorHandleManager.cs`; `Drivers/PInvoke.cs`, `NativeConstants.cs` |
 | WMI brightness control (internal panels) | `PowerDisplay.Lib/Drivers/WMI/WmiController.cs` |

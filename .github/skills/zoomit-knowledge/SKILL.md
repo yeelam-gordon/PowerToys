@@ -33,9 +33,9 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 | Sub-feature | Implementation (file · function) |
 |---|---|
 | PowerToys module wrapper, GPO gate, enable/disable, launch ZoomIt.exe | `ZoomItModuleInterface/dllmain.cpp` `enable/disable`, `gpo_policy_enabled_configuration` → `getConfiguredZoomItEnabledValue` |
-| Hotkey IDs (all 22) | `Zoomit.cpp` `ZOOM_HOTKEY` through `WEBCAM_TOGGLE_HOTKEY` |
+| Hotkey IDs (all 25) | `Zoomit.cpp` `ZOOM_HOTKEY` through `MIRROR_CROP_HOTKEY`, including the three Mirror IDs |
 | Central hotkey registration + logging lambda | `Zoomit.cpp::RegisterAllHotkeys` (local `registerHotkey`) |
-| **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT`; `LIVE_DRAW` and `DEMOTYPE_RESET` modifier derivation |
+| **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT`; `LIVE_DRAW_HOTKEY` and `DEMOTYPE_RESET_HOTKEY` modifier derivation |
 | Other 3 registration sites (must stay in sync) | Options-dialog validation `OptionsProc`; startup `MainWndProc` `WM_CREATE`; `WM_USER_RELOAD_SETTINGS` |
 | Main window message pump / hotkey dispatch | `Zoomit.cpp::MainWndProc`, `WM_HOTKEY` |
 | Zoom mode (static zoom + pan/draw) | `MainWndProc` `ZOOM_HOTKEY` path and drawing state/handlers in `Zoomit.cpp` |

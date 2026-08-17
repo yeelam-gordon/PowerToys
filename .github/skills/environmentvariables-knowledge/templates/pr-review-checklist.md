@@ -13,7 +13,7 @@ maps to the Regression Playbook / Review Rule it enforces.
 - [ ] Writes go to the registry directly, not `Environment.SetEnvironmentVariable` (avoid per-write notify timeout).
 - [ ] Value containing `%` written as `REG_EXPAND_SZ`; otherwise `REG_SZ`.
 - [ ] Exactly one `NotifyEnvironmentChange` per logical batch (not per variable).
-- [ ] User variable name length `< 255` enforced before write.
+- [ ] User variable name length `<= 259` enforced before write.
 
 ## Profiles (`ProfileVariablesSet.cs`, `MainViewModel.cs`)
 - [ ] Profile writes use `SetProfileVariableWithoutNotify`/`UnsetProfileVariableWithoutNotify` (always user-scope) (#48740).

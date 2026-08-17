@@ -31,7 +31,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Sub-feature | Implementation (file · function) |
 |---|---|
 | Runner-side module registration, centralized hotkey, GPO gate, process launch/terminate | `PowerOCRModuleInterface/dllmain.cpp` `parse_hotkey`, `on_hotkey`, `launch_process`, `get_hotkeys`, `is_enabled_by_default` (**disabled by default on Win11, enabled on Win10**) |
-| Shared-event names (invoke / terminate) | `PowerOCRModuleInterface/PowerOcrConstants.h`; consumed via `PowerToys.Interop` `Constants.ShowPowerOCRSharedEvent()` / `TerminatePowerOCRSharedEvent()` |
+| Shared-event names (invoke / terminate) | `src/common/interop/shared_constants.h`; consumed via `PowerToys.Interop` `Constants.ShowPowerOCRSharedEvent()` / `TerminatePowerOCRSharedEvent()` |
 | App bootstrap, single-instance mutex, GPO check, UI-culture load, Runner-vs-standalone branch | `PowerOCR/App.xaml.cs` `Application_Startup` (mutex `Local\PowerToys_PowerOCR_InstanceMutex`) |
 | Activation when launched by Runner (waits on shared event) | `PowerOCR/Keyboard/EventMonitor.cs` `StartOCRSession` |
 | Activation standalone (own low-level keyboard hook, parses `ActivationShortcut` string) | `PowerOCR/Keyboard/KeyboardMonitor.cs` `Hook_KeyboardPressed`, `SetActivationKeys`; `Keyboard/GlobalKeyboardHook.cs` |

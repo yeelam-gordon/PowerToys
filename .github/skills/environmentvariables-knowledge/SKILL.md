@@ -31,7 +31,7 @@ Root: `src/modules/EnvironmentVariables/`.
 |---|---|
 | Read variables from registry (no expansion) | `EnvironmentVariablesUILib/Helpers/EnvironmentVariablesHelper.cs::GetVariables` (reads with `RegistryValueOptions.DoNotExpandEnvironmentNames`) |
 | Registry key resolution (User vs Machine) | `EnvironmentVariablesHelper.cs::OpenEnvironmentKeyIfExists` (`HKCU\Environment` vs `HKLM\...\Session Manager\Environment`) |
-| Write variable to registry (no notify) | `EnvironmentVariablesHelper.cs::SetEnvironmentVariableFromRegistryWithoutNotify` (REG_SZ vs REG_EXPAND_SZ; 255-char user-name guard) |
+| Write variable to registry (no notify) | `EnvironmentVariablesHelper.cs::SetEnvironmentVariableFromRegistryWithoutNotify` (REG_SZ vs REG_EXPAND_SZ; 259-char user-name guard) |
 | Broadcast env change to system | `EnvironmentVariablesHelper.cs::NotifyEnvironmentChange` (`SendNotifyMessage(HWND_BROADCAST, WM_SETTINGCHANGE, 0x12345, "Environment")`) |
 | Set/Unset a single User/System var | `EnvironmentVariablesHelper.cs::SetVariable` / `UnsetVariable` (dispatch by `ParentType`; then notify) |
 | Set/Unset a **profile** var (always user-scope) | `EnvironmentVariablesHelper.cs::SetProfileVariableWithoutNotify` / `UnsetProfileVariableWithoutNotify` (always `fromMachine:false`) |
@@ -121,7 +121,7 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 
 ### Invalid name/value written to registry
 - **Symptom:** an invalid Name/Variable pair ends up in the registry.
-- **Where:** `Variable.cs::Validate` (empty name; user name length `< 255`) and
+- **Where:** `Variable.cs::Validate` (empty name; user name length `> 259`) and
   `SetEnvironmentVariableFromRegistryWithoutNotify` (silently returns on over-length user names).
 - **Root cause:** validation gaps let malformed pairs through before a registry write.
 - **Guardrail:** validate at the model boundary (`Validate`) **and** guard at the write boundary; a
@@ -182,7 +182,7 @@ Enforce these when reviewing or authoring Environment Variables changes:
   "applied variables" view (`PopulateAppliedVariables`).
 - **Don't** expect `WM_SETTINGCHANGE` to update already-open consoles — it only refreshes listeners;
   a new shell is required (#47998).
-- **User** environment variable **names are limited to 255 chars**; over-length names are silently
+- **User** environment variable **names are limited to 259 chars**; over-length names are silently
   dropped at the write boundary — validate in the UI (`Variable.cs::Validate`).
 - **This module is disabled by default** (`is_enabled_by_default() == false`) and GPO-gated; don't
   assume it's active in integration flows (#47144).

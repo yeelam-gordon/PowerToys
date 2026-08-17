@@ -42,9 +42,9 @@ below). Root: `src/modules/MouseWithoutBorders/`.
 | Sub-feature | Implementation (file · symbol) |
 |---|---|
 | AES setup (256-bit, CBC, **Zeros** padding, 16-byte block) | `Encryption.cs` `InitEncryption` (`AesCryptoServiceProvider symAl`) |
-| Key derivation from shared secret | `Encryption.cs` `GenLegalKey` = `Rfc2898DeriveBytes.Pbkdf2(MyKey, salt, KeyDerivationIterations=50000, SHA512, DerivedKeyLength=32)` |
+| Key derivation from shared secret | `Encryption.cs` `GenLegalKey` = `Rfc2898DeriveBytes.Pbkdf2(MyKey, salt, KeyDerivationIterations=100000, SHA512, DerivedKeyLength=32)` |
 | **Per-connection random salt + IV** (cleartext header) | `Encryption.cs` `GetEncryptedStream`/`GetDecryptedStream` build a `SaltSize(16)+SymAlBlockSize(16)` header via `RandomNumberGenerator.Fill`, exchanged by `ExchangeEncryptionHeader` |
-| Tolerant header exchange (expected disconnect handling) | `Encryption.cs` `ExchangeEncryptionHeader` (swallows `EndOfStream`/`SocketException`/`ObjectDisposedException`) |
+| Tolerant header exchange (expected disconnect handling) | `Encryption.cs` `ExchangeEncryptionHeader` (swallows `EndOfStreamException` and an `IOException` wrapping expected socket/disposal exceptions) |
 | Shared-key packet auth token | `Encryption.cs` `Get24BitHash` → `Encryption.MagicNumber` (four hash bytes; one initial SHA-512 plus 50,000 rehash rounds), with the upper 16 bits checked on the wire in `SocketStuff.ProcessReceivedDataEx` |
 | Key generation / validation / display | `Encryption.cs` `CreateRandomKey` (16 chars), `IsKeyValid` (≥16 chars), `KeyDisplayedText` |
 | Regression guard tests | `MouseWithoutBorders.UnitTests/Core/EncryptionTests.cs` |
@@ -211,7 +211,7 @@ Enforce these when reviewing or authoring MWB changes:
   `EncryptionTests` green.
 - **Any wire-format change is a breaking, all-machines-must-update change.** MWB has no version
   negotiation — sender and receiver must change together; call it out explicitly.
-- **Keep the shared-key model intact.** Key derivation = PBKDF2/SHA512, 50000 iterations, 32-byte
+- **Keep the shared-key model intact.** Key derivation = PBKDF2/SHA512, 100000 iterations, 32-byte
   AES-256 key; `MagicNumber` is derived from four hash bytes, while packet validation uses its upper
   16 bits. Don't lower iteration count, key size, or effective token strength without security
   review. Prefer named constants (`KeyDerivationIterations`,
@@ -248,8 +248,9 @@ Enforce these when reviewing or authoring MWB changes:
   tests use lengths that are exact multiples of 16 to avoid trailing-zero ambiguity — remember this
   when writing new crypto tests.
 - **Header exchange deliberately swallows expected disconnects** (`ExchangeEncryptionHeader` ignores
-  `EndOfStreamException` / `SocketException` / `ObjectDisposedException`) because remote machines close
-  connections during desktop switches. Don't turn these into hard errors.
+  `EndOfStreamException` and an `IOException` wrapping expected `SocketException` /
+  `ObjectDisposedException`) because remote machines close connections during desktop switches. Don't
+  turn these into hard errors.
 - **MWB runs multiple processes** (per desktop: default, logon, screensaver; plus a service). State in
   `static` fields is per-process; settings.json is shared and contended.
 - **At most 4 machines.** UI, sockets (`MAX_SOCKET = 8`), and pool all assume it.

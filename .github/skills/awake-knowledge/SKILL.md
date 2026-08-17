@@ -59,9 +59,10 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Telemetry events | `Awake/Telemetry/*` (`AwakeIndefinitelyKeepAwakeEvent`, `AwakeTimedKeepAwakeEvent`, `AwakeExpirableKeepAwakeEvent`, `AwakeNoKeepAwakeEvent`, `AwakeCLICommandEvent`) |
 | Settings UI (C#) — must mirror mode/serialization | `src/settings-ui/.../SettingsXAML/Views/AwakePage.xaml`, `ViewModels/AwakeViewModel.cs`, `Settings.UI.Library/AwakeProperties.cs` |
 
-**Mode is the single source of truth.** Every mode setter under PowerToys config writes
-`Properties.Mode` (+ related fields) and **returns early**, letting the file-watcher re-trigger
-`ProcessSettings` to actually apply the state — avoiding double execution. Preserve that pattern.
+**Mode is the single source of truth.** When a mode setter under PowerToys config changes
+`Properties.Mode` (or related fields), it saves and **returns early**, letting the file-watcher
+re-trigger `ProcessSettings` to apply the state. An unchanged setting instead queues state application
+directly. Preserve that conditional pattern to avoid double execution.
 
 ## Regression Playbooks
 
@@ -166,23 +167,25 @@ Rule by rule: **Symptom → Where → Root cause → Guardrail**. Fuller catalog
 
 Enforce these when reviewing or authoring Awake changes:
 
-- **Keep the mode setters' "write settings then return early" contract.** Under
-  `IsUsingPowerToysConfig`, `SetIndefinite/Timed/Expirable/PassiveKeepAwake` must persist
-  `Properties.Mode` and **return**, letting the file-watcher re-run `ProcessSettings`. Applying state
-  inline *and* saving causes double execution. Evidence: `Manager.cs` mode setters + `ProcessSettings`.
+- **Keep the mode setters' conditional "write settings then return early" contract.** Under
+  `IsUsingPowerToysConfig`, `SetIndefinite/Timed/Expirable/PassiveKeepAwake` persist a changed
+  `Properties.Mode` and **return**, letting the file-watcher re-run `ProcessSettings`. An unchanged
+  setting queues state application inline; saving and applying the same changed setting causes double
+  execution. Evidence: `Manager.cs` mode setters + `ProcessSettings`.
 - **All execution-state changes go through the `_stateQueue` monitor thread.** Don't call
   `Bridge.SetThreadExecutionState` directly from UI/CLI paths; `Add(...)` to `_stateQueue` so
   `StartMonitor` serializes them and can revert to PASSIVE on failure. Evidence: `Manager.StartMonitor`.
 - **Re-apply state on power events.** Any new mode must survive resume — verify `ReapplyAwakeState`
   covers it and the `WM_POWERBROADCAST` handler stays wired. Evidence: #44642 / PR #44795.
-- **Validate CLI options at parse time, not during execution.** `--pid` must reject non-integers,
-  non-positive values, and nonexistent processes (immediate feedback); `--expire-at` must parse a
-  date; `--time-limit` bounds. Don't simplify validators to a bare `int.TryParse`. Evidence:
+- **Validate CLI syntax at parse time and process existence at execution time.** `--pid` parsing
+  rejects non-integers; execution then rejects nonexistent processes. `--expire-at` must parse a date;
+  `--time-limit` bounds. Don't simplify validators to a bare `int.TryParse`. Evidence:
   [PR #41774 review](https://github.com/microsoft/PowerToys/pull/41774).
 - **Prefer `await InvokeAsync` over `.Result` on System.CommandLine.** Blocking on `.Result` inside an
   async method risks deadlocks. Evidence: [PR #41774 review](https://github.com/microsoft/PowerToys/pull/41774).
-- **Match P/Invoke signatures to the real Win32 return type.** e.g. `FreeConsole` returns `BOOL`, not
-  `void`; declare `[return: MarshalAs(UnmanagedType.Bool)] bool` with `SetLastError=true` like
+- **Current P/Invoke exception:** `FreeConsole` returns `BOOL` in Win32 but is presently declared
+  `void` in `Bridge.cs`; do not rely on its success result without correcting that signature. A corrected
+  declaration would use `[return: MarshalAs(UnmanagedType.Bool)] bool` with `SetLastError=true`, like
   `AttachConsole`/`AllocConsole`. Evidence: [PR #41774 review](https://github.com/microsoft/PowerToys/pull/41774).
 - **Round up (never truncate) when converting durations for the settings round-trip.** Truncated
   partial minutes shorten timed mode. Evidence: [PR #44795](https://github.com/microsoft/PowerToys/pull/44795).

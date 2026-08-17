@@ -105,8 +105,9 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   `MarkdownPreviewHandlerControl.cs` — the `CoreWebView2.Settings.*` block + the
   `AddWebResourceRequestedFilter("*")` / `WebResourceRequested` 403 filter.
 - **Root cause:** WebView2 defaults are permissive; each new render path must re-disable script,
-  web messages, host objects, autofill, DevTools, default dialogs/context menus, and block **all**
-  resource requests except the single local file URI.
+  web messages, host objects, autofill, DevTools, and default dialogs. Block **all** resource requests
+  except the local file URI, plus the Markdown handler's validated `https://localmdimages/` resources;
+  retain its Copy-only context menu.
 - **Guardrail:** keep the full "deny" settings block and the resource filter that returns HTTP 403
   for any URI ≠ `_localFileURI`; use `--block-new-web-contents` env option and
   `CoreWebView2HostResourceAccessKind.Deny`. Never relax these to "fix" a rendering gap.
@@ -201,7 +202,8 @@ Enforce these when reviewing or authoring PreviewPane changes:
   expensive — a driver of high power draw (#46386). Don't add heavy work to this loop.
 - **GPO is enforced twice.** Registration uses `checkModuleGPOEnabledRuleFunction`; the provider
   **also** early-returns on `GpoRuleConfigured.Disabled` at render time. Update both together.
-- **Handlers are out-of-proc COM servers** (`Program.cs` / native `dllmain.cpp` class factory).
+- **Managed handlers are out-of-proc COM servers** (`Program.cs`); native handlers are in-proc COM DLLs
+  activated through their `dllmain.cpp` class factories.
   Registration lives in `powerpreview.cpp` + `CLSID.h`, not in the handler project alone.
 
 ## Using This Skill in PR Review

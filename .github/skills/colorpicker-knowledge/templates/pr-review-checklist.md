@@ -8,7 +8,8 @@ maps to the Regression Playbook / Review Rule it enforces.
 - [ ] GPO gate honored at entry (`Program.Main` / Runner module).
 - [ ] No bare relative paths in `.vcxproj`; uses `$(RepoRoot)`; no per-project `PlatformToolset`
       re-add without a comment + follow-up.
-- [ ] C# projects keep `TreatWarningsAsErrors=true` (no local override).
+- [ ] C# production projects keep `TreatWarningsAsErrors=true`; retain the intentional `false`
+      override in `ColorPicker.UITests`.
 
 ## Pixel capture (`Mouse/MouseInfoProvider.cs`)
 - [ ] `GetPixelColor` keeps `Format32bppArgb` + `SourceCopy`; GDI objects stay in `using` blocks.

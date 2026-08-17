@@ -52,7 +52,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | Settings load (tolerance, continuous, color, units, per-channel) | `Settings.cpp` `Settings::LoadFromFile` |
 | Frame timing / constants | `constants.h` `consts::TARGET_FRAME_DURATION` |
 | Telemetry | `MeasureToolModuleInterface/trace.cpp` |
-| UI tests (bounds/spacing/shortcut) | `Tests/ScreenRuler.UITests/` (was also `Tests/ScreenRuler.UITests.Next/` — historical, not in current tree) |
+| UI tests (bounds/spacing/shortcut) | `Tests/ScreenRuler.UITests/`, `Tests/ScreenRuler.UITests.Next/` (the Next project intentionally overrides warnings-as-errors) |
 
 **Session model (critical):** `Core::StartMeasureTool`/`StartBoundsTool` call `ResetState`, create
 **one overlay window per monitor** (`OverlayUIState::Create` → its own UI thread + D2D device), and

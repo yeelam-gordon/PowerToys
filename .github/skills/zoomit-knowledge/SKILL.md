@@ -32,7 +32,7 @@ below). Source root `src/modules/ZoomIt/`; unqualified files live in `ZoomIt/`.
 
 | Sub-feature | Implementation (file · function) |
 |---|---|
-| PowerToys module wrapper, GPO gate, enable/disable, launch ZoomIt.exe | `ZoomItModuleInterface/dllmain.cpp` `enable/disable`, `gpo_policy_enabled_configuration` → `getConfiguredZoomItEnabledValue` |
+| PowerToys module wrapper, GPO gate, enable/disable, launch `PowerToys.ZoomIt.exe` | `ZoomItModuleInterface/dllmain.cpp` `enable/disable`, `gpo_policy_enabled_configuration` → `getConfiguredZoomItEnabledValue` |
 | Hotkey IDs (all 25) | `Zoomit.cpp` `ZOOM_HOTKEY` through `MIRROR_CROP_HOTKEY`, including the three Mirror IDs |
 | Central hotkey registration + logging lambda | `Zoomit.cpp::RegisterAllHotkeys` (local `registerHotkey`) |
 | **XOR-derived hotkey variants** (crop/window/live-draw/DemoType-reset) | `RegisterAllHotkeys`: `cropMod = g_RecordToggleMod ^ MOD_SHIFT`, `windowMod = g_RecordToggleMod ^ MOD_ALT`; `LIVE_DRAW_HOTKEY` and `DEMOTYPE_RESET_HOTKEY` modifier derivation |
@@ -185,9 +185,10 @@ Enforce these when reviewing or authoring ZoomIt changes:
   non-zero; attribute conflicts to the correct hotkey (#49075).
 - **Use the `registerHotkey` helper, not raw `RegisterHotKey`.** The helper logs outcomes; raw calls
   make failures invisible and diverge from the other hotkeys (#49075 review).
-- **All end-user strings must be localizable.** New UI text goes through `Resources.resw`, not
-  hard-coded literals; use Sentence casing per modern Windows apps (repeated reviewer note on
-  `ZoomItPage.xaml`, PR #47529).
+- **All end-user strings must be localizable.** Settings UI text goes through
+  `src/settings-ui/Settings.UI/Strings/en-us/Resources.resw`; native ZoomIt UI text goes through its
+  `.rc`/`resource.h` resources, not hard-coded literals. Use Sentence casing per modern Windows apps
+  (repeated reviewer note on `ZoomItPage.xaml`, PR #47529).
 - **Keep recording session teardown explicit and null-safe.** On stop/failure, `Close()` then null the
   `g_RecordingSession`/`g_GifRecordingSession` shared_ptr; don't leave a half-initialized session
   (#48685, #46006).

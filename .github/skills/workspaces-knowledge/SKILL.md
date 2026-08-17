@@ -57,8 +57,8 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 
 **Two coordinate systems, always both stored.** Each `Monitor` carries **both**
 `monitorRectDpiAware` **and** `monitorRectDpiUnaware`, and window `Position` is stored in
-**DPI-unaware** coordinates (captured on a temporary DPI-unaware thread) so positions survive across
-machines with different scaling. The WPF Editor is PerMonitorV2 DPI-aware, so any place that feeds
+**DPI-unaware** coordinates (converted from the PerMonitorV2 snapshot coordinates) so positions survive
+across machines with different scaling. The WPF Editor is PerMonitorV2 DPI-aware, so any place that feeds
 stored coordinates into WPF must bypass WPF's re-scaling (see DPI playbook).
 
 **Window<->app matching is identity + geometry.** `GetNearestWindow` first matches on *identity*

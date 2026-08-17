@@ -93,12 +93,14 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
 - **Symptom:** the Dock's **Open Command Palette** button (or a pinned item) stops summoning the
   palette after a refactor.
 - **Where:** `Dock/DockControl.xaml.cs` `InvokeItem` → `IsPageCommand`.
-- **Root cause:** the Dock only shows the palette for **page commands**; `IsPageCommand` returns
+- **Root cause:** the Dock normally shows the palette for **page commands**; `IsPageCommand` returns
   false for a plain invokable command returning `CommandResult.GoHome()`, so a home/open item wired
   as a non-page command silently no-ops the summon. The former `GoHomeDockCommand` was the historical
   example; current built-ins expose the root page through `IRootPageAccessor` and `WrappedDockItem`.
 - **Guardrail:** when a Dock item must open the palette, back it with a **page command** (root page)
-  or add an explicit summon path — don't assume an invokable command surfaces the window. Evidence:
+  or add an explicit summon path. Invokable confirmation commands use the explicit
+  `OnBeforeShowConfirmation` summon path; don't assume an ordinary invokable command surfaces the
+  window. Evidence:
   [#49089](https://github.com/microsoft/PowerToys/issues/49089) → [PR #49095](https://github.com/microsoft/PowerToys/pull/49095).
 
 ### DI circular dependency (command providers ↔ root page)
@@ -209,8 +211,9 @@ Enforce these when reviewing or authoring CmdPal changes:
 - **Test the compact matrix.** Any `ShellPage`/`MainWindow` change must be validated collapsed **and**
   expanded, list **and** content pages, forward **and** back navigation, keyboard **and** pointer.
   This is the module's #1 regression source (#49113, #49116, #49312).
-- **Dock summon = page command.** A Dock item that should open the palette must be a page command (or
-  add an explicit summon); `IsPageCommand` gates it (PR #49095).
+- **Dock summon = page command or explicit path.** A Dock item that should open the palette normally
+  uses a page command (`IsPageCommand` gates it); invokable confirmation commands use
+  `OnBeforeShowConfirmation` as their explicit summon path (PR #49095).
 - **Break DI cycles with a deferred accessor**, not an eager ctor dependency; don't double-wrap a
   factory you already registered ([PR #49095](https://github.com/microsoft/PowerToys/pull/49095#discussion_r3538570672)).
 - **Never key navigation/routing on localized strings.** Use invariant constants for tags/keys; keep
@@ -230,8 +233,9 @@ Enforce these when reviewing or authoring CmdPal changes:
 
 ## Pitfalls
 
-- **Never** assume a Dock invokable command shows the palette — only **page commands** summon it
-  (`DockControl.IsPageCommand`); `CommandResult.GoHome()` alone won't (#49089).
+- **Never** assume an ordinary Dock invokable command shows the palette — **page commands** summon it
+  through `DockControl.IsPageCommand`, while invokable confirmation commands use
+  `OnBeforeShowConfirmation`; `CommandResult.GoHome()` alone won't (#49089).
 - **Never** let collapsed compact mode keep firing item actions or navigation — the user can't see
   the selection; gate on the collapsed state (#49113).
 - **Never** use a localized title as a navigation key — it silently breaks routing in other locales

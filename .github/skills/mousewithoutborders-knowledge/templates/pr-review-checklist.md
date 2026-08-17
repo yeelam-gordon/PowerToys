@@ -8,7 +8,7 @@ areas.
 - [ ] Salt and IV are **random per connection** (`RandomNumberGenerator`), never a fixed constant
       (regression: MSRC 118042 / #48742).
 - [ ] No derived-key cache reintroduced (a per-connection salt makes caching pointless/wrong).
-- [ ] Key derivation unchanged unless security-reviewed: PBKDF2 / SHA512 / 50000 iterations /
+- [ ] Key derivation unchanged unless security-reviewed: PBKDF2 / SHA512 / 100000 iterations /
       32-byte AES-256 key; magic numbers use the named constants (`KeyDerivationIterations`,
       `DerivedKeyLength`, `SaltSize`).
 - [ ] `MagicNumber` still derived from `MyKey`; packet auth check in `ProcessReceivedDataEx` intact.

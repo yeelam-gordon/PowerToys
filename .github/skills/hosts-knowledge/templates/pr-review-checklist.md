@@ -4,7 +4,8 @@ Apply to any PR touching `src/modules/Hosts/`. **Read the diff cold first**, the
 for the code paths the diff actually touches (see anti-anchoring note in SKILL.md).
 
 ## Read / parse path (`HostsService.ReadAsync`, `Entry.Parse`)
-- [ ] Round-trip is byte-stable for entries the parser doesn't change (invalid/unparsed lines written verbatim).
+- [ ] If changing parsing or writing, add coverage that untouched entries and foreign sections round-trip
+      byte-stably; invalid/unparsed entries currently do not survive `WriteAsync`.
 - [ ] Comments (including non-ASCII) and the disabled `#` prefix are preserved.
 - [ ] Lines with > `Consts.MaxHostsCount` (9) hosts still split correctly; the constant is not duplicated as a literal.
 - [ ] Windows sample lines (`rhino.acme.com`, `x.acme.com`) remain ignored by `Entry.Validate`.
@@ -15,7 +16,8 @@ for the code paths the diff actually touches (see anti-anchoring note in SKILL.m
 - [ ] `FileMode.OpenOrCreate` retained (hidden-file support).
 - [ ] `_backupManager.Create(HostsFilePath)` runs before the write stream.
 - [ ] `FileSystemWatcher.EnableRaisingEvents` toggled off during the write and restored in `finally`.
-- [ ] Additional/unparsed lines re-emitted at the configured top/bottom position.
+- [ ] If changing parsing or writing, add coverage that untouched entries and foreign sections round-trip
+      byte-stably; invalid/unparsed entries currently do not survive `WriteAsync`.
 
 ## Encoding (`HostsService.Encoding`, `HostsEncoding`)
 - [ ] Read and write use the same `Encoding` value.

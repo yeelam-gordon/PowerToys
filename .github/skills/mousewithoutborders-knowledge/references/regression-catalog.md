@@ -12,7 +12,7 @@ This catalog is the progressive-disclosure evidence record for `SKILL.md`.
 
 | Area | Exact source anchors | Evidence retained |
 |---|---|---|
-| Encryption constants | `App/Core/Encryption.cs`: `SaltSize = 16`, `SymAlBlockSize = 16`, `KeyDerivationIterations = 50000`, `DerivedKeyLength = 32` | AES-256/CBC uses `PaddingMode.Zeros`; PBKDF2 uses SHA512. |
+| Encryption constants | `App/Core/Encryption.cs`: `SaltSize = 16`, `SymAlBlockSize = 16`, `KeyDerivationIterations = 100000`, `DerivedKeyLength = 32` | AES-256/CBC uses `PaddingMode.Zeros`; PBKDF2 uses SHA512. |
 | Connection header | `Encryption.GetEncryptedStream`, `GetDecryptedStream`, `ExchangeEncryptionHeader` | Cleartext layout is salt (16 bytes) followed by IV (16 bytes). |
 | Handshake/framing | `Common.SendOrReceiveARandomDataBlockPerInitialIV`; `SocketStuff.TcpSendData`, `ProcessReceivedDataEx` | Header → random first block → framed packets. No wire-version negotiation was identified. |
 | Shared-key token | `Encryption.Get24BitHash`, `Encryption.MagicNumber`; validation in `SocketStuff.ProcessReceivedDataEx` | The misleadingly named helper incorporates four hash bytes, while packet framing transmits and validates only the upper 16 bits. It is not the encryption layer. |

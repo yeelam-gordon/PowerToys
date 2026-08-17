@@ -80,9 +80,10 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   unparsed content preserved via `HostsData.AdditionalLines` and re-emitted top/bottom.
 - **Root cause:** the editor rewrites the whole file on every change; any parse/format asymmetry (lost
   comments, reordered/duplicated hosts, structured blocks it doesn't understand) is written back.
-- **Guardrail:** preserve exact content for lines the parser doesn't own — invalid/unparsed lines are
-  written verbatim (`if (!e.Valid) lineBuilder.Append(e.Line)`); don't "normalize" foreign sections.
-  Any parser change must round-trip byte-stable for untouched entries. Evidence:
+- **Current limitation:** invalid/unparsed entries do **not** round-trip through `WriteAsync`: the
+  writer appends their text to `lineBuilder` but does not add that builder to the output. Don't treat
+  its `if (!e.Valid) lineBuilder.Append(e.Line)` branch as preservation. Any parser/write change must
+  round-trip byte-stable for untouched entries and foreign sections. Evidence:
   [#44389](https://github.com/microsoft/PowerToys/issues/44389),
   [#35979](https://github.com/microsoft/PowerToys/issues/35979).
 

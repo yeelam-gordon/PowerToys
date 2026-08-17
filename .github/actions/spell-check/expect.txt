@@ -10,8 +10,8 @@ ACCESSDENIED
 ACCESSTOKEN
 acfs
 ACIE
-ACRYLICBLURBEHIND
 acrt
+ACRYLICBLURBEHIND
 ACTIVATEAPP
 ACTIVATEOPTIONS
 activationaction
@@ -96,8 +96,8 @@ ASSOCSTR
 ASYNCWINDOWPLACEMENT
 ASYNCWINDOWPOS
 atl
-AWC
 ATRIOX
+AUMID
 aumid
 AUO
 authenticode
@@ -112,6 +112,7 @@ Autorun
 AUTOTICKS
 AUTOUPDATE
 AWAYMODE
+AWC
 azcliversion
 azman
 azureaiinference
@@ -127,6 +128,7 @@ bbwe
 BCIE
 Belarusian
 BESTEFFORT
+Bezelled
 bezelled
 bhid
 BIF
@@ -142,11 +144,13 @@ BITMAPINFO
 BITMAPINFOHEADER
 BITSPERPEL
 BITSPIXEL
+Bitwarden
 bla
 Blackmagic
 BLENDFUNCTION
 blittable
 Blockquotes
+Blt
 blt
 bluelightreduction
 bluelightreductionstate
@@ -162,6 +166,8 @@ BPBF
 bpmf
 bpp
 breadcrumb
+Breadcrumbs
+breadcrumbs
 Browsable
 BROWSEINFO
 bsd
@@ -210,9 +216,12 @@ cfp
 CHANGECBCHAIN
 changecursor
 chatasweetie
+cheatsheets
+cheatsheetseries
 checkmarks
 CHILDACTIVATE
 CHILDWINDOW
+chongqi
 CHOOSEFONT
 chu
 CIBUILD
@@ -234,14 +243,15 @@ cliextensions
 CLIPBOARDUPDATE
 CLIPCHILDREN
 CLIPSIBLINGS
+CLOSEAPP
 closesocket
 clp
 CLSCTX
 CLSIDs
-CLOSEAPP
 clsids
 Clusion
 cmder
+cmdnotfound
 CMDNOTFOUNDMODULEINTERFACE
 cmdpal
 CMIC
@@ -335,6 +345,7 @@ customaction
 CUSTOMACTIONTEST
 CUSTOMFORMATPLACEHOLDER
 cvd
+cwe
 CWMO
 CXSCREEN
 CXSMICON
@@ -342,8 +353,10 @@ CXVIRTUALSCREEN
 CYSCREEN
 CYSMICON
 CYVIRTUALSCREEN
+CZE
 Czechia
 Dac
+DACL
 dacl
 DAffine
 DAFFINETRANSFORM
@@ -363,8 +376,10 @@ DCapabilities
 DCBA
 DCOM
 DCR
+Ddc
 ddc
 DDCCI
+Ddcci
 DDEIf
 Deact
 debouncer
@@ -427,6 +442,7 @@ DISPLAYFLAGS
 DISPLAYFREQUENCY
 displayname
 DISPLAYORIENTATION
+DISPLAYPORT
 divyan
 DLGFRAME
 dlgmodalframe
@@ -454,6 +470,7 @@ DRAWFRAME
 drawingcolor
 dreamsofameaningfullife
 drivedetectionwarning
+DRM
 DROPFILES
 DSPDLOG
 DString
@@ -467,26 +484,34 @@ dvr
 DVTARGETDEVICE
 dwflags
 dwl
+DWM
+Dwm
 dwm
 dwmapi
 DWMCOLORIZATIONCOLORCHANGED
 DWMCOMPOSITIONCHANGED
-DWMSBT
 DWMNCRENDERINGCHANGED
 Dwmp
+DWMSBT
 DWMSENDICONICLIVEPREVIEWBITMAP
 DWMSENDICONICTHUMBNAIL
+DWMWA
 dwmwa
+DWMWCP
 dwmwcp
 DWMWINDOWATTRIBUTE
 DWMWINDOWMAXIMIZEDCHANGE
 DWORDLONG
 dworigin
+DXGI
+Dxgi
 dxgi
 Dxva
 eab
 easeofaccess
 ecount
+EDID
+Edid
 edid
 EDITKEYBOARD
 EDITSHORTCUTS
@@ -519,6 +544,7 @@ esrp
 etd
 ETDT
 etl
+ETW
 etw
 eula
 eventvwr
@@ -590,6 +616,7 @@ findmymouse
 FIXEDFILEINFO
 FIXEDSYS
 flac
+Flyouts
 flyouts
 fmtid
 FOF
@@ -599,6 +626,7 @@ folderpath
 FONTTYPE
 FORCEFILESYSTEM
 FORCEMINIMIZE
+foregrounding
 FORMATDLGORD
 formatetc
 FORPARSING
@@ -618,10 +646,12 @@ Gaidhlig
 gameid
 GC'ed
 GCLP
+GDI
 gdi
 gdiplus
 GDIPVER
 GDISCALED
+Geolocator
 geolocator
 GETCLIENTAREAANIMATION
 GETCURSEL
@@ -645,14 +675,17 @@ gfx
 GHND
 gitmodules
 GMEM
+Godot
 googleai
 googlegemini
 Gotchas
 gpedit
+Gpo
 gpo
 GPOCA
 gpp
 gpu
+GRABANDMOVE
 grabandmove
 GRABANDMOVEMODULEINTERFACE
 gradians
@@ -666,6 +699,7 @@ GSM
 gtm
 guiddata
 GUITHREADINFO
+GWL
 gwl
 GWLP
 GWLSTYLE
@@ -673,6 +707,7 @@ hangeul
 Hanguel
 Hantai
 Hanzi
+Harddisk
 Hardlines
 hardlinks
 HARDWAREINPUT
@@ -696,6 +731,7 @@ hcwhite
 hdc
 HDEVNOTIFY
 hdmi
+HDR
 hdr
 HDROP
 hdwwiz
@@ -736,6 +772,7 @@ HKPD
 HKU
 HMD
 hmenu
+Hmmss
 hmodule
 HMON
 hmonitor
@@ -750,6 +787,7 @@ hostsfileeditor
 hotfixes
 hotkeycontrol
 HOTKEYF
+Hotkeys
 hotkeys
 hotlight
 hotspot
@@ -758,6 +796,7 @@ HPS
 HRAWINPUT
 HREDRAW
 hres
+HRESULT
 hresult
 hrgn
 HROW
@@ -773,12 +812,14 @@ Hvci
 hwb
 HWHEEL
 HWINEVENTHOOK
+Hwnd
 hwnd
 HWNDFIRST
 HWNDLAST
 HWNDNEXT
 HWNDPARENT
 HWNDPREV
+HWNDs
 hyjiacan
 IAI
 icf
@@ -894,6 +935,7 @@ jpnime
 jrsoftware
 Jsons
 jsonval
+JXR
 jxr
 Kantai
 KBSC
@@ -947,6 +989,7 @@ LGD
 lhwnd
 LIBFUZZER
 LIBID
+LIGHTSWITCH
 lightswitch
 LIMITSIZE
 LIMITTEXT
@@ -958,6 +1001,7 @@ listview
 LIVEDRAW
 livezoom
 LLKH
+LLKHF
 llkhf
 LLMHF
 LMEM
@@ -973,11 +1017,13 @@ LOCATIONCHANGE
 LOCKTYPE
 LOGFONTW
 LOGMSG
+Logon
 logon
 LOGPIXELSX
 LOGPIXELSY
 lon
 longdate
+lookaheads
 lowlevel
 LOWORD
 lparam
@@ -1048,6 +1094,7 @@ mber
 MBM
 MBR
 Mbuttondown
+Mccs
 mccs
 mcp
 MDICHILD
@@ -1056,6 +1103,7 @@ mdtext
 mdtxt
 mdwn
 measuretool
+mediapipe
 meme
 memicmp
 MENUITEMINFO
@@ -1101,6 +1149,7 @@ MONITORINFO
 MONITORINFOEX
 MONITORINFOEXW
 monitorinfof
+moooyo
 MOUSEACTIVATE
 mousecrosshairs
 MOUSEDATA
@@ -1135,7 +1184,9 @@ msll
 MSLLHOOKSTRUCT
 Mso
 mspub
+MSRC
 msrc
+MSRDC
 msstore
 mstsc
 msvcp
@@ -1150,7 +1201,9 @@ muxc
 muxx
 muxxc
 muxxh
+Muyuan
 MVPs
+MVVM
 mvvm
 MVVMTK
 MWBEx
@@ -1196,6 +1249,7 @@ NEWPLUSCONTEXTMENU
 NEWPLUSSHELLEXTENSIONWIN
 newrow
 nicksnettravels
+niels
 NIF
 nightlight
 NLSTEXT
@@ -1226,8 +1280,8 @@ NOMINMAX
 nomove
 NONANTIALIASED
 nonclient
-Nonconvert
 NONCLIENTMETRICSW
+Nonconvert
 NONELEVATED
 nonspace
 NOOWNERZORDER
@@ -1266,6 +1320,7 @@ npmjs
 NPU
 NResize
 NTAPI
+Ntdll
 ntdll
 ntfs
 NTSTATUS
@@ -1276,6 +1331,7 @@ nullonfailure
 nullref
 numberbox
 nwc
+Ocr
 ocr
 Ocrsettings
 odbccp
@@ -1320,6 +1376,7 @@ outsettings
 OVERLAPPEDWINDOW
 Oversampling
 OVERWRITEPROMPT
+owasp
 OWNDC
 OWNERDRAWFIXED
 Packagemanager
@@ -1335,6 +1392,7 @@ PARENTRELATIVEEDITING
 PARENTRELATIVEFORADDRESSBAR
 PARENTRELATIVEFORUI
 PARENTRELATIVEPARSING
+PARGB
 parray
 parseable
 PARTIALCONFIRMATIONDIALOGTITLE
@@ -1351,8 +1409,8 @@ pchast
 PCIDLIST
 PCTSTR
 PCWSTR
-pdbs
 PDBs
+pdbs
 PDEVMODE
 PDFs
 pdisp
@@ -1405,8 +1463,8 @@ PMSIHANDLE
 pnid
 PNMLINK
 Poc
+POCOs
 Podcasts
-PARGB
 POINTERID
 POINTERUPDATE
 Pokedex
@@ -1425,6 +1483,7 @@ POWERRENAMECONTEXTMENU
 powerrenameinput
 POWERRENAMETEST
 POWERTOYNAME
+powertoysrun
 powertoyssetup
 powertoysusersetup
 Powrprof
@@ -1448,7 +1507,10 @@ Premul
 prependpath
 prepopulate
 prevhost
+Previewer
 previewer
+Previewers
+previewers
 PREVIEWHANDLERFRAMEINFO
 PREVIOUSINSTALLFOLDER
 PREVIOUSVERSIONSINSTALLED
@@ -1514,6 +1576,8 @@ qit
 QITAB
 QITABENT
 QNN
+QOI
+Qoi
 qoi
 Quarternary
 QUERYENDSESSION
@@ -1525,6 +1589,7 @@ quickmask
 QUNS
 RAII
 randi
+Rasterization
 rasterization
 Rasterize
 rasterizing
@@ -1536,6 +1601,7 @@ rbhid
 Rbuttondown
 rclsid
 RCW
+RCWs
 RCZOOMIT
 rdp
 RDW
@@ -1561,8 +1627,10 @@ regroot
 regsvr
 REINSTALLMODE
 releaseblog
+Reloadable
 reloadable
 Relogger
+remapper
 remappings
 REMAPSUCCESSFUL
 REMAPUNSUCCESSFUL
@@ -1576,6 +1644,7 @@ RENAMEONCOLLISION
 RENDERFULLCONTENT
 renumbers
 reparented
+Reparenting
 reparenting
 reportfileaccesses
 requery
@@ -1752,6 +1821,7 @@ SIZEWE
 SKEXP
 SKIPOWNPROCESS
 sku
+SKUs
 SLGP
 sln
 slnf
@@ -1759,6 +1829,7 @@ slnx
 SMALLICON
 smartphone
 smileys
+SMTC
 SMTO
 SNAPPROCESS
 snk
@@ -1848,7 +1919,9 @@ SVGIn
 SVGIO
 svgz
 SVSI
+swapchain
 SWFO
+SWP
 swp
 SWPNOSIZE
 SWPNOZORDER
@@ -1858,6 +1931,7 @@ SYMCACHE
 SYMED
 SYMOPT
 SYNCPAINT
+syscalls
 SYSCHAR
 SYSCOLORCHANGE
 SYSCOMMAND
@@ -1865,6 +1939,7 @@ SYSDEADCHAR
 sysdm
 SYSICONINDEX
 SYSKEY
+SYSKEYDOWN
 syskeydown
 SYSKEYUP
 SYSLIB
@@ -1875,11 +1950,13 @@ SYSTEMBACKDROP
 SYSTEMMODAL
 systemroot
 SYSTEMTIME
+Tailscale
 TARG
 TARGETAPPHEADER
 targetentrypoint
 TARGETHEADER
 targetver
+TASKBAR
 taskbar
 taskkill
 taskschd
@@ -1911,6 +1988,7 @@ tgz
 THEMECHANGED
 themeresources
 THH
+THICKFRAME
 thickframe
 THISCOMPONENT
 threadpool
@@ -1933,6 +2011,7 @@ Toggleable
 tontrager
 Toolhelp
 toolsets
+TOOLWINDOW
 toolwindow
 TOPDOWNDIB
 TOUCHEVENTF
@@ -1946,9 +2025,9 @@ tracerpt
 trackbar
 trafficmanager
 transicc
-TRAYICON
 TRANSIENTWINDOW
 transitioning
+TRAYICON
 TRAYMOUSEMESSAGE
 triaging
 trl
@@ -2014,6 +2093,7 @@ UOI
 UPDATENOW
 updown
 UPGRADINGPRODUCTCODE
+Upscaling
 upscaling
 upserts
 Uptool
@@ -2026,6 +2106,7 @@ USESHOWWINDOW
 USESTDHANDLES
 USRDLL
 uuidv
+UWP
 uwp
 uxt
 uxtheme
@@ -2034,11 +2115,14 @@ VALIDATEA
 VALIDATEW
 validmodulename
 valuegenerator
+vanzue
 VARTYPE
 vbcscompiler
 vcamp
 vcgtq
 VCINSTALLDIR
+VCP
+Vcp
 vcp
 Vcpkg
 vcpkg
@@ -2055,6 +2139,7 @@ VERSIONINFO
 VERTRES
 VERTSIZE
 VERYSILENT
+VESA
 vesa
 VFT
 vget
@@ -2062,6 +2147,7 @@ vgetq
 viewmodels
 virama
 VIRTKEY
+VIRTUALSCREEN
 VISEGRADRELAY
 visiblecolorformats
 visio
@@ -2095,6 +2181,7 @@ Vtbl
 WANTNUKEWARNING
 WANTPALM
 WASDK
+Wbem
 wbem
 wca
 WCE
@@ -2114,6 +2201,7 @@ websites
 wekyb
 wft
 wgpocpl
+WIC
 wic
 wifi
 wikimedia
@@ -2123,8 +2211,8 @@ winapp
 winappcli
 winappsdk
 windir
-WINDOWCREATED
 WINDOWCOMPOSITIONATTRIBDATA
+WINDOWCREATED
 WINDOWDESTROYED
 windowedge
 WINDOWINFO
@@ -2172,6 +2260,7 @@ WKSG
 Wlkr
 wmain
 Wman
+WMI
 wmi
 WMICIM
 wmimgmt
@@ -2191,8 +2280,10 @@ WORKSPACESLAUNCHER
 WORKSPACESSNAPSHOTTOOL
 WORKSPACESWINDOWARRANGER
 worktree
+Wox
 wox
 wparam
+WPF
 wpf
 wpftmp
 wpfui
@@ -2206,6 +2297,7 @@ Wrk
 wrl
 wscui
 wsh
+WSLg
 wstr
 wsz
 WTA
@@ -2241,11 +2333,13 @@ YVIRTUALSCREEN
 zamora
 Zenbook
 ZEROINIT
+zhongqi
 zonability
 zonable
 zoneset
 Zoneszonabletester
 Zoomin
+Zoomit
 zoomit
 ZOOMITX
 Zorder

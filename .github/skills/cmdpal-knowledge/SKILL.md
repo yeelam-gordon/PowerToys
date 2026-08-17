@@ -145,8 +145,10 @@ Rule by rule. Each: **Symptom → Where → Root cause → Guardrail**. Fuller c
   though nothing the Dock consumes had changed.
 - **Where:** `Microsoft.CmdPal.UI.ViewModels/Settings/DockSettings.cs` (the `record`) +
   `Microsoft.CmdPal.UI.ViewModels/Settings/EquatableList`1.cs`; guards in
-  `ViewModels/Dock/DockViewModel.cs::UpdateSettings`, `UI/Dock/DockWindow.xaml.cs::SettingsChangedHandler`,
-  `UI/Dock/DockWindowManager.cs::OnSettingsChanged`, `UI/MainWindow.xaml.cs` (`_lastAppliedSettings`,
+  `Microsoft.CmdPal.UI.ViewModels/Dock/DockViewModel.cs::UpdateSettings`,
+  `Microsoft.CmdPal.UI/Dock/DockWindow.xaml.cs::SettingsChangedHandler`,
+  `Microsoft.CmdPal.UI/Dock/DockWindowManager.cs::OnSettingsChanged`,
+  `Microsoft.CmdPal.UI/MainWindow.xaml.cs` (`_lastAppliedSettings`,
   `MainWindowSettingsComparer`).
 - **Root cause:** the `DockSettings` record held `ImmutableList<DockBandSettings>` fields, and
   `ImmutableList<T>` implements **reference** equality. After settings reloaded from disk the rebuilt

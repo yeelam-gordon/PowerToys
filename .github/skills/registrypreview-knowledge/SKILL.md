@@ -48,7 +48,7 @@ Localization aid. Treat as **hypotheses to confirm in source**, not ground truth
 | **TreeView build** (nodes, de-dup, backward key walk) | `RegistryPreviewMainPage.Utilities.cs` `AddTextToTree`; node map `mapRegistryKeys` |
 | Value grid model + tooltip/type text | `RegistryValue.xaml.cs`, `RegistryKey.xaml.cs`; `SetValueToolTip`, `GetFolderToolTip` |
 | Extended data preview dialog (dispatch by type) | `RegistryPreviewMainPage.DataPreview.cs` `ShowExtendedDataPreview` |
-| Hex/decimal view (DWORD/QWORD), binary HexBox, expand-var view | `DataPreview.cs` `AddHexView`, `AddBinaryView`, `AddExpandStringView` |
+| Hex/decimal view (DWORD/QWORD), binary HexBox, expand-var view | `RegistryPreviewUILib/RegistryPreviewMainPage.DataPreview.cs` `AddHexView`, `AddBinaryView`, `AddExpandStringView` |
 | HexBox custom control | `RegistryPreviewUILib/Controls/HexBox/*` (+ `Library/EndianConvert/*`) |
 | Monaco raw-text editor | `RegistryPreviewUILib/Controls/MonacoEditor/*` |
 | Save edited `.reg` (UTF-16 write) | `RegistryPreviewMainPage.Utilities.cs` `SaveFile` (`Encoding.Unicode`) |

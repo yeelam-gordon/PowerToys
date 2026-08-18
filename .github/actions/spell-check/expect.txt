@@ -2077,6 +2077,7 @@ vqsubq
 vreinterpretq
 VSC
 VSCBD
+vsc
 vscdb
 vsconfig
 VSCROLL

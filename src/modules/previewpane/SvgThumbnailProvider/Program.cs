@@ -18,6 +18,8 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
         [STAThread]
         public static void Main(string[] args)
         {
+            SetSafeCurrentDirectory();
+
             ApplicationConfiguration.Initialize();
             Logger.InitializeLogger("\\FileExplorer_localLow\\SvgThumbnails\\logs", true);
             if (args != null)
@@ -39,6 +41,18 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
                 {
                     MessageBox.Show("Gcode thumbnail - wrong number of args: " + args.Length.ToString(CultureInfo.InvariantCulture));
                 }
+            }
+        }
+
+        private static void SetSafeCurrentDirectory()
+        {
+            try
+            {
+                Directory.SetCurrentDirectory(AppContext.BaseDirectory);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is ArgumentException || ex is NotSupportedException || ex is System.Security.SecurityException)
+            {
+                System.Diagnostics.Trace.TraceWarning($"Failed to set current directory to application base directory: {ex}");
             }
         }
     }

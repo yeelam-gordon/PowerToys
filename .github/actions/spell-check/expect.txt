@@ -269,6 +269,7 @@ compmgmt
 COMPOSITIONDISABLED
 COMPOSITIONFULL
 CONFIGW
+Confirmator
 CONFLICTINGMODIFIERKEY
 CONFLICTINGMODIFIERSHORTCUT
 CONOUT
@@ -955,6 +956,7 @@ livezoom
 LLKH
 llkhf
 LLMHF
+lmb
 LMEM
 LMENU
 lng
@@ -1041,6 +1043,7 @@ maximizebox
 MAXSHORTCUTSIZE
 maxversiontested
 mber
+mbl
 MBM
 MBR
 Mbuttondown
@@ -1085,6 +1088,7 @@ Mip
 Miracast
 mkdn
 mlcfg
+mmb
 mmc
 mmcexe
 mmi
@@ -1100,6 +1104,7 @@ MONITORINFOEX
 MONITORINFOEXW
 monitorinfof
 MOUSEACTIVATE
+mousebuttonlock
 mousecrosshairs
 MOUSEDATA
 MOUSEEVENTF
@@ -1182,6 +1187,7 @@ NEEDDISPATCH
 netcoreapp
 netcpl
 netframework
+NETSDK
 netsetup
 netsh
 NEWDIALOGSTYLE
@@ -1607,6 +1613,7 @@ RIDEV
 RIGHTBUTTON
 RIGHTSCROLLBAR
 riid
+rmb
 rollups
 rop
 ROUNDSMALL
@@ -2149,6 +2156,7 @@ wingetpkgs
 Winhook
 WINL
 winlogon
+WINM
 winmd
 winml
 WINNT

@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using AdvancedPaste.Helpers;
 using AdvancedPaste.Models;
 using AdvancedPaste.Services;
+using AdvancedPaste.Services.PythonScripts;
 using AdvancedPaste.Settings;
 using Common.UI;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -41,6 +42,7 @@ namespace AdvancedPaste.ViewModels
         private readonly IUserSettings _userSettings;
         private readonly IPasteFormatExecutor _pasteFormatExecutor;
         private readonly IAICredentialsProvider _credentialsProvider;
+        private readonly IPythonScriptService _pythonScriptService;
 
         private CancellationTokenSource _pasteActionCancellationTokenSource;
 
@@ -88,6 +90,10 @@ namespace AdvancedPaste.ViewModels
         private string _query = string.Empty;
 
         private bool _pasteFormatsDirty;
+        private bool _pythonScriptDiscoveryRunning;
+        private int _pythonScriptDiscoveryVersion;
+        private string _cachedPythonScriptsFolder;
+        private IReadOnlyList<PythonScriptMetadata> _cachedPythonScriptMetadata = [];
 
         [ObservableProperty]
         private bool _isBusy;
@@ -99,6 +105,8 @@ namespace AdvancedPaste.ViewModels
         public ObservableCollection<PasteFormat> StandardPasteFormats { get; } = [];
 
         public ObservableCollection<PasteFormat> CustomActionPasteFormats { get; } = [];
+
+        public ObservableCollection<PasteFormat> PythonScriptPasteFormats { get; } = [];
 
         public bool IsCustomAIServiceEnabled
         {
@@ -234,8 +242,6 @@ namespace AdvancedPaste.ViewModels
 
         public bool ShowClipboardHistoryButton => ClipboardHistoryEnabled;
 
-        public bool ShowAIPasteSection => _userSettings.ShowAIPaste && IsAllowedByGPO;
-
         public bool HasIndeterminateTransformProgress => double.IsNaN(TransformProgress);
 
         private PasteFormats CustomAIFormat =>
@@ -260,11 +266,12 @@ namespace AdvancedPaste.ViewModels
 
         public event EventHandler PreviewRequested;
 
-        public OptionsViewModel(IFileSystem fileSystem, IAICredentialsProvider credentialsProvider, IUserSettings userSettings, IPasteFormatExecutor pasteFormatExecutor)
+        public OptionsViewModel(IFileSystem fileSystem, IAICredentialsProvider credentialsProvider, IUserSettings userSettings, IPasteFormatExecutor pasteFormatExecutor, IPythonScriptService pythonScriptService)
         {
             _credentialsProvider = credentialsProvider;
             _userSettings = userSettings;
             _pasteFormatExecutor = pasteFormatExecutor;
+            _pythonScriptService = pythonScriptService;
 
             GeneratedResponses = [];
             GeneratedResponses.CollectionChanged += (s, e) =>
@@ -314,6 +321,7 @@ namespace AdvancedPaste.ViewModels
 
         private void UserSettings_Changed(object sender, EventArgs e)
         {
+            InvalidatePythonScriptDiscovery();
             UpdateAIProviderActiveFlags();
             OnPropertyChanged(nameof(IsCustomAIServiceEnabled));
             OnPropertyChanged(nameof(ClipboardHasDataForCustomAI));
@@ -322,7 +330,6 @@ namespace AdvancedPaste.ViewModels
             OnPropertyChanged(nameof(AIProviders));
             OnPropertyChanged(nameof(AllowedAIProviders));
             OnPropertyChanged(nameof(ShowClipboardPreview));
-            OnPropertyChanged(nameof(ShowAIPasteSection));
 
             NotifyActiveProviderChanged();
 
@@ -416,12 +423,105 @@ namespace AdvancedPaste.ViewModels
             }
 
             UpdateFormats(StandardPasteFormats, Enum.GetValues<PasteFormats>()
-                                                    .Where(format => PasteFormat.MetadataDict[format].IsCoreAction || _userSettings.AdditionalActions.Contains(format))
+                                                    .Where(format => format != PasteFormats.PythonScript &&
+                                                                     (PasteFormat.MetadataDict[format].IsCoreAction || _userSettings.AdditionalActions.Contains(format)))
                                                     .Select(CreateStandardPasteFormat));
 
             UpdateFormats(
                 CustomActionPasteFormats,
                 IsCustomAIServiceEnabled ? _userSettings.CustomActions.Select(customAction => CreateCustomAIPasteFormat(customAction.Name, customAction.Prompt, isSavedQuery: true)) : []);
+
+            UpdateFormats(
+                PythonScriptPasteFormats,
+                BuildPythonScriptFormats());
+        }
+
+        private IEnumerable<PasteFormat> BuildPythonScriptFormats()
+        {
+            if (!_userSettings.IsPythonScriptsEnabled)
+            {
+                _cachedPythonScriptMetadata = [];
+                _cachedPythonScriptsFolder = null;
+                yield break;
+            }
+
+            var folder = _userSettings.PythonScriptsFolder;
+            if (string.IsNullOrWhiteSpace(folder))
+            {
+                _cachedPythonScriptMetadata = [];
+                _cachedPythonScriptsFolder = null;
+                yield break;
+            }
+
+            EnsurePythonScriptDiscovery(folder);
+            IReadOnlyList<PythonScriptMetadata> discoveredScripts = string.Equals(_cachedPythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase) ? _cachedPythonScriptMetadata : [];
+            var scriptActions = _userSettings.PythonScriptActions;
+
+            // Use metadata from discovered scripts, but apply IsShown from saved settings.
+            var hiddenPaths = new System.Collections.Generic.HashSet<string>(
+                scriptActions.Where(a => !a.IsShown).Select(a => a.ScriptPath),
+                StringComparer.OrdinalIgnoreCase);
+
+            foreach (var meta in discoveredScripts)
+            {
+                if (hiddenPaths.Contains(meta.ScriptPath) || !meta.IsEnabled)
+                {
+                    continue;
+                }
+
+                // Filter by intersection: only pass clipboard formats the script supports.
+                var filteredFormats = AvailableClipboardFormats & meta.SupportedFormats;
+                yield return PasteFormat.CreatePythonScriptFormat(meta.Name, meta.ScriptPath, filteredFormats);
+            }
+        }
+
+        private void EnsurePythonScriptDiscovery(string folder)
+        {
+            if (_pythonScriptDiscoveryRunning || string.Equals(_cachedPythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            _pythonScriptDiscoveryRunning = true;
+            _ = DiscoverPythonScriptsAsync(folder, _pythonScriptDiscoveryVersion);
+        }
+
+        private void InvalidatePythonScriptDiscovery()
+        {
+            _pythonScriptDiscoveryVersion++;
+            _cachedPythonScriptMetadata = [];
+            _cachedPythonScriptsFolder = null;
+        }
+
+        private async Task DiscoverPythonScriptsAsync(string folder, int discoveryVersion)
+        {
+            IReadOnlyList<PythonScriptMetadata> discoveredScripts = [];
+
+            try
+            {
+                discoveredScripts = await Task.Run(() => _pythonScriptService.DiscoverScripts(folder)).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError($"Failed to discover Python scripts in {folder}", ex);
+            }
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                _pythonScriptDiscoveryRunning = false;
+
+                if (discoveryVersion != _pythonScriptDiscoveryVersion ||
+                    !_userSettings.IsPythonScriptsEnabled ||
+                    !string.Equals(_userSettings.PythonScriptsFolder, folder, StringComparison.OrdinalIgnoreCase))
+                {
+                    EnqueueRefreshPasteFormats();
+                    return;
+                }
+
+                _cachedPythonScriptMetadata = discoveredScripts;
+                _cachedPythonScriptsFolder = folder;
+                RefreshPasteFormats();
+            });
         }
 
         public void Dispose()
@@ -695,7 +795,10 @@ namespace AdvancedPaste.ViewModels
             _pasteActionCancellationTokenSource = new();
             TransformProgress = double.NaN;
             PasteActionError = PasteActionError.None;
-            Query = pasteFormat.Query;
+
+            // For Python scripts the Prompt field holds the file path, not a user-visible query.
+            // Setting Query to the path would show it in the AI prompt box, which is misleading.
+            Query = pasteFormat.Format == PasteFormats.PythonScript ? string.Empty : pasteFormat.Query;
 
             try
             {
@@ -735,7 +838,7 @@ namespace AdvancedPaste.ViewModels
 
         internal async Task ExecutePasteFormatAsync(VirtualKey key)
         {
-            var pasteFormat = StandardPasteFormats.Concat(CustomActionPasteFormats)
+            var pasteFormat = StandardPasteFormats.Concat(CustomActionPasteFormats).Concat(PythonScriptPasteFormats)
                                                   .Where(pasteFormat => pasteFormat.IsEnabled)
                                                   .ElementAtOrDefault(key - VirtualKey.Number1);
 

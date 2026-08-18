@@ -1,0 +1,117 @@
+{
+  "name": "PowerToys PowerRename",
+  "_about": "P0/P1/P2 UI sign-off for the real PowerRename WinUI 3 rename window (PowerToys.PowerRename.exe). Reads use the winappcli 'search' verb (matches by accessible name, no hashed selectors). The two text boxes are the only per-session-slug elements; they are resolved at runtime by the runner and substituted for the placeholders __SEARCH_SLUG__ / __REPLACE_SLUG__. All other controls use stable x:Name automationIds (checkBox_regex, checkBox_case, checkBox_matchAll, toggleButton_upperCase, toggleButton_lowerCase, toggleButton_titleCase, toggleButton_capitalize). Each check runs against a FRESHLY launched app instance (default flag state, all off). Preview is verified WITHOUT clicking Apply (non-destructive). This spec mirrors signoff-checklist.md exactly.",
+  "target": { "window": "__HWND__" },
+  "checks": [
+    {
+      "id": "p0-literal-replace-multi",
+      "priority": "P0",
+      "description": "Literal (non-regex) search/replace renames every matched file and the preview + renamed-count label update: 'testCase' -> 'Renamed' yields Renamed1.txt, Renamed2.txt and the renamed counter (2).",
+      "steps": [
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "testCase" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "Renamed" },
+        { "verb": "search", "selector": "Renamed1.txt", "expect": { "contains": "Renamed1.txt" } },
+        { "verb": "search", "selector": "Renamed2.txt", "expect": { "contains": "Renamed2.txt" } },
+        { "verb": "search", "selector": "(2)", "expect": { "contains": "(2)" } }
+      ]
+    },
+    {
+      "id": "p0-regex-replace",
+      "priority": "P0",
+      "description": "Regex vs literal dispatch: '^test.*\\.txt$' -> 'matched.txt'. Literal mode matches nothing (renamed count (0)); enabling 'Use regular expressions' matches both testCase*.txt (matched.txt appears, renamed count (2)).",
+      "steps": [
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "^test.*\\.txt$" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "matched.txt" },
+        { "verb": "search", "selector": "(0)", "expect": { "contains": "(0)" } },
+        { "verb": "invoke", "selector": "checkBox_regex" },
+        { "verb": "search", "selector": "matched.txt", "expect": { "contains": "matched.txt" } },
+        { "verb": "search", "selector": "(2)", "expect": { "contains": "(2)" } }
+      ]
+    },
+    {
+      "id": "p1-case-sensitive-toggle",
+      "priority": "P1",
+      "description": "Case sensitivity: 'testcase1' -> 'match1'. By default (case-insensitive) it matches testCase1.txt (match1.txt appears, renamed count (1)); enabling 'Case sensitive' stops the match (renamed count (0)). Absence asserted positively via the count label.",
+      "steps": [
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "testcase1" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "match1" },
+        { "verb": "search", "selector": "match1.txt", "expect": { "contains": "match1.txt" } },
+        { "verb": "search", "selector": "(1)", "expect": { "contains": "(1)" } },
+        { "verb": "invoke", "selector": "checkBox_case" },
+        { "verb": "search", "selector": "(0)", "expect": { "contains": "(0)" } }
+      ]
+    },
+    {
+      "id": "p1-match-all-occurrences",
+      "priority": "P1",
+      "description": "Match all occurrences: literal 't' -> 'f'. By DEFAULT only the first occurrence is replaced (festCase1.txt); enabling 'Match all occurrences' replaces every occurrence (fesfCase1.fxf). Verifies the default first-only path AND the flag.",
+      "steps": [
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "t" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "f" },
+        { "verb": "search", "selector": "festCase1.txt", "expect": { "contains": "festCase1.txt" } },
+        { "verb": "invoke", "selector": "checkBox_matchAll" },
+        { "verb": "search", "selector": "fesfCase1.fxf", "expect": { "contains": "fesfCase1.fxf" } }
+      ]
+    },
+    {
+      "id": "p1-enumerate-counter-padding",
+      "priority": "P1",
+      "description": "Enumeration counter token: regex '^testCase.*\\.txt$' -> 'img_${padding=2}' produces the zero-padded, per-item incrementing counter img_00 and img_01. Catches both a broken counter increment and broken padding parsing.",
+      "steps": [
+        { "verb": "invoke", "selector": "checkBox_regex" },
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "^testCase.*\\.txt$" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "img_${padding=2}" },
+        { "verb": "search", "selector": "img_00", "expect": { "contains": "img_00" } },
+        { "verb": "search", "selector": "img_01", "expect": { "contains": "img_01" } }
+      ]
+    },
+    {
+      "id": "p2-capture-groups",
+      "priority": "P2",
+      "description": "Regex capture-group rewrite: '^(testCase)(\\d)\\.txt$' -> '$2_$1' transposes the groups to 1_testCase and 2_testCase.",
+      "steps": [
+        { "verb": "invoke", "selector": "checkBox_regex" },
+        { "verb": "set-value", "selector": "__SEARCH_SLUG__", "value": "^(testCase)(\\d)\\.txt$" },
+        { "verb": "set-value", "selector": "__REPLACE_SLUG__", "value": "$2_$1" },
+        { "verb": "search", "selector": "1_testCase", "expect": { "contains": "1_testCase" } },
+        { "verb": "search", "selector": "2_testCase", "expect": { "contains": "2_testCase" } }
+      ]
+    },
+    {
+      "id": "p2-uppercase-transform",
+      "priority": "P2",
+      "description": "Uppercase text-formatting toggle uppercases the whole file name with no search term needed: testCase1.txt -> TESTCASE1.TXT (asserted case-exact via ci:false).",
+      "steps": [
+        { "verb": "invoke", "selector": "toggleButton_upperCase" },
+        { "verb": "search", "selector": "TESTCASE1.TXT", "expect": { "contains": "TESTCASE1.TXT", "ci": false } }
+      ]
+    },
+    {
+      "id": "p2-lowercase-transform",
+      "priority": "P2",
+      "description": "Lowercase text-formatting toggle lowercases the whole file name: SpecialCase.txt -> specialcase.txt (asserted case-exact via ci:false; the mixed-case original does not satisfy it).",
+      "steps": [
+        { "verb": "invoke", "selector": "toggleButton_lowerCase" },
+        { "verb": "search", "selector": "specialcase.txt", "expect": { "contains": "specialcase.txt", "ci": false } }
+      ]
+    },
+    {
+      "id": "p2-titlecase-transform",
+      "priority": "P2",
+      "description": "Title-case text-formatting toggle capitalizes the first letter of each word: report_2020.log -> Report_2020.log (asserted case-exact via ci:false).",
+      "steps": [
+        { "verb": "invoke", "selector": "toggleButton_titleCase" },
+        { "verb": "search", "selector": "Report_2020.log", "expect": { "contains": "Report_2020.log", "ci": false } }
+      ]
+    },
+    {
+      "id": "p2-capitalize-transform",
+      "priority": "P2",
+      "description": "Capitalize-each-word text-formatting toggle capitalizes the first letter and lowercases the rest of each word: SpecialCase.txt -> Specialcase.txt (asserted case-exact via ci:false; the mixed-case original does not satisfy it).",
+      "steps": [
+        { "verb": "invoke", "selector": "toggleButton_capitalize" },
+        { "verb": "search", "selector": "Specialcase.txt", "expect": { "contains": "Specialcase.txt", "ci": false } }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "app": "PowerToys Advanced Paste",
+  "process": "PowerToys.AdvancedPaste",
+  "window_title": "Advanced Paste",
+  "description": "Machine-runnable mirror of signoff-checklist.md. Drives the real Advanced Paste window via winappcli; paste checks verify the text Advanced Paste pastes into a target Notepad (winapp ui get-value). Requires synthetic input (SendInput) to be healthy and the ap_controller.ps1 ShowUI pipe + a Notepad target running. See SKILL.md > App-Specific winappcli Logic.",
+  "notes": "winappcli has no type/clipboard verb; clipboard is set out-of-band (set_clipboard.ps1) and the paste is performed by Advanced Paste itself via SendInput(Ctrl+V). These checks are therefore executed by run_signoff.ps1, not by signoff.py's generic runner. This spec documents the intent and priorities.",
+  "checks": [
+    {
+      "id": "CHK-01",
+      "priority": "P0",
+      "capability": "Paste as plain text returns clipboard text and strips HTML tags",
+      "clipboard": { "mode": "html", "text": "BoldHello", "html": "<b>Bold</b>Hello" },
+      "invoke": "Paste as plain text",
+      "verify": { "target": "Text editor", "equals": "BoldHello" },
+      "screenshot": "chk01-plaintext"
+    },
+    {
+      "id": "CHK-02",
+      "priority": "P0",
+      "capability": "Paste as markdown converts HTML <h1> heading to '# Title'",
+      "clipboard": { "mode": "html", "text": "Title bold", "html": "<h1>Title</h1><p><b>bold</b></p>" },
+      "invoke": "Paste as markdown",
+      "verify": { "target": "Text editor", "regex": "#\\s*Title" },
+      "screenshot": "chk02-markdown-heading"
+    },
+    {
+      "id": "CHK-03",
+      "priority": "P0",
+      "capability": "Paste as JSON converts CSV to a JSON array (values preserved)",
+      "clipboard": { "mode": "text", "text": "name,age\r\nAlice,30" },
+      "invoke": "Paste as JSON",
+      "verify": { "target": "Text editor", "contains": ["[", "\"name\"", "\"Alice\""] },
+      "screenshot": "chk03-json-csv"
+    },
+    {
+      "id": "CHK-04",
+      "priority": "P1",
+      "capability": "Paste as JSON converts XML to a JSON object with element keys",
+      "clipboard": { "mode": "text", "text": "<note><to>Tove</to><from>Jani</from></note>" },
+      "invoke": "Paste as JSON",
+      "verify": { "target": "Text editor", "regex": "\"note\"\\s*:", "contains": ["Tove"] },
+      "screenshot": "chk04-json-xml"
+    },
+    {
+      "id": "CHK-05",
+      "priority": "P1",
+      "capability": "Paste as JSON returns already-valid JSON unchanged (passthrough)",
+      "clipboard": { "mode": "text", "text": "{\"k\":123}" },
+      "invoke": "Paste as JSON",
+      "verify": { "target": "Text editor", "equals": "{\"k\":123}" },
+      "screenshot": "chk05-json-passthrough"
+    },
+    {
+      "id": "CHK-06",
+      "priority": "P1",
+      "capability": "Paste as JSON falls back to a JSON array-of-lines for non-tabular text (never-throws guard)",
+      "clipboard": { "mode": "text", "text": "hello world\r\nsecond line" },
+      "invoke": "Paste as JSON",
+      "verify": { "target": "Text editor", "contains": ["[", "\"hello world\"", "\"second line\""] },
+      "screenshot": "chk06-json-fallback"
+    },
+    {
+      "id": "CHK-07",
+      "priority": "P1",
+      "capability": "AI prompt box (InputTxtBox) is disabled when no AI provider is configured (AI gating)",
+      "read": { "selector": "InputTxtBox", "property": "IsEnabled" },
+      "verify": { "equals": "False" },
+      "screenshot": "chk07-ai-gating"
+    },
+    {
+      "id": "CHK-08",
+      "priority": "P2",
+      "capability": "Window clipboard preview shows the current clipboard content",
+      "clipboard": { "mode": "text", "text": "PREVIEW_CHECK_555" },
+      "search": "PREVIEW_CHECK_555",
+      "verify": { "found": true },
+      "screenshot": "chk08-clipboard-preview"
+    },
+    {
+      "id": "CHK-09",
+      "priority": "P2",
+      "capability": "Core paste-format list shows plain text, markdown and JSON actions",
+      "search": ["Paste as plain text", "Paste as markdown", "Paste as JSON"],
+      "verify": { "found": true },
+      "screenshot": "chk09-format-list"
+    },
+    {
+      "id": "CHK-10",
+      "priority": "P2",
+      "capability": "Paste as markdown converts <b>bold</b> to '**bold**' emphasis",
+      "clipboard": { "mode": "html", "text": "Title bold", "html": "<h1>Title</h1><p><b>bold</b></p>" },
+      "invoke": "Paste as markdown",
+      "verify": { "target": "Text editor", "regex": "\\*\\*bold\\*\\*", "transform": "strip-backslashes" },
+      "screenshot": "chk10-markdown-bold"
+    }
+  ]
+}

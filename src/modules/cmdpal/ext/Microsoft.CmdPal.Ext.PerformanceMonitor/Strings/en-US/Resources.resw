@@ -135,6 +135,24 @@
   <data name="NetworkUsage_Widget_Template.Ethernet_Heading" xml:space="preserve">
     <value>Ethernet</value>
   </data>
+  <data name="DiskUsage_Widget_Template.Disk_Usage" xml:space="preserve">
+    <value>Active time</value>
+  </data>
+  <data name="DiskUsage_Widget_Template.Read" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="DiskUsage_Widget_Template.Write" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="DiskUsage_Widget_Template.Disk_Name" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Previous_Disk_Title" xml:space="preserve">
+    <value>Previous disk</value>
+  </data>
+  <data name="Next_Disk_Title" xml:space="preserve">
+    <value>Next disk</value>
+  </data>
   <data name="GPUUsage_Widget_Template.GPU_Usage" xml:space="preserve">
     <value>Utilization</value>
   </data>
@@ -182,6 +200,9 @@
   </data>
   <data name="Network_Usage_Subtitle" xml:space="preserve">
     <value>Network</value>
+  </data>
+  <data name="Disk_Usage_Subtitle" xml:space="preserve">
+    <value>Disk</value>
   </data>
   <data name="GPU_Usage_Subtitle" xml:space="preserve">
     <value>GPU</value>
@@ -257,6 +278,19 @@
   <data name="Network_Usage_Unknown_Label" xml:space="preserve">
     <value>Network Usage: ???</value>
   </data>
+  <data name="Disk_Usage_Title" xml:space="preserve">
+    <value>Disk Usage</value>
+  </data>
+  <data name="Disk_Usage_Label" xml:space="preserve">
+    <value>Disk ({0}): {1}</value>
+    <comment>{0} is the disk interface name, {1} is the usage percentage</comment>
+  </data>
+  <data name="Disk_Usage_Unknown" xml:space="preserve">
+    <value>???</value>
+  </data>
+  <data name="Disk_Usage_Unknown_Label" xml:space="preserve">
+    <value>Disk Usage: ???</value>
+  </data>
   <data name="GPU_Usage_Title" xml:space="preserve">
     <value>GPU Usage</value>
   </data>
@@ -331,6 +365,15 @@
   <data name="Network_Receive_Subtitle" xml:space="preserve">
     <value>Receive</value>
   </data>
+  <data name="Disk_Read_Subtitle" xml:space="preserve">
+    <value>Read</value>
+  </data>
+  <data name="Disk_Write_Subtitle" xml:space="preserve">
+    <value>Write</value>
+  </data>
+  <data name="Disk_Active_Time_Subtitle" xml:space="preserve">
+    <value>Active time</value>
+  </data>
   <data name="Network_Speed_Unit_Setting_Title" xml:space="preserve">
     <value>Network speed unit</value>
   </data>
@@ -344,6 +387,21 @@
     <value>Bytes per second (KB/s, MB/s, GB/s)</value>
   </data>
   <data name="Network_Speed_Unit_BinaryBytesPerSec" xml:space="preserve">
+    <value>Binary bytes per second (KiB/s, MiB/s, GiB/s)</value>
+  </data>
+  <data name="Disk_Speed_Unit_Setting_Title" xml:space="preserve">
+    <value>Disk speed unit</value>
+  </data>
+  <data name="Disk_Speed_Unit_Setting_Description" xml:space="preserve">
+    <value>Choose the unit used to display disk transfer speed</value>
+  </data>
+  <data name="Disk_Speed_Unit_BitsPerSec" xml:space="preserve">
+    <value>Bits per second (Kbps, Mbps, Gbps)</value>
+  </data>
+  <data name="Disk_Speed_Unit_BytesPerSec" xml:space="preserve">
+    <value>Bytes per second (KB/s, MB/s, GB/s)</value>
+  </data>
+  <data name="Disk_Speed_Unit_BinaryBytesPerSec" xml:space="preserve">
     <value>Binary bytes per second (KiB/s, MiB/s, GiB/s)</value>
   </data>
 </root>

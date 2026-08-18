@@ -20,8 +20,8 @@ namespace
     class EventViewerReporter
     {
     private:
-        // Report last 30 days
-        const long long PERIOD = 10 * 24 * 3600ll * 1000;
+        // Report last 10 days
+        const unsigned long long PERIOD = 10ull * 24 * 3600 * 1000;
 
         const std::wstring QUERY_BY_PROCESS = L"<QueryList>" \
             L"  <Query Id='0'>" \
@@ -45,7 +45,7 @@ namespace
         {
             wchar_t buff[1000];
             memset(buff, 0, sizeof(buff));
-            _snwprintf_s(buff, sizeof(buff), QUERY_BY_PROCESS.c_str(), PERIOD, processName.c_str());
+            _snwprintf_s(buff, _countof(buff), _TRUNCATE, QUERY_BY_PROCESS.c_str(), PERIOD, processName.c_str());
             return buff;
         }
 
@@ -53,7 +53,7 @@ namespace
         {
             wchar_t buff[1000];
             memset(buff, 0, sizeof(buff));
-            _snwprintf_s(buff, sizeof(buff), QUERY_BY_CHANNEL.c_str(), channelName.c_str(), PERIOD);
+            _snwprintf_s(buff, _countof(buff), _TRUNCATE, QUERY_BY_CHANNEL.c_str(), channelName.c_str(), PERIOD);
             return buff;
         }
 

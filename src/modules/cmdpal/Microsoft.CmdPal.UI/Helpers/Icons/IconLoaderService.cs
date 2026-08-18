@@ -159,6 +159,7 @@ internal sealed partial class IconLoaderService : IIconLoaderService
 
         if (!string.IsNullOrEmpty(iconString))
         {
+            iconString = TryGetPngFallbackPath(iconString) ?? iconString;
             return await _dispatcherQueue
                 .EnqueueAsync(() => GetStringIconSource(iconString, fontFamily, scaledSize), LoadingPriorityOnDispatcher)
                 .ConfigureAwait(false);
@@ -217,5 +218,16 @@ internal sealed partial class IconLoaderService : IIconLoaderService
     {
         var iconSize = (int)Math.Max(size.Width, size.Height);
         return IconPathConverter.IconSourceMUX(iconString, fontFamily, iconSize);
+    }
+
+    private static string? TryGetPngFallbackPath(string iconPath)
+    {
+        if (!iconPath.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var pngPath = string.Concat(iconPath.AsSpan(0, iconPath.Length - 4), ".png");
+        return File.Exists(pngPath) ? pngPath : null;
     }
 }

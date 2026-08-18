@@ -100,7 +100,7 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
         /// <param name="cx">The maximum thumbnail size, in pixels.</param>
         public Bitmap GetThumbnailImpl(uint cx)
         {
-            CleanupWebView2UserDataFolder();
+            EnsureWebView2UserDataFolder();
 
             if (cx == 0 || cx > MaxThumbnailSize)
             {
@@ -177,9 +177,6 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
                         }
                     };
 
-                    // WebView2.NavigateToString() limitation
-                    // See https://learn.microsoft.com/dotnet/api/microsoft.web.webview2.core.corewebview2.navigatetostring?view=webview2-dotnet-1.0.864.35#remarks
-                    // While testing the limit, it turned out it is ~1.5MB, so to be on a safe side we go for 1.5m bytes
                     SvgContentsReady.Wait();
                     if (string.IsNullOrEmpty(SvgContents) || !SvgContents.Contains("svg"))
                     {
@@ -187,17 +184,12 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
                         return;
                     }
 
-                    if (SvgContents.Length > 1_500_000)
-                    {
-                        string filename = _webView2UserDataFolder + "\\" + Guid.NewGuid().ToString() + ".html";
-                        File.WriteAllText(filename, SvgContents);
-                        _localFileURI = new Uri(filename);
-                        _browser.Source = _localFileURI;
-                    }
-                    else
-                    {
-                        _browser.NavigateToString(SvgContents);
-                    }
+                    var cacheKey = SvgPreviewCacheHelper.BuildCacheKey(SvgPreviewCacheHelper.CacheVersion, VirtualHostName, SvgContents);
+                    var cacheFolder = Path.Combine(_webView2UserDataFolder, "Cache");
+                    var cacheFilePath = SvgPreviewCacheHelper.GetOrCreateCacheFilePath(cacheFolder, cacheKey, () => SvgContents);
+
+                    _localFileURI = new Uri(cacheFilePath);
+                    _browser.Source = _localFileURI;
                 }
                 catch (Exception ex)
                 {
@@ -342,19 +334,13 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Svg
         }
 
         /// <summary>
-        /// Cleanup the previously created tmp html files from svg files bigger than 2MB.
+        /// Ensures the WebView2 user data folder exists.
         /// </summary>
-        private void CleanupWebView2UserDataFolder()
+        private void EnsureWebView2UserDataFolder()
         {
             try
             {
-                // Cleanup temp dir
-                var dir = new DirectoryInfo(_webView2UserDataFolder);
-
-                foreach (var file in dir.EnumerateFiles("*.html"))
-                {
-                    file.Delete();
-                }
+                Directory.CreateDirectory(_webView2UserDataFolder);
             }
             catch (Exception)
             {

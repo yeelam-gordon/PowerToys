@@ -5,7 +5,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Xml;
 using System.Xml.Linq;
 
 namespace Common.Utilities
@@ -48,7 +50,15 @@ namespace Common.Utilities
             // No need to throw because all the external content and script are blocked on the Web Browser Control itself.
             try
             {
-                var doc = XDocument.Parse(svgData);
+                var xmlReaderSettings = new XmlReaderSettings
+                {
+                    DtdProcessing = DtdProcessing.Prohibit,
+                    XmlResolver = null,
+                };
+
+                using var stringReader = new StringReader(svgData);
+                using var xmlReader = XmlReader.Create(stringReader, xmlReaderSettings);
+                var doc = XDocument.Load(xmlReader);
                 var elements = doc.Descendants().ToList();
                 foreach (XElement element in elements)
                 {

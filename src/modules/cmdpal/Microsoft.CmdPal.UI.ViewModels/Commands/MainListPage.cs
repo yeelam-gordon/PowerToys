@@ -76,6 +76,7 @@ public sealed partial class MainListPage : DynamicListPage,
     private InterlockedBoolean _fullRefreshRequested;
     private InterlockedBoolean _refreshRunning;
     private InterlockedBoolean _refreshRequested;
+    private InterlockedBoolean _forceSearchRefresh;
 
     private CancellationTokenSource? _cancellationTokenSource;
 
@@ -100,7 +101,7 @@ public sealed partial class MainListPage : DynamicListPage,
         _appStateService = appStateService;
         _tlcManager = topLevelCommandManager;
         _fuzzyMatcherProvider = fuzzyMatcherProvider;
-        _scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current);
+        _scoringFunction = (in query, item) => ScoreTopLevelItem(in query, item, _appStateService.State.RecentCommands, _fuzzyMatcherProvider.Current, ResolveProviderSearchWeight);
         _fallbackScoringFunction = (in _, item) => ScoreFallbackItem(item, _settingsService.Settings.FallbackRanks);
 
         _tlcManager.PropertyChanged += TlcManager_PropertyChanged;
@@ -204,8 +205,13 @@ public sealed partial class MainListPage : DynamicListPage,
         _refreshThrottledDebouncedAction.Invoke(interval);
     }
 
-    private void ReapplySearchInBackground()
+    private void ReapplySearchInBackground(bool forceRefresh = false)
     {
+        if (forceRefresh)
+        {
+            _forceSearchRefresh.Set();
+        }
+
         _refreshRequested.Set();
         if (!_refreshRunning.Set())
         {
@@ -222,9 +228,10 @@ public sealed partial class MainListPage : DynamicListPage,
             do
             {
                 _refreshRequested.Clear();
+                var forceRefresh = _forceSearchRefresh.Clear();
                 lock (_tlcManager.TopLevelCommands)
                 {
-                    if (_filteredItemsIncludesApps == _includeApps)
+                    if (!forceRefresh && _filteredItemsIncludesApps == _includeApps)
                     {
                         break;
                     }
@@ -640,7 +647,8 @@ public sealed partial class MainListPage : DynamicListPage,
         in FuzzyQuery query,
         IListItem topLevelOrAppItem,
         IRecentCommandsManager history,
-        IPrecomputedFuzzyMatcher precomputedFuzzyMatcher)
+        IPrecomputedFuzzyMatcher precomputedFuzzyMatcher,
+        Func<IListItem, ProviderSearchWeight>? providerWeightLookup = null)
     {
         var title = topLevelOrAppItem.Title;
         if (string.IsNullOrWhiteSpace(title))
@@ -678,37 +686,48 @@ public sealed partial class MainListPage : DynamicListPage,
             ? (precomputedItem.GetTitleTarget(precomputedFuzzyMatcher), precomputedItem.GetSubtitleTarget(precomputedFuzzyMatcher))
             : (precomputedFuzzyMatcher.PrecomputeTarget(title), precomputedFuzzyMatcher.PrecomputeTarget(topLevelOrAppItem.Subtitle));
 
-        // Score components
+        // Score components. Keep the raw matcher scores so "did this signal match at
+        // all" is decided before the historical subtitle penalty (which can push a real
+        // subtitle match below zero).
         var nameScore = precomputedFuzzyMatcher.Score(query, titleTarget);
-        var descriptionScore = (precomputedFuzzyMatcher.Score(query, subtitleTarget) - 4) / 2.0;
-        var extensionScore = extensionDisplayNameTarget is { } extTarget ? precomputedFuzzyMatcher.Score(query, extTarget) / 1.5 : 0;
+        var rawSubtitleScore = precomputedFuzzyMatcher.Score(query, subtitleTarget);
+        var rawExtensionScore = extensionDisplayNameTarget is { } extTarget ? precomputedFuzzyMatcher.Score(query, extTarget) : 0;
 
-        // Take best match from title/description/fallback, then add extension score
-        // Extension adds to max so items matching both title AND extension bubble up
-        var baseScore = Math.Max(Math.Max(nameScore, descriptionScore), isFallback ? 1 : 0);
-        var matchScore = baseScore + extensionScore;
+        var descriptionScore = (rawSubtitleScore - 4) / 2.0;
+        var extensionScore = rawExtensionScore / 1.5;
 
-        // Apply a penalty to fallback items so they rank below direct matches.
-        // Fallbacks that dynamically match queries (like RDP connections) should
-        // appear after apps and direct command matches.
-        if (isFallback && matchScore > 1)
+        // Lexical quality preserves the previous relative weighting of the signals: best
+        // of title/description (plus the fallback floor), then a smaller extension-name
+        // contribution added on top so items matching both title AND extension bubble up.
+        var lexicalQuality = Math.Max(Math.Max(nameScore, descriptionScore), isFallback ? 1 : 0) + extensionScore;
+
+        var matchedLexically = nameScore > 0 || rawSubtitleScore > 0 || rawExtensionScore > 0;
+
+        // The hard tier decides ordering; recent/frequent usage and the alias-substring nudge only
+        // reorder items that already share a tier. ClassifyTier returns None precisely when
+        // nothing matched (no lexical, alias, or fallback signal), so this single gate also
+        // filters non-matches - no separate pre-check is needed.
+        var tier = MainListRanker.ClassifyTier(query.Original, title, isFallback, isAliasMatch, isAliasSubstringMatch, matchedLexically);
+        if (tier == RankTier.None)
         {
-            // Reduce fallback scores by 50% to prioritize direct matches
-            matchScore = matchScore * 0.5;
+            return 0;
         }
 
-        // Alias matching: exact match is overwhelming priority, substring match adds a small boost
-        var aliasBoost = isAliasMatch ? 9001 : (isAliasSubstringMatch ? 1 : 0);
-        var totalMatch = matchScore + aliasBoost;
+        var historyWeight = history.GetCommandHistoryWeight(id);
+        var aliasSubstringBonus = isAliasSubstringMatch && !isAliasMatch ? MainListRanker.AliasSubstringBonus : 0.0;
 
-        // Apply scaling and history boost only if we matched something real
-        var finalScore = totalMatch * 10;
-        if (totalMatch > 0)
-        {
-            finalScore += history.GetCommandHistoryWeight(id);
-        }
+        // Per-provider weight is a within-tier nudge only. Resolving it here (rather than in
+        // the tier classifier) guarantees it can never promote an item across a tier boundary.
+        var providerWeight = providerWeightLookup?.Invoke(topLevelOrAppItem) ?? ProviderSearchWeight.Normal;
+        var providerBonus = MainListRanker.ProviderBonus(providerWeight);
 
-        return (int)finalScore;
+        var withinTier = MainListRanker.WithinTierScore(
+            lexicalQuality,
+            historyWeight,
+            aliasSubstringBonus,
+            providerBonus: providerBonus);
+
+        return MainListRanker.Pack(tier, withinTier);
     }
 
     private static int ScoreWhitespaceQuery(string query, string title, string subtitle, bool isFallback)
@@ -761,6 +780,25 @@ public sealed partial class MainListPage : DynamicListPage,
         }
     }
 
+    // Resolves the user-configured per-provider search weight for an item. Top-level commands
+    // carry their own provider id; installed apps all belong to the well-known "AllApps"
+    // provider, so app items are weighted by that provider's setting.
+    private ProviderSearchWeight ResolveProviderSearchWeight(IListItem topLevelOrAppItem)
+    {
+        var providerId = topLevelOrAppItem is TopLevelViewModel topLevel
+            ? topLevel.CommandProviderId
+            : AllAppsCommandProvider.WellKnownId;
+
+        if (string.IsNullOrEmpty(providerId))
+        {
+            return ProviderSearchWeight.Normal;
+        }
+
+        return _settingsService.Settings.ProviderSettings.TryGetValue(providerId, out var providerSettings)
+            ? providerSettings.SearchWeight
+            : ProviderSearchWeight.Normal;
+    }
+
     public void Receive(ClearSearchMessage message) => SearchText = string.Empty;
 
     public void Receive(UpdateFallbackItemsMessage message)
@@ -770,7 +808,15 @@ public sealed partial class MainListPage : DynamicListPage,
         RequestRefresh(fullRefresh: false);
     }
 
-    private void SettingsChangedHandler(ISettingsService sender, SettingsModel args) => HotReloadSettings(args);
+    private void SettingsChangedHandler(ISettingsService sender, SettingsModel args)
+    {
+        HotReloadSettings(args);
+
+        if (!string.IsNullOrWhiteSpace(SearchText))
+        {
+            ReapplySearchInBackground(forceRefresh: true);
+        }
+    }
 
     private void HotReloadSettings(SettingsModel settings) => ShowDetails = settings.ShowAppDetails;
 

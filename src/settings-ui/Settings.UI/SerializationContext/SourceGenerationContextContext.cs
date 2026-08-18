@@ -22,6 +22,8 @@ namespace Microsoft.PowerToys.Settings.UI.SerializationContext;
 [JsonSerializable(typeof(Dictionary<string, List<string>>))]
 [JsonSerializable(typeof(FileLocksmithSettings))]
 [JsonSerializable(typeof(FindMyMouseSettings))]
+[JsonSerializable(typeof(AltWindowCycleSettings))]
+[JsonSerializable(typeof(AltWindowCycleProperties))]
 [JsonSerializable(typeof(IList<PowerToysReleaseInfo>))]
 [JsonSerializable(typeof(KeyboardManagerSettings))]
 [JsonSerializable(typeof(LightSwitchSettings))]

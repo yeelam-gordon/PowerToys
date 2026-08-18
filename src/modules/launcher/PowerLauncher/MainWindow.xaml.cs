@@ -781,10 +781,43 @@ namespace PowerLauncher
             }
         }
 
+        private static System.Media.SystemSound GetSystemSound(string soundName)
+        {
+            return soundName switch
+            {
+                "Beep" => System.Media.SystemSounds.Beep,
+                "Asterisk" => System.Media.SystemSounds.Asterisk,
+                "Exclamation" => System.Media.SystemSounds.Exclamation,
+                "Hand" => System.Media.SystemSounds.Hand,
+                "Question" => System.Media.SystemSounds.Question,
+                _ => System.Media.SystemSounds.Beep,
+            };
+        }
+
+        private void PlayAudibleFeedback(string soundName)
+        {
+            if (!_settings.EnableAudibleFeedback)
+            {
+                return;
+            }
+
+            try
+            {
+                var sound = GetSystemSound(soundName);
+                sound?.Play();
+            }
+            catch (Exception ex)
+            {
+                Log.Exception("Failed to play audible feedback", ex, GetType());
+            }
+        }
+
         private void OnVisibilityChanged(object sender, DependencyPropertyChangedEventArgs e)
         {
             if (Visibility == Visibility.Visible)
             {
+                PlayAudibleFeedback(_settings.OpeningSound);
+
                 _deletePressed = false;
                 if (_firstDeleteTimer != null)
                 {
@@ -815,6 +848,8 @@ namespace PowerLauncher
             }
             else
             {
+                PlayAudibleFeedback(_settings.ClosingSound);
+
                 if (_firstDeleteTimer != null)
                 {
                     _firstDeleteTimer.Stop();

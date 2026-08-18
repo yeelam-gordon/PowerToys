@@ -572,4 +572,380 @@ namespace RemappingLogicTests
             Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LMENU));
         }
     };
+
+    // Tests for the "Alone" single-key remapping logic (dual-key / Karabiner to_if_alone):
+    // tapping a key alone triggers a remapped action, while using it in combination passes the
+    // original key through (e.g. Right Ctrl alone -> IME On, Right Ctrl + H -> Ctrl+H).
+    TEST_CLASS (SingleKeyAloneRemappingTests)
+    {
+    private:
+        KeyboardManagerInput::MockedInput mockedInputHandler;
+        State testState;
+
+        // Predicate that counts how many IME On events flow through SendVirtualInput. Installing it
+        // also resets the call counter to 0.
+        void CountImeOnInjections()
+        {
+            mockedInputHandler.SetSendVirtualInputTestHandler([](LowlevelKeyboardEvent* data) {
+                return data->lParam->vkCode == VK_IME_ON;
+            });
+        }
+
+        void FailSingleKeyInjections()
+        {
+            mockedInputHandler.SetSendVirtualInputShouldFail([](const std::vector<INPUT>& inputs) {
+                for (const auto& input : inputs)
+                {
+                    if (input.ki.dwExtraInfo == KeyboardManagerConstants::KEYBOARDMANAGER_SINGLEKEY_FLAG)
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        }
+
+    public:
+        TEST_METHOD_INITIALIZE(InitializeTestEnv)
+        {
+            TestHelpers::ResetTestEnv(mockedInputHandler, testState);
+
+            // Bind the alone-remap handler under test as the hook procedure.
+            std::function<intptr_t(LowlevelKeyboardEvent*)> currentHookProc = std::bind(&KeyboardEventHandlers::HandleSingleKeyAloneRemapEvent, std::ref(mockedInputHandler), std::placeholders::_1, std::ref(testState));
+            mockedInputHandler.SetHookProc(currentHookProc);
+        }
+
+        // On key-down of an alone-mapped key nothing is injected yet (lazy): we must first see whether
+        // the key is tapped alone or used in combination. The original key-down is suppressed meanwhile.
+        TEST_METHOD (AloneRemap_ShouldNotInjectOnKeyDown_AndSuppressOriginal)
+        {
+            // Right Ctrl alone -> IME On
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+            CountImeOnInjections();
+
+            std::vector<INPUT> rightCtrlDown{
+                { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } },
+            };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            // Nothing injected yet: neither the original Right Ctrl nor the alone action.
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_IME_ON));
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        // Tapping the alone-mapped key alone (down then up, no other key in between) fires the alone
+        // action on release: the target is injected as a tap (down + up). The original key never leaks.
+        TEST_METHOD (AloneRemap_ShouldInjectAloneAction_OnTapWithoutOtherKey)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+            CountImeOnInjections();
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            // Still nothing on the way down.
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            // On release the alone action fires as a tap: IME On down + up = 2 injected events.
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+            // The original Right Ctrl was never sent as a real modifier.
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        // Using the alone-mapped key in combination (another key pressed while it is held) passes the
+        // ORIGINAL key through as a real modifier, and the alone action never fires.
+        TEST_METHOD (AloneRemap_ShouldPassOriginalKeyThrough_InCombination)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+            CountImeOnInjections();
+
+            // Right Ctrl down (held, tap candidate) — not injected yet.
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            // H pressed while Right Ctrl held -> combination: Right Ctrl is now injected as a real
+            // modifier and H passes through.
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            mockedInputHandler.SendVirtualInput(hDown);
+
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(0x48));
+            // The alone action must NOT have fired.
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+
+            // Releasing Right Ctrl releases the real modifier; still no alone action.
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        // A disabled alone target ("do nothing when tapped alone") injects nothing on tap, yet the
+        // source key is still fully suppressed (it never leaks as its original key).
+        TEST_METHOD (AloneRemap_DisabledAloneTarget_ShouldInjectNothing_OnTap)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)CommonSharedConstants::VK_DISABLED);
+
+            // Count every event that reaches SendVirtualInput.
+            mockedInputHandler.SetSendVirtualInputTestHandler([](LowlevelKeyboardEvent*) { return true; });
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            // Only the two driving events flowed through; the handler injected nothing extra.
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        // Runtime state must reset cleanly between presses: after using the key in a combination, a
+        // later solo tap still fires the alone action.
+        TEST_METHOD (AloneRemap_ShouldTapAgain_AfterPreviousCombinationCycle)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+
+            // Cycle 1: combination (Right Ctrl + H) — resolves without firing the alone action.
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(hDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            // Start counting IME On injections for cycle 2.
+            CountImeOnInjections();
+
+            // Cycle 2: solo tap — the alone action fires again (down + up = 2 injected events).
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        // A click (or scroll) while the alone-mapped key is held must promote it to a real modifier
+        // just like a keyboard key would, so combinations like Ctrl+Click / Ctrl+Wheel work. This is
+        // the mouse-hook entry point (PromotePendingAloneKeysToCombination); the alone action must NOT
+        // fire and the original key must pass through as a real modifier.
+        TEST_METHOD (AloneRemap_MousePromotion_ShouldPassOriginalKeyThrough_OnClick)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+            CountImeOnInjections();
+
+            // Right Ctrl down (held, tap candidate) — nothing injected yet.
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            // A mouse button-down/scroll arrives while Right Ctrl is held: the mouse hook promotes the
+            // held key to a real modifier (Right Ctrl is now injected as a real Ctrl).
+            KeyboardEventHandlers::PromotePendingAloneKeysToCombination(mockedInputHandler, testState);
+
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            // The alone action must NOT have fired.
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+
+            // Releasing Right Ctrl releases the real modifier; still no alone action.
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        // A click with NO alone key held is a no-op for promotion (nothing pending), and a later solo
+        // tap still fires the alone action — i.e. a stray click never disturbs the tap machinery.
+        TEST_METHOD (AloneRemap_MousePromotion_NoHeldKey_IsNoOp_AndTapStillFires)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            // Click while nothing is held: promotion has no pending keys, so it injects nothing.
+            KeyboardEventHandlers::PromotePendingAloneKeysToCombination(mockedInputHandler, testState);
+
+            CountImeOnInjections();
+
+            // Solo tap afterwards still fires the alone action (down + up = 2 injected events).
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        // An "alone" remap whose target is a SHORTCUT (not a single key) must inject the whole
+        // shortcut as a tap (modifiers + action key, pressed then released), not silently do nothing.
+        TEST_METHOD (AloneRemap_ShortcutTarget_ShouldInjectFullShortcut_OnTap)
+        {
+            // Right Ctrl alone -> Ctrl+A
+            Shortcut aloneTarget;
+            aloneTarget.SetKey(VK_CONTROL);
+            aloneTarget.SetKey(0x41);
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, aloneTarget);
+
+            // Count injections of the shortcut's action key (A).
+            mockedInputHandler.SetSendVirtualInputTestHandler([](LowlevelKeyboardEvent* data) {
+                return data->lParam->vkCode == 0x41;
+            });
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            // Lazy: nothing injected on the way down.
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            // On tap the shortcut's action key is injected as down + up = 2 events (previously the
+            // shortcut target was ignored and nothing was injected).
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+            // The original Right Ctrl was never sent as its real self.
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        // Two alone-mapped keys: pressing the second while the first is still held is a combination,
+        // not a solo tap. The second key must be promoted to a real key and must NOT fire its alone
+        // action on release.
+        TEST_METHOD (AloneRemap_SecondAloneKeyWhileFirstHeld_IsCombination_NotTap)
+        {
+            testState.AddSingleKeyAloneRemap(VK_LCONTROL, (DWORD)VK_IME_OFF);
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            // Count either alone (IME) action firing.
+            mockedInputHandler.SetSendVirtualInputTestHandler([](LowlevelKeyboardEvent* data) {
+                return data->lParam->vkCode == VK_IME_ON || data->lParam->vkCode == VK_IME_OFF;
+            });
+
+            // Left Ctrl down (held, tap candidate) — nothing injected yet.
+            std::vector<INPUT> leftCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlDown);
+
+            // Right Ctrl down while Left Ctrl is held: both are a combination now. Left Ctrl is promoted
+            // to a real modifier and Right Ctrl is injected as a real key too; no alone action fires.
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            // Releasing Right Ctrl releases the real key; it must NOT fire IME On (it was not tapped alone).
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            // Release Left Ctrl as well.
+            std::vector<INPUT> leftCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlUp);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
+
+            // No alone (IME) action fired at any point.
+            Assert::AreEqual(0, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        TEST_METHOD (AloneRemap_PromotionInjectionFailure_ShouldClearPendingAndPassThroughLaterKeyUp)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            mockedInputHandler.SendVirtualInput(hDown);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(0x48));
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        TEST_METHOD (AloneRemap_PressedInCombinationInjectionFailure_ShouldPassCurrentKeyDownThrough)
+        {
+            testState.AddSingleKeyAloneRemap(VK_LCONTROL, (DWORD)VK_IME_OFF);
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> leftCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_LCONTROL } } };
+            mockedInputHandler.SendVirtualInput(leftCtrlDown);
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_LCONTROL));
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+        }
+
+        TEST_METHOD (AloneRemap_AloneActionInjectionFailure_ShouldPassKeyUpThroughAndResetState)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            mockedInputHandler.SetSendVirtualInputShouldFail(nullptr);
+            CountImeOnInjections();
+
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        TEST_METHOD (AloneRemap_CombinationKeyUpInjectionFailure_ShouldPassPhysicalKeyUpThrough)
+        {
+            testState.AddSingleKeyAloneRemap(VK_RCONTROL, (DWORD)VK_IME_ON);
+
+            std::vector<INPUT> rightCtrlDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+
+            std::vector<INPUT> hDown{ { .type = INPUT_KEYBOARD, .ki = { .wVk = 0x48 } } };
+            mockedInputHandler.SendVirtualInput(hDown);
+            Assert::AreEqual(true, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            FailSingleKeyInjections();
+
+            std::vector<INPUT> rightCtrlUp{ { .type = INPUT_KEYBOARD, .ki = { .wVk = VK_RCONTROL, .dwFlags = KEYEVENTF_KEYUP } } };
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(false, mockedInputHandler.GetVirtualKeyState(VK_RCONTROL));
+
+            mockedInputHandler.SetSendVirtualInputShouldFail(nullptr);
+            CountImeOnInjections();
+
+            mockedInputHandler.SendVirtualInput(rightCtrlDown);
+            mockedInputHandler.SendVirtualInput(rightCtrlUp);
+
+            Assert::AreEqual(2, mockedInputHandler.GetSendVirtualInputCallCount());
+        }
+
+        TEST_METHOD (AloneRemap_ClearAllState_ShouldForgetPendingAndCombinationKeys)
+        {
+            testState.SetAlonePending(VK_RCONTROL);
+            testState.SetAloneCombination(VK_LCONTROL);
+
+            testState.ClearAllAloneKeyState();
+
+            Assert::AreEqual(false, testState.HasPendingAloneKeys());
+            Assert::AreEqual(false, testState.IsAloneCombination(VK_LCONTROL));
+            Assert::AreEqual(false, testState.HasOtherHeldAloneKey(0));
+        }
+    };
 }

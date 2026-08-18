@@ -58,7 +58,53 @@ extern "C"
             allMappings.push_back(kv);
         }
 
-        if (index < 0 || index >= allMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
+        {
+            return false;
+        }
+
+        const auto& kv = allMappings[index];
+        mapping->originalKey = static_cast<int>(kv.first);
+
+        // Remap to single key
+        if (kv.second.index() == 0)
+        {
+            mapping->targetKey = AllocateAndCopyString(std::to_wstring(std::get<DWORD>(kv.second)));
+            mapping->isShortcut = false;
+        }
+        // Remap to shortcut
+        else if (kv.second.index() == 1)
+        {
+            mapping->targetKey = AllocateAndCopyString(std::get<Shortcut>(kv.second).ToHstringVK().c_str());
+            mapping->isShortcut = true;
+        }
+        else
+        {
+            mapping->targetKey = AllocateAndCopyString(L"");
+            mapping->isShortcut = false;
+        }
+
+        return true;
+    }
+
+    int GetSingleKeyAloneRemapCount(void* config)
+    {
+        auto mapping = static_cast<MappingConfiguration*>(config);
+        return static_cast<int>(mapping->aloneSingleKeyReMap.size());
+    }
+
+    bool GetSingleKeyAloneRemap(void* config, int index, SingleKeyMapping* mapping)
+    {
+        auto mappingConfig = static_cast<MappingConfiguration*>(config);
+
+        std::vector<std::pair<DWORD, KeyShortcutTextUnion>> allMappings;
+
+        for (const auto& kv : mappingConfig->aloneSingleKeyReMap)
+        {
+            allMappings.push_back(kv);
+        }
+
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
         {
             return false;
         }
@@ -97,7 +143,7 @@ extern "C"
     {
         auto mappingConfig = static_cast<MappingConfiguration*>(config);
 
-        if (index < 0 || index >= mappingConfig->singleKeyToTextReMap.size())
+        if (index < 0 || static_cast<size_t>(index) >= mappingConfig->singleKeyToTextReMap.size())
         {
             return false;
         }
@@ -316,7 +362,7 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
             }
         }
 
-        if (index < 0 || index >= filteredMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= filteredMappings.size())
         {
             return false;
         }
@@ -418,7 +464,7 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
             }
         }
 
-        if (index < 0 || index >= allMappings.size())
+        if (index < 0 || static_cast<size_t>(index) >= allMappings.size())
         {
             return false;
         }
@@ -521,6 +567,26 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
         Shortcut targetShortcut(targetKeys);
 
         return mappingConfig->AddSingleKeyRemap(static_cast<DWORD>(originalKey), targetShortcut);
+    }
+
+    bool AddSingleKeyAloneRemap(void* config, int originalKey, int targetKey)
+    {
+        auto mappingConfig = static_cast<MappingConfiguration*>(config);
+        return mappingConfig->AddSingleKeyAloneRemap(static_cast<DWORD>(originalKey), static_cast<DWORD>(targetKey));
+    }
+
+    bool AddSingleKeyAloneToShortcutRemap(void* config, int originalKey, const wchar_t* targetKeys)
+    {
+        auto mappingConfig = static_cast<MappingConfiguration*>(config);
+
+        if (!targetKeys)
+        {
+            return false;
+        }
+
+        Shortcut targetShortcut(targetKeys);
+
+        return mappingConfig->AddSingleKeyAloneRemap(static_cast<DWORD>(originalKey), targetShortcut);
     }
 
     bool AddShortcutRemap(void* config,
@@ -660,6 +726,20 @@ bool GetShortcutRemapByType(void* config, int operationType, int index, Shortcut
         if (it != mappingConfig->singleKeyReMap.end())
         {
             mappingConfig->singleKeyReMap.erase(it);
+            return true;
+        }
+
+        return false;
+    }
+
+    bool DeleteSingleKeyAloneRemap(void* config, int originalKey)
+    {
+        auto mappingConfig = static_cast<MappingConfiguration*>(config);
+
+        auto it = mappingConfig->aloneSingleKeyReMap.find(static_cast<DWORD>(originalKey));
+        if (it != mappingConfig->aloneSingleKeyReMap.end())
+        {
+            mappingConfig->aloneSingleKeyReMap.erase(it);
             return true;
         }
 

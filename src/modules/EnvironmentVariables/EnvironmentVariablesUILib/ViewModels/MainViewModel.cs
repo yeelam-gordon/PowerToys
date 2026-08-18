@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -73,11 +72,24 @@ namespace EnvironmentVariablesUILib.ViewModels
                 DefaultVariables.Variables.Add(variable);
                 if (AppliedProfile != null)
                 {
-                    if (AppliedProfile.Variables.Where(
-                        x => (x.Name.Equals(variable.Name, StringComparison.OrdinalIgnoreCase) && x.Values.Equals(variable.Values, StringComparison.OrdinalIgnoreCase))
-                            || variable.Name.Equals(EnvironmentVariablesHelper.GetBackupVariableName(x, AppliedProfile.Name), StringComparison.OrdinalIgnoreCase)).Any())
+                    // This check only drives the "applied from profile" UI state for an existing
+                    // user variable. It intentionally uses a looser value comparison than
+                    // EntriesEqual: if the current value differs from the profile only by casing,
+                    // we still want to treat it as profile-applied for display purposes.
+                    bool isDirectlyApplied = AppliedProfile.Variables.Any(x =>
+                        EnvironmentVariableComparisonHelper.NamesEqual(x.Name, variable.Name)
+                        && string.Equals(x.Values, variable.Values, StringComparison.OrdinalIgnoreCase));
+
+                    // When a profile overrides an existing user variable, the original user entry
+                    // is renamed to "<name>_PowerToys_<profileName>" and kept as a backup. Detect
+                    // those renamed backup entries so they can also be marked as profile-applied.
+                    bool isDisplacedToBackup = AppliedProfile.Variables.Any(x =>
+                        EnvironmentVariableComparisonHelper.NamesEqual(
+                            variable.Name,
+                            EnvironmentVariablesHelper.GetBackupVariableName(x, AppliedProfile.Name)));
+
+                    if (isDirectlyApplied || isDisplacedToBackup)
                     {
-                        // If it's a user variable that's also in the profile or is a backup variable, mark it as applied from profile.
                         variable.IsAppliedFromProfile = true;
                     }
                 }
@@ -101,6 +113,7 @@ namespace EnvironmentVariablesUILib.ViewModels
             try
             {
                 var profiles = _environmentVariablesService.ReadProfiles();
+                bool shouldSaveProfiles = false;
                 foreach (var profile in profiles)
                 {
                     profile.PropertyChanged += Profile_PropertyChanged;
@@ -115,7 +128,17 @@ namespace EnvironmentVariablesUILib.ViewModels
                 if (appliedProfiles.Count > 0)
                 {
                     var appliedProfile = appliedProfiles.First();
-                    if (appliedProfile.IsCorrectlyApplied())
+                    if (!appliedProfile.Valid)
+                    {
+                        DisableLoadedProfile(appliedProfile, EnvironmentState.ProfileNameInvalid);
+                        shouldSaveProfiles = true;
+                    }
+                    else if (!appliedProfile.IsApplicable())
+                    {
+                        DisableLoadedProfile(appliedProfile, EnvironmentState.ProfileNotApplicable);
+                        shouldSaveProfiles = true;
+                    }
+                    else if (appliedProfile.IsCorrectlyApplied())
                     {
                         AppliedProfile = appliedProfile;
                         EnvironmentState = EnvironmentState.Unchanged;
@@ -128,6 +151,10 @@ namespace EnvironmentVariablesUILib.ViewModels
                 }
 
                 Profiles = new ObservableCollection<ProfileVariablesSet>(profiles);
+                if (shouldSaveProfiles)
+                {
+                    _ = Task.Run(SaveAsync);
+                }
             }
             catch (Exception ex)
             {
@@ -136,6 +163,23 @@ namespace EnvironmentVariablesUILib.ViewModels
 
                 Profiles = new ObservableCollection<ProfileVariablesSet>();
             }
+        }
+
+        private void DisableLoadedProfile(ProfileVariablesSet profile, EnvironmentState environmentState)
+        {
+            EnvironmentState = environmentState;
+            try
+            {
+                profile.UnApply().GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                LoggerInstance.Logger.LogError("Failed to unapply disabled profile during profile load.", ex);
+            }
+
+            profile.PropertyChanged -= Profile_PropertyChanged;
+            profile.IsEnabled = false;
+            profile.PropertyChanged += Profile_PropertyChanged;
         }
 
         private void PopulateAppliedVariables()
@@ -154,9 +198,15 @@ namespace EnvironmentVariablesUILib.ViewModels
                                  .ToList();
 
             // Handle PATH variable - add USER value to the end of the SYSTEM value
-            var profilePath = variables.Where(x => x.Name.Equals("PATH", StringComparison.OrdinalIgnoreCase) && x.ParentType == VariablesSetType.Profile).FirstOrDefault();
-            var userPath = variables.Where(x => x.Name.Equals("PATH", StringComparison.OrdinalIgnoreCase) && x.ParentType == VariablesSetType.User).FirstOrDefault();
-            var systemPath = variables.Where(x => x.Name.Equals("PATH", StringComparison.OrdinalIgnoreCase) && x.ParentType == VariablesSetType.System).FirstOrDefault();
+            var profilePath = variables.FirstOrDefault(x =>
+                EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH") &&
+                x.ParentType == VariablesSetType.Profile);
+            var userPath = variables.FirstOrDefault(x =>
+                EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH") &&
+                x.ParentType == VariablesSetType.User);
+            var systemPath = variables.FirstOrDefault(x =>
+                EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH") &&
+                x.ParentType == VariablesSetType.System);
 
             if (systemPath != null)
             {
@@ -178,21 +228,37 @@ namespace EnvironmentVariablesUILib.ViewModels
                 variables.Remove(systemPath);
             }
 
-            variables = variables.GroupBy(x => x.Name).Select(y => y.First()).ToList();
-
-            // Find duplicates
-            var duplicates = variables.Where(x => !x.Name.Equals("PATH", StringComparison.OrdinalIgnoreCase)).GroupBy(x => x.Name.ToLower(CultureInfo.InvariantCulture)).Where(g => g.Count() > 1);
+            // NB: we treat names case-insensitively when authoring and flagging conflicts, but only
+            // collapse loaded entries into one conflict row when their casing differs.
+            var duplicates = EnvironmentVariableComparisonHelper.GetDuplicateNameGroups(
+                variables.Where(x => !EnvironmentVariableComparisonHelper.NamesEqual(x.Name, "PATH")));
             foreach (var duplicate in duplicates)
             {
-                var userVar = duplicate.ElementAt(0);
-                var systemVar = duplicate.ElementAt(1);
+                var duplicateVariables = duplicate.ToList();
+                var insertIndex = duplicateVariables
+                    .Select(variable => variables.IndexOf(variable))
+                    .Where(x => x >= 0)
+                    .DefaultIfEmpty(variables.Count)
+                    .Min();
 
-                var clone = userVar.Clone();
+                var clone = duplicateVariables
+                    .OrderBy(x => x.ParentType)
+                    .ThenBy(x => x.Name, StringComparer.Ordinal)
+                    .First()
+                    .Clone();
                 clone.ParentType = VariablesSetType.Duplicate;
-                clone.Name = systemVar.Name;
-                variables.Insert(variables.IndexOf(userVar), clone);
-                variables.Remove(userVar);
-                variables.Remove(systemVar);
+                clone.Name = duplicateVariables
+                    .Select(x => x.Name)
+                    .OrderBy(x => x, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(x => x, StringComparer.Ordinal)
+                    .First();
+
+                foreach (var variable in duplicateVariables)
+                {
+                    variables.Remove(variable);
+                }
+
+                variables.Insert(Math.Min(insertIndex, variables.Count), clone);
             }
 
             variables = variables.OrderBy(x => x.ParentType).ToList();
@@ -201,6 +267,11 @@ namespace EnvironmentVariablesUILib.ViewModels
 
         internal void AddDefaultVariable(Variable variable, VariablesSetType type)
         {
+            if (!EnvironmentVariablesHelper.SetVariable(variable))
+            {
+                return;
+            }
+
             if (type == VariablesSetType.User)
             {
                 UserDefaultSet.Variables.Add(variable);
@@ -212,7 +283,6 @@ namespace EnvironmentVariablesUILib.ViewModels
                 SystemDefaultSet.Variables = new ObservableCollection<Variable>(SystemDefaultSet.Variables.OrderBy(x => x.Name).ToList());
             }
 
-            EnvironmentVariablesHelper.SetVariable(variable);
             PopulateAppliedVariables();
         }
 
@@ -313,6 +383,17 @@ namespace EnvironmentVariablesUILib.ViewModels
         {
             if (profile != null)
             {
+                if (!profile.Valid)
+                {
+                    profile.PropertyChanged -= Profile_PropertyChanged;
+                    profile.IsEnabled = false;
+                    profile.PropertyChanged += Profile_PropertyChanged;
+
+                    EnvironmentState = EnvironmentState.ProfileNameInvalid;
+
+                    return;
+                }
+
                 if (!profile.IsApplicable())
                 {
                     profile.PropertyChanged -= Profile_PropertyChanged;

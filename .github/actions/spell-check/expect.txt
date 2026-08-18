@@ -1366,6 +1366,7 @@ pdo
 pdto
 pdtobj
 pdw
+PCUITEMID
 Peb
 Pels
 PELSHEIGHT
@@ -1389,6 +1390,7 @@ phwnd
 pici
 pidl
 PIDLIST
+PITEMID
 pii
 pinfo
 pinvoke

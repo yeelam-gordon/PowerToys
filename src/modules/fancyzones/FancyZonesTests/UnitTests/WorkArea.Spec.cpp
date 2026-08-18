@@ -10,8 +10,6 @@
 #include <FancyZonesLib/LayoutAssignedWindows.h>
 #include "Util.h"
 
-#include <common/utils/process_path.h>
-
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace FancyZonesUnitTests
@@ -293,15 +291,8 @@ namespace FancyZonesUnitTests
             const ZoneIndexSet expected = { 1, 2 };
             Assert::IsTrue(workArea->Snap(window, expected));
 
-            const auto processPath = get_process_path(window);
-            const auto history = AppZoneHistory::instance().GetZoneHistory(processPath, m_workAreaId);
-
-            Assert::IsTrue(history.has_value());
-            Assert::AreEqual(expected.size(), history->zoneIndexSet.size());
-            for (int i = 0; i < expected.size(); i++)
-            {
-                Assert::AreEqual(expected.at(i), history->zoneIndexSet.at(i));
-            }
+            const auto history = AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, workArea->GetLayoutId());
+            Assert::IsTrue(expected == history);
         }
 
         TEST_METHOD (SnapLayoutAssignedWindowsTest)
@@ -332,10 +323,8 @@ namespace FancyZonesUnitTests
             const ZoneIndexSet zones = { 10 };
             Assert::IsFalse(workArea->Snap(window, zones));
 
-            const auto processPath = get_process_path(window);
-            const auto history = AppZoneHistory::instance().GetZoneHistory(processPath, m_workAreaId);
-
-            Assert::IsFalse(history.has_value());
+            const auto history = AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, workArea->GetLayoutId());
+            Assert::IsTrue(history.empty());
         }
 
         TEST_METHOD (UnsnapPropertyTest)
@@ -358,10 +347,8 @@ namespace FancyZonesUnitTests
             Assert::IsTrue(workArea->Snap(window, { 1, 2 }));
             Assert::IsTrue(workArea->Unsnap(window));
 
-            const auto processPath = get_process_path(window);
-            const auto history = AppZoneHistory::instance().GetZoneHistory(processPath, m_workAreaId);
-
-            Assert::IsFalse(history.has_value());
+            const auto history = AppZoneHistory::instance().GetAppLastZoneIndexSet(window, m_workAreaId, workArea->GetLayoutId());
+            Assert::IsTrue(history.empty());
         }
 
         TEST_METHOD (UnsnapLayoutAssignedWindowsTest)

@@ -72,6 +72,8 @@ Noto
 Roboto
 Segoe
 
+# Interfaces
+ISQLitePreviewer
 
 # IN URLs
 

@@ -1194,6 +1194,7 @@ NEWPLUSCONTEXTMENU
 NEWPLUSSHELLEXTENSIONWIN
 newrow
 nicksnettravels
+niels
 NIF
 nightlight
 NLSTEXT

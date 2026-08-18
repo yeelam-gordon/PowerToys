@@ -1,23 +1,26 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using ManagedCommon;
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Telemetry;
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
+using PowerToys.Interop;
 using ShortcutGuide.Models;
-using ShortcutGuide.ShortcutGuideXAML;
 using ShortcutGuide.Telemetry;
 
 namespace ShortcutGuide
 {
-    public partial class App
+    public partial class App : IDisposable
     {
         internal static Dictionary<string, List<ShortcutEntry>> PinnedShortcuts { get; private set; } = new Dictionary<string, List<ShortcutEntry>>();
 
@@ -25,11 +28,24 @@ namespace ShortcutGuide
 
         internal static ShortcutGuideProperties ShortcutGuideProperties { get; private set; } = null!;
 
-        internal static MainWindow MainWindow { get; private set; } = null!;
+        /// <summary>
+        /// The single transparent host that replaces the previous MainWindow +
+        /// TaskbarWindow pair. The two surfaces are now XAML pseudo-windows
+        /// inside this one window.
+        /// </summary>
+        internal static OverlayWindow OverlayWindow { get; private set; } = null!;
 
-        internal static TaskbarWindow TaskBarWindow { get; private set; } = null!;
+        private static readonly nuint _ignoreKeyEventFlag = 0x5557;
+
+        private HotkeySettingsControlHook _winKeyUpKeyboardHook = null!;
 
         internal static string CurrentAppName { get; set; } = string.Empty;
+
+        private EventWaitHandle? _launchedEvent;
+
+        private Thread? _listenForLaunchedEventThread;
+
+        private static int _isHandlingTrigger;
 
         public App()
         {
@@ -49,16 +65,67 @@ namespace ShortcutGuide
             try
             {
                 this.LoadData();
-                MainWindow = new MainWindow();
-                TaskBarWindow = new TaskbarWindow();
-                MainWindow.Activate();
-                MainWindow.Closed += (_, _) =>
+                OverlayWindow = new OverlayWindow();
+                OverlayWindow.Activate();
+                OverlayWindow.AppWindow.Hide();
+                OverlayWindow.SessionCompleted += (_, _) =>
                 {
                     PowerToysTelemetry.Log.WriteEvent(new ShortcutGuideSessionEvent(
-                        MainWindow.SessionDurationMs,
-                        MainWindow.CloseType));
-                    TaskBarWindow.Close();
+                        OverlayWindow.SessionDurationMs,
+                        OverlayWindow.CloseType));
                 };
+
+                OverlayWindow.Closed += (_, _) =>
+                {
+                    // WinUI3's dispatcher loop does not terminate when the last
+                    // window closes; without Exit() the SG.exe process stays
+                    // alive, holds the AppInstance single-instance lock, and
+                    // blocks the next launch (the well-known "every other
+                    // long-press works" bug).
+                    Dispose();
+                    Current.Exit();
+                };
+
+                try
+                {
+                    _launchedEvent = EventWaitHandle.OpenExisting(Constants.ShortcutGuideTriggerEvent());
+                    Logger.LogInfo($"Opened Shortcut Guide trigger event '{Constants.ShortcutGuideTriggerEvent()}'.");
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError($"Failed to open existing event '{Constants.ShortcutGuideTriggerEvent()}': {ex.Message}");
+                }
+
+                _listenForLaunchedEventThread = new Thread(ListenForLaunchedEvents)
+                {
+                    IsBackground = true,
+                    Name = "ShortcutGuide-ShowEventListener",
+                };
+                _listenForLaunchedEventThread.Start();
+                _winKeyUpKeyboardHook = new HotkeySettingsControlHook(
+                (int key) =>
+                {
+                    SendSingleKeyboardInput((short)key, 0x0); // key down
+                },
+                (int key) =>
+                {
+                    if (OverlayWindow.AppWindow.IsVisible)
+                    {
+                        OverlayWindow.DispatcherQueue.TryEnqueue(() =>
+                        {
+                            OverlayWindow.CloseAnimated();
+                        });
+
+                        SendKeyboardInput(new NativeMethods.INPUT { Type = 1, Data = new() { Keyboard = new NativeMethods.KEYBDINPUT { VKey = 0xFF, DwFlags = 0x2 } } });
+                        SendSingleKeyboardInput((short)key, 0x2); // key up
+                    }
+                    else
+                    {
+                        SendSingleKeyboardInput((short)key, 0x2); // key up
+                    }
+                },
+                () => true,
+                (int key, nuint specialFlags) => (key == 0x5B || key == 0x5C) && specialFlags != _ignoreKeyEventFlag);
             }
             catch (Exception ex)
             {
@@ -66,6 +133,152 @@ namespace ShortcutGuide
                 // cleanly rather than letting WinUI surface a generic crash dialog.
                 Logger.LogError("Failed to launch Shortcut Guide.", ex);
                 Environment.Exit(1);
+            }
+        }
+
+        private static bool IsExtendedVirtualKey(short vk)
+        {
+            return vk switch
+            {
+                0xA5 => true, // VK_RMENU (Right Alt - AltGr)
+                0xA3 => true, // VK_RCONTROL
+                0x2D => true, // VK_INSERT
+                0x2E => true, // VK_DELETE
+                0x23 => true, // VK_END
+                0x24 => true, // VK_HOME
+                0x21 => true, // VK_PRIOR (Page Up)
+                0x22 => true, // VK_NEXT (Page Down)
+                0x90 => true, // VK_NUMLOCK
+                _ => false,
+            };
+        }
+
+        private static void SendSingleKeyboardInput(short keyCode, uint keyStatus)
+        {
+            if (IsExtendedVirtualKey(keyCode))
+            {
+                keyStatus |= 0x1; // KEYEVENTF_EXTENDEDKEY
+            }
+
+            NativeMethods.INPUT input = new()
+            {
+                Type = 0x1, // INPUT_KEYBOARD
+                Data = new NativeMethods.MouseKeyboardHardwareInput
+                {
+                    Keyboard = new NativeMethods.KEYBDINPUT
+                    {
+                        VKey = (ushort)keyCode,
+                        DwFlags = keyStatus,
+                        DwExtraInfo = (nint)_ignoreKeyEventFlag,
+                    },
+                },
+            };
+
+            NativeMethods.INPUT[] inputs = [input];
+
+            SendKeyboardInputs(inputs);
+        }
+
+        private static void SendKeyboardInput(NativeMethods.INPUT input)
+        {
+            SendKeyboardInputs([input]);
+        }
+
+        private static void SendKeyboardInputs(NativeMethods.INPUT[] inputs)
+        {
+            uint sent = NativeMethods.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<NativeMethods.INPUT>());
+            if (sent != (uint)inputs.Length)
+            {
+                Logger.LogError($"SendInput sent {sent} of {inputs.Length} keyboard inputs. LastError={Marshal.GetLastWin32Error()}");
+            }
+        }
+
+        private void ListenForLaunchedEvents()
+        {
+            if (_launchedEvent == null)
+            {
+                return;
+            }
+
+            var handles = new WaitHandle[] { _launchedEvent };
+            try
+            {
+                Logger.LogInfo("Shortcut Guide show-event listener started.");
+                while (true)
+                {
+                    var index = WaitHandle.WaitAny(handles);
+                    if (index == 0)
+                    {
+                        OverlayWindow.DispatcherQueue.TryEnqueue(() => _ = HandleTriggerAsync());
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (ThreadInterruptedException)
+            {
+            }
+        }
+
+        private static async Task HandleTriggerAsync()
+        {
+            if (Interlocked.Exchange(ref _isHandlingTrigger, 1) == 1)
+            {
+                return;
+            }
+
+            try
+            {
+                // Win-key long-press shows only the taskbar pane.
+                // Use the Win32 key state directly: WPF's
+                // System.Windows.Input.Keyboard is not initialized
+                // on the WinUI UI thread.
+                const int VK_LWIN = 0x5B;
+                const int VK_RWIN = 0x5C;
+                bool winKeyDown = (NativeMethods.GetAsyncKeyState(VK_LWIN) & 0x8000) != 0 ||
+                    (NativeMethods.GetAsyncKeyState(VK_RWIN) & 0x8000) != 0;
+
+                if (winKeyDown)
+                {
+                    if (OverlayWindow.AppWindow.IsVisible)
+                    {
+                        return;
+                    }
+
+                    OverlayWindow.MainPaneControl.Visibility = Visibility.Collapsed;
+                    OverlayWindow.ShowOverlay();
+                    OverlayWindow.UpdateTaskbarPaneLayout();
+                    OverlayWindow.TaskbarPaneControl.Visibility = Visibility.Visible;
+                    return;
+                }
+
+                if (OverlayWindow.AppWindow.IsVisible)
+                {
+                    OverlayWindow.CloseAnimated();
+                    OverlayWindow.MainPaneControl.Hide();
+                }
+                else
+                {
+                    Program.ForegroundWindowHandle = NativeMethods.GetForegroundWindow();
+                    OverlayWindow.MainPaneControl.Visibility = Visibility.Collapsed;
+                    OverlayWindow.ShowOverlay();
+                    await OverlayWindow.MainPaneControl.Open();
+                    OverlayWindow.UpdateTaskbarPaneLayout();
+                    OverlayWindow.MainPaneControl.Visibility = Visibility.Visible;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Failed to handle Shortcut Guide trigger event.", ex);
+            }
+            finally
+            {
+                Volatile.Write(ref _isHandlingTrigger, 0);
             }
         }
 
@@ -131,6 +344,37 @@ namespace ShortcutGuide
         {
             Logger.LogError("Unobserved Task exception in Shortcut Guide.", e.Exception);
             e.SetObserved();
+        }
+
+        public void Dispose()
+        {
+            _launchedEvent?.Dispose();
+            _launchedEvent = null;
+            _winKeyUpKeyboardHook?.Dispose();
+
+            if (_listenForLaunchedEventThread == null)
+            {
+                GC.SuppressFinalize(this);
+                return;
+            }
+
+            try
+            {
+                if (!_listenForLaunchedEventThread.Join(TimeSpan.FromMilliseconds(250)))
+                {
+                    _listenForLaunchedEventThread.Interrupt();
+                    _listenForLaunchedEventThread.Join(TimeSpan.FromMilliseconds(250));
+                }
+            }
+            catch (ThreadInterruptedException)
+            {
+            }
+            catch (ThreadStateException)
+            {
+            }
+
+            _listenForLaunchedEventThread = null;
+            GC.SuppressFinalize(this);
         }
     }
 }

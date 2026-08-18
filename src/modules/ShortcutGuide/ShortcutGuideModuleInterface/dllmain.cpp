@@ -10,7 +10,6 @@
 #include "../interface/powertoy_module_interface.h"
 #include "Generated Files/resource.h"
 #include <common/SettingsAPI/settings_objects.h>
-#include <common/utils/EventWaiter.h>
 
 BOOL APIENTRY DllMain(HMODULE /*hModule*/, DWORD /*ul_reason_for_call*/, LPVOID /*lpReserved*/)
 {
@@ -37,9 +36,10 @@ public:
         }
 
         triggerEvent = CreateEvent(nullptr, false, false, CommonSharedConstants::SHORTCUT_GUIDE_TRIGGER_EVENT);
-        triggerEventWaiter.start(CommonSharedConstants::SHORTCUT_GUIDE_TRIGGER_EVENT, [this](DWORD) {
-            OnHotkeyEx();
-        });
+        if (!triggerEvent)
+        {
+            Logger::warn(L"Failed to create {} event. {}", CommonSharedConstants::SHORTCUT_GUIDE_TRIGGER_EVENT, get_last_error_or_default(GetLastError()));
+        }
 
         InitSettings();
     }
@@ -91,6 +91,7 @@ public:
         if (!_enabled)
         {
             _enabled = true;
+            StartProcess();
         }
         else
         {
@@ -108,6 +109,8 @@ public:
             {
                 TerminateProcess(m_hProcess, 0);
             }
+
+            CloseProcessHandle();
         }
         else
         {
@@ -123,9 +126,16 @@ public:
     virtual void destroy() override
     {
         this->disable();
+        CloseProcessHandle();
         if (exitEvent)
         {
             CloseHandle(exitEvent);
+            exitEvent = nullptr;
+        }
+        if (triggerEvent)
+        {
+            CloseHandle(triggerEvent);
+            triggerEvent = nullptr;
         }
 
         delete this;
@@ -145,19 +155,25 @@ public:
             return;
         }
 
-        if (IsProcessActive())
+        if (!triggerEvent)
         {
-            TerminateProcess(m_hProcess, 0);
+            Logger::error("Shortcut Guide trigger event is not initialized.");
             return;
         }
 
-        if (m_hProcess)
+        if (!IsProcessActive())
         {
-            CloseHandle(m_hProcess);
-            m_hProcess = nullptr;
+            if (!StartProcess())
+            {
+                Logger::error("Failed to start Shortcut Guide before signaling the trigger event.");
+                return;
+            }
         }
 
-        StartProcess();
+        if (!SetEvent(triggerEvent))
+        {
+            Logger::error(L"Failed to signal Shortcut Guide trigger event. {}", get_last_error_or_default(GetLastError()));
+        }
     }
 
     virtual void send_settings_telemetry() override
@@ -168,6 +184,8 @@ public:
             Logger::error("Failed to create a process to send settings telemetry");
         }
     }
+    virtual bool keep_track_of_pressed_win_key() override { return true; }
+    virtual UINT milliseconds_win_key_must_be_pressed() override { return DEFAULT_MILLISECONDS_WIN_KEY_PRESS_TIME_FOR_TASKBAR_ICON_SHORTCUTS; }
 
 private:
     std::wstring app_name;
@@ -185,15 +203,19 @@ private:
     UINT m_millisecondsWinKeyPressTimeForGlobalWindowsShortcuts = DEFAULT_MILLISECONDS_WIN_KEY_PRESS_TIME_FOR_GLOBAL_WINDOWS_SHORTCUTS;
     UINT m_millisecondsWinKeyPressTimeForTaskbarIconShortcuts = DEFAULT_MILLISECONDS_WIN_KEY_PRESS_TIME_FOR_TASKBAR_ICON_SHORTCUTS;
 
-    HANDLE triggerEvent;
-    HANDLE exitEvent;
-    EventWaiter triggerEventWaiter;
+    HANDLE triggerEvent = nullptr;
+    HANDLE exitEvent = nullptr;
 
     bool StartProcess(std::wstring args = L"")
     {
-        if (exitEvent)
+        if (args.empty() && exitEvent)
         {
             ResetEvent(exitEvent);
+        }
+
+        if (args.empty() && triggerEvent)
+        {
+            ResetEvent(triggerEvent);
         }
 
         unsigned long powertoys_pid = GetCurrentProcessId();
@@ -223,8 +245,26 @@ private:
         }
 
         Logger::trace(L"Started SG process with pid={}", GetProcessId(sei.hProcess));
-        m_hProcess = sei.hProcess;
+        if (args.empty())
+        {
+            CloseProcessHandle();
+            m_hProcess = sei.hProcess;
+        }
+        else
+        {
+            CloseHandle(sei.hProcess);
+        }
+
         return true;
+    }
+
+    void CloseProcessHandle()
+    {
+        if (m_hProcess)
+        {
+            CloseHandle(m_hProcess);
+            m_hProcess = nullptr;
+        }
     }
 
     bool IsProcessActive()
@@ -236,8 +276,14 @@ private:
         auto result = WaitForSingleObject(m_hProcess, 0);
         if (result == WAIT_FAILED)
         {
-            Logger::error("Failed to wait for SG process.");
+            Logger::error(L"Failed to wait for SG process. {}", get_last_error_or_default(GetLastError()));
+            CloseProcessHandle();
         }
+        else if (result != WAIT_TIMEOUT)
+        {
+            CloseProcessHandle();
+        }
+
         return result == WAIT_TIMEOUT;
     }
 

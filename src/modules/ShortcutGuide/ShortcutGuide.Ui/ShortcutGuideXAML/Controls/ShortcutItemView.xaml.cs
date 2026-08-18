@@ -27,6 +27,14 @@ namespace ShortcutGuide.Controls
         public ShortcutItemView()
         {
             this.InitializeComponent();
+            this.Unloaded += OnUnloaded;
+        }
+
+        private void OnUnloaded(object sender, RoutedEventArgs e)
+        {
+            this.OuterItemsControl.ItemsSource = null;
+
+            this.ClearValue(ShortcutProperty);
         }
 
         private void PinFlyout_Opening(object sender, object e)

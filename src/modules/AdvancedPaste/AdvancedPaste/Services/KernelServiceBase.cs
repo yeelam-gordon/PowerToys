@@ -29,6 +29,7 @@ public abstract class KernelServiceBase(
     ICustomActionTransformService customActionTransformService) : IKernelService
 {
     private const string PromptParameterName = "prompt";
+    private const string ProviderIdParameterName = "providerId";
     private const string DefaultSystemPrompt = "You are an agent who is tasked with helping users paste their clipboard data. You have functions available to help you with this task. Call function when necessary to help user finish the transformation task. You never need to ask permission, always try to do as the user asks. The user will only input one message and will not be available for further questions, so try your best. The user will put in a request to format their clipboard data and you will fulfill it. Do not output anything else besides the reformatted clipboard content.";
 
     private readonly IKernelQueryCacheService _queryCacheService = queryCacheService;
@@ -46,7 +47,7 @@ public abstract class KernelServiceBase(
 
     protected abstract IKernelRuntimeConfiguration GetRuntimeConfiguration();
 
-    public async Task<DataPackage> TransformClipboardAsync(string prompt, DataPackageView clipboardData, bool isSavedQuery, CancellationToken cancellationToken, IProgress<double> progress)
+    public async Task<DataPackage> TransformClipboardAsync(string prompt, DataPackageView clipboardData, bool isSavedQuery, CancellationToken cancellationToken, IProgress<double> progress, string providerIdOverride = null)
     {
         Logger.LogTrace();
 
@@ -211,7 +212,8 @@ public abstract class KernelServiceBase(
 
             if (item.Arguments.Count > 0)
             {
-                await ExecutePromptTransformAsync(kernel, item.Format, item.Arguments[PromptParameterName]);
+                item.Arguments.TryGetValue(ProviderIdParameterName, out var providerIdOverride);
+                await ExecutePromptTransformAsync(kernel, item.Format, item.Arguments[PromptParameterName], providerIdOverride);
             }
             else
             {
@@ -285,7 +287,7 @@ public abstract class KernelServiceBase(
                     ? $"Runs the \"{customAction.Name}\" custom action."
                     : customAction.Description;
                 return KernelFunctionFactory.CreateFromMethod(
-                    method: async (Kernel kernel) => await ExecuteCustomActionAsync(kernel, customAction.Prompt),
+                    method: async (Kernel kernel) => await ExecuteCustomActionAsync(kernel, customAction.Prompt, customAction.ProviderId),
                     functionName: functionName,
                     description: description,
                     parameters: null,
@@ -334,10 +336,10 @@ public abstract class KernelServiceBase(
         return string.IsNullOrEmpty(sanitized) ? "_CustomAction" : sanitized;
     }
 
-    private Task<string> ExecuteCustomActionAsync(Kernel kernel, string fixedPrompt) =>
+    private Task<string> ExecuteCustomActionAsync(Kernel kernel, string fixedPrompt, string providerIdOverride = null) =>
         ExecuteTransformAsync(
             kernel,
-            new ActionChainItem(PasteFormats.CustomTextTransformation, Arguments: new() { { PromptParameterName, fixedPrompt } }),
+            new ActionChainItem(PasteFormats.CustomTextTransformation, Arguments: CreatePromptArguments(fixedPrompt, providerIdOverride)),
             async dataPackageView =>
             {
                 var imageBytes = await dataPackageView.GetImageAsPngBytesAsync();
@@ -349,14 +351,14 @@ public abstract class KernelServiceBase(
                     input = await dataPackageView.GetClipboardTextOrThrowAsync(kernel.GetCancellationToken());
                 }
 
-                var result = await _customActionTransformService.TransformAsync(fixedPrompt, input, imageBytes, kernel.GetCancellationToken(), kernel.GetProgress());
+                var result = await _customActionTransformService.TransformAsync(fixedPrompt, input, imageBytes, kernel.GetCancellationToken(), kernel.GetProgress(), providerIdOverride: providerIdOverride);
                 return DataPackageHelpers.CreateFromText(result?.Content ?? string.Empty);
             });
 
-    private Task<string> ExecutePromptTransformAsync(Kernel kernel, PasteFormats format, string prompt) =>
+    private Task<string> ExecutePromptTransformAsync(Kernel kernel, PasteFormats format, string prompt, string providerIdOverride = null) =>
         ExecuteTransformAsync(
             kernel,
-            new ActionChainItem(format, Arguments: new() { { PromptParameterName, prompt } }),
+            new ActionChainItem(format, Arguments: CreatePromptArguments(prompt, providerIdOverride)),
             async dataPackageView =>
             {
                 var imageBytes = await dataPackageView.GetImageAsPngBytesAsync();
@@ -367,16 +369,31 @@ public abstract class KernelServiceBase(
                     input = await dataPackageView.GetClipboardTextOrThrowAsync(kernel.GetCancellationToken());
                 }
 
-                string output = await GetPromptBasedOutput(format, prompt, input, imageBytes, kernel.GetCancellationToken(), kernel.GetProgress());
+                string output = await GetPromptBasedOutput(format, prompt, input, imageBytes, kernel.GetCancellationToken(), kernel.GetProgress(), providerIdOverride);
                 return DataPackageHelpers.CreateFromText(output);
             });
 
-    private async Task<string> GetPromptBasedOutput(PasteFormats format, string prompt, string input, byte[] imageBytes, CancellationToken cancellationToken, IProgress<double> progress) =>
+    private async Task<string> GetPromptBasedOutput(PasteFormats format, string prompt, string input, byte[] imageBytes, CancellationToken cancellationToken, IProgress<double> progress, string providerIdOverride = null) =>
         format switch
         {
-            PasteFormats.CustomTextTransformation => (await _customActionTransformService.TransformAsync(prompt, input, imageBytes, cancellationToken, progress))?.Content ?? string.Empty,
+            PasteFormats.CustomTextTransformation => (await _customActionTransformService.TransformAsync(prompt, input, imageBytes, cancellationToken, progress, providerIdOverride: providerIdOverride))?.Content ?? string.Empty,
             _ => throw new ArgumentException($"Unsupported format {format} for prompt transform", nameof(format)),
         };
+
+    private static Dictionary<string, string> CreatePromptArguments(string prompt, string providerIdOverride = null)
+    {
+        Dictionary<string, string> arguments = new()
+        {
+            { PromptParameterName, prompt },
+        };
+
+        if (!string.IsNullOrWhiteSpace(providerIdOverride))
+        {
+            arguments[ProviderIdParameterName] = providerIdOverride;
+        }
+
+        return arguments;
+    }
 
     private Task<string> ExecuteStandardTransformAsync(Kernel kernel, PasteFormats format) =>
         ExecuteTransformAsync(

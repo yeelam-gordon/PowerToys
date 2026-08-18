@@ -37,9 +37,36 @@ namespace PowerDisplay.Helpers
         // Controllers stored by type for O(1) lookup based on CommunicationMethod
         private DdcCiController? _ddcController;
         private WmiController? _wmiController;
+        private bool _wmiBrightnessEventsEnabled;
         private bool _disposed;
 
         public IReadOnlyList<Monitor> Monitors => _monitors.AsReadOnly();
+
+        public event EventHandler<WmiBrightnessChangedEventArgs>? WmiBrightnessChanged;
+
+        public void SetWmiBrightnessEventsEnabled(bool enabled)
+        {
+            if (_wmiController == null || _disposed)
+            {
+                return;
+            }
+
+            if (enabled == _wmiBrightnessEventsEnabled)
+            {
+                return;
+            }
+
+            if (enabled)
+            {
+                _wmiController.BrightnessChanged += WmiController_BrightnessChanged;
+            }
+            else
+            {
+                _wmiController.BrightnessChanged -= WmiController_BrightnessChanged;
+            }
+
+            _wmiBrightnessEventsEnabled = enabled;
+        }
 
         public MonitorManager()
         {
@@ -449,12 +476,21 @@ namespace PowerDisplay.Helpers
 
                 // Release controllers
                 _ddcController?.Dispose();
-                _wmiController?.Dispose();
+                if (_wmiController != null)
+                {
+                    _wmiController.BrightnessChanged -= WmiController_BrightnessChanged;
+                    _wmiController.Dispose();
+                }
 
                 _monitors.Clear();
                 _monitorLookup.Clear();
                 _disposed = true;
             }
+        }
+
+        private void WmiController_BrightnessChanged(string instanceName, int brightness)
+        {
+            WmiBrightnessChanged?.Invoke(this, new WmiBrightnessChangedEventArgs(instanceName, brightness));
         }
     }
 }

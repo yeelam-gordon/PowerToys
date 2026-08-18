@@ -26,6 +26,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             ShowIdentifyMonitorsButton = true;
             MaxCompatibilityMode = false;
             LinkedLevelsActive = false;
+            SyncBrightnessWithInternalDisplay = false;
             ExcludedFromSyncMonitorIds = new List<string>();
             CustomVcpMappings = new List<CustomVcpValueMapping>();
 
@@ -108,6 +109,14 @@ namespace Microsoft.PowerToys.Settings.UI.Library
         /// </summary>
         [JsonPropertyName("excluded_from_sync_monitor_ids")]
         public List<string> ExcludedFromSyncMonitorIds { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether external monitors follow brightness changes
+        /// reported by the internal display through WMI brightness events. Default is false so
+        /// the module does not subscribe to WMI brightness events unless the user opts in.
+        /// </summary>
+        [JsonPropertyName("sync_brightness_with_internal_display")]
+        public bool SyncBrightnessWithInternalDisplay { get; set; }
 
         /// <summary>
         /// Gets or sets custom VCP value name mappings shared across all monitors.

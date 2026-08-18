@@ -23,6 +23,7 @@ public class LinkedBrightnessSettingsTests
         var properties = new PowerDisplayProperties();
 
         Assert.IsFalse(properties.LinkedLevelsActive, "Linked brightness must default to off.");
+        Assert.IsFalse(properties.SyncBrightnessWithInternalDisplay, "Internal-display sync must default to off.");
         Assert.IsNotNull(properties.ExcludedFromSyncMonitorIds, "Exclusion list must never be null.");
         Assert.AreEqual(0, properties.ExcludedFromSyncMonitorIds.Count, "Exclusion list must start empty.");
     }
@@ -45,6 +46,7 @@ public class LinkedBrightnessSettingsTests
 
         Assert.IsNotNull(properties);
         Assert.IsFalse(properties.LinkedLevelsActive);
+        Assert.IsFalse(properties.SyncBrightnessWithInternalDisplay);
         Assert.IsNotNull(properties.ExcludedFromSyncMonitorIds);
         Assert.AreEqual(0, properties.ExcludedFromSyncMonitorIds.Count);
     }
@@ -55,6 +57,7 @@ public class LinkedBrightnessSettingsTests
         var original = new PowerDisplayProperties
         {
             LinkedLevelsActive = true,
+            SyncBrightnessWithInternalDisplay = true,
         };
         original.ExcludedFromSyncMonitorIds.Add(@"\\?\DISPLAY#DELD1A8#5&abc&0&UID4357");
         original.ExcludedFromSyncMonitorIds.Add(@"\\?\DISPLAY#DELD1A8#5&abc&0&UID4358");
@@ -64,18 +67,20 @@ public class LinkedBrightnessSettingsTests
 
         Assert.IsNotNull(restored);
         Assert.IsTrue(restored.LinkedLevelsActive);
+        Assert.IsTrue(restored.SyncBrightnessWithInternalDisplay);
         CollectionAssert.AreEqual(original.ExcludedFromSyncMonitorIds, restored.ExcludedFromSyncMonitorIds);
     }
 
     [TestMethod]
     public void Serialize_UsesSnakeCaseJsonKeys()
     {
-        var properties = new PowerDisplayProperties { LinkedLevelsActive = true };
+        var properties = new PowerDisplayProperties { LinkedLevelsActive = true, SyncBrightnessWithInternalDisplay = true };
         properties.ExcludedFromSyncMonitorIds.Add("monitor-id");
 
         var json = JsonSerializer.Serialize(properties);
 
         StringAssert.Contains(json, "\"linked_levels_active\":true");
+        StringAssert.Contains(json, "\"sync_brightness_with_internal_display\":true");
         StringAssert.Contains(json, "\"excluded_from_sync_monitor_ids\"");
     }
 

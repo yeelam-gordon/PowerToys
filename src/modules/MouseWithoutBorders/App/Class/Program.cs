@@ -396,7 +396,7 @@ namespace MouseWithoutBorders.Class
             }
             catch (Exception e)
             {
-                Logger.Log($"Settings IPC v2 cannot determine the interactive user SID: {e.Message}");
+                Logger.Log($"Settings IPC v2 cannot determine the interactive user SID: {e}");
                 return;
             }
 
@@ -409,7 +409,7 @@ namespace MouseWithoutBorders.Class
             }
             catch (Exception e)
             {
-                Logger.Log($"Settings IPC v2 cannot grant process query access to the interactive user: {e.Message}");
+                Logger.Log($"Settings IPC v2 cannot grant process query access to the interactive user: {e}");
                 return;
             }
 

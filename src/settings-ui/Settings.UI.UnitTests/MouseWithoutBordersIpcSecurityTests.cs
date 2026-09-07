@@ -9,6 +9,8 @@ using System.IO;
 using System.IO.Pipes;
 using System.Reflection;
 using System.Security.AccessControl;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Threading.Tasks;
 
@@ -257,6 +259,72 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
+        public void IntactAuthenticodeSignatureAcceptsEmbeddedMicrosoftSignedDependency()
+        {
+            var signedBinary = GetKnownEmbeddedMicrosoftSignedDependencyPath();
+
+            Assert.IsTrue(HasIntactAuthenticodeSignature(signedBinary));
+        }
+
+        [TestMethod]
+        public void RealVerifierAcceptsEmbeddedMicrosoftSignedDependency()
+        {
+            var verifier = new MicrosoftMachineRootSignatureVerifier();
+            var signedBinary = GetKnownEmbeddedMicrosoftSignedDependencyPath();
+
+            Assert.IsTrue(verifier.HasTrustedMicrosoftSignature(signedBinary));
+        }
+
+        [TestMethod]
+        public void RealVerifierRejectsUnsignedTestAssembly()
+        {
+            var verifier = new MicrosoftMachineRootSignatureVerifier();
+
+            Assert.IsFalse(verifier.HasTrustedMicrosoftSignature(typeof(MouseWithoutBordersIpcSecurityTests).Assembly.Location));
+        }
+
+        [TestMethod]
+        public void RealVerifierRejectsTamperedSignedBinary()
+        {
+            var verifier = new MicrosoftMachineRootSignatureVerifier();
+            var signedBinary = GetKnownEmbeddedMicrosoftSignedDependencyPath();
+            var artifactDirectory = CreateTestArtifactDirectory();
+            var tamperedBinary = Path.Combine(artifactDirectory, Path.GetFileName(signedBinary));
+
+            try
+            {
+                File.Copy(signedBinary, tamperedBinary, overwrite: true);
+                TamperFile(tamperedBinary);
+
+                Assert.IsFalse(verifier.HasTrustedMicrosoftSignature(tamperedBinary));
+            }
+            finally
+            {
+                if (Directory.Exists(artifactDirectory))
+                {
+                    Directory.Delete(artifactDirectory, recursive: true);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void CustomRootTrustChainAcceptsIntermediateFromExtraStore()
+        {
+            using var rootKey = RSA.Create(2048);
+            using var root = CreateRootCertificate(rootKey);
+            using var intermediateKey = RSA.Create(2048);
+            using var intermediate = CreateIntermediateCertificate(root, intermediateKey);
+            using var leaf = CreateCodeSigningLeafCertificate(intermediate);
+
+            using var chainWithoutIntermediate = CreateCodeSigningChain(root);
+            Assert.IsFalse(chainWithoutIntermediate.Build(leaf));
+
+            using var chainWithIntermediate = CreateCodeSigningChain(root);
+            chainWithIntermediate.ChainPolicy.ExtraStore.Add(intermediate);
+            Assert.IsTrue(chainWithIntermediate.Build(leaf));
+        }
+
+        [TestMethod]
         public void IdentityChecksRejectInCheapToExpensiveOrder()
         {
             var identity = GetCurrentIdentity();
@@ -378,6 +446,103 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         private static string UniquePipeName()
         {
             return $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";
+        }
+
+        private static string GetKnownEmbeddedMicrosoftSignedDependencyPath()
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, "Microsoft.WindowsAppRuntime.dll");
+            Assert.IsTrue(File.Exists(path), $"Expected Microsoft-signed dependency was not found: {path}");
+            return path;
+        }
+
+        private static string CreateTestArtifactDirectory()
+        {
+            var path = Path.Combine(
+                AppContext.BaseDirectory,
+                "MouseWithoutBordersIpcSecurityTests",
+                Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
+        private static void TamperFile(string path)
+        {
+            using var stream = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            var offset = stream.Length > 4096 ? 4096 : 0;
+            stream.Position = offset;
+            var original = stream.ReadByte();
+            Assert.AreNotEqual(-1, original);
+            stream.Position = offset;
+            stream.WriteByte(unchecked((byte)(original ^ 0x5A)));
+        }
+
+        private static bool HasIntactAuthenticodeSignature(string path)
+        {
+            var nativeMethodsType = typeof(MouseWithoutBordersIpc).Assembly.GetType(
+                "Microsoft.PowerToys.Settings.UI.Library.Utilities.MwbIpcNativeMethods",
+                throwOnError: true);
+            var method = nativeMethodsType!.GetMethod("HasIntactAuthenticodeSignature", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method);
+            return (bool)method.Invoke(null, new object[] { path })!;
+        }
+
+        private static X509Chain CreateCodeSigningChain(X509Certificate2 root)
+        {
+            var chain = new X509Chain();
+            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
+            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+            chain.ChainPolicy.CustomTrustStore.Add(root);
+            chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.3"));
+            return chain;
+        }
+
+        private static X509Certificate2 CreateRootCertificate(RSA rootKey)
+        {
+            var request = new CertificateRequest(
+                "CN=MWB IPC Test Root",
+                rootKey,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 1, true));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+            request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+            return request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7));
+        }
+
+        private static X509Certificate2 CreateIntermediateCertificate(X509Certificate2 root, RSA intermediateKey)
+        {
+            var request = new CertificateRequest(
+                "CN=MWB IPC Test Intermediate",
+                intermediateKey,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(true, false, 0, true));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.KeyCertSign | X509KeyUsageFlags.CrlSign, true));
+            request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+            using var intermediate = request.Create(root, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7), RandomNumberGenerator.GetBytes(16));
+            return intermediate.CopyWithPrivateKey(intermediateKey);
+        }
+
+        private static X509Certificate2 CreateCodeSigningLeafCertificate(X509Certificate2 intermediate)
+        {
+            using var leafKey = RSA.Create(2048);
+            var request = new CertificateRequest(
+                "CN=Microsoft Corporation Unit Test",
+                leafKey,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature, true));
+            request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+
+            var enhancedKeyUsage = new OidCollection
+            {
+                new Oid("1.3.6.1.5.5.7.3.3"),
+            };
+            request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(enhancedKeyUsage, true));
+
+            return request.Create(intermediate, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7), RandomNumberGenerator.GetBytes(16));
         }
 
         private sealed class AcceptSignatureVerifier : IProcessSignatureVerifier

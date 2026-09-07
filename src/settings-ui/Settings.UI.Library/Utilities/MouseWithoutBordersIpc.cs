@@ -396,6 +396,8 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
     {
         public bool HasTrustedMicrosoftSignature(string imagePath)
         {
+            ArgumentException.ThrowIfNullOrWhiteSpace(imagePath);
+
             try
             {
                 if (!MwbIpcNativeMethods.HasIntactAuthenticodeSignature(imagePath))
@@ -417,13 +419,50 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 using var chain = new X509Chain();
                 chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
                 chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-                chain.ChainPolicy.CustomTrustStore.AddRange(roots.Certificates);
                 chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.3"));
-                return chain.Build(signer);
+
+                var rootCertificates = roots.Certificates;
+                try
+                {
+                    chain.ChainPolicy.CustomTrustStore.AddRange(rootCertificates);
+
+                    if (MwbIpcNativeMethods.TryGetEmbeddedPkcs7Store(imagePath, out var store, out var message))
+                    {
+                        using (store)
+                        using (message)
+                        using (var embeddedStore = new X509Store(store.DangerousGetHandle()))
+                        {
+                            var extraCertificates = embeddedStore.Certificates;
+                            try
+                            {
+                                chain.ChainPolicy.ExtraStore.AddRange(extraCertificates);
+                                return chain.Build(signer);
+                            }
+                            finally
+                            {
+                                DisposeCertificates(extraCertificates);
+                            }
+                        }
+                    }
+
+                    return chain.Build(signer);
+                }
+                finally
+                {
+                    DisposeCertificates(rootCertificates);
+                }
             }
-            catch
+            catch (CryptographicException)
             {
                 return false;
+            }
+        }
+
+        private static void DisposeCertificates(X509Certificate2Collection certificates)
+        {
+            foreach (var certificate in certificates)
+            {
+                certificate.Dispose();
             }
         }
     }
@@ -579,6 +618,9 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
         private const uint WtdStateActionClose = 2;
         private const uint WtdSaferFlag = 0x100;
         private const uint WtdCacheOnlyUrlRetrieval = 0x1000;
+        private const uint CertQueryObjectFile = 0x00000001;
+        private const uint CertQueryContentFlagPkcs7SignedEmbed = 0x00000400;
+        private const uint CertQueryFormatFlagBinary = 0x00000002;
         private static readonly Guid WinTrustActionGenericVerifyV2 = new("00AAC56B-CD44-11d0-8CC2-00C04FC295EE");
 
         [StructLayout(LayoutKind.Sequential)]
@@ -600,6 +642,32 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
             internal long ToLong()
             {
                 return unchecked((long)(((ulong)HighDateTime << 32) | LowDateTime));
+            }
+        }
+
+        internal sealed class SafeCertStoreHandle : SafeHandleZeroOrMinusOneIsInvalid
+        {
+            public SafeCertStoreHandle()
+                : base(true)
+            {
+            }
+
+            protected override bool ReleaseHandle()
+            {
+                return CertCloseStore(handle, 0);
+            }
+        }
+
+        internal sealed class SafeCryptMsgHandle : SafeHandleZeroOrMinusOneIsInvalid
+        {
+            public SafeCryptMsgHandle()
+                : base(true)
+            {
+            }
+
+            protected override bool ReleaseHandle()
+            {
+                return CryptMsgClose(handle);
             }
         }
 
@@ -700,6 +768,29 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
         [DllImport("wintrust.dll", ExactSpelling = true, SetLastError = true)]
         private static extern int WinVerifyTrust(IntPtr windowHandle, [In] ref Guid actionId, ref WinTrustData trustData);
 
+        [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CryptQueryObject(
+            uint objectType,
+            string @object,
+            uint expectedContentTypeFlags,
+            uint expectedFormatTypeFlags,
+            uint flags,
+            IntPtr messageAndCertEncodingType,
+            IntPtr contentType,
+            IntPtr formatType,
+            out SafeCertStoreHandle certStore,
+            out SafeCryptMsgHandle message,
+            IntPtr context);
+
+        [DllImport("crypt32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CertCloseStore(IntPtr certStore, uint flags);
+
+        [DllImport("crypt32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool CryptMsgClose(IntPtr cryptMsg);
+
         internal static string GetProcessImagePath(SafeProcessHandle process)
         {
             var buffer = new char[32768];
@@ -745,6 +836,32 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 Marshal.DestroyStructure<WinTrustFileInfo>(fileInfoPointer);
                 Marshal.FreeHGlobal(fileInfoPointer);
             }
+        }
+
+        internal static bool TryGetEmbeddedPkcs7Store(
+            string imagePath,
+            out SafeCertStoreHandle store,
+            out SafeCryptMsgHandle message)
+        {
+            if (CryptQueryObject(
+                    CertQueryObjectFile,
+                    imagePath,
+                    CertQueryContentFlagPkcs7SignedEmbed,
+                    CertQueryFormatFlagBinary,
+                    0,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    IntPtr.Zero,
+                    out store,
+                    out message,
+                    IntPtr.Zero))
+            {
+                return true;
+            }
+
+            store = new SafeCertStoreHandle();
+            message = new SafeCryptMsgHandle();
+            return false;
         }
     }
 }

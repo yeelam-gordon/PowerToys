@@ -611,13 +611,13 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
         internal const uint PipeRejectRemoteClients = 0x00000008;
         internal const uint SddlRevision1 = 1;
         internal const uint DaclSecurityInformation = 0x00000004;
-        private const uint WtdUiNone = 2;
-        private const uint WtdRevokeNone = 0;
-        private const uint WtdChoiceFile = 1;
-        private const uint WtdStateActionVerify = 1;
-        private const uint WtdStateActionClose = 2;
-        private const uint WtdSaferFlag = 0x100;
-        private const uint WtdCacheOnlyUrlRetrieval = 0x1000;
+        private const uint WinTrustUiNone = 2;
+        private const uint WinTrustRevokeNone = 0;
+        private const uint WinTrustChoiceFile = 1;
+        private const uint WinTrustStateActionVerify = 1;
+        private const uint WinTrustStateActionClose = 2;
+        private const uint WinTrustSaferFlag = 0x100;
+        private const uint WinTrustCacheOnlyUrlRetrieval = 0x1000;
         private const uint CertQueryObjectFile = 0x00000001;
         private const uint CertQueryContentFlagPkcs7SignedEmbed = 0x00000400;
         private const uint CertQueryFormatFlagBinary = 0x00000002;
@@ -817,17 +817,17 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 var trustData = new WinTrustData
                 {
                     StructSize = unchecked((uint)Marshal.SizeOf<WinTrustData>()),
-                    UiChoice = WtdUiNone,
-                    RevocationChecks = WtdRevokeNone,
-                    UnionChoice = WtdChoiceFile,
+                    UiChoice = WinTrustUiNone,
+                    RevocationChecks = WinTrustRevokeNone,
+                    UnionChoice = WinTrustChoiceFile,
                     FileInfo = fileInfoPointer,
-                    StateAction = WtdStateActionVerify,
-                    ProviderFlags = WtdSaferFlag | WtdCacheOnlyUrlRetrieval,
+                    StateAction = WinTrustStateActionVerify,
+                    ProviderFlags = WinTrustSaferFlag | WinTrustCacheOnlyUrlRetrieval,
                 };
 
                 var action = WinTrustActionGenericVerifyV2;
                 var status = WinVerifyTrust(new IntPtr(-1), ref action, ref trustData);
-                trustData.StateAction = WtdStateActionClose;
+                trustData.StateAction = WinTrustStateActionClose;
                 _ = WinVerifyTrust(new IntPtr(-1), ref action, ref trustData);
                 return status == 0;
             }

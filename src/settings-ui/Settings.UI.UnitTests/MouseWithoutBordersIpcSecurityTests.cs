@@ -148,14 +148,14 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         {
             using var currentIdentity = WindowsIdentity.GetCurrent();
             using var server = RestrictedNamedPipeServer.Create(UniquePipeName(), currentIdentity.User!);
-            var expectedSids = new[]
+            var expectedIdentities = new[]
             {
                 currentIdentity.User!,
                 new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null),
             };
             var accessRules = server.GetAccessControl().GetAccessRules(true, false, typeof(SecurityIdentifier));
 
-            Assert.AreEqual(expectedSids.Length, accessRules.Count);
+            Assert.AreEqual(expectedIdentities.Length, accessRules.Count);
             foreach (AuthorizationRule rule in accessRules)
             {
                 var pipeRule = (PipeAccessRule)rule;
@@ -163,7 +163,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
                 Assert.AreEqual(
                     PipeAccessRights.FullControl,
                     pipeRule.PipeAccessRights & PipeAccessRights.FullControl);
-                Assert.IsTrue(Array.Exists(expectedSids, sid => sid.Equals(pipeRule.IdentityReference)));
+                Assert.IsTrue(Array.Exists(expectedIdentities, sid => sid.Equals(pipeRule.IdentityReference)));
             }
         }
 

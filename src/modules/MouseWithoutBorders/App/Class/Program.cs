@@ -378,8 +378,6 @@ namespace MouseWithoutBorders.Class
 
         internal static void StartSettingSyncThread()
         {
-            var serverTaskCancellationSource = new CancellationTokenSource();
-            CancellationToken cancellationToken = serverTaskCancellationSource.Token;
             using var currentIdentity = WindowsIdentity.GetCurrent();
             var processUserSid = currentIdentity.User;
             if (processUserSid == null)
@@ -424,7 +422,7 @@ namespace MouseWithoutBorders.Class
                     out var rejectionReason)
                     ? string.Empty
                     : rejectionReason,
-                cancellationToken);
+                CancellationToken.None);
         }
 
         internal static SecurityIdentifier ResolveSettingsIpcUserSid(

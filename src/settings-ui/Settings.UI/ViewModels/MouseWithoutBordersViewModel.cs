@@ -328,18 +328,38 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                     using var currentIdentity = WindowsIdentity.GetCurrent();
                     var currentUserSid = currentIdentity.User?.Value ?? throw new InvalidOperationException("Settings process has no user SID.");
                     var mwbPath = MouseWithoutBordersIpc.GetMouseWithoutBordersExecutablePath(AppContext.BaseDirectory);
-                    var serverPolicy = MouseWithoutBordersIpcPolicy.CreateMwbServerPolicy(
-                        mwbPath,
-                        sessionId,
-                        currentUserSid,
-                        allowLocalSystem: true);
-                    var authenticator = new NamedPipePeerAuthenticator(
-                        new WindowsNamedPipePeerIdentityProvider(new MicrosoftMachineRootSignatureVerifier()));
-                    syncHelperStream = await AuthenticatedNamedPipeClient.ConnectAsync(
+                    var mwbVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(mwbPath);
+                    var candidateStream = new NamedPipeClientStream(
+                        ".",
                         MouseWithoutBordersIpc.GetSettingsSyncPipeName(sessionId),
-                        serverPolicy,
-                        authenticator,
-                        10000);
+                        PipeDirection.InOut,
+                        PipeOptions.Asynchronous);
+
+                    try
+                    {
+                        await candidateStream.ConnectAsync(10000);
+                        if (!NamedPipePeerVerification.TryVerifyServer(
+                                candidateStream,
+                                mwbPath,
+                                mwbVersion,
+                                currentUserSid,
+                                sessionId,
+                                allowLocalSystem: true,
+                                out var rejectionReason))
+                        {
+                            throw new UnauthorizedAccessException($"Rejected SettingsSync server: {rejectionReason}");
+                        }
+
+                        syncHelperStream = candidateStream;
+                        candidateStream = null;
+                    }
+                    finally
+                    {
+                        if (candidateStream != null)
+                        {
+                            await candidateStream.DisposeAsync();
+                        }
+                    }
                 }
 
                 return new SyncHelper(syncHelperStream);

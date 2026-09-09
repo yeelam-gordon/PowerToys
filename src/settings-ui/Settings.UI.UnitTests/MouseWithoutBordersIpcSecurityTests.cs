@@ -50,68 +50,157 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
-        public void PolicyCapturesExpectedExecutablePathAndVersion()
-        {
-            var identity = GetCurrentIdentity();
-
-            var policy = MouseWithoutBordersIpcPolicy.CreateMwbServerPolicy(
-                identity.ImagePath,
-                identity.SessionId,
-                identity.UserSid,
-                allowLocalSystem: false);
-
-            Assert.AreEqual(Path.GetFullPath(identity.ImagePath), policy.ExpectedImagePath);
-            Assert.AreEqual(identity.FileVersion, policy.ExpectedFileVersion);
-        }
-
-        [TestMethod]
-        public async Task LegitimateSameSessionConnectionIsAccepted()
+        public async Task LegitimateSameSessionClientConnectionIsAccepted()
         {
             var pair = await CreateConnectedPairAsync();
             await using var server = pair.Server;
             await using var client = pair.Client;
 
-            var identity = GetCurrentIdentity();
-            var result = CreateRealAuthenticator().AuthenticateClient(server, CreatePolicy(identity));
+            var result = NamedPipePeerVerification.TryVerifyClient(
+                server,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                out var rejectionReason);
 
-            Assert.IsTrue(result.Accepted, result.ReasonCode);
+            Assert.IsTrue(result, rejectionReason);
         }
 
         [TestMethod]
-        public async Task UnauthorizedLocalClientIsRejectedBeforeDispatch()
+        public async Task LegitimateSameSessionServerConnectionIsAccepted()
         {
             var pair = await CreateConnectedPairAsync();
             await using var server = pair.Server;
             await using var client = pair.Client;
 
-            var identity = GetCurrentIdentity();
-            var policy = CreatePolicy(identity);
-            policy = CopyPolicy(policy, expectedImagePath: Path.Combine(Path.GetDirectoryName(identity.ImagePath)!, "not-settings.exe"));
+            var result = NamedPipePeerVerification.TryVerifyServer(
+                client,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                allowLocalSystem: false,
+                out var rejectionReason);
 
-            var result = CreateRealAuthenticator().AuthenticateClient(server, policy);
-
-            Assert.IsFalse(result.Accepted);
-            Assert.AreEqual("wrong-image", result.ReasonCode);
+            Assert.IsTrue(result, rejectionReason);
         }
 
         [TestMethod]
-        public async Task RealProcessTokenWithUnexpectedSidIsRejectedBeforeDispatch()
+        public async Task UnexpectedClientPathIsRejected()
         {
             var pair = await CreateConnectedPairAsync();
             await using var server = pair.Server;
             await using var client = pair.Client;
 
-            var identity = GetCurrentIdentity();
-            var policy = CopyPolicy(
-                CreatePolicy(identity),
-                expectedUserSid: new SecurityIdentifier(WellKnownSidType.AnonymousSid, null).Value);
-            var dispatchCount = 0;
+            var accepted = NamedPipePeerVerification.TryVerifyClient(
+                server,
+                Path.Combine(Path.GetDirectoryName(GetCurrentExecutablePath())!, "unexpected-settings.exe"),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                out var rejectionReason);
 
-            var result = CreateRealAuthenticator().AuthenticateClientAndExecute(server, policy, () => dispatchCount++);
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("wrong-image", rejectionReason);
+        }
 
-            Assert.IsFalse(result.Accepted);
-            Assert.AreEqual("wrong-user", result.ReasonCode);
-            Assert.AreEqual(0, dispatchCount);
+        [TestMethod]
+        public async Task UnexpectedClientUserIsRejected()
+        {
+            var pair = await CreateConnectedPairAsync();
+            await using var server = pair.Server;
+            await using var client = pair.Client;
+
+            var accepted = NamedPipePeerVerification.TryVerifyClient(
+                server,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                new SecurityIdentifier(WellKnownSidType.AnonymousSid, null).Value,
+                Process.GetCurrentProcess().SessionId,
+                out var rejectionReason);
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("wrong-user", rejectionReason);
+        }
+
+        [TestMethod]
+        public async Task UnexpectedClientSessionIsRejected()
+        {
+            var pair = await CreateConnectedPairAsync();
+            await using var server = pair.Server;
+            await using var client = pair.Client;
+
+            var accepted = NamedPipePeerVerification.TryVerifyClient(
+                server,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId + 1,
+                out var rejectionReason);
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("wrong-session", rejectionReason);
+        }
+
+        [TestMethod]
+        public async Task UnexpectedServerVersionIsRejected()
+        {
+            var pair = await CreateConnectedPairAsync();
+            await using var server = pair.Server;
+            await using var client = pair.Client;
+
+            var accepted = NamedPipePeerVerification.TryVerifyServer(
+                client,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()) + ".unexpected",
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                allowLocalSystem: false,
+                out var rejectionReason);
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("wrong-version", rejectionReason);
+        }
+
+        [TestMethod]
+        public void DisconnectedPipeIsRejected()
+        {
+            using var server = new NamedPipeServerStream(UniquePipeName(), PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+
+            var accepted = NamedPipePeerVerification.TryVerifyClient(
+                server,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                out var rejectionReason);
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("pipe-not-connected", rejectionReason);
+        }
+
+        [TestMethod]
+        public void InvalidPeerIdentityFailsClosed()
+        {
+            var method = typeof(NamedPipePeerVerification).GetMethod("TryVerifyPeerProcess", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method);
+
+            var arguments = new object[]
+            {
+                uint.MaxValue,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                false,
+                null,
+            };
+
+            var accepted = (bool)method!.Invoke(null, arguments)!;
+
+            Assert.IsFalse(accepted);
+            Assert.AreEqual("identity-unavailable", arguments[^1]);
         }
 
         [TestMethod]
@@ -119,28 +208,45 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         {
             var pipeName = UniquePipeName();
             using var currentIdentity = WindowsIdentity.GetCurrent();
-            var identity = GetCurrentIdentity();
 
             await using (var fakeServer = RestrictedNamedPipeServer.Create(pipeName, currentIdentity.User!))
             {
                 Assert.ThrowsException<Win32Exception>(() => RestrictedNamedPipeServer.Create(pipeName, currentIdentity.User!));
 
                 var waitTask = fakeServer.WaitForConnectionAsync();
-                var policy = CopyPolicy(CreatePolicy(identity), expectedImagePath: Path.Combine(Path.GetDirectoryName(identity.ImagePath)!, "PowerToys.MouseWithoutBorders.exe"));
-                await Assert.ThrowsExceptionAsync<UnauthorizedAccessException>(
-                    () => AuthenticatedNamedPipeClient.ConnectAsync(pipeName, policy, CreateRealAuthenticator(), 5000));
+                await using var fakeClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                await fakeClient.ConnectAsync(5000);
                 await waitTask;
+
+                var accepted = NamedPipePeerVerification.TryVerifyServer(
+                    fakeClient,
+                    Path.Combine(Path.GetDirectoryName(GetCurrentExecutablePath())!, "PowerToys.MouseWithoutBorders.exe"),
+                    MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                    GetCurrentUserSid(),
+                    Process.GetCurrentProcess().SessionId,
+                    allowLocalSystem: false,
+                    out var rejectionReason);
+
+                Assert.IsFalse(accepted);
+                Assert.AreEqual("wrong-image", rejectionReason);
             }
 
             await using var legitimateServer = RestrictedNamedPipeServer.Create(pipeName, currentIdentity.User!);
             var legitimateWaitTask = legitimateServer.WaitForConnectionAsync();
-            await using var legitimateClient = await AuthenticatedNamedPipeClient.ConnectAsync(
-                pipeName,
-                CreatePolicy(identity),
-                CreateRealAuthenticator(),
-                5000);
+            await using var legitimateClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+            await legitimateClient.ConnectAsync(5000);
             await legitimateWaitTask;
-            Assert.IsTrue(legitimateClient.IsConnected);
+
+            var legitimateAccepted = NamedPipePeerVerification.TryVerifyServer(
+                legitimateClient,
+                GetCurrentExecutablePath(),
+                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                GetCurrentUserSid(),
+                Process.GetCurrentProcess().SessionId,
+                allowLocalSystem: false,
+                out var legitimateRejectionReason);
+
+            Assert.IsTrue(legitimateAccepted, legitimateRejectionReason);
         }
 
         [TestMethod]
@@ -168,94 +274,34 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
-        public void DifferentRdpSessionIdentityIsRejected()
-        {
-            var identity = GetCurrentIdentity();
-            var provider = new FakeIdentityProvider { Identity = identity };
-            var policy = CopyPolicy(CreatePolicy(identity), expectedSessionId: identity.SessionId + 1);
-
-            var result = new NamedPipePeerAuthenticator(provider).Authenticate(identity.ProcessId, policy);
-
-            Assert.IsFalse(result.Accepted);
-            Assert.AreEqual("wrong-session", result.ReasonCode);
-        }
-
-        [TestMethod]
-        public void ProcessCreationTimeSeparatesCacheEntries()
-        {
-            var identity = GetCurrentIdentity();
-            var provider = new FakeIdentityProvider { Identity = identity };
-            var authenticator = new NamedPipePeerAuthenticator(provider);
-            var policy = CreatePolicy(identity);
-
-            Assert.IsTrue(authenticator.Authenticate(identity.ProcessId, policy).Accepted);
-
-            provider.Identity = CopyIdentity(
-                identity,
-                creationTimeUtcTicks: identity.CreationTimeUtcTicks + 1,
-                sessionId: identity.SessionId + 1);
-            var restartedProcessResult = authenticator.Authenticate(identity.ProcessId, policy);
-
-            Assert.IsFalse(restartedProcessResult.Accepted);
-            Assert.AreEqual("wrong-session", restartedProcessResult.ReasonCode);
-        }
-
-        [TestMethod]
-        public async Task ServerRestartAllowsAuthenticatedReconnect()
+        public async Task ServerRestartAllowsVerifiedReconnect()
         {
             var pipeName = UniquePipeName();
-            var identity = GetCurrentIdentity();
+            using var currentIdentity = WindowsIdentity.GetCurrent();
+            var executablePath = GetCurrentExecutablePath();
+            var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
+            var userSid = GetCurrentUserSid();
+            var sessionId = Process.GetCurrentProcess().SessionId;
+
             for (var attempt = 0; attempt < 2; attempt++)
             {
-                await using var server = RestrictedNamedPipeServer.Create(pipeName, new SecurityIdentifier(identity.UserSid));
+                await using var server = RestrictedNamedPipeServer.Create(pipeName, currentIdentity.User!);
                 var waitTask = server.WaitForConnectionAsync();
-                await using var client = await AuthenticatedNamedPipeClient.ConnectAsync(
-                    pipeName,
-                    CreatePolicy(identity),
-                    CreateRealAuthenticator(),
-                    5000);
+                await using var client = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+                await client.ConnectAsync(5000);
                 await waitTask;
-                Assert.IsTrue(client.IsConnected);
+
+                var accepted = NamedPipePeerVerification.TryVerifyServer(
+                    client,
+                    executablePath,
+                    executableVersion,
+                    userSid,
+                    sessionId,
+                    allowLocalSystem: false,
+                    out var rejectionReason);
+
+                Assert.IsTrue(accepted, rejectionReason);
             }
-        }
-
-        [TestMethod]
-        public async Task RejectedConnectionDoesNotReplayMutation()
-        {
-            var identity = GetCurrentIdentity();
-            var provider = new FakeIdentityProvider { Identity = identity };
-            var authenticator = new NamedPipePeerAuthenticator(provider);
-            var mutationCount = 0;
-
-            var rejectedPolicy = CopyPolicy(CreatePolicy(identity), expectedSessionId: identity.SessionId + 1);
-            var pair = await CreateConnectedPairAsync();
-            await using var server = pair.Server;
-            await using var client = pair.Client;
-
-            authenticator.AuthenticateClientAndExecute(server, rejectedPolicy, () => mutationCount++);
-            authenticator.AuthenticateClientAndExecute(server, CreatePolicy(identity), () => mutationCount++);
-
-            Assert.AreEqual(1, mutationCount);
-        }
-
-        [TestMethod]
-        public void SystemAndSignatureCasesArePolicyControlled()
-        {
-            var identity = GetCurrentIdentity();
-            var systemIdentity = CopyIdentity(
-                identity,
-                userSid: new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null).Value,
-                hasTrustedMicrosoftSignature: false);
-            var provider = new FakeIdentityProvider { Identity = systemIdentity };
-            var authenticator = new NamedPipePeerAuthenticator(provider);
-
-            var labPolicy = CopyPolicy(CreatePolicy(identity), allowLocalSystem: true, requireMicrosoftSignature: false);
-            Assert.IsTrue(authenticator.Authenticate(identity.ProcessId, labPolicy).Accepted);
-
-            var releasePolicy = CopyPolicy(labPolicy, requireMicrosoftSignature: true);
-            var releaseResult = authenticator.Authenticate(identity.ProcessId, releasePolicy);
-            Assert.IsFalse(releaseResult.Accepted);
-            Assert.AreEqual("untrusted-signature", releaseResult.ReasonCode);
         }
 
         [TestMethod]
@@ -269,24 +315,20 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         [TestMethod]
         public void RealVerifierAcceptsEmbeddedMicrosoftSignedDependency()
         {
-            var verifier = new MicrosoftMachineRootSignatureVerifier();
             var signedBinary = GetKnownEmbeddedMicrosoftSignedDependencyPath();
 
-            Assert.IsTrue(verifier.HasTrustedMicrosoftSignature(signedBinary));
+            Assert.IsTrue(HasTrustedMicrosoftSignature(signedBinary));
         }
 
         [TestMethod]
         public void RealVerifierRejectsUnsignedTestAssembly()
         {
-            var verifier = new MicrosoftMachineRootSignatureVerifier();
-
-            Assert.IsFalse(verifier.HasTrustedMicrosoftSignature(typeof(MouseWithoutBordersIpcSecurityTests).Assembly.Location));
+            Assert.IsFalse(HasTrustedMicrosoftSignature(typeof(MouseWithoutBordersIpcSecurityTests).Assembly.Location));
         }
 
         [TestMethod]
         public void RealVerifierRejectsTamperedSignedBinary()
         {
-            var verifier = new MicrosoftMachineRootSignatureVerifier();
             var signedBinary = GetKnownEmbeddedMicrosoftSignedDependencyPath();
             var artifactDirectory = CreateTestArtifactDirectory();
             var tamperedBinary = Path.Combine(artifactDirectory, Path.GetFileName(signedBinary));
@@ -296,7 +338,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
                 File.Copy(signedBinary, tamperedBinary, overwrite: true);
                 TamperFile(tamperedBinary);
 
-                Assert.IsFalse(verifier.HasTrustedMicrosoftSignature(tamperedBinary));
+                Assert.IsFalse(HasTrustedMicrosoftSignature(tamperedBinary));
             }
             finally
             {
@@ -325,41 +367,6 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
-        public void IdentityChecksRejectInCheapToExpensiveOrder()
-        {
-            var identity = GetCurrentIdentity();
-            var policy = CreatePolicy(identity);
-            var provider = new DeferredSignatureIdentityProvider
-            {
-                Identity = CopyIdentity(
-                    identity,
-                    sessionId: identity.SessionId + 1,
-                    userSid: new SecurityIdentifier(WellKnownSidType.LocalSystemSid, null).Value,
-                    hasTrustedMicrosoftSignature: false),
-            };
-            var authenticator = new NamedPipePeerAuthenticator(provider);
-
-            var result = authenticator.Authenticate(identity.ProcessId, CopyPolicy(policy, requireMicrosoftSignature: true));
-
-            Assert.IsFalse(result.Accepted);
-            Assert.AreEqual("wrong-session", result.ReasonCode);
-            Assert.AreEqual(0, provider.SignatureVerificationCount);
-        }
-
-        [TestMethod]
-        public void AcceptedProcessInstanceCachesDeferredSignatureResult()
-        {
-            var identity = CopyIdentity(GetCurrentIdentity(), hasTrustedMicrosoftSignature: true);
-            var provider = new DeferredSignatureIdentityProvider { Identity = identity };
-            var authenticator = new NamedPipePeerAuthenticator(provider);
-            var policy = CopyPolicy(CreatePolicy(identity), requireMicrosoftSignature: true);
-
-            Assert.IsTrue(authenticator.Authenticate(identity.ProcessId, policy).Accepted);
-            Assert.IsTrue(authenticator.Authenticate(identity.ProcessId, policy).Accepted);
-            Assert.AreEqual(1, provider.SignatureVerificationCount);
-        }
-
-        [TestMethod]
         public void SettingsSyncPayloadKeepsExistingJsonShape()
         {
             var contract = typeof(MouseWithoutBordersViewModel).GetNestedType("ISettingsSyncHelper", BindingFlags.NonPublic);
@@ -369,66 +376,6 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             stateType.GetField("Status")!.SetValue(state, Enum.ToObject(stateType.GetField("Status")!.FieldType, 9));
 
             Assert.AreEqual("""{"Name":"PC","Status":9}""", JsonConvert.SerializeObject(state));
-        }
-
-        private static NamedPipePeerAuthenticator CreateRealAuthenticator()
-        {
-            return new NamedPipePeerAuthenticator(new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier()));
-        }
-
-        private static NamedPipePeerPolicy CreatePolicy(NamedPipePeerIdentity identity)
-        {
-            return new NamedPipePeerPolicy
-            {
-                ExpectedSessionId = identity.SessionId,
-                ExpectedUserSid = identity.UserSid,
-                ExpectedImagePath = identity.ImagePath,
-                ExpectedFileVersion = identity.FileVersion,
-                RequireMicrosoftSignature = false,
-            };
-        }
-
-        private static NamedPipePeerPolicy CopyPolicy(
-            NamedPipePeerPolicy policy,
-            int? expectedSessionId = null,
-            string expectedUserSid = null,
-            string expectedImagePath = null,
-            bool? allowLocalSystem = null,
-            bool? requireMicrosoftSignature = null)
-        {
-            return new NamedPipePeerPolicy
-            {
-                ExpectedSessionId = expectedSessionId ?? policy.ExpectedSessionId,
-                ExpectedUserSid = expectedUserSid ?? policy.ExpectedUserSid,
-                ExpectedImagePath = expectedImagePath ?? policy.ExpectedImagePath,
-                ExpectedFileVersion = policy.ExpectedFileVersion,
-                AllowLocalSystem = allowLocalSystem ?? policy.AllowLocalSystem,
-                RequireMicrosoftSignature = requireMicrosoftSignature ?? policy.RequireMicrosoftSignature,
-            };
-        }
-
-        private static NamedPipePeerIdentity CopyIdentity(
-            NamedPipePeerIdentity identity,
-            long? creationTimeUtcTicks = null,
-            int? sessionId = null,
-            string userSid = null,
-            bool? hasTrustedMicrosoftSignature = null)
-        {
-            return new NamedPipePeerIdentity
-            {
-                ProcessId = identity.ProcessId,
-                CreationTimeUtcTicks = creationTimeUtcTicks ?? identity.CreationTimeUtcTicks,
-                SessionId = sessionId ?? identity.SessionId,
-                UserSid = userSid ?? identity.UserSid,
-                ImagePath = identity.ImagePath,
-                FileVersion = identity.FileVersion,
-                HasTrustedMicrosoftSignature = hasTrustedMicrosoftSignature ?? identity.HasTrustedMicrosoftSignature,
-            };
-        }
-
-        private static NamedPipePeerIdentity GetCurrentIdentity()
-        {
-            return new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier()).GetIdentity(Environment.ProcessId);
         }
 
         private static async Task<(NamedPipeServerStream Server, NamedPipeClientStream Client)> CreateConnectedPairAsync(string pipeName = null)
@@ -441,6 +388,19 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             await client.ConnectAsync(5000);
             await waitTask;
             return (server, client);
+        }
+
+        private static string GetCurrentExecutablePath()
+        {
+            return Process.GetCurrentProcess().MainModule?.FileName
+                ?? Environment.ProcessPath
+                ?? throw new InvalidOperationException("The current process has no executable path.");
+        }
+
+        private static string GetCurrentUserSid()
+        {
+            using var identity = WindowsIdentity.GetCurrent();
+            return identity.User?.Value ?? throw new InvalidOperationException("The current process has no user SID.");
         }
 
         private static string UniquePipeName()
@@ -478,12 +438,16 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
         private static bool HasIntactAuthenticodeSignature(string path)
         {
-            var nativeMethodsType = typeof(MouseWithoutBordersIpc).Assembly.GetType(
-                "Microsoft.PowerToys.Settings.UI.Library.Utilities.MwbIpcNativeMethods",
-                throwOnError: true);
-            var method = nativeMethodsType!.GetMethod("HasIntactAuthenticodeSignature", BindingFlags.NonPublic | BindingFlags.Static);
+            var method = typeof(NamedPipePeerVerification).GetMethod("HasIntactAuthenticodeSignature", BindingFlags.NonPublic | BindingFlags.Static);
             Assert.IsNotNull(method);
-            return (bool)method.Invoke(null, new object[] { path })!;
+            return (bool)method!.Invoke(null, new object[] { path })!;
+        }
+
+        private static bool HasTrustedMicrosoftSignature(string path)
+        {
+            var method = typeof(NamedPipePeerVerification).GetMethod("HasTrustedMicrosoftSignature", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method);
+            return (bool)method!.Invoke(null, new object[] { path })!;
         }
 
         private static X509Chain CreateCodeSigningChain(X509Certificate2 root)
@@ -543,33 +507,6 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(enhancedKeyUsage, true));
 
             return request.Create(intermediate, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7), RandomNumberGenerator.GetBytes(16));
-        }
-
-        private sealed class AcceptSignatureVerifier : IProcessSignatureVerifier
-        {
-            public bool HasTrustedMicrosoftSignature(string imagePath) => true;
-        }
-
-        private sealed class FakeIdentityProvider : INamedPipePeerIdentityProvider
-        {
-            public NamedPipePeerIdentity Identity { get; set; }
-
-            public NamedPipePeerIdentity GetIdentity(int processId) => Identity;
-        }
-
-        private sealed class DeferredSignatureIdentityProvider : INamedPipePeerIdentityProvider, IDeferredProcessSignatureVerifier
-        {
-            public NamedPipePeerIdentity Identity { get; set; }
-
-            public int SignatureVerificationCount { get; private set; }
-
-            public NamedPipePeerIdentity GetIdentity(int processId) => Identity;
-
-            public bool HasTrustedMicrosoftSignature(NamedPipePeerIdentity identity)
-            {
-                SignatureVerificationCount++;
-                return identity.HasTrustedMicrosoftSignature;
-            }
         }
     }
 }

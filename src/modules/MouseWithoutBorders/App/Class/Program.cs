@@ -414,12 +414,20 @@ namespace MouseWithoutBorders.Class
             }
 
             var settingsPath = MouseWithoutBordersIpc.GetSettingsExecutablePath(AppContext.BaseDirectory);
-            var clientPolicy = MouseWithoutBordersIpcPolicy.CreateSettingsClientPolicy(settingsPath, sessionId, currentUserSid.Value);
+            var settingsVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(settingsPath);
 
-            IpcChannel<SettingsSyncHelper>.StartAuthenticatedIpcServer(
+            IpcChannel<SettingsSyncHelper>.StartVerifiedIpcServer(
                 MouseWithoutBordersIpc.GetSettingsSyncPipeName(sessionId),
                 currentUserSid,
-                clientPolicy,
+                stream => NamedPipePeerVerification.TryVerifyClient(
+                    stream,
+                    settingsPath,
+                    settingsVersion,
+                    currentUserSid.Value,
+                    sessionId,
+                    out var rejectionReason)
+                    ? string.Empty
+                    : rejectionReason,
                 cancellationToken);
         }
 

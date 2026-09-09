@@ -2,8 +2,12 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System;
 using System.Diagnostics;
+using System.IO.Pipes;
 using System.Security.Principal;
+using System.Threading;
+using System.Threading.Tasks;
 
 using Microsoft.PowerToys.Settings.UI.Library.Utilities;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -78,33 +82,76 @@ public sealed class SettingsIpcIdentityTests
     }
 
     [TestMethod]
-    public async Task ProductionAuthenticatedServerAcceptsReconnect()
+    public async Task ProductionVerifiedServerAcceptsReconnect()
     {
         var pipeName = $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";
         using var identity = WindowsIdentity.GetCurrent();
-        var peerIdentity = new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier()).GetIdentity(Environment.ProcessId);
-        var policy = new NamedPipePeerPolicy
-        {
-            ExpectedSessionId = Process.GetCurrentProcess().SessionId,
-            ExpectedUserSid = identity.User!.Value,
-            ExpectedImagePath = peerIdentity.ImagePath,
-            ExpectedFileVersion = peerIdentity.FileVersion,
-            RequireMicrosoftSignature = false,
-        };
         using var cancellation = new CancellationTokenSource();
+        var executablePath = GetCurrentExecutablePath();
+        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
+        var sessionId = Process.GetCurrentProcess().SessionId;
 
-        IpcChannel<TestRpcTarget>.StartAuthenticatedIpcServer(pipeName, identity.User, policy, cancellation.Token);
+        TestRpcTarget.Reset();
+        IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
+            pipeName,
+            identity.User!,
+            stream => VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId),
+            cancellation.Token);
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
-            await using var client = await AuthenticatedNamedPipeClient.ConnectAsync(
+            await using var client = await ConnectVerifiedClientAsync(
                 pipeName,
-                policy,
-                new NamedPipePeerAuthenticator(new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier())),
-                5000);
+                executablePath,
+                executableVersion,
+                identity.User!.Value,
+                sessionId);
             Assert.IsTrue(client.IsConnected);
+            Assert.IsTrue(SpinWait.SpinUntil(() => TestRpcTarget.InstanceCount == attempt + 1, TimeSpan.FromSeconds(5)));
         }
 
+        cancellation.Cancel();
+    }
+
+    [TestMethod]
+    public async Task RejectedClientDoesNotDispatchBeforeVerification()
+    {
+        var pipeName = $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";
+        using var identity = WindowsIdentity.GetCurrent();
+        using var cancellation = new CancellationTokenSource();
+        var executablePath = GetCurrentExecutablePath();
+        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
+        var sessionId = Process.GetCurrentProcess().SessionId;
+        var verifyCallCount = 0;
+
+        TestRpcTarget.Reset();
+        IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
+            pipeName,
+            identity.User!,
+            stream =>
+            {
+                var verifyAttempt = Interlocked.Increment(ref verifyCallCount);
+                return verifyAttempt == 1
+                    ? "blocked-for-test"
+                    : VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId);
+            },
+            cancellation.Token);
+
+        await using (var rejectedClient = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous))
+        {
+            await rejectedClient.ConnectAsync(5000);
+            Assert.IsTrue(SpinWait.SpinUntil(() => Volatile.Read(ref verifyCallCount) == 1, TimeSpan.FromSeconds(5)));
+            Assert.AreEqual(0, TestRpcTarget.InstanceCount);
+        }
+
+        await using var acceptedClient = await ConnectVerifiedClientAsync(
+            pipeName,
+            executablePath,
+            executableVersion,
+            identity.User!.Value,
+            sessionId);
+        Assert.IsTrue(SpinWait.SpinUntil(() => TestRpcTarget.InstanceCount == 1, TimeSpan.FromSeconds(5)));
+        Assert.AreEqual(2, Volatile.Read(ref verifyCallCount));
         cancellation.Cancel();
     }
 
@@ -113,48 +160,105 @@ public sealed class SettingsIpcIdentityTests
     {
         var pipeName = $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";
         using var identity = WindowsIdentity.GetCurrent();
-        var peerIdentity = new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier()).GetIdentity(Environment.ProcessId);
-        var policy = new NamedPipePeerPolicy
-        {
-            ExpectedSessionId = peerIdentity.SessionId,
-            ExpectedUserSid = peerIdentity.UserSid,
-            ExpectedImagePath = peerIdentity.ImagePath,
-            ExpectedFileVersion = peerIdentity.FileVersion,
-            RequireMicrosoftSignature = false,
-        };
         using var cancellation = new CancellationTokenSource();
+        var executablePath = GetCurrentExecutablePath();
+        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
+        var sessionId = Process.GetCurrentProcess().SessionId;
         var initialCreationFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         await using (var occupyingServer = RestrictedNamedPipeServer.Create(pipeName, identity.User!))
         {
-            IpcChannel<TestRpcTarget>.StartAuthenticatedIpcServer(
+            IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
                 pipeName,
-                identity.User,
-                policy,
+                identity.User!,
+                stream => VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId),
                 _ => initialCreationFailure.TrySetResult(),
                 cancellation.Token);
             await initialCreationFailure.Task.WaitAsync(TimeSpan.FromSeconds(5));
         }
 
-        await using var client = await AuthenticatedNamedPipeClient.ConnectAsync(
+        await using var client = await ConnectVerifiedClientAsync(
             pipeName,
-            policy,
-            new NamedPipePeerAuthenticator(new WindowsNamedPipePeerIdentityProvider(new AcceptSignatureVerifier())),
-            5000);
+            executablePath,
+            executableVersion,
+            identity.User!.Value,
+            sessionId);
 
         Assert.IsTrue(client.IsConnected);
         cancellation.Cancel();
     }
 
-    private sealed class AcceptSignatureVerifier : IProcessSignatureVerifier
+    private static async Task<NamedPipeClientStream> ConnectVerifiedClientAsync(
+        string pipeName,
+        string expectedServerPath,
+        string expectedServerVersion,
+        string expectedUserSid,
+        int expectedSessionId)
     {
-        public bool HasTrustedMicrosoftSignature(string imagePath) => true;
+        var stream = new NamedPipeClientStream(".", pipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
+        try
+        {
+            await stream.ConnectAsync(5000);
+            if (!NamedPipePeerVerification.TryVerifyServer(
+                    stream,
+                    expectedServerPath,
+                    expectedServerVersion,
+                    expectedUserSid,
+                    expectedSessionId,
+                    allowLocalSystem: false,
+                    out var rejectionReason))
+            {
+                throw new UnauthorizedAccessException($"Rejected named pipe server: {rejectionReason}");
+            }
+
+            return stream;
+        }
+        catch
+        {
+            await stream.DisposeAsync();
+            throw;
+        }
+    }
+
+    private static string VerifyCurrentProcessClient(
+        NamedPipeServerStream stream,
+        string expectedClientPath,
+        string expectedClientVersion,
+        string expectedUserSid,
+        int expectedSessionId)
+    {
+        return NamedPipePeerVerification.TryVerifyClient(
+            stream,
+            expectedClientPath,
+            expectedClientVersion,
+            expectedUserSid,
+            expectedSessionId,
+            out var rejectionReason)
+            ? string.Empty
+            : rejectionReason;
+    }
+
+    private static string GetCurrentExecutablePath()
+    {
+        return Process.GetCurrentProcess().MainModule?.FileName
+            ?? Environment.ProcessPath
+            ?? throw new InvalidOperationException("The current process has no executable path.");
     }
 
     private sealed class TestRpcTarget
     {
+        private static int _instanceCount;
+
         public TestRpcTarget()
         {
+            Interlocked.Increment(ref _instanceCount);
+        }
+
+        public static int InstanceCount => Volatile.Read(ref _instanceCount);
+
+        public static void Reset()
+        {
+            Interlocked.Exchange(ref _instanceCount, 0);
         }
 
         public void Ping()

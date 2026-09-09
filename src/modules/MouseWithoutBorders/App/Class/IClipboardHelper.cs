@@ -212,25 +212,22 @@ WellKnownSidType.AuthenticatedUserSid, null);
             return default(T);
         }
 
-        public static T StartAuthenticatedIpcServer(
+        public static T StartVerifiedIpcServer(
             string pipeName,
             SecurityIdentifier allowedUser,
-            NamedPipePeerPolicy clientPolicy,
+            Func<NamedPipeServerStream, string> verifyClientConnection,
             CancellationToken cancellationToken)
         {
-            return StartAuthenticatedIpcServer(pipeName, allowedUser, clientPolicy, null, cancellationToken);
+            return StartVerifiedIpcServer(pipeName, allowedUser, verifyClientConnection, null, cancellationToken);
         }
 
-        internal static T StartAuthenticatedIpcServer(
+        internal static T StartVerifiedIpcServer(
             string pipeName,
             SecurityIdentifier allowedUser,
-            NamedPipePeerPolicy clientPolicy,
+            Func<NamedPipeServerStream, string> verifyClientConnection,
             Action<Exception> serverErrorObserver,
             CancellationToken cancellationToken)
         {
-            var authenticator = new NamedPipePeerAuthenticator(
-                new WindowsNamedPipePeerIdentityProvider(new MicrosoftMachineRootSignatureVerifier()));
-
             _ = Task.Run(
                 async () =>
                 {
@@ -241,20 +238,21 @@ WellKnownSidType.AuthenticatedUserSid, null);
                             using var serverChannel = RestrictedNamedPipeServer.Create(pipeName, allowedUser);
                             await serverChannel.WaitForConnectionAsync(cancellationToken);
 
-                            JsonRpc taskRpc = null;
-                            var authentication = authenticator.AuthenticateClientAndExecute(
-                                serverChannel,
-                                clientPolicy,
-                                () => taskRpc = JsonRpc.Attach(serverChannel, new T()));
-                            if (!authentication.Accepted)
+                            var rejectionReason = verifyClientConnection?.Invoke(serverChannel);
+                            if (!string.IsNullOrEmpty(rejectionReason))
                             {
 #if !MM_HELPER
-                                Logger.Log($"Rejected Settings IPC client: {authentication.ReasonCode}");
+                                Logger.Log($"Rejected Settings IPC client: {rejectionReason}");
 #endif
-                                serverChannel.Disconnect();
+                                if (serverChannel.IsConnected)
+                                {
+                                    serverChannel.Disconnect();
+                                }
+
                                 continue;
                             }
 
+                            var taskRpc = JsonRpc.Attach(serverChannel, new T());
                             await taskRpc.Completion;
                         }
                         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

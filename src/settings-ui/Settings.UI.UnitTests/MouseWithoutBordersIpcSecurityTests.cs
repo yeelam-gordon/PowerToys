@@ -34,22 +34,6 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
-        public void PackagedExecutablePathsMatchInstallerLayout()
-        {
-            var installDirectory = Path.GetFullPath(Path.Combine("TestInstall", $"PowerToys-{Guid.NewGuid():N}"));
-            var settingsDirectory = Path.Combine(installDirectory, "WinUI3Apps");
-
-            Assert.AreEqual(
-                Path.Combine(settingsDirectory, "PowerToys.Settings.exe"),
-                MouseWithoutBordersIpc.GetSettingsExecutablePath(installDirectory));
-            Assert.AreEqual(
-                Path.Combine(installDirectory, "PowerToys.MouseWithoutBorders.exe"),
-                MouseWithoutBordersIpc.GetMouseWithoutBordersExecutablePath(settingsDirectory + Path.DirectorySeparatorChar));
-            Assert.ThrowsException<ArgumentException>(
-                () => MouseWithoutBordersIpc.GetMouseWithoutBordersExecutablePath(installDirectory));
-        }
-
-        [TestMethod]
         public async Task LegitimateSameSessionClientConnectionIsAccepted()
         {
             var pair = await CreateConnectedPairAsync();
@@ -58,8 +42,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var result = NamedPipePeerVerification.TryVerifyClient(
                 server,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 out var rejectionReason);
@@ -76,8 +59,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var result = NamedPipePeerVerification.TryVerifyServer(
                 client,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 allowLocalSystem: false,
@@ -95,8 +77,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var accepted = NamedPipePeerVerification.TryVerifyClient(
                 server,
-                Path.Combine(Path.GetDirectoryName(GetCurrentExecutablePath())!, "unexpected-settings.exe"),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                "unexpected-settings.exe",
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 out var rejectionReason);
@@ -114,8 +95,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var accepted = NamedPipePeerVerification.TryVerifyClient(
                 server,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 new SecurityIdentifier(WellKnownSidType.AnonymousSid, null).Value,
                 Process.GetCurrentProcess().SessionId,
                 out var rejectionReason);
@@ -133,8 +113,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var accepted = NamedPipePeerVerification.TryVerifyClient(
                 server,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId + 1,
                 out var rejectionReason);
@@ -144,34 +123,13 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
-        public async Task UnexpectedServerVersionIsRejected()
-        {
-            var pair = await CreateConnectedPairAsync();
-            await using var server = pair.Server;
-            await using var client = pair.Client;
-
-            var accepted = NamedPipePeerVerification.TryVerifyServer(
-                client,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()) + ".unexpected",
-                GetCurrentUserSid(),
-                Process.GetCurrentProcess().SessionId,
-                allowLocalSystem: false,
-                out var rejectionReason);
-
-            Assert.IsFalse(accepted);
-            Assert.AreEqual("wrong-version", rejectionReason);
-        }
-
-        [TestMethod]
         public void DisconnectedPipeIsRejected()
         {
             using var server = new NamedPipeServerStream(UniquePipeName(), PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
 
             var accepted = NamedPipePeerVerification.TryVerifyClient(
                 server,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 out var rejectionReason);
@@ -189,8 +147,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             var arguments = new object[]
             {
                 uint.MaxValue,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 false,
@@ -220,8 +177,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
                 var accepted = NamedPipePeerVerification.TryVerifyServer(
                     fakeClient,
-                    Path.Combine(Path.GetDirectoryName(GetCurrentExecutablePath())!, "PowerToys.MouseWithoutBorders.exe"),
-                    MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                    MouseWithoutBordersIpc.MouseWithoutBordersExecutableFileName,
                     GetCurrentUserSid(),
                     Process.GetCurrentProcess().SessionId,
                     allowLocalSystem: false,
@@ -239,8 +195,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
             var legitimateAccepted = NamedPipePeerVerification.TryVerifyServer(
                 legitimateClient,
-                GetCurrentExecutablePath(),
-                MouseWithoutBordersIpc.GetInstalledFileVersion(GetCurrentExecutablePath()),
+                Path.GetFileName(GetCurrentExecutablePath()),
                 GetCurrentUserSid(),
                 Process.GetCurrentProcess().SessionId,
                 allowLocalSystem: false,
@@ -279,7 +234,6 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             var pipeName = UniquePipeName();
             using var currentIdentity = WindowsIdentity.GetCurrent();
             var executablePath = GetCurrentExecutablePath();
-            var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
             var userSid = GetCurrentUserSid();
             var sessionId = Process.GetCurrentProcess().SessionId;
 
@@ -293,8 +247,7 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
 
                 var accepted = NamedPipePeerVerification.TryVerifyServer(
                     client,
-                    executablePath,
-                    executableVersion,
+                    Path.GetFileName(executablePath),
                     userSid,
                     sessionId,
                     allowLocalSystem: false,
@@ -367,6 +320,57 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         }
 
         [TestMethod]
+        public void SignerCertificateEqualityRejectsDistinctCertificatesWithSameSubject_FallbackWithoutSecondTrustedFixture()
+        {
+            using var firstKey = RSA.Create(2048);
+            using var secondKey = RSA.Create(2048);
+            using var first = CreateSubjectCertificate("CN=Microsoft Corporation Unit Test", firstKey);
+            using var second = CreateSubjectCertificate("CN=Microsoft Corporation Unit Test", secondKey);
+
+            Assert.IsFalse(HaveMatchingSignerCertificate(first, second));
+        }
+
+        [TestMethod]
+        public void DirectoryRelationshipAcceptsEqualDirectories()
+        {
+            Assert.IsTrue(HaveEqualOrNestedDirectories(
+                @"C:\Program Files\PowerToys",
+                @"C:\Program Files\PowerToys"));
+        }
+
+        [TestMethod]
+        public void DirectoryRelationshipAcceptsChildDirectory()
+        {
+            Assert.IsTrue(HaveEqualOrNestedDirectories(
+                @"C:\Program Files\PowerToys",
+                @"C:\Program Files\PowerToys\WinUI3Apps"));
+        }
+
+        [TestMethod]
+        public void DirectoryRelationshipAcceptsParentDirectory()
+        {
+            Assert.IsTrue(HaveEqualOrNestedDirectories(
+                @"C:\Program Files\PowerToys\WinUI3Apps",
+                @"C:\Program Files\PowerToys"));
+        }
+
+        [TestMethod]
+        public void DirectoryRelationshipRejectsPrefixSibling()
+        {
+            Assert.IsFalse(HaveEqualOrNestedDirectories(
+                @"C:\Program Files\PowerToys",
+                @"C:\Program Files\PowerToysOther"));
+        }
+
+        [TestMethod]
+        public void DirectoryRelationshipRejectsSiblingDirectories()
+        {
+            Assert.IsFalse(HaveEqualOrNestedDirectories(
+                @"C:\Program Files\PowerToys\WinUI3Apps",
+                @"C:\Program Files\PowerToys\Modules"));
+        }
+
+        [TestMethod]
         public void SettingsSyncPayloadKeepsExistingJsonShape()
         {
             var contract = typeof(MouseWithoutBordersViewModel).GetNestedType("ISettingsSyncHelper", BindingFlags.NonPublic);
@@ -436,6 +440,14 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             stream.WriteByte(unchecked((byte)(original ^ 0x5A)));
         }
 
+        private static void CleanupArtifactDirectory(string artifactDirectory)
+        {
+            if (Directory.Exists(artifactDirectory))
+            {
+                Directory.Delete(artifactDirectory, recursive: true);
+            }
+        }
+
         private static bool HasIntactAuthenticodeSignature(string path)
         {
             var method = typeof(NamedPipePeerVerification).GetMethod("HasIntactAuthenticodeSignature", BindingFlags.NonPublic | BindingFlags.Static);
@@ -448,6 +460,20 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             var method = typeof(NamedPipePeerVerification).GetMethod("HasTrustedMicrosoftSignature", BindingFlags.NonPublic | BindingFlags.Static);
             Assert.IsNotNull(method);
             return (bool)method!.Invoke(null, new object[] { path })!;
+        }
+
+        private static bool HaveMatchingSignerCertificate(X509Certificate2 firstSigner, X509Certificate2 secondSigner)
+        {
+            var method = typeof(NamedPipePeerVerification).GetMethod("HaveMatchingSignerCertificate", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method);
+            return (bool)method!.Invoke(null, new object[] { firstSigner, secondSigner })!;
+        }
+
+        private static bool HaveEqualOrNestedDirectories(string firstDirectory, string secondDirectory)
+        {
+            var method = typeof(NamedPipePeerVerification).GetMethod("HaveEqualOrNestedDirectories", BindingFlags.NonPublic | BindingFlags.Static);
+            Assert.IsNotNull(method);
+            return (bool)method!.Invoke(null, new object[] { firstDirectory, secondDirectory })!;
         }
 
         private static X509Chain CreateCodeSigningChain(X509Certificate2 root)
@@ -507,6 +533,18 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(enhancedKeyUsage, true));
 
             return request.Create(intermediate, DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7), RandomNumberGenerator.GetBytes(16));
+        }
+
+        private static X509Certificate2 CreateSubjectCertificate(string subject, RSA key)
+        {
+            var request = new CertificateRequest(
+                subject,
+                key,
+                HashAlgorithmName.SHA256,
+                RSASignaturePadding.Pkcs1);
+            request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
+            request.CertificateExtensions.Add(new X509SubjectKeyIdentifierExtension(request.PublicKey, false));
+            return request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddDays(7));
         }
     }
 }

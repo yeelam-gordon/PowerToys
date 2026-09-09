@@ -4,6 +4,7 @@
 
 using System;
 using System.Diagnostics;
+using System.IO;
 using System.IO.Pipes;
 using System.Security.Principal;
 using System.Threading;
@@ -88,22 +89,20 @@ public sealed class SettingsIpcIdentityTests
         using var identity = WindowsIdentity.GetCurrent();
         using var cancellation = new CancellationTokenSource();
         var executablePath = GetCurrentExecutablePath();
-        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
         var sessionId = Process.GetCurrentProcess().SessionId;
 
         TestRpcTarget.Reset();
         IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
             pipeName,
             identity.User!,
-            stream => VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId),
+            stream => VerifyCurrentProcessClient(stream, Path.GetFileName(executablePath), identity.User!.Value, sessionId),
             cancellation.Token);
 
         for (var attempt = 0; attempt < 2; attempt++)
         {
             await using var client = await ConnectVerifiedClientAsync(
                 pipeName,
-                executablePath,
-                executableVersion,
+                Path.GetFileName(executablePath),
                 identity.User!.Value,
                 sessionId);
             Assert.IsTrue(client.IsConnected);
@@ -120,7 +119,6 @@ public sealed class SettingsIpcIdentityTests
         using var identity = WindowsIdentity.GetCurrent();
         using var cancellation = new CancellationTokenSource();
         var executablePath = GetCurrentExecutablePath();
-        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
         var sessionId = Process.GetCurrentProcess().SessionId;
         var verifyCallCount = 0;
 
@@ -133,7 +131,7 @@ public sealed class SettingsIpcIdentityTests
                 var verifyAttempt = Interlocked.Increment(ref verifyCallCount);
                 return verifyAttempt == 1
                     ? "blocked-for-test"
-                    : VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId);
+                    : VerifyCurrentProcessClient(stream, Path.GetFileName(executablePath), identity.User!.Value, sessionId);
             },
             cancellation.Token);
 
@@ -146,8 +144,7 @@ public sealed class SettingsIpcIdentityTests
 
         await using var acceptedClient = await ConnectVerifiedClientAsync(
             pipeName,
-            executablePath,
-            executableVersion,
+            Path.GetFileName(executablePath),
             identity.User!.Value,
             sessionId);
         Assert.IsTrue(SpinWait.SpinUntil(() => TestRpcTarget.InstanceCount == 1, TimeSpan.FromSeconds(5)));
@@ -162,7 +159,6 @@ public sealed class SettingsIpcIdentityTests
         using var identity = WindowsIdentity.GetCurrent();
         using var cancellation = new CancellationTokenSource();
         var executablePath = GetCurrentExecutablePath();
-        var executableVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(executablePath);
         var sessionId = Process.GetCurrentProcess().SessionId;
         var initialCreationFailure = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -171,7 +167,7 @@ public sealed class SettingsIpcIdentityTests
             IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
                 pipeName,
                 identity.User!,
-                stream => VerifyCurrentProcessClient(stream, executablePath, executableVersion, identity.User!.Value, sessionId),
+                stream => VerifyCurrentProcessClient(stream, Path.GetFileName(executablePath), identity.User!.Value, sessionId),
                 _ => initialCreationFailure.TrySetResult(),
                 cancellation.Token);
             await initialCreationFailure.Task.WaitAsync(TimeSpan.FromSeconds(5));
@@ -179,8 +175,7 @@ public sealed class SettingsIpcIdentityTests
 
         await using var client = await ConnectVerifiedClientAsync(
             pipeName,
-            executablePath,
-            executableVersion,
+            Path.GetFileName(executablePath),
             identity.User!.Value,
             sessionId);
 
@@ -190,8 +185,7 @@ public sealed class SettingsIpcIdentityTests
 
     private static async Task<NamedPipeClientStream> ConnectVerifiedClientAsync(
         string pipeName,
-        string expectedServerPath,
-        string expectedServerVersion,
+        string expectedServerFileName,
         string expectedUserSid,
         int expectedSessionId)
     {
@@ -201,8 +195,7 @@ public sealed class SettingsIpcIdentityTests
             await stream.ConnectAsync(5000);
             if (!NamedPipePeerVerification.TryVerifyServer(
                     stream,
-                    expectedServerPath,
-                    expectedServerVersion,
+                    expectedServerFileName,
                     expectedUserSid,
                     expectedSessionId,
                     allowLocalSystem: false,
@@ -222,15 +215,13 @@ public sealed class SettingsIpcIdentityTests
 
     private static string VerifyCurrentProcessClient(
         NamedPipeServerStream stream,
-        string expectedClientPath,
-        string expectedClientVersion,
+        string expectedClientFileName,
         string expectedUserSid,
         int expectedSessionId)
     {
         return NamedPipePeerVerification.TryVerifyClient(
             stream,
-            expectedClientPath,
-            expectedClientVersion,
+            expectedClientFileName,
             expectedUserSid,
             expectedSessionId,
             out var rejectionReason)

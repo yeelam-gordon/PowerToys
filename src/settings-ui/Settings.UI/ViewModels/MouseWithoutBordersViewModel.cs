@@ -327,8 +327,6 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                     var sessionId = Process.GetCurrentProcess().SessionId;
                     using var currentIdentity = WindowsIdentity.GetCurrent();
                     var currentUserSid = currentIdentity.User?.Value ?? throw new InvalidOperationException("Settings process has no user SID.");
-                    var mwbPath = MouseWithoutBordersIpc.GetMouseWithoutBordersExecutablePath(AppContext.BaseDirectory);
-                    var mwbVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(mwbPath);
                     var candidateStream = new NamedPipeClientStream(
                         ".",
                         MouseWithoutBordersIpc.GetSettingsSyncPipeName(sessionId),
@@ -340,8 +338,7 @@ namespace Microsoft.PowerToys.Settings.UI.ViewModels
                         await candidateStream.ConnectAsync(10000);
                         if (!NamedPipePeerVerification.TryVerifyServer(
                                 candidateStream,
-                                mwbPath,
-                                mwbVersion,
+                                MouseWithoutBordersIpc.MouseWithoutBordersExecutableFileName,
                                 currentUserSid,
                                 sessionId,
                                 allowLocalSystem: true,

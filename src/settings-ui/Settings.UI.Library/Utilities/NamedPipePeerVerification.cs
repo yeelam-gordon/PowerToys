@@ -4,9 +4,9 @@
 
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
@@ -18,22 +18,15 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 {
     public static class NamedPipePeerVerification
     {
-#if DEBUG
-        private const bool RequireTrustedMicrosoftSignature = false;
-#else
-        private const bool RequireTrustedMicrosoftSignature = true;
-#endif
-
         public static bool TryVerifyClient(
             NamedPipeServerStream stream,
-            string expectedExePath,
-            string expectedFileVersion,
+            string expectedExeName,
             string intendedUserSid,
             int intendedSessionId,
             out string rejectionReason)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            ValidateExpectedPeer(expectedExePath, intendedUserSid);
+            ValidateExpectedPeer(expectedExeName, intendedUserSid);
 
             if (!stream.IsConnected)
             {
@@ -49,8 +42,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
             return TryVerifyPeerProcess(
                 processId,
-                expectedExePath,
-                expectedFileVersion,
+                expectedExeName,
                 intendedUserSid,
                 intendedSessionId,
                 allowLocalSystem: false,
@@ -59,15 +51,14 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
         public static bool TryVerifyServer(
             NamedPipeClientStream stream,
-            string expectedExePath,
-            string expectedFileVersion,
+            string expectedExeName,
             string intendedUserSid,
             int intendedSessionId,
             bool allowLocalSystem,
             out string rejectionReason)
         {
             ArgumentNullException.ThrowIfNull(stream);
-            ValidateExpectedPeer(expectedExePath, intendedUserSid);
+            ValidateExpectedPeer(expectedExeName, intendedUserSid);
 
             if (!stream.IsConnected)
             {
@@ -83,24 +74,27 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
             return TryVerifyPeerProcess(
                 processId,
-                expectedExePath,
-                expectedFileVersion,
+                expectedExeName,
                 intendedUserSid,
                 intendedSessionId,
                 allowLocalSystem,
                 out rejectionReason);
         }
 
-        private static void ValidateExpectedPeer(string expectedExePath, string intendedUserSid)
+        private static void ValidateExpectedPeer(string expectedExeName, string intendedUserSid)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(expectedExePath);
+            ArgumentException.ThrowIfNullOrWhiteSpace(expectedExeName);
             ArgumentException.ThrowIfNullOrWhiteSpace(intendedUserSid);
+
+            if (!string.Equals(Path.GetFileName(expectedExeName), expectedExeName, StringComparison.Ordinal))
+            {
+                throw new ArgumentException("The expected executable name must not include a directory path.", nameof(expectedExeName));
+            }
         }
 
         private static bool TryVerifyPeerProcess(
             uint processId,
-            string expectedExePath,
-            string expectedFileVersion,
+            string expectedExeName,
             string intendedUserSid,
             int intendedSessionId,
             bool allowLocalSystem,
@@ -135,9 +129,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 }
 
                 var actualImagePath = NativeMethods.GetProcessImagePath(processHandle);
-                var actualFullPath = Path.GetFullPath(actualImagePath);
-                var expectedFullPath = Path.GetFullPath(expectedExePath);
-                var actualFileVersion = FileVersionInfo.GetVersionInfo(actualFullPath).FileVersion ?? string.Empty;
+                var ownImagePath = Environment.ProcessPath ?? throw new InvalidOperationException("The current process has no executable path.");
 
                 if (!NativeMethods.OpenProcessToken(processHandle, NativeMethods.TokenQuery, out var tokenHandle))
                 {
@@ -169,20 +161,16 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                     return false;
                 }
 
-                if (!string.Equals(actualFullPath, expectedFullPath, StringComparison.OrdinalIgnoreCase))
+                if (!TryVerifyPeerExecutableIdentity(
+                        actualImagePath,
+                        expectedExeName,
+                        out var actualFullPath,
+                        out rejectionReason))
                 {
-                    rejectionReason = "wrong-image";
                     return false;
                 }
 
-                if (!string.IsNullOrEmpty(expectedFileVersion) &&
-                    !string.Equals(actualFileVersion, expectedFileVersion, StringComparison.Ordinal))
-                {
-                    rejectionReason = "wrong-version";
-                    return false;
-                }
-
-                if (RequireTrustedMicrosoftSignature && !HasTrustedMicrosoftSignature(actualFullPath))
+                if (!MeetsSigningPolicy(ownImagePath, actualFullPath))
                 {
                     rejectionReason = "untrusted-signature";
                     return false;
@@ -203,9 +191,161 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
             }
         }
 
+        private static bool TryVerifyPeerExecutableIdentity(
+            string peerImagePath,
+            string expectedExeName,
+            out string resolvedPeerImagePath,
+            out string rejectionReason)
+        {
+            var ownImagePath = Environment.ProcessPath ?? throw new InvalidOperationException("The current process has no executable path.");
+            return TryVerifyPeerExecutableIdentity(peerImagePath, ownImagePath, expectedExeName, out resolvedPeerImagePath, out rejectionReason);
+        }
+
+        private static bool TryVerifyPeerExecutableIdentity(
+            string peerImagePath,
+            string ownImagePath,
+            string expectedExeName,
+            out string resolvedPeerImagePath,
+            out string rejectionReason)
+        {
+            resolvedPeerImagePath = string.Empty;
+            var normalizedPeerImagePath = Path.GetFullPath(peerImagePath);
+            var normalizedOwnImagePath = Path.GetFullPath(ownImagePath);
+
+            if (!string.Equals(Path.GetFileName(normalizedPeerImagePath), expectedExeName, StringComparison.OrdinalIgnoreCase))
+            {
+                rejectionReason = "wrong-image";
+                return false;
+            }
+
+            if (!HaveEqualOrNestedDirectories(
+                    Path.GetDirectoryName(normalizedOwnImagePath) ?? throw new InvalidOperationException("The current process has no executable directory."),
+                    Path.GetDirectoryName(normalizedPeerImagePath) ?? throw new InvalidOperationException("The peer process has no executable directory.")))
+            {
+                rejectionReason = "wrong-image";
+                return false;
+            }
+
+            resolvedPeerImagePath = normalizedPeerImagePath;
+            rejectionReason = string.Empty;
+            return true;
+        }
+
+        private static bool HaveEqualOrNestedDirectories(string firstDirectory, string secondDirectory)
+        {
+            var normalizedFirst = NormalizeDirectoryPath(firstDirectory);
+            var normalizedSecond = NormalizeDirectoryPath(secondDirectory);
+
+            return string.Equals(normalizedFirst, normalizedSecond, StringComparison.OrdinalIgnoreCase) ||
+                IsNestedDirectory(normalizedFirst, normalizedSecond) ||
+                IsNestedDirectory(normalizedSecond, normalizedFirst);
+        }
+
+        private static string NormalizeDirectoryPath(string directoryPath)
+        {
+            return Path.GetFullPath(directoryPath)
+                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        }
+
+        private static bool IsNestedDirectory(string candidateDirectory, string parentDirectory)
+        {
+            var normalizedParent = parentDirectory + Path.DirectorySeparatorChar;
+            return candidateDirectory.Length > normalizedParent.Length &&
+                candidateDirectory.StartsWith(normalizedParent, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool MeetsSigningPolicy(string ownImagePath, string peerImagePath)
+        {
+            if (!TryHasEmbeddedAuthenticodeSignature(ownImagePath, out var ownHasEmbeddedSignature))
+            {
+                return false;
+            }
+
+            return !ownHasEmbeddedSignature || HaveSameTrustedMicrosoftSigner(ownImagePath, peerImagePath);
+        }
+
+        private static bool TryHasEmbeddedAuthenticodeSignature(string imagePath, out bool hasEmbeddedSignature)
+        {
+            hasEmbeddedSignature = false;
+            try
+            {
+                using var image = File.OpenRead(imagePath);
+                using var reader = new PEReader(image);
+                var header = reader.PEHeaders.PEHeader;
+                if (header == null)
+                {
+                    return false;
+                }
+
+                // A malformed signature must not be mistaken for an unsigned development binary.
+                var certificateTable = header.CertificateTableDirectory;
+                hasEmbeddedSignature = certificateTable.RelativeVirtualAddress != 0 || certificateTable.Size != 0;
+                return true;
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+            catch (BadImageFormatException)
+            {
+                return false;
+            }
+        }
+
+        private static bool HaveSameTrustedMicrosoftSigner(string firstImagePath, string secondImagePath)
+        {
+            X509Certificate2 firstSigner = null;
+            X509Certificate2 secondSigner = null;
+
+            try
+            {
+                if (!TryGetTrustedMicrosoftSignerCertificate(firstImagePath, out firstSigner) ||
+                    !TryGetTrustedMicrosoftSignerCertificate(secondImagePath, out secondSigner))
+                {
+                    return false;
+                }
+
+                return HaveMatchingSignerCertificate(firstSigner, secondSigner);
+            }
+            finally
+            {
+                firstSigner?.Dispose();
+                secondSigner?.Dispose();
+            }
+        }
+
+        private static bool HaveMatchingSignerCertificate(X509Certificate2 firstSigner, X509Certificate2 secondSigner)
+        {
+            ArgumentNullException.ThrowIfNull(firstSigner);
+            ArgumentNullException.ThrowIfNull(secondSigner);
+
+            return CryptographicOperations.FixedTimeEquals(firstSigner.RawData, secondSigner.RawData);
+        }
+
         private static bool HasTrustedMicrosoftSignature(string imagePath)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(imagePath);
+
+            X509Certificate2 signer = null;
+            try
+            {
+                return TryGetTrustedMicrosoftSignerCertificate(imagePath, out signer);
+            }
+            finally
+            {
+                signer?.Dispose();
+            }
+        }
+
+        private static bool TryGetTrustedMicrosoftSignerCertificate(string imagePath, out X509Certificate2 signer)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(imagePath);
+
+            signer = null;
 
             try
             {
@@ -215,9 +355,9 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 }
 
 #pragma warning disable SYSLIB0057 // Embedded Authenticode signer extraction has no X509CertificateLoader equivalent.
-                using var signer = new X509Certificate2(X509Certificate.CreateFromSignedFile(imagePath));
+                using var imageSigner = new X509Certificate2(X509Certificate.CreateFromSignedFile(imagePath));
 #pragma warning restore SYSLIB0057
-                if (!signer.Subject.Contains("Microsoft Corporation", StringComparison.OrdinalIgnoreCase))
+                if (!imageSigner.Subject.Contains("Microsoft Corporation", StringComparison.OrdinalIgnoreCase))
                 {
                     return false;
                 }
@@ -228,6 +368,9 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 using var chain = new X509Chain();
                 chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
                 chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
+
+                // WinVerifyTrust already validates Authenticode timestamps; this chain checks machine-root trust.
+                chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
                 chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.3"));
 
                 var rootCertificates = roots.Certificates;
@@ -245,7 +388,13 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                             try
                             {
                                 chain.ChainPolicy.ExtraStore.AddRange(extraCertificates);
-                                return chain.Build(signer);
+                                if (!chain.Build(imageSigner))
+                                {
+                                    return false;
+                                }
+
+                                signer = X509CertificateLoader.LoadCertificate(imageSigner.RawData);
+                                return true;
                             }
                             finally
                             {
@@ -254,7 +403,13 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                         }
                     }
 
-                    return chain.Build(signer);
+                    if (!chain.Build(imageSigner))
+                    {
+                        return false;
+                    }
+
+                    signer = X509CertificateLoader.LoadCertificate(imageSigner.RawData);
+                    return true;
                 }
                 finally
                 {
@@ -263,6 +418,8 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
             }
             catch (CryptographicException)
             {
+                signer?.Dispose();
+                signer = null;
                 return false;
             }
         }

@@ -4,8 +4,6 @@
 
 using System;
 using System.ComponentModel;
-using System.Diagnostics;
-using System.IO;
 using System.IO.Pipes;
 using System.Runtime.InteropServices;
 using System.Security.Principal;
@@ -19,42 +17,14 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
     public static class MouseWithoutBordersIpc
     {
         public const string SettingsSyncProtocol = "PowerToys.MouseWithoutBorders.v2.SettingsSync";
+        public const string SettingsExecutableFileName = "PowerToys.Settings.exe";
+        public const string MouseWithoutBordersExecutableFileName = "PowerToys.MouseWithoutBorders.exe";
 
         public static string GetSettingsSyncPipeName(int sessionId)
         {
             ArgumentOutOfRangeException.ThrowIfNegative(sessionId);
 
             return $"{SettingsSyncProtocol}.Session.{sessionId}";
-        }
-
-        public static string GetSettingsExecutablePath(string installDirectory)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(installDirectory);
-
-            return Path.Combine(Path.GetFullPath(installDirectory), "WinUI3Apps", "PowerToys.Settings.exe");
-        }
-
-        public static string GetMouseWithoutBordersExecutablePath(string settingsDirectory)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(settingsDirectory);
-
-            var fullSettingsDirectory = Path.GetFullPath(settingsDirectory)
-                .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            if (!string.Equals(Path.GetFileName(fullSettingsDirectory), "WinUI3Apps", StringComparison.OrdinalIgnoreCase))
-            {
-                throw new ArgumentException("The Settings directory must be the WinUI3Apps directory.", nameof(settingsDirectory));
-            }
-
-            var installDirectory = Directory.GetParent(fullSettingsDirectory)?.FullName
-                ?? throw new ArgumentException("The Settings directory must have a parent directory.", nameof(settingsDirectory));
-            return Path.Combine(installDirectory, "PowerToys.MouseWithoutBorders.exe");
-        }
-
-        public static string GetInstalledFileVersion(string executablePath)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(executablePath);
-
-            return File.Exists(executablePath) ? FileVersionInfo.GetVersionInfo(executablePath).FileVersion ?? string.Empty : string.Empty;
         }
 
         public static void GrantCurrentProcessQueryAccess(SecurityIdentifier allowedUser)

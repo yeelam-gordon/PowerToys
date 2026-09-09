@@ -413,16 +413,12 @@ namespace MouseWithoutBorders.Class
                 return;
             }
 
-            var settingsPath = MouseWithoutBordersIpc.GetSettingsExecutablePath(AppContext.BaseDirectory);
-            var settingsVersion = MouseWithoutBordersIpc.GetInstalledFileVersion(settingsPath);
-
             IpcChannel<SettingsSyncHelper>.StartVerifiedIpcServer(
                 MouseWithoutBordersIpc.GetSettingsSyncPipeName(sessionId),
                 currentUserSid,
                 stream => NamedPipePeerVerification.TryVerifyClient(
                     stream,
-                    settingsPath,
-                    settingsVersion,
+                    MouseWithoutBordersIpc.SettingsExecutableFileName,
                     currentUserSid.Value,
                     sessionId,
                     out var rejectionReason)

@@ -228,6 +228,8 @@ WellKnownSidType.AuthenticatedUserSid, null);
             Action<Exception> serverErrorObserver,
             CancellationToken cancellationToken)
         {
+            ArgumentNullException.ThrowIfNull(verifyClientConnection);
+
             _ = Task.Run(
                 async () =>
                 {
@@ -238,7 +240,7 @@ WellKnownSidType.AuthenticatedUserSid, null);
                             using var serverChannel = RestrictedNamedPipeServer.Create(pipeName, allowedUser);
                             await serverChannel.WaitForConnectionAsync(cancellationToken);
 
-                            var rejectionReason = verifyClientConnection?.Invoke(serverChannel);
+                            var rejectionReason = verifyClientConnection(serverChannel);
                             if (!string.IsNullOrEmpty(rejectionReason))
                             {
 #if !MM_HELPER

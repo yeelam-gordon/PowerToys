@@ -83,6 +83,19 @@ public sealed class SettingsIpcIdentityTests
     }
 
     [TestMethod]
+    public void MissingVerifierIsRejectedBeforeListenerStarts()
+    {
+        using var identity = WindowsIdentity.GetCurrent();
+
+        Assert.ThrowsException<ArgumentNullException>(() =>
+            IpcChannel<TestRpcTarget>.StartVerifiedIpcServer(
+                $"PowerToys.MWB.v2.UnitTest.{Guid.NewGuid():N}",
+                identity.User!,
+                null!,
+                CancellationToken.None));
+    }
+
+    [TestMethod]
     public async Task ProductionVerifiedServerAcceptsReconnect()
     {
         var pipeName = $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";

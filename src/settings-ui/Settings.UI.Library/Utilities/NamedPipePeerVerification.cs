@@ -349,7 +349,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
             try
             {
-                if (!HasIntactAuthenticodeSignature(imagePath))
+                if (!TryVerifyAuthenticodeSignature(imagePath, out var verificationTime))
                 {
                     return false;
                 }
@@ -369,8 +369,8 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
                 chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
 
-                // WinVerifyTrust already validates Authenticode timestamps; this chain checks machine-root trust.
-                chain.ChainPolicy.VerificationFlags = X509VerificationFlags.IgnoreNotTimeValid;
+                // Check lifetime at the same current time or validated timestamp that Windows used.
+                chain.ChainPolicy.VerificationTime = verificationTime;
                 chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.3"));
 
                 var rootCertificates = roots.Certificates;
@@ -434,6 +434,12 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
         private static bool HasIntactAuthenticodeSignature(string imagePath)
         {
+            return TryVerifyAuthenticodeSignature(imagePath, out _);
+        }
+
+        private static bool TryVerifyAuthenticodeSignature(string imagePath, out DateTime verificationTime)
+        {
+            verificationTime = default;
             var fileInfo = new WinTrustFileInfo
             {
                 StructSize = unchecked((uint)Marshal.SizeOf<WinTrustFileInfo>()),
@@ -456,9 +462,43 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
 
                 var action = NativeMethods.WinTrustActionGenericVerifyV2;
                 var status = NativeMethods.WinVerifyTrust(new IntPtr(-1), ref action, ref trustData);
-                trustData.StateAction = NativeMethods.WinTrustStateActionClose;
-                _ = NativeMethods.WinVerifyTrust(new IntPtr(-1), ref action, ref trustData);
-                return status == 0;
+                try
+                {
+                    if (status != 0)
+                    {
+                        return false;
+                    }
+
+                    var provider = NativeMethods.WTHelperProvDataFromStateData(trustData.StateData);
+                    if (provider == IntPtr.Zero)
+                    {
+                        return false;
+                    }
+
+                    var signer = NativeMethods.WTHelperGetProvSignerFromChain(provider, 0, false, 0);
+                    if (signer == IntPtr.Zero)
+                    {
+                        return false;
+                    }
+
+                    var signerTime = Marshal.PtrToStructure<WinTrustSignerTime>(signer);
+                    if (signerTime.StructSize < Marshal.SizeOf<WinTrustSignerTime>())
+                    {
+                        return false;
+                    }
+
+                    verificationTime = DateTime.FromFileTimeUtc(signerTime.VerificationTime.ToLong());
+                    return true;
+                }
+                catch (ArgumentOutOfRangeException)
+                {
+                    return false;
+                }
+                finally
+                {
+                    trustData.StateAction = NativeMethods.WinTrustStateActionClose;
+                    _ = NativeMethods.WinVerifyTrust(new IntPtr(-1), ref action, ref trustData);
+                }
             }
             finally
             {
@@ -512,6 +552,14 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
             internal string FilePath;
             internal IntPtr FileHandle;
             internal IntPtr KnownSubject;
+        }
+
+        // Only the fixed prefix of CRYPT_PROVIDER_SGNR is needed.
+        [StructLayout(LayoutKind.Sequential)]
+        private struct WinTrustSignerTime
+        {
+            internal uint StructSize;
+            internal FileTime VerificationTime;
         }
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
@@ -620,6 +668,16 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
                 IntPtr windowHandle,
                 [In] ref Guid actionId,
                 ref WinTrustData trustData);
+
+            [DllImport("wintrust.dll", ExactSpelling = true)]
+            internal static extern IntPtr WTHelperProvDataFromStateData(IntPtr stateData);
+
+            [DllImport("wintrust.dll", ExactSpelling = true)]
+            internal static extern IntPtr WTHelperGetProvSignerFromChain(
+                IntPtr providerData,
+                uint signerIndex,
+                [MarshalAs(UnmanagedType.Bool)] bool counterSigner,
+                uint counterSignerIndex);
 
             [DllImport("crypt32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]

@@ -212,6 +212,32 @@ public class SettingsCliTests
     }
 
     [DataTestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task TestVersionWithSubcommandFailsWithoutExecutingCommands(bool asynchronous)
+    {
+        int calls = 0;
+        var root = Program.CreateRootCommand();
+        foreach (var command in root.Subcommands)
+        {
+            command.SetAction(_ => calls++);
+        }
+
+        using var stdout = new StringWriter(CultureInfo.InvariantCulture);
+        using var stderr = new StringWriter(CultureInfo.InvariantCulture);
+        using var versionOutput = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.AreEqual(0, root.Parse(["--version"]).Invoke(new InvocationConfiguration { Output = versionOutput, Error = stderr }));
+        var parsed = root.Parse(["--version", "list"]);
+        var configuration = new InvocationConfiguration { Output = stdout, Error = stderr };
+        int exit = asynchronous ? await parsed.InvokeAsync(configuration) : parsed.Invoke(configuration);
+
+        Assert.AreEqual(1, exit);
+        StringAssert.Contains(stderr.ToString(), parsed.Errors.Single().Message);
+        Assert.IsFalse(stdout.ToString().Contains(versionOutput.ToString().Trim(), StringComparison.Ordinal));
+        Assert.AreEqual(0, calls);
+    }
+
+    [DataTestMethod]
     [DataRow("list", true)]
     [DataRow("list", false)]
     [DataRow("status", true)]

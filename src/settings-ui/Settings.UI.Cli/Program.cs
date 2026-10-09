@@ -7,6 +7,7 @@ using System.CommandLine;
 using System.Threading.Tasks;
 using ManagedCommon;
 using Microsoft.PowerToys.Telemetry;
+using PowerToys.Common.CommandLine;
 using PowerToys.Settings.Cli.Commands;
 using PowerToys.Settings.Cli.Telemetry;
 
@@ -23,6 +24,7 @@ internal static class Program
         rootCommand.Subcommands.Add(new EnableCommand());
         rootCommand.Subcommands.Add(new DisableCommand());
 
+        VersionOptionErrorAction.Apply(rootCommand);
         return rootCommand;
     }
 

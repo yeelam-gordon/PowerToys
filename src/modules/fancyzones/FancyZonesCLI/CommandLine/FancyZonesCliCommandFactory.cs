@@ -4,6 +4,7 @@
 
 using System.CommandLine;
 using FancyZonesCLI.CommandLine.Commands;
+using PowerToys.Common.CommandLine;
 
 namespace FancyZonesCLI.CommandLine;
 
@@ -23,6 +24,7 @@ internal static class FancyZonesCliCommandFactory
         root.Subcommands.Add(new SetHotkeyCommand());
         root.Subcommands.Add(new RemoveHotkeyCommand());
 
+        VersionOptionErrorAction.Apply(root);
         return root;
     }
 }

@@ -5,6 +5,7 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Threading.Tasks;
+using PowerToys.Common.CommandLine;
 using PowerToys.DSC.Commands;
 
 namespace PowerToys.DSC;
@@ -24,6 +25,7 @@ public class Program
         rootCommand.Subcommands.Add(new SchemaCommand());
         rootCommand.Subcommands.Add(new ManifestCommand());
         rootCommand.Subcommands.Add(new ModulesCommand());
+        VersionOptionErrorAction.Apply(rootCommand);
         return await rootCommand.Parse(args).InvokeAsync();
     }
 }

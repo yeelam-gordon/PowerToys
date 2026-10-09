@@ -23,6 +23,7 @@ using Awake.Telemetry;
 using ManagedCommon;
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Telemetry;
+using PowerToys.Common.CommandLine;
 
 namespace Awake
 {
@@ -235,6 +236,7 @@ namespace Awake
                 parseResult.GetValue(expireAtOption) ?? string.Empty,
                 parseResult.GetValue(parentPidOption)));
 
+            VersionOptionErrorAction.Apply(rootCommand);
             return rootCommand;
         }
 

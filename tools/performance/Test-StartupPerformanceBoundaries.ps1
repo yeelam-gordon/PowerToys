@@ -18,7 +18,9 @@ if ($parseErrors.Count -ne 0)
     throw ($parseErrors | Out-String)
 }
 
-foreach ($name in 'Get-RootProcesses', 'Resolve-OutputDirectory', 'Test-LogFile', 'Restore-DataFolder')
+foreach ($name in 'Get-RootProcesses', 'Resolve-OutputDirectory', 'Test-LogFile', 'Restore-DataFolder',
+    'Stop-Processes', 'Wait-PinnedProcesses', 'Stop-ProcessAndDescendants', 'Stop-RootProcesses',
+    'Stop-LaunchedProcesses', 'Stop-Runner', 'Stop-AllRunners', 'Close-Settings')
 {
     $definition = $ast.Find({
         param($node)
@@ -29,7 +31,13 @@ foreach ($name in 'Get-RootProcesses', 'Resolve-OutputDirectory', 'Test-LogFile'
         throw "Missing production function: $name"
     }
 
-    . ([scriptblock]::Create($definition.Extent.Text))
+    # Test-only type adaptation lets controlled objects exercise the unchanged stopping bodies.
+    # Native discovery/window calls are adapted to memory-only seams, not entire stopping helpers.
+    $text = $definition.Extent.Text.Replace('[Diagnostics.Process', '[object').Replace('[PowerToysPerformance.PinnedProcess', '[object')
+    $text = $text.Replace('[PowerToysPerformance.ProcessTree]::GetDescendants($Process.Id, $Process.StartTime.ToUniversalTime())', '(Get-TestDescendants)')
+    $text = $text.Replace("[PowerToysPerformance.WindowFinder]::FindTopLevelWindow(`$Process.Id, 'PToyTrayIconWindow')", '(Get-TestTrayWindow)')
+    $text = $text.Replace('[PowerToysPerformance.WindowFinder]::PostClose($trayWindow)', '(Send-TestTrayClose)')
+    . ([scriptblock]::Create($text))
 }
 
 $run = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.TryStatementAst] })[-1]
@@ -109,6 +117,112 @@ finally
     Pop-Location
 }
 
+$rootStart = @($ast.EndBlock.Statements | Where-Object { $_.Extent.Text -eq '$rootProvider = $null' })[0].Extent.StartOffset
+$rootEnd = @($ast.EndBlock.Statements | Where-Object { $_.Extent.Text -like '$runnerPath = Join-Path*' })[0].Extent.StartOffset
+$resolveRoot = [scriptblock]::Create($ast.Extent.Text.Substring($rootStart, $rootEnd - $rootStart) + "`nreturn `$root")
+$clrLocation = [Environment]::CurrentDirectory
+Push-Location $PSScriptRoot
+try
+{
+    # No directories are created: the CLR location is an existing ancestor, unlike the PS location.
+    [Environment]::CurrentDirectory = Split-Path $PSScriptRoot -Parent
+    $PowerToysRoot = '.\x64\Release\..\Release'
+    Assert ((& $resolveRoot) -eq (Join-Path $PSScriptRoot 'x64\Release')) 'Build root follows PS location rather than divergent CLR cwd'
+    $PowerToysRoot = 'C:\fake-build\..\build'
+    Assert ((& $resolveRoot) -eq 'C:\build') 'Absolute build root normalizes parent segments'
+    $PowerToysRoot = 'FileSystem::C:\fake-build'
+    Assert ((& $resolveRoot) -eq 'C:\fake-build') 'Filesystem-provider-qualified build root accepted'
+    $PowerToysRoot = 'Env:\PATH'
+    $rejected = $false
+    try { $null = & $resolveRoot } catch { $rejected = $_.Exception.Message -eq 'PowerToysRoot must be a filesystem path.' }
+    Assert $rejected 'Non-filesystem build root rejected'
+}
+finally
+{
+    [Environment]::CurrentDirectory = $clrLocation
+    Pop-Location
+}
+
+function New-TestProcess
+{
+    param([int]$Id = 21, [string]$Fault = 'none', [string]$Path = 'C:\fake-build\module.exe')
+    $process = [pscustomobject]@{
+        Id = $Id; SessionId = 2; ProcessName = 'PowerToys'; Path = $Path; Handle = [IntPtr]::Zero
+        HasExited = ($Fault -eq 'exited'); Fault = $Fault; Kills = 0; Waits = 0; Disposals = 0
+        StartTime = [datetime]::UtcNow; StartInfo = [pscustomobject]@{ FileName = $Path }
+    }
+    $process | Add-Member -MemberType ScriptMethod -Name Kill -Value {
+        $this.Kills++
+        if ($this.Fault -eq 'kill') { throw 'Injected kill failure' }
+        if ($this.Fault -eq 'race') { $this.HasExited = $true; throw 'Exited during kill' }
+        if ($this.Fault -notin 'timeout', 'false-success', 'wait') { $this.HasExited = $true }
+    }
+    $process | Add-Member -MemberType ScriptMethod -Name WaitForExit -Value {
+        param($TimeoutMs)
+        $this.Waits++
+        if ($this.Fault -eq 'wait') { throw 'Injected wait failure' }
+        if ($this.Fault -eq 'false-success') { return $true }
+        return $this.HasExited
+    }
+    $process | Add-Member -MemberType ScriptMethod -Name Dispose -Value { $this.Disposals++ }
+    $process | Add-Member -MemberType ScriptMethod -Name CloseMainWindow -Value { return $false }
+    return $process
+}
+function Get-TestDescendants
+{
+    if ($script:descendantDiscoveryFailure) { throw 'Injected descendant discovery failure' }
+    return $script:descendants
+}
+function Get-TestTrayWindow { return [IntPtr]::Zero }
+function Send-TestTrayClose {}
+$script:descendants = @()
+
+foreach ($fault in 'none', 'exited', 'race', 'kill', 'wait', 'timeout', 'false-success')
+{
+    $process = New-TestProcess -Fault $fault
+    $threw = $false
+    $message = ''
+    try { $output = @(Stop-Processes -Processes @($process) -TimeoutMs 0) } catch { $threw = $true; $message = $_.Exception.Message }
+    Assert ($threw -eq ($fault -in 'kill', 'wait', 'timeout', 'false-success')) "Actual Stop-Processes exit verdict: $fault"
+    if ($threw)
+    {
+        Assert ($message -like '*pid 21*' -and $message -like '*manually*') "Actual stop failure is actionable: $fault"
+        if ($fault -eq 'kill') { Assert ($message -like '*Injected kill failure*') 'Original kill exception remains in actionable stopping diagnostics' }
+    }
+    else
+    {
+        Assert ($output.Count -eq 0) "Successful stop emits no success-shaped output: $fault"
+    }
+    Assert ($process.Kills -eq [int]($fault -ne 'exited')) "Only live fake process receives Kill: $fault"
+}
+$bad = New-TestProcess -Id 22 -Fault kill
+$good = New-TestProcess -Id 23
+$threw = $false
+try { Stop-Processes -Processes @($bad, $good) -TimeoutMs 0 } catch { $threw = $true }
+Assert ($threw -and $good.HasExited -and $good.Waits -eq 1) 'Stop-Processes attempts all processes before propagating failure'
+Assert (@(Stop-Processes -Processes @() -TimeoutMs 0).Count -eq 0) 'Empty stop succeeds silently'
+
+foreach ($fault in 'none', 'exited', 'kill', 'wait', 'timeout')
+{
+    $process = New-TestProcess -Fault $fault
+    $threw = $false
+    try { Wait-PinnedProcesses -Processes @($process) -TimeoutMs 0 } catch { $threw = $true }
+    Assert ($threw -eq ($fault -in 'kill', 'wait', 'timeout')) "Pinned child final wait propagates failure: $fault"
+}
+$parent = New-TestProcess -Fault kill
+$child = New-TestProcess -Id 24
+$script:descendants = @($child)
+$threw = $false
+try { Stop-ProcessAndDescendants -Process $parent } catch { $threw = $true }
+Assert ($threw -and $child.Disposals -eq 1) 'Descendant handles disposed even when parent stop fails'
+$parent = New-TestProcess
+$child = New-TestProcess -Id 24 -Fault timeout
+$script:descendants = @($child)
+$threw = $false
+try { Stop-ProcessAndDescendants -Process $parent } catch { $threw = $true }
+Assert ($threw -and $parent.HasExited -and $child.Disposals -eq 1) 'Descendant stop failure propagates through actual parent stopping'
+$script:descendants = @()
+
 $sessionId = 2
 $root = 'C:\fake-build'
 $script:handleReads = New-Object 'System.Collections.Generic.List[int]'
@@ -127,8 +241,8 @@ foreach ($process in $script:processes)
 }
 function Get-Process
 {
-    param([string]$Name, $ErrorAction)
-    return $script:processes | Where-Object { $_.ProcessName -like $Name }
+    param([string]$Name, [int]$Id, $ErrorAction)
+    return $script:processes | Where-Object { $_.HasExited -ne $true -and (($Name -and $_.ProcessName -like $Name) -or ($Id -and $_.Id -eq $Id)) }
 }
 $selected = @(Get-RootProcesses)
 Assert ($selected.Count -eq 1 -and $selected[0].Id -eq 11) 'Discovery preserves current-session executable-directory and name filters'
@@ -136,6 +250,42 @@ Assert (-not $script:handleReads.Contains(12)) 'Foreign session excluded before 
 Assert ($script:handleReads.Contains(11) -and $script:handleReads.Contains(13)) 'Current-session handles pinned before path comparison'
 Assert (-not $script:handleReads.Contains(14)) 'Process name filter preserved'
 Assert (@(Get-RootProcesses -Name 'PowerToys.Settings' -Folder 'C:\fake-build-other').Count -eq 1) 'Explicit discovery name and folder preserved'
+
+$runnerPath = 'C:\fake-build\PowerToys.exe'
+foreach ($fault in 'none', 'kill', 'wait', 'timeout', 'false-success')
+{
+    $process = New-TestProcess -Fault $fault
+    $script:processes = @($process)
+    $threw = $false
+    try { Stop-RootProcesses } catch { $threw = $true }
+    Assert ($threw -eq ($fault -ne 'none') -and $process.Disposals -eq 1) "Root stop propagates failures and disposes handles: $fault"
+
+    $runner = New-TestProcess -Fault $fault -Path $runnerPath
+    $script:processes = @()
+    $threw = $false
+    try { Stop-Runner -Process $runner -Folder $root } catch { $threw = $true }
+    Assert ($threw -eq ($fault -ne 'none')) "Runner stopping validates final exit: $fault"
+
+    $settings = New-TestProcess -Fault $fault
+    $threw = $false
+    try { Close-Settings -Process $settings } catch { $threw = $true }
+    Assert ($threw -eq ($fault -ne 'none')) "Settings stopping validates final exit: $fault"
+}
+$runner = New-TestProcess -Path $runnerPath
+$runner.ProcessName = 'PowerToys'
+$script:processes = @($runner)
+$script:stoppedRunnerPaths = New-Object System.Collections.Generic.List[string]
+Stop-AllRunners
+Assert ($runner.HasExited -and $runner.Disposals -eq 1 -and $script:stoppedRunnerPaths.Contains($runnerPath)) 'Takeover stops, records, and disposes original runner'
+$runner = New-TestProcess -Fault kill -Path $runnerPath
+$unprocessedRunner = New-TestProcess -Id 29 -Path $runnerPath
+$script:processes = @($runner, $unprocessedRunner)
+$script:stoppedRunnerPaths.Clear()
+$threw = $false
+try { Stop-AllRunners } catch { $threw = $true }
+Assert ($threw -and $runner.Disposals -eq 1 -and $script:stoppedRunnerPaths.Count -eq 0) 'Failed takeover propagates, disposes, and does not record failed stop'
+Assert ($unprocessedRunner.Disposals -eq 1 -and $unprocessedRunner.Kills -eq 0) 'Failed initial takeover disposes unprocessed enumerated runner objects'
+$script:processes = @()
 
 $powerToysDataFolder = $dataFolder
 $backupPath = 'C:\external-output\data-backup'
@@ -163,11 +313,21 @@ function Reset-Recovery
     $script:copyFailure = $false
     $script:deleteFailure = $null
     $script:enumerationFailure = $false
-    $script:stopFailure = $false
+    $script:launched = @()
+    $script:processes = @()
+    $script:descendants = @()
+    $script:descendantDiscoveryFailure = $false
+    $script:unconfirmedProcessExit = $false
+    $script:backups = @{}
+    $script:exportedBackups = @{}
+    $script:exportFailure = $false
+    $script:OutputDirectory = 'C:\external-output'
+    $script:started = [datetime]'2026-10-09T12:00:00'
     $script:warnings = New-Object 'System.Collections.Generic.List[string]'
     $script:restarts = New-Object 'System.Collections.Generic.List[string]'
     $script:disposed = 0
     $script:stopped = 0
+    $script:restoredFiles = 0
     $script:tookOver = $true
     $script:stoppedRunnerPaths = @('C:\fake-runner.exe')
     $script:recorder = New-Object psobject
@@ -231,12 +391,16 @@ function Write-Warning
     param([string]$Message)
     $script:warnings.Add($Message)
 }
-function Stop-LaunchedProcesses
+function Restore-Files { $script:restoredFiles++ }
+function Export-Clixml
 {
-    if ($script:stopFailure) { throw 'Injected stop failure' }
+    param([Parameter(ValueFromPipeline)]$InputObject, [string]$LiteralPath)
+    process
+    {
+        if ($script:exportFailure) { throw 'Injected backup export failure' }
+        $script:exportedBackups[$LiteralPath] = $InputObject.Clone()
+    }
 }
-function Stop-RootProcesses { $script:stopped++ }
-function Restore-Files {}
 function Start-Process
 {
     param([string]$FilePath)
@@ -283,7 +447,7 @@ foreach ($fault in 'none', 'copy', 'delete', 'directory', 'unexpected', 'no-snap
         'directory' { $script:deleteFailure = "$dataFolder\empty" }
         'unexpected' { $script:enumerationFailure = $true }
         'no-snapshot' { $script:dataSnapshot = $null; $script:tookOver = $false }
-        'stop' { $script:stopFailure = $true }
+        'stop' { $script:launched = @(New-TestProcess -Fault kill) }
     }
     $threw = $false
     try { & $finalizer } catch { $threw = $true }
@@ -301,6 +465,111 @@ foreach ($fault in 'none', 'copy', 'delete', 'directory', 'unexpected', 'no-snap
         {
             Assert (($script:warnings -join ' ') -like '*restart was skipped*' -and ($script:warnings -join ' ') -like "*$backupPath*") "Actionable skipped-restart warning: $fault"
         }
+        else
+        {
+            Assert ($script:restoredFiles -eq 0 -and $script:launched[0].Disposals -eq 1) 'Actual failed launched stop withholds all restoration and disposes process'
+            Assert (($script:warnings -join ' ') -like "*$backupPath*" -and ($script:warnings -join ' ') -like '*Stop the remaining processes*') 'Actual stopping failure reports recovery originals and required manual stop'
+        }
+    }
+}
+
+foreach ($fault in 'none', 'exited', 'race', 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner')
+{
+    Reset-Recovery
+    $process = New-TestProcess -Fault $fault
+    if ($fault -eq 'root')
+    {
+        $process = New-TestProcess -Fault timeout
+        $script:processes = @($process)
+    }
+    else
+    {
+        if ($fault -eq 'runner') { $process = New-TestProcess -Fault kill -Path $runnerPath }
+        $script:launched = @($process)
+    }
+    $child = New-TestProcess -Id 25 -Fault timeout
+    $script:descendants = if ($fault -eq 'child') { @($child) } else { @() }
+    $threw = $false
+    try { & $finalizer } catch { $threw = $true }
+    $failed = $fault -in 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner'
+    Assert ($threw -eq $failed) "Actual stopping/finalizer failure propagation: $fault"
+    Assert ($script:disposed -eq 1 -and $process.Disposals -eq 1) "Actual stopping/finalizer disposes recorder and process: $fault"
+    if ($failed)
+    {
+        Assert ($script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0 -and $script:files["$dataFolder\settings.json"] -eq 'changed') "Failed actual stopping withholds restore and restart: $fault"
+        Assert ($script:files["$backupPath\settings.json"] -eq 'original' -and ($script:warnings -join ' ') -like "*$backupPath*") "Failed actual stopping retains and identifies recovery original: $fault"
+    }
+    else
+    {
+        Assert ($script:restoredFiles -eq 1 -and $script:restarts.Count -eq 1 -and $script:files["$dataFolder\settings.json"] -eq 'original') "Successful actual stopping restores and restarts: $fault"
+    }
+}
+$script:descendants = @()
+Reset-Recovery
+$bad = New-TestProcess -Fault kill
+$good = New-TestProcess -Id 26
+$script:launched = @($bad, $good)
+$rootProcess = New-TestProcess -Id 27
+$script:processes = @($rootProcess)
+$threw = $false
+try { & $finalizer } catch { $threw = $true }
+Assert ($threw -and $good.HasExited -and $rootProcess.HasExited) 'Finalizer attempts remaining launched and root stopping after a failed launched stop'
+Assert ($bad.Disposals -eq 1 -and $good.Disposals -eq 1 -and $rootProcess.Disposals -eq 1 -and $script:disposed -eq 1) 'Aggregated stopping failure disposes every owned handle and recorder'
+
+Reset-Recovery
+$parent = New-TestProcess
+$child = New-TestProcess -Id 28 -Fault timeout
+$script:descendants = @($child)
+$script:launched = @($parent)
+$threw = $false
+try { Stop-ProcessAndDescendants -Process $parent } catch { $threw = $true }
+Assert ($threw -and $parent.HasExited -and $child.Disposals -eq 1) 'Sample cleanup exposes failed child wait and releases pinned handle'
+$script:descendants = @()
+$threw = $false
+try { & $finalizer } catch { $threw = $true }
+Assert ($threw -and $script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0) 'Earlier child failure cannot disappear when finalizer sees exited parent'
+Assert ($script:disposed -eq 1 -and $parent.Disposals -eq 1 -and $script:files["$backupPath\settings.json"] -eq 'original') 'Earlier child failure retains snapshot and disposes finalizer resources'
+
+Reset-Recovery
+$script:dataSnapshot = $null
+$script:tookOver = $false
+$runner = New-TestProcess -Fault kill -Path $runnerPath
+$script:processes = @($runner)
+$threw = $false
+try { Stop-AllRunners } catch { $threw = $true }
+Assert ($threw -and $script:unconfirmedProcessExit) 'Failed initial takeover records unconfirmed exit before takeover flag'
+$threw = $false
+try { & $finalizer } catch { $threw = $true }
+Assert ($threw -and $script:restarts.Count -eq 0 -and $script:restoredFiles -eq 0 -and $script:disposed -eq 1) 'Partial takeover failure cannot restart already-stopped runners'
+
+Reset-Recovery
+$process = New-TestProcess
+$script:launched = @($process)
+$script:descendantDiscoveryFailure = $true
+$threw = $false
+try { & $finalizer } catch { $threw = $true }
+Assert ($threw -and $script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0 -and $process.Disposals -eq 1) 'Unknown descendants fail closed through actual stopping path'
+
+foreach ($exportFault in $false, $true)
+{
+    Reset-Recovery
+    $script:dataSnapshot = $null
+    $script:tookOver = $false
+    $script:launched = @(New-TestProcess -Fault timeout)
+    $script:backups = @{ 'C:\fake-data\last-run.log' = [byte[]](1, 2, 3); 'C:\fake-data\absent.log' = $null }
+    $script:exportFailure = $exportFault
+    $threw = $false
+    try { & $finalizer } catch { $threw = $true }
+    Assert ($threw -and $script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0 -and $script:disposed -eq 1) "Individual-file recovery withheld under writer failure: export failure $exportFault"
+    if ($exportFault)
+    {
+        Assert (($script:warnings -join ' ') -like "*Couldn't save individual-file originals*" -and $script:backups.Count -eq 2) 'Recovery export failure surfaces limited in-memory originals instead of success'
+    }
+    else
+    {
+        $saved = $script:exportedBackups['C:\external-output\file-backup-20261009-120000.clixml']
+        Assert ($saved.Count -eq 2 -and ($saved['C:\fake-data\last-run.log'] -join ',') -eq '1,2,3' -and $null -eq $saved['C:\fake-data\absent.log']) 'Stopping failure saves individual-file bytes and original-absence metadata'
+        Assert (($script:warnings -join ' ') -like '*file-backup-20261009-120000.clixml*') 'Stopping failure identifies individual-file recovery location'
     }
 }
 

@@ -640,7 +640,14 @@ namespace PowerToysPerformance
 '@
 }
 
-$root = [IO.Path]::GetFullPath($PowerToysRoot).TrimEnd('\')
+$rootProvider = $null
+$rootDrive = $null
+$root = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($PowerToysRoot, [ref]$rootProvider, [ref]$rootDrive)
+if ($rootProvider.Name -ne 'FileSystem')
+{
+    throw 'PowerToysRoot must be a filesystem path.'
+}
+$root = [IO.Path]::GetFullPath($root).TrimEnd('\')
 $runnerPath = Join-Path $root 'PowerToys.exe'
 $settingsPath = Join-Path $root 'WinUI3Apps\PowerToys.Settings.exe'
 $launcherPath = Join-Path $root 'PowerToys.PowerLauncher.exe'
@@ -665,6 +672,7 @@ $script:launched = New-Object System.Collections.Generic.List[System.Diagnostics
 $script:backups = @{}
 $script:dataSnapshot = $null
 $script:tookOver = $false
+$script:unconfirmedProcessExit = $false
 $script:stoppedRunnerPaths = New-Object System.Collections.Generic.List[string]
 
 function Get-ElapsedMs
@@ -732,6 +740,7 @@ function Stop-Processes
     # Only pass processes that are already open, from Start-TargetProcess or Get-RootProcesses.
     param([AllowEmptyCollection()][Diagnostics.Process[]]$Processes, [int]$TimeoutMs = 10000)
 
+    $errors = @{}
     foreach ($process in $Processes)
     {
         try
@@ -743,18 +752,43 @@ function Stop-Processes
         }
         catch
         {
+            $errors[$process.Id] = $_.Exception.Message
         }
     }
 
+    $failures = New-Object System.Collections.Generic.List[string]
     foreach ($process in $Processes)
     {
         try
         {
-            $null = $process.WaitForExit($TimeoutMs)
+            if (-not $process.WaitForExit($TimeoutMs))
+            {
+                $errors[$process.Id] += " Timed out after $TimeoutMs ms."
+            }
         }
         catch
         {
+            $errors[$process.Id] += " WaitForExit: $($_.Exception.Message)"
         }
+
+        try
+        {
+            if ($process.HasExited)
+            {
+                continue
+            }
+        }
+        catch
+        {
+            $errors[$process.Id] += " HasExited: $($_.Exception.Message)"
+        }
+
+        $failures.Add("pid $($process.Id): exit could not be confirmed. $($errors[$process.Id])")
+    }
+
+    if ($failures.Count -ne 0)
+    {
+        throw "Couldn't stop processes: $($failures -join '; '). Exit them manually (or run this script elevated if needed) before retrying."
     }
 }
 
@@ -765,10 +799,22 @@ function Wait-PinnedProcesses
     $stopwatch = [Diagnostics.Stopwatch]::StartNew()
     foreach ($process in $Processes)
     {
-        if (-not $process.WaitForExit([int][Math]::Max(0, $TimeoutMs - $stopwatch.ElapsedMilliseconds)))
+        try
         {
-            $process.Kill()
-            $null = $process.WaitForExit(5000)
+            if (-not $process.WaitForExit([int][Math]::Max(0, $TimeoutMs - $stopwatch.ElapsedMilliseconds)))
+            {
+                $process.Kill()
+                if (-not $process.WaitForExit(5000))
+                {
+                    throw "Couldn't stop child process (pid $($process.Id)) within 5000 ms."
+                }
+            }
+        }
+        catch
+        {
+            # The caller releases these pinned handles, so final cleanup cannot safely recheck them.
+            $script:unconfirmedProcessExit = $true
+            throw
         }
     }
 }
@@ -786,13 +832,22 @@ function Stop-ProcessAndDescendants
     }
     catch
     {
-        Write-Warning "Couldn't list the child processes of $($Process.Id): $($_.Exception.Message)"
+        $script:unconfirmedProcessExit = $true
+        throw "Couldn't list the child processes of $($Process.Id): $($_.Exception.Message)"
     }
 
     try
     {
         Stop-Processes -Processes @($Process)
         Wait-PinnedProcesses -Processes $descendants
+    }
+    catch
+    {
+        if ($descendants.Count -ne 0)
+        {
+            $script:unconfirmedProcessExit = $true
+        }
+        throw
     }
     finally
     {
@@ -808,15 +863,22 @@ function Stop-RootProcesses
     param([string]$Folder = $root)
 
     $processes = Get-RootProcesses -Folder $Folder
-    Stop-Processes -Processes $processes
-    foreach ($process in $processes)
+    try
     {
-        $process.Dispose()
+        Stop-Processes -Processes $processes
+    }
+    finally
+    {
+        foreach ($process in $processes)
+        {
+            $process.Dispose()
+        }
     }
 }
 
 function Stop-LaunchedProcesses
 {
+    $failures = New-Object System.Collections.Generic.List[string]
     foreach ($process in $script:launched)
     {
         try
@@ -837,8 +899,13 @@ function Stop-LaunchedProcesses
         }
         catch
         {
-            Write-Warning "Couldn't stop process $($process.Id): $($_.Exception.Message)"
+            $failures.Add("pid $($process.Id): $($_.Exception.Message)")
         }
+    }
+
+    if ($failures.Count -ne 0)
+    {
+        throw "Couldn't stop launched processes: $($failures -join '; ')"
     }
 }
 
@@ -1249,10 +1316,10 @@ function Stop-Runner
     if (-not $Process.WaitForExit(15000))
     {
         Stop-Processes -Processes @($Process) -TimeoutMs 5000
-        if (-not $Process.HasExited)
-        {
-            throw "Couldn't stop PowerToys (pid $($Process.Id)). If it runs elevated, exit it or run this script elevated."
-        }
+    }
+    if (-not $Process.HasExited)
+    {
+        throw "Couldn't stop PowerToys (pid $($Process.Id)). If it runs elevated, exit it or run this script elevated."
     }
 
     # Module processes exit on their own once the runner is gone.
@@ -1279,32 +1346,48 @@ function Stop-Runner
 
 function Stop-AllRunners
 {
-    foreach ($runner in @(Get-Process -Name 'PowerToys' -ErrorAction SilentlyContinue | Where-Object SessionId -eq $sessionId))
+    $runners = @(Get-Process -Name 'PowerToys' -ErrorAction SilentlyContinue | Where-Object SessionId -eq $sessionId)
+    try
     {
-        $path = $null
-        try
+        foreach ($runner in $runners)
         {
-            $null = $runner.Handle
-            $path = $runner.Path
-        }
-        catch
-        {
-        }
-
-        if (-not $path)
-        {
-            if (Get-Process -Id $runner.Id -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq 'PowerToys' })
+            $path = $null
+            try
             {
-                throw "Can't access the running PowerToys (pid $($runner.Id)). If it runs elevated, exit it or run this script elevated."
+                $null = $runner.Handle
+                $path = $runner.Path
+            }
+            catch
+            {
             }
 
-            continue
-        }
+            if (-not $path)
+            {
+                if (Get-Process -Id $runner.Id -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -eq 'PowerToys' })
+                {
+                    throw "Can't access the running PowerToys (pid $($runner.Id)). If it runs elevated, exit it or run this script elevated."
+                }
 
-        Stop-Runner -Process $runner -Folder (Split-Path $path -Parent)
-        if (-not $script:stoppedRunnerPaths.Contains($path))
+                continue
+            }
+
+            Stop-Runner -Process $runner -Folder (Split-Path $path -Parent)
+            if (-not $script:stoppedRunnerPaths.Contains($path))
+            {
+                $script:stoppedRunnerPaths.Add($path)
+            }
+        }
+    }
+    catch
+    {
+        $script:unconfirmedProcessExit = $true
+        throw
+    }
+    finally
+    {
+        foreach ($runner in $runners)
         {
-            $script:stoppedRunnerPaths.Add($path)
+            $runner.Dispose()
         }
     }
 }
@@ -1360,6 +1443,10 @@ function Close-Settings
     if (-not $Process.WaitForExit(5000))
     {
         Stop-Processes -Processes @($Process)
+    }
+    if (-not $Process.HasExited)
+    {
+        throw "Couldn't stop Settings (pid $($Process.Id))."
     }
 }
 
@@ -1806,12 +1893,43 @@ finally
 {
     try
     {
-        Stop-LaunchedProcesses
+        $stopFailures = New-Object System.Collections.Generic.List[string]
+        try { Stop-LaunchedProcesses }
+        catch { $stopFailures.Add($_.Exception.Message) }
         if ($script:tookOver)
         {
             # Every runner was stopped first, so anything still running from this build was started by
             # the measured runs, for example module processes of a runner that crashed.
-            Stop-RootProcesses
+            try { Stop-RootProcesses }
+            catch { $stopFailures.Add($_.Exception.Message) }
+        }
+
+        if ($stopFailures.Count -ne 0)
+        {
+            $script:unconfirmedProcessExit = $true
+        }
+        if ($script:unconfirmedProcessExit)
+        {
+            $recovery = if ($null -ne $script:dataSnapshot) { "The originals are in $($script:dataSnapshot.Path)." } else { 'No data snapshot was taken.' }
+            if ($script:backups.Count -ne 0)
+            {
+                try
+                {
+                    $backupFile = Join-Path $OutputDirectory ('file-backup-' + $started.ToString('yyyyMMdd-HHmmss') + '.clixml')
+                    $script:backups | Export-Clixml -LiteralPath $backupFile
+                    $recovery += " Individual-file originals (path-to-bytes mapping; null means originally absent) are in $backupFile."
+                }
+                catch
+                {
+                    Write-Warning "Couldn't save individual-file originals: $($_.Exception.Message). They remain in `$script:backups only until this script exits."
+                }
+            }
+            Write-Warning "PowerToys restoration and restart were skipped because process exit could not be confirmed. $recovery Stop the remaining processes before restoring originals or starting PowerToys manually."
+            if ($stopFailures.Count -eq 0)
+            {
+                $stopFailures.Add('An earlier stop could not confirm process exit; its released handles cannot be safely rechecked.')
+            }
+            throw ($stopFailures -join '; ')
         }
 
         Restore-Files
@@ -1845,9 +1963,19 @@ finally
     }
     finally
     {
-        if ($null -ne $script:recorder)
+        try
         {
-            $script:recorder.Dispose()
+            foreach ($process in $script:launched)
+            {
+                $process.Dispose()
+            }
+        }
+        finally
+        {
+            if ($null -ne $script:recorder)
+            {
+                $script:recorder.Dispose()
+            }
         }
     }
 }

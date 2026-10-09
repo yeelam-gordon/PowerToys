@@ -30,7 +30,9 @@ Scenarios and what they report (times in ms from launch unless noted):
 Memory (WorkingSetMB, PrivateMB) is sampled -SettleMilliseconds after the last startup milestone.
 
 Runner, Settings, and PowerToysRun need PowerToys to themselves: the script stops every running
-PowerToys runner first and starts those again at the end. Local builds and installed builds share
+PowerToys runner in the current session first and starts those again after successful restoration.
+If restoration fails, it keeps the backup and leaves PowerToys stopped for manual recovery.
+Local builds and installed builds share
 %LOCALAPPDATA%\Microsoft\PowerToys, and a build of another version rewrites files there, so for
 these scenarios the script copies that folder (without logs) first and puts it back at the end.
 It writes the measured build's version to last_version_run.json so that "What's new" doesn't open.
@@ -57,7 +59,8 @@ Name for this run. It's used in the result file name and by Compare-StartupPerfo
 
 .PARAMETER OutputDirectory
 Folder for the JSON result file. The copy of the PowerToys data folder is kept here during the run,
-and stays here if it can't be put back.
+and stays here if it can't be put back. For Runner, Settings, and PowerToysRun, this must be outside
+the PowerToys data folder. Do not use junctions or symbolic links that point into that folder.
 
 .EXAMPLE
 .\Measure-StartupPerformance.ps1 -PowerToysRoot C:\src\PowerToys\x64\Release -Label main
@@ -651,7 +654,6 @@ $previewHandlers = @{
 
 $powerToysDataFolder = Join-Path $env:LOCALAPPDATA 'Microsoft\PowerToys'
 $runnerLogFolder = Join-Path $powerToysDataFolder 'RunnerLogs'
-$workFolder = Join-Path $OutputDirectory 'work'
 $timestampFrequency = [double][Diagnostics.Stopwatch]::Frequency
 
 # The single-instance mutexes are per session, so PowerToys of another signed-in user doesn't conflict.
@@ -672,6 +674,32 @@ function Get-ElapsedMs
     return [Math]::Round(($To - $From) * 1000.0 / $timestampFrequency, 1)
 }
 
+function Resolve-OutputDirectory
+{
+    param([string]$Directory, [string]$DataFolder, [bool]$TakeOver)
+
+    $provider = $null
+    $drive = $null
+    $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Directory, [ref]$provider, [ref]$drive)
+    if ($provider.Name -ne 'FileSystem')
+    {
+        throw 'OutputDirectory must be a filesystem path.'
+    }
+
+    $path = [IO.Path]::GetFullPath($path)
+    if ($TakeOver)
+    {
+        $dataPath = [IO.Path]::GetFullPath($ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DataFolder)).TrimEnd('\')
+        $outputPath = $path.TrimEnd('\')
+        if ($outputPath.Equals($dataPath, [StringComparison]::OrdinalIgnoreCase) -or $outputPath.StartsWith($dataPath + '\', [StringComparison]::OrdinalIgnoreCase))
+        {
+            throw 'OutputDirectory must be outside the PowerToys data folder for Runner, Settings, and PowerToysRun.'
+        }
+    }
+
+    return $path
+}
+
 function Get-RootProcesses
 {
     param([string]$Name = 'PowerToys*', [string]$Folder = $root)
@@ -680,6 +708,11 @@ function Get-RootProcesses
     # while the caller uses the process. Dispose the processes when done with them.
     $prefix = $Folder.TrimEnd('\') + '\'
     return @(Get-Process -Name $Name -ErrorAction SilentlyContinue | Where-Object {
+        if ($_.SessionId -ne $sessionId)
+        {
+            return $false
+        }
+
         $path = $null
         try
         {
@@ -1062,7 +1095,15 @@ function Restore-DataFolder
             $relative = $folder.FullName.Substring($powerToysDataFolder.Length + 1)
             if (-not $snapshot.Folders.Contains($relative) -and $null -eq (Get-ChildItem -LiteralPath $folder.FullName -Force | Select-Object -First 1))
             {
-                Remove-Item -LiteralPath $folder.FullName -Force -ErrorAction SilentlyContinue
+                try
+                {
+                    Remove-Item -LiteralPath $folder.FullName -Force
+                }
+                catch
+                {
+                    $failures++
+                    Write-Warning "Couldn't delete $($folder.FullName): $($_.Exception.Message)"
+                }
             }
         }
     }
@@ -1075,6 +1116,8 @@ function Restore-DataFolder
     {
         Write-Warning "Some PowerToys files couldn't be restored. The originals are in $($snapshot.Path)."
     }
+
+    return ($failures -eq 0)
 }
 
 function Get-RunnerLogOffsets
@@ -1628,6 +1671,10 @@ function Get-ModuleProfile
     }
 }
 
+$requiresTakeover = [bool]($Scenario | Where-Object { $_ -in 'Runner', 'Settings', 'PowerToysRun' })
+$OutputDirectory = Resolve-OutputDirectory -Directory $OutputDirectory -DataFolder $powerToysDataFolder -TakeOver $requiresTakeover
+$workFolder = Join-Path $OutputDirectory 'work'
+
 if (-not (Test-Path -LiteralPath $runnerPath))
 {
     throw "PowerToys.exe wasn't found in $root."
@@ -1658,7 +1705,7 @@ if ($Scenario -contains 'Runner' -and -not [Text.Encoding]::ASCII.GetString([IO.
     throw "The Runner scenario needs a runner that logs its startup stages, and $runnerPath doesn't. Measure a newer build, or leave out Runner."
 }
 
-if ($Scenario | Where-Object { $_ -in 'Runner', 'Settings', 'PowerToysRun' })
+if ($requiresTakeover)
 {
     # With "Always run as administrator" on, a non-elevated runner restarts itself elevated through UAC and exits,
     # and this script couldn't see or stop that elevated runner.
@@ -1690,7 +1737,7 @@ try
 {
     $script:recorder = [PowerToysPerformance.WindowShowRecorder]::new()
 
-    if ($Scenario | Where-Object { $_ -in 'Runner', 'Settings', 'PowerToysRun' })
+    if ($requiresTakeover)
     {
         Stop-AllRunners
         $script:tookOver = $true
@@ -1757,30 +1804,50 @@ try
 }
 finally
 {
-    Stop-LaunchedProcesses
-    if ($script:tookOver)
+    try
     {
-        # Every runner was stopped first, so anything still running from this build was started by
-        # the measured runs, for example module processes of a runner that crashed.
-        Stop-RootProcesses
-    }
-
-    Restore-Files
-    if ($null -ne $script:dataSnapshot)
-    {
-        Restore-DataFolder
-    }
-
-    foreach ($path in $script:stoppedRunnerPaths)
-    {
-        if (Test-Path -LiteralPath $path)
+        Stop-LaunchedProcesses
+        if ($script:tookOver)
         {
-            Start-Process -FilePath $path | Out-Null
+            # Every runner was stopped first, so anything still running from this build was started by
+            # the measured runs, for example module processes of a runner that crashed.
+            Stop-RootProcesses
+        }
+
+        Restore-Files
+        $canRestart = $null -eq $script:dataSnapshot
+        if (-not $canRestart)
+        {
+            try
+            {
+                $canRestart = Restore-DataFolder
+            }
+            catch
+            {
+                Write-Warning "Couldn't restore PowerToys data: $($_.Exception.Message). The originals are in $($script:dataSnapshot.Path)."
+            }
+        }
+
+        if ($canRestart)
+        {
+            foreach ($path in $script:stoppedRunnerPaths)
+            {
+                if (Test-Path -LiteralPath $path)
+                {
+                    Start-Process -FilePath $path | Out-Null
+                }
+            }
+        }
+        else
+        {
+            Write-Warning "PowerToys restart was skipped because data restoration failed. Restore the originals from $($script:dataSnapshot.Path) before starting PowerToys manually."
         }
     }
-
-    if ($null -ne $script:recorder)
+    finally
     {
-        $script:recorder.Dispose()
+        if ($null -ne $script:recorder)
+        {
+            $script:recorder.Dispose()
+        }
     }
 }

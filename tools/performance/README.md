@@ -7,6 +7,7 @@ Scripts that measure how fast PowerToys starts and how much memory it uses. Use 
 | [`Measure-StartupPerformance.ps1`](Measure-StartupPerformance.ps1) | Starts the runner and the published .NET apps many times and reports median and P90 startup time and memory |
 | [`Compare-StartupPerformance.ps1`](Compare-StartupPerformance.ps1) | Compares two sets of results and prints a Markdown table for a pull request |
 | [`PowerToys.Performance.wprp`](PowerToys.Performance.wprp) | WPR profile for the runner's startup stage events, for traces you open in WPA |
+| [`Test-StartupPerformanceBoundaries.ps1`](Test-StartupPerformanceBoundaries.ps1) | Dependency-free, memory-only regression tests for session isolation, output paths, and recovery |
 
 ## Measure startup
 
@@ -57,13 +58,25 @@ $measure = '.\tools\performance\Measure-StartupPerformance.ps1'
 
 ## Before you run it
 
-- **It takes over PowerToys.** `Runner`, `Settings`, and `PowerToysRun` stop every PowerToys runner in your session first and start them again at the end. If "Always run as administrator" is on, the script refuses to run unless it's elevated, because the runner would restart itself elevated. If PowerToys runs elevated for another reason, exit it first or run the script elevated. PowerToys of other signed-in users is left alone. The other scenarios leave a running PowerToys alone.
-- **It restores your settings.** Local and installed builds share `%LOCALAPPDATA%\Microsoft\PowerToys`, and a build of another version rewrites files there: version stamps, PowerToys Run's plugin data, default settings of modules. So for the three scenarios above, the script copies that folder (without logs) first and puts it back exactly at the end. It also writes the measured build's version to `last_version_run.json`, so "What's new" doesn't open during the run. `FileLocksmith` restores the `last-run.log` file it uses.
+- **It takes over PowerToys.** `Runner`, `Settings`, and `PowerToysRun` stop every PowerToys runner in your session first and start them again after successful data restoration (or an abort before a snapshot was taken). If "Always run as administrator" is on, the script refuses to run unless it's elevated, because the runner would restart itself elevated. If PowerToys runs elevated for another reason, exit it first or run the script elevated. PowerToys of other signed-in users is left alone. The other scenarios leave a running PowerToys alone.
+- **Keep output outside PowerToys data.** For the three takeover scenarios, `-OutputDirectory` cannot equal or be beneath `%LOCALAPPDATA%\Microsoft\PowerToys`; the script rejects those paths before creating output or stopping runners. Relative paths use PowerShell's current location. This check is lexical: do not use junctions or symbolic links that point into the data folder. Other scenarios retain their output-location behavior.
+- **It restores your settings.** Local and installed builds share `%LOCALAPPDATA%\Microsoft\PowerToys`, and a build of another version rewrites files there: version stamps, PowerToys Run's plugin data, default settings of modules. So for the three scenarios above, the script copies that folder (without logs) first and puts it back exactly at the end. If restoration fails, it retains the backup at the location printed in the warnings and skips restarting PowerToys. Restore those originals manually before starting PowerToys again. It also writes the measured build's version to `last_version_run.json`, so "What's new" doesn't open during the run. `FileLocksmith` restores the `last-run.log` file it uses.
 - **Compare like with like.** The results record the enabled modules. The runner's stage times and memory depend on them, so compare runs with the same settings.
 - **Keep the machine quiet.** Close other apps, stay on AC power, and don't build at the same time.
 - **Keep the warm-up.** The first start of a new build can take seconds longer, because antivirus scans new executables. Warm-up samples absorb that.
 - **Local builds are version 0.0.1.** On Windows 11, File Locksmith, Image Resizer, and PowerRename then try to register their unsigned context menu package on every start. The attempt fails, but it adds time to `EnabledModulesStarted` that installed builds don't have.
 - **`Runner` needs the stage logging.** It reads the stage line that the runner logs, so it can't measure builds from before that line was added. The other scenarios work with any build, including an installed one.
+
+## Boundary regression tests
+
+Run these in Windows PowerShell 5.1 and PowerShell 7:
+
+```powershell
+powershell.exe -NoProfile -NonInteractive -File .\tools\performance\Test-StartupPerformanceBoundaries.ps1
+pwsh.exe -NoProfile -NonInteractive -File .\tools\performance\Test-StartupPerformanceBoundaries.ps1
+```
+
+The tests extract the actual measurement functions and finalizer without running the benchmark. Process, filesystem, and restart operations are mocked in memory: they do not launch PowerToys, terminate processes, or modify user data. Passing these tests does not establish real filesystem recovery or multi-session behavior; those require separately authorized disposable-environment validation.
 
 ## Runner startup stage events
 

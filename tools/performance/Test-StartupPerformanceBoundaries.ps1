@@ -2,8 +2,9 @@
 .SYNOPSIS
 Tests startup benchmark boundaries with memory-only process and filesystem mocks.
 .DESCRIPTION
-Extracts actual functions and the finalizer without executing the measurement script or its
-native helpers. Requires no test framework; supports Windows PowerShell 5.1 and PowerShell 7.
+Extracts actual functions and the finalizer without executing the measurement script. Compiles
+its C# and probes descendant discovery with fake Win32 return values, never real native access.
+Requires no test framework; supports Windows PowerShell 5.1 and PowerShell 7.
 #>
 [CmdletBinding()]
 param()
@@ -20,7 +21,8 @@ if ($parseErrors.Count -ne 0)
 
 foreach ($name in 'Get-RootProcesses', 'Resolve-OutputDirectory', 'Test-LogFile', 'Restore-DataFolder',
     'Stop-Processes', 'Wait-PinnedProcesses', 'Stop-ProcessAndDescendants', 'Stop-RootProcesses',
-    'Stop-LaunchedProcesses', 'Stop-Runner', 'Stop-AllRunners', 'Close-Settings')
+    'Stop-LaunchedProcesses', 'Stop-Runner', 'Stop-AllRunners', 'Close-Settings',
+    'Restore-Files', 'Save-FileBackups', 'Measure-SvgThumbnail')
 {
     $definition = $ast.Find({
         param($node)
@@ -34,11 +36,14 @@ foreach ($name in 'Get-RootProcesses', 'Resolve-OutputDirectory', 'Test-LogFile'
     # Test-only type adaptation lets controlled objects exercise the unchanged stopping bodies.
     # Native discovery/window calls are adapted to memory-only seams, not entire stopping helpers.
     $text = $definition.Extent.Text.Replace('[Diagnostics.Process', '[object').Replace('[PowerToysPerformance.PinnedProcess', '[object')
+    $text = $text.Replace('System.Diagnostics.Process]', 'object]')
     $text = $text.Replace('[PowerToysPerformance.ProcessTree]::GetDescendants($Process.Id, $Process.StartTime.ToUniversalTime())', '(Get-TestDescendants)')
+    $text = $text.Replace('[IO.File]::WriteAllBytes($path, $script:backups[$path])', '(Write-TestBytes -Path $path -Bytes $script:backups[$path])')
     $text = $text.Replace("[PowerToysPerformance.WindowFinder]::FindTopLevelWindow(`$Process.Id, 'PToyTrayIconWindow')", '(Get-TestTrayWindow)')
     $text = $text.Replace('[PowerToysPerformance.WindowFinder]::PostClose($trayWindow)', '(Send-TestTrayClose)')
     . ([scriptblock]::Create($text))
 }
+$restoreFilesBody = ${function:Restore-Files}
 
 $run = @($ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.TryStatementAst] })[-1]
 $finalizer = [scriptblock]::Create(($run.Finally.Statements | ForEach-Object { $_.Extent.Text }) -join "`n")
@@ -53,6 +58,141 @@ function Assert
 
     $script:assertions++
     Write-Host "PASS: $Message"
+}
+
+& {
+    # Compile all production declarations without invoking them. The second assembly keeps the
+    # actual PinnedProcess/ProcessTree bodies; only native entry points and last-error reads are faked.
+    $nativeLiteral = $ast.Find({
+        param($node)
+        $node -is [Management.Automation.Language.StringConstantExpressionAst] -and
+            $node.Value.StartsWith("using System;") -and $node.Value.Contains('public static class ProcessTree')
+    }, $true)
+    $nativeSource = $nativeLiteral.Value
+    Add-Type -TypeDefinition ($nativeSource.Replace('namespace PowerToysPerformance', 'namespace ProductionCompileOnly'))
+    Assert ($null -ne ('ProductionCompileOnly.ProcessTree' -as [type])) 'Complete production C# compiles (no native invocation)'
+    foreach ($method in 'CreateToolhelp32Snapshot', 'Process32First', 'Process32Next', 'OpenProcess', 'GetProcessTimes')
+    {
+        $declaration = [regex]::Match($nativeSource, '(?s)\[DllImport\([^\]]+\)\]\s+public static extern [^\r\n]+ ' + $method + '\(').Value
+        Assert ($declaration.Contains('SetLastError = true')) "Production $method preserves Win32 last-error details"
+    }
+    $bodyStart = $nativeSource.IndexOf('public sealed class PinnedProcess')
+    $bodyEnd = $nativeSource.IndexOf('public static class WindowFinder')
+    $nativeBody = $nativeSource.Substring($bodyStart, $bodyEnd - $bodyStart).Replace('Marshal.GetLastWin32Error()', 'NativeMethods.GetLastError()')
+    $fakeNative = @'
+    public static class NativeMethods
+    {
+        public const uint TH32CS_SNAPPROCESS = 2, PROCESS_QUERY_LIMITED_INFORMATION = 4096,
+            SYNCHRONIZE = 1048576, PROCESS_TERMINATE = 1, WAIT_OBJECT_0 = 0;
+        public static readonly IntPtr INVALID_HANDLE_VALUE = new IntPtr(-1);
+        public struct PROCESSENTRY32 { public uint dwSize, th32ProcessID, th32ParentProcessID; }
+        public struct PROCESS_BASIC_INFORMATION { public IntPtr InheritedFromUniqueProcessId; }
+        public static int[] Ids, Parents, ActualParents;
+        public static long[] Created;
+        public static List<int> Opened = new List<int>(), Closed = new List<int>();
+        public static string Fault;
+        public static int FaultId, Error, Index;
+        public static void Reset(string fault, int faultId, long rootTime)
+        {
+            Fault = fault; FaultId = faultId; Error = 0; Index = 0;
+            Ids = new int[] { 101, 102, 103, 999 };
+            Parents = new int[] { 100, 100, 101, 4 };
+            ActualParents = (int[])Parents.Clone();
+            Created = new long[] { rootTime + 1, rootTime + 2, rootTime + 3, rootTime };
+            Opened.Clear(); Closed.Clear();
+        }
+        public static int GetLastError() { return Error; }
+        public static IntPtr CreateToolhelp32Snapshot(uint flags, uint pid)
+        {
+            Error = 5;
+            return Fault == "snapshot" ? INVALID_HANDLE_VALUE : new IntPtr(500);
+        }
+        public static bool Process32First(IntPtr snapshot, ref PROCESSENTRY32 entry)
+        {
+            if (Fault == "first") { Error = 5; return false; }
+            if (Fault == "empty") { Error = 18; return false; }
+            Index = -1;
+            return Process32Next(snapshot, ref entry);
+        }
+        public static bool Process32Next(IntPtr snapshot, ref PROCESSENTRY32 entry)
+        {
+            Index++;
+            if (Fault == "next" && Index == 1) { Error = 5; return false; }
+            if (Index >= Ids.Length) { Error = 18; return false; }
+            entry.th32ProcessID = (uint)Ids[Index];
+            entry.th32ParentProcessID = (uint)Parents[Index];
+            return true;
+        }
+        public static IntPtr OpenProcess(uint access, bool inherit, uint pid)
+        {
+            Opened.Add((int)pid);
+            if ((int)pid == FaultId && (Fault == "open" || Fault == "gone"))
+            {
+                Error = Fault == "gone" ? 87 : 5;
+                return IntPtr.Zero;
+            }
+            return new IntPtr(pid);
+        }
+        public static bool GetProcessTimes(IntPtr handle, out long created, out long exit, out long kernel, out long user)
+        {
+            created = Created[Array.IndexOf(Ids, handle.ToInt32())]; exit = kernel = user = 0;
+            if (handle.ToInt32() == FaultId && Fault == "times") { Error = 5; return false; }
+            return true;
+        }
+        public static int NtQueryInformationProcess(IntPtr handle, int kind, ref PROCESS_BASIC_INFORMATION info, int size, out int length)
+        {
+            length = size;
+            if (handle.ToInt32() == FaultId && Fault == "query") { return unchecked((int)0xC0000022); }
+            info.InheritedFromUniqueProcessId = new IntPtr(ActualParents[Array.IndexOf(Ids, handle.ToInt32())]);
+            return 0;
+        }
+        public static bool CloseHandle(IntPtr handle) { Closed.Add(handle.ToInt32()); return true; }
+        public static uint WaitForSingleObject(IntPtr handle, uint timeout) { return WAIT_OBJECT_0; }
+        public static bool TerminateProcess(IntPtr handle, uint code) { throw new Exception("No fake child should need termination"); }
+    }
+'@
+    Add-Type -TypeDefinition ("using System; using System.Collections.Generic; using System.Runtime.InteropServices; namespace NativeBoundaryProbe {`n" + $nativeBody + $fakeNative + "`n}")
+    $script:probeTime = [datetime]'2026-10-09T00:00:00Z'
+    foreach ($fault in 'none', 'snapshot', 'first', 'empty', 'next', 'open', 'times', 'query', 'gone', 'parent-mismatch', 'creation-mismatch', 'gone-parent')
+    {
+        $faultId = if ($fault -eq 'gone-parent') { 101 } else { 102 }
+        $nativeFault = if ($fault -eq 'gone-parent') { 'gone' } else { $fault }
+        [NativeBoundaryProbe.NativeMethods]::Reset($nativeFault, $faultId, $probeTime.ToFileTimeUtc())
+        if ($fault -eq 'parent-mismatch') { [NativeBoundaryProbe.NativeMethods]::ActualParents[1] = 4 }
+        if ($fault -eq 'creation-mismatch') { [NativeBoundaryProbe.NativeMethods]::Created[1] = $probeTime.ToFileTimeUtc() - 1 }
+        $threw = $false
+        $message = ''
+        $pinned = @()
+        try { $pinned = @([NativeBoundaryProbe.ProcessTree]::GetDescendants(100, $probeTime)) }
+        catch { $threw = $true; $message = $_.Exception.Message }
+        $failed = $fault -in 'snapshot', 'first', 'next', 'open', 'times', 'query', 'gone-parent'
+        Assert ($threw -eq $failed) "Compiled production discovery handles native return representation: $fault"
+        Assert (-not [NativeBoundaryProbe.NativeMethods]::Opened.Contains(999)) "Unrelated protected/system PID never inspected: $fault"
+        if ($failed)
+        {
+            $expectedDetail = if ($fault -eq 'query') { '*NTSTATUS 0xC0000022*' } elseif ($fault -eq 'gone-parent') { '*Win32 87*' } else { '*Win32 5*' }
+            Assert ($message -like $expectedDetail) "Compiled discovery preserves actionable native error: $fault"
+            if ($fault -in 'open', 'times', 'query', 'gone-parent')
+            {
+                foreach ($id in [NativeBoundaryProbe.NativeMethods]::Opened)
+                {
+                    if (($fault -in 'open', 'gone-parent') -and $id -eq $faultId) { continue }
+                    Assert ([NativeBoundaryProbe.NativeMethods]::Closed.Contains($id)) "Discovery abort releases acquired candidate handle $id`: $fault"
+                }
+            }
+        }
+        else
+        {
+            $expectedCount = if ($fault -eq 'empty') { 0 } elseif ($fault -in 'gone', 'parent-mismatch', 'creation-mismatch') { 2 } else { 3 }
+            Assert ($pinned.Count -eq $expectedCount) "Compiled discovery returns only identity-proved children: $fault"
+            foreach ($child in $pinned) { $child.Dispose() }
+            if ($fault -in 'parent-mismatch', 'creation-mismatch')
+            {
+                Assert ([NativeBoundaryProbe.NativeMethods]::Closed.Contains(102)) "Rejected identity handle is disposed: $fault"
+            }
+        }
+        Assert ([NativeBoundaryProbe.NativeMethods]::Closed.Contains(500) -eq ($fault -ne 'snapshot')) "Snapshot handle disposal: $fault"
+    }
 }
 
 foreach ($file in 'Measure-StartupPerformance.ps1', 'Compare-StartupPerformance.ps1', 'Test-StartupPerformanceBoundaries.ps1')
@@ -166,10 +306,18 @@ function New-TestProcess
     }
     $process | Add-Member -MemberType ScriptMethod -Name Dispose -Value { $this.Disposals++ }
     $process | Add-Member -MemberType ScriptMethod -Name CloseMainWindow -Value { return $false }
+    $process | Add-Member -MemberType ScriptMethod -Name get_Handle -Value { return $this.Handle }
+    $process | Add-Member -MemberType ScriptMethod -Name get_MainModule -Value { return [pscustomobject]@{ FileName = $this.Path } }
+    $process | Add-Member -MemberType ScriptMethod -Name get_HasExited -Value { return $this.HasExited }
+    $process | Add-Member -MemberType ScriptMethod -Name get_SessionId -Value { return $this.SessionId }
     return $process
 }
 function Get-TestDescendants
 {
+    if ($script:compiledDiscovery)
+    {
+        return [NativeBoundaryProbe.ProcessTree]::GetDescendants(100, $probeTime)
+    }
     if ($script:descendantDiscoveryFailure) { throw 'Injected descendant discovery failure' }
     return $script:descendants
 }
@@ -234,6 +382,11 @@ $script:processes = @(
 )
 foreach ($process in $script:processes)
 {
+    $process | Add-Member -MemberType ScriptMethod -Name Dispose -Value {}
+    $process | Add-Member -MemberType ScriptMethod -Name get_Handle -Value { return $this.Handle }
+    $process | Add-Member -MemberType ScriptMethod -Name get_MainModule -Value { return [pscustomobject]@{ FileName = $this.Path } }
+    $process | Add-Member -MemberType ScriptMethod -Name get_HasExited -Value { return $false }
+    $process | Add-Member -MemberType ScriptMethod -Name get_SessionId -Value { return $this.SessionId }
     $process | Add-Member -MemberType ScriptProperty -Name Handle -Value {
         $script:handleReads.Add($this.Id)
         return [IntPtr]::Zero
@@ -250,6 +403,56 @@ Assert (-not $script:handleReads.Contains(12)) 'Foreign session excluded before 
 Assert ($script:handleReads.Contains(11) -and $script:handleReads.Contains(13)) 'Current-session handles pinned before path comparison'
 Assert (-not $script:handleReads.Contains(14)) 'Process name filter preserved'
 Assert (@(Get-RootProcesses -Name 'PowerToys.Settings' -Folder 'C:\fake-build-other').Count -eq 1) 'Explicit discovery name and folder preserved'
+foreach ($accessor in 'get_SessionId', 'get_Handle', 'get_MainModule', 'get_HasExited')
+{
+    Assert ($null -ne [Diagnostics.Process].GetMethod($accessor)) "Production explicit accessor exists without accessing a real process: $accessor"
+}
+
+foreach ($fault in 'access', 'path', 'session', 'exited-access', 'exited-session', 'foreign-access')
+{
+    $good = New-TestProcess -Id 31
+    $candidate = New-TestProcess -Id 32
+    if ($fault -in 'exited-access', 'exited-session') { $candidate.HasExited = $true }
+    if ($fault -eq 'foreign-access') { $candidate.SessionId = 6 }
+    $candidate | Add-Member -MemberType ScriptMethod -Name get_Handle -Force -Value {
+        if ($this.Fault -ne 'path') { throw [ComponentModel.Win32Exception]::new(5, 'Injected access denial') }
+        return [IntPtr]::Zero
+    }
+    $candidate.Fault = $fault
+    if ($fault -eq 'path')
+    {
+        $candidate | Add-Member -MemberType ScriptMethod -Name get_MainModule -Force -Value { throw [ComponentModel.Win32Exception]::new(5, 'Injected path denial') }
+    }
+    if ($fault -in 'session', 'exited-session')
+    {
+        $candidate | Add-Member -MemberType ScriptMethod -Name get_SessionId -Force -Value { throw [ComponentModel.Win32Exception]::new(5, 'Injected session denial') }
+    }
+    # Keep an exited candidate in the snapshot to exercise the enumeration-to-access race.
+    $script:processes = @($good, $candidate)
+    function Get-Process { param($Name, $Id, $ErrorAction) return $script:processes }
+    $script:unconfirmedProcessExit = $false
+    $threw = $false
+    $selected = @()
+    try { $selected = @(Get-RootProcesses) } catch { $threw = $true; $message = $_.Exception.Message }
+    $failed = $fault -in 'access', 'path', 'session'
+    Assert ($threw -eq $failed -and $script:unconfirmedProcessExit -eq $failed) "Actual root discovery distinguishes access failure from positive exit/session exclusion: $fault"
+    if ($failed)
+    {
+        Assert ($message -like '*pid 32*Win32 5*manually*') "Root candidate discovery includes identity and Win32 details: $fault"
+        Assert ($good.Disposals -eq 1 -and $candidate.Disposals -eq 1) "Root discovery abort disposes selected and unresolved handles: $fault"
+        Assert ($good.Kills -eq 0 -and $candidate.Kills -eq 0) "Root discovery failure never uses PID-only termination: $fault"
+    }
+    else
+    {
+        Assert ($selected.Count -eq 1 -and $selected[0].Id -eq 31 -and $candidate.Disposals -eq 1) "Positive exit/foreign session safely excluded and disposed: $fault"
+        $good.Dispose()
+    }
+}
+function Get-Process
+{
+    param([string]$Name, [int]$Id, $ErrorAction)
+    return $script:processes | Where-Object { $_.HasExited -ne $true -and (($Name -and $_.ProcessName -like $Name) -or ($Id -and $_.Id -eq $Id)) }
+}
 
 $runnerPath = 'C:\fake-build\PowerToys.exe'
 foreach ($fault in 'none', 'kill', 'wait', 'timeout', 'false-success')
@@ -317,6 +520,7 @@ function Reset-Recovery
     $script:processes = @()
     $script:descendants = @()
     $script:descendantDiscoveryFailure = $false
+    $script:compiledDiscovery = $false
     $script:unconfirmedProcessExit = $false
     $script:backups = @{}
     $script:exportedBackups = @{}
@@ -328,13 +532,14 @@ function Reset-Recovery
     $script:disposed = 0
     $script:stopped = 0
     $script:restoredFiles = 0
+    $script:byteWriteFailure = $false
     $script:tookOver = $true
     $script:stoppedRunnerPaths = @('C:\fake-runner.exe')
     $script:recorder = New-Object psobject
     $script:recorder | Add-Member -MemberType ScriptMethod -Name Dispose -Value { $script:disposed++ }
 }
 
-# Every state-changing command used by the extracted code is replaced; no native types are loaded.
+# Every state-changing command/native entry point used by the extracted code is replaced.
 function Test-Path
 {
     param([string]$LiteralPath)
@@ -391,7 +596,13 @@ function Write-Warning
     param([string]$Message)
     $script:warnings.Add($Message)
 }
-function Restore-Files { $script:restoredFiles++ }
+function Write-TestBytes
+{
+    param([string]$Path, [byte[]]$Bytes)
+    if ($script:byteWriteFailure) { throw 'Injected byte-write failure' }
+    $script:files[$Path] = $Bytes
+}
+function Restore-Files { $script:restoredFiles++; & $restoreFilesBody }
 function Export-Clixml
 {
     param([Parameter(ValueFromPipeline)]$InputObject, [string]$LiteralPath)
@@ -473,10 +684,11 @@ foreach ($fault in 'none', 'copy', 'delete', 'directory', 'unexpected', 'no-snap
     }
 }
 
-foreach ($fault in 'none', 'exited', 'race', 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner')
+foreach ($fault in 'none', 'exited', 'race', 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner', 'exited-child', 'exited-child-success')
 {
     Reset-Recovery
     $process = New-TestProcess -Fault $fault
+    if ($fault -in 'exited-child', 'exited-child-success') { $process = New-TestProcess -Fault exited }
     if ($fault -eq 'root')
     {
         $process = New-TestProcess -Fault timeout
@@ -488,12 +700,17 @@ foreach ($fault in 'none', 'exited', 'race', 'kill', 'wait', 'timeout', 'false-s
         $script:launched = @($process)
     }
     $child = New-TestProcess -Id 25 -Fault timeout
-    $script:descendants = if ($fault -eq 'child') { @($child) } else { @() }
+    if ($fault -eq 'exited-child-success') { $child.Fault = 'none' }
+    $script:descendants = if ($fault -in 'child', 'exited-child', 'exited-child-success') { @($child) } else { @() }
     $threw = $false
     try { & $finalizer } catch { $threw = $true }
-    $failed = $fault -in 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner'
+    $failed = $fault -in 'kill', 'wait', 'timeout', 'false-success', 'root', 'child', 'runner', 'exited-child'
     Assert ($threw -eq $failed) "Actual stopping/finalizer failure propagation: $fault"
     Assert ($script:disposed -eq 1 -and $process.Disposals -eq 1) "Actual stopping/finalizer disposes recorder and process: $fault"
+    if ($fault -in 'exited-child', 'exited-child-success')
+    {
+        Assert ($process.Kills -eq 0 -and $child.Kills -eq 1 -and $child.Disposals -eq 1) 'Exited parent does not get killed but surviving owned child is stopped and disposed'
+    }
     if ($failed)
     {
         Assert ($script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0 -and $script:files["$dataFolder\settings.json"] -eq 'changed') "Failed actual stopping withholds restore and restart: $fault"
@@ -570,6 +787,96 @@ foreach ($exportFault in $false, $true)
         $saved = $script:exportedBackups['C:\external-output\file-backup-20261009-120000.clixml']
         Assert ($saved.Count -eq 2 -and ($saved['C:\fake-data\last-run.log'] -join ',') -eq '1,2,3' -and $null -eq $saved['C:\fake-data\absent.log']) 'Stopping failure saves individual-file bytes and original-absence metadata'
         Assert (($script:warnings -join ' ') -like '*file-backup-20261009-120000.clixml*') 'Stopping failure identifies individual-file recovery location'
+    }
+}
+
+foreach ($fault in 'snapshot', 'first', 'next', 'open', 'times', 'query')
+{
+    Reset-Recovery
+    $process = New-TestProcess
+    $script:launched = @($process)
+    $script:compiledDiscovery = $true
+    [NativeBoundaryProbe.NativeMethods]::Reset($fault, 102, $probeTime.ToFileTimeUtc())
+    $threw = $false
+    try { & $finalizer } catch { $threw = $true }
+    Assert ($threw -and $script:unconfirmedProcessExit -and $script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0) "Native failure returns reach actual production catch/finalizer: $fault"
+    Assert ($script:disposed -eq 1 -and $process.Disposals -eq 1 -and $process.Kills -eq 0) "Native discovery abort disposes resources without unproved kill: $fault"
+}
+
+Reset-Recovery
+$candidate = New-TestProcess -Id 41
+$candidate | Add-Member -MemberType ScriptMethod -Name get_Handle -Force -Value { throw [ComponentModel.Win32Exception]::new(5, 'Injected candidate access denial') }
+$script:processes = @($candidate)
+$threw = $false
+try { & $finalizer } catch { $threw = $true }
+Assert ($threw -and $script:unconfirmedProcessExit -and $script:restoredFiles -eq 0 -and $script:restarts.Count -eq 0) 'Actual inaccessible same-session root candidate cannot become absent during final recovery'
+Assert ($candidate.Kills -eq 0 -and $candidate.Disposals -eq 1 -and $script:disposed -eq 1 -and $script:files["$backupPath\settings.json"] -eq 'original') 'Root candidate access failure preserves originals and disposes resources without unproved termination'
+
+foreach ($fault in 'bytes', 'absence', 'bytes-export')
+{
+    Reset-Recovery
+    $script:tookOver = $false
+    $script:dataSnapshot = $null
+    $file = "$dataFolder\last-run.log"
+    $absent = "$dataFolder\absent.log"
+    $script:backups = @{ $file = [byte[]](1, 2, 3); $absent = $null }
+    $script:files[$file] = [byte[]](9)
+    $script:files[$absent] = [byte[]](8)
+    $script:byteWriteFailure = $fault -in 'bytes', 'bytes-export'
+    $script:deleteFailure = if ($fault -eq 'absence') { $absent } else { $null }
+    $script:exportFailure = $fault -eq 'bytes-export'
+    $status = @(Restore-Files)
+    Assert ($status.Count -eq 1 -and $status[0] -is [bool] -and -not $status[0]) "Actual individual restore reports failure as a single Boolean: $fault"
+    & $finalizer
+    Assert ($script:restarts.Count -eq 0 -and $script:disposed -eq 1 -and $script:backups.Count -eq 2) "Failed individual recovery withholds restart and keeps memory originals: $fault"
+    if ($script:exportFailure)
+    {
+        Assert ($script:exportedBackups.Count -eq 0 -and ($script:warnings -join ' ') -like '*only until this script exits*') 'Individual restore plus export failure honestly reports nondurable cache'
+    }
+    else
+    {
+        $saved = $script:exportedBackups['C:\external-output\file-backup-20261009-120000.clixml']
+        Assert ($saved.Count -eq 2 -and ($saved[$file] -join ',') -eq '1,2,3' -and $null -eq $saved[$absent]) "Failed individual restore retains bytes and original absence in recovery export: $fault"
+        Assert (($script:warnings -join ' ') -like '*file-backup-20261009-120000.clixml*') "Failed individual restore reports durable recovery location: $fault"
+    }
+}
+Reset-Recovery
+$script:backups = @{ "$dataFolder\last-run.log" = [byte[]](1, 2, 3); "$dataFolder\missing.log" = $null }
+$status = @(Restore-Files)
+Assert ($status.Count -eq 1 -and $status[0] -is [bool] -and $status[0]) 'Actual individual restore succeeds for bytes and already-absent original'
+Assert (($script:files["$dataFolder\last-run.log"] -join ',') -eq '1,2,3' -and $script:backups.Count -eq 2) 'Successful individual restore writes originals without destroying recovery cache'
+
+# Exercise the production thumbnail body with no launches, file I/O or native access.
+function Start-TargetProcess { param($Path, $Arguments) $script:launched = @($script:thumbnailProcess); return $script:thumbnailProcess }
+function Add-Sample { param($Name, $Iteration, $Metrics) $script:thumbnailSamples++ }
+function Get-ElapsedMs { param($From, $To) return 0 }
+$workFolder = 'C:\fake-work'
+$svgThumbnailPath = 'C:\fake-build\PowerToys.SvgThumbnailProvider.exe'
+$WarmupIterations = 0
+$Iterations = 1
+foreach ($childFault in 'none', 'timeout')
+{
+    Reset-Recovery
+    $script:tookOver = $false
+    $script:files["$workFolder\sample.svg"] = 'sample'
+    $script:thumbnailSamples = 0
+    $script:thumbnailProcess = New-TestProcess -Fault exited
+    $child = New-TestProcess -Id 40 -Fault $childFault
+    $script:descendants = @($child)
+    $threw = $false
+    $message = ''
+    try { Measure-SvgThumbnail } catch { $threw = $true; $message = $_.Exception.Message }
+    Assert ($threw -and $script:thumbnailSamples -eq 0 -and $script:thumbnailProcess.Kills -eq 0 -and $child.Disposals -eq 1 -and $child.Kills -eq 1) "Missing thumbnail output still attempts owned-child cleanup, not exited parent termination: $childFault"
+    if ($childFault -eq 'none')
+    {
+        Assert ($message -like '*without writing*' -and $child.HasExited) 'Missing-output diagnostic follows successful family cleanup'
+    }
+    else
+    {
+        $script:descendants = @()
+        $threw = $false
+        try { & $finalizer } catch { $threw = $true }
+        Assert ($threw -and $script:unconfirmedProcessExit -and $script:restarts.Count -eq 0 -and $script:restoredFiles -eq 0 -and $script:disposed -eq 1) 'Missing-thumbnail child cleanup failure gates all recovery and disposes recorder'
     }
 }
 

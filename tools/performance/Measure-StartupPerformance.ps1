@@ -323,21 +323,30 @@ namespace PowerToysPerformance
         // Live processes that descend from the given one, including those whose parent has already
         // exited. The caller must keep the root process open. The process snapshot can be stale, so
         // each process is opened first and then checked: its parent id has to match and it has to
-        // be created after its parent. Processes that can't be opened are skipped.
+        // be created after its parent. Only the snapshot's candidate parent chain is inspected;
+        // inability to inspect a candidate is not proof that the family has exited.
         public static PinnedProcess[] GetDescendants(int processId, DateTime startTimeUtc)
         {
             Dictionary<int, List<int>> children = new Dictionary<int, List<int>>();
             IntPtr snapshot = NativeMethods.CreateToolhelp32Snapshot(NativeMethods.TH32CS_SNAPPROCESS, 0);
             if (snapshot == NativeMethods.INVALID_HANDLE_VALUE)
             {
-                return new PinnedProcess[0];
+                int error = Marshal.GetLastWin32Error();
+                throw new System.ComponentModel.Win32Exception(error, "CreateToolhelp32Snapshot failed while discovering descendants of pid " + processId + " (Win32 " + error + ")");
             }
 
             try
             {
                 NativeMethods.PROCESSENTRY32 entry = new NativeMethods.PROCESSENTRY32();
                 entry.dwSize = (uint)Marshal.SizeOf(typeof(NativeMethods.PROCESSENTRY32));
-                if (NativeMethods.Process32First(snapshot, ref entry))
+                bool found = NativeMethods.Process32First(snapshot, ref entry);
+                int firstError = found ? 0 : Marshal.GetLastWin32Error();
+                if (!found && firstError != 18) // ERROR_NO_MORE_FILES
+                {
+                    throw new System.ComponentModel.Win32Exception(firstError, "Process32First failed (Win32 " + firstError + ")");
+                }
+
+                if (found)
                 {
                     do
                     {
@@ -352,6 +361,11 @@ namespace PowerToysPerformance
                         list.Add((int)entry.th32ProcessID);
                     }
                     while (NativeMethods.Process32Next(snapshot, ref entry));
+                    int error = Marshal.GetLastWin32Error();
+                    if (error != 18)
+                    {
+                        throw new System.ComponentModel.Win32Exception(error, "Process32Next failed (Win32 " + error + ")");
+                    }
                 }
             }
             finally
@@ -364,66 +378,103 @@ namespace PowerToysPerformance
             seen.Add(processId);
             Queue<KeyValuePair<int, long>> pending = new Queue<KeyValuePair<int, long>>();
             pending.Enqueue(new KeyValuePair<int, long>(processId, startTimeUtc.ToFileTimeUtc()));
-            while (pending.Count > 0)
+            try
             {
-                KeyValuePair<int, long> parent = pending.Dequeue();
-                List<int> list;
-                if (!children.TryGetValue(parent.Key, out list))
+                while (pending.Count > 0)
                 {
-                    continue;
+                    KeyValuePair<int, long> parent = pending.Dequeue();
+                    List<int> list;
+                    if (!children.TryGetValue(parent.Key, out list))
+                    {
+                        continue;
+                    }
+
+                    foreach (int child in list)
+                    {
+                        if (seen.Contains(child))
+                        {
+                            continue;
+                        }
+
+                        IntPtr handle = NativeMethods.OpenProcess(
+                            NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION | NativeMethods.SYNCHRONIZE | NativeMethods.PROCESS_TERMINATE,
+                            false,
+                            (uint)child);
+                        if (handle == IntPtr.Zero)
+                        {
+                            int error = Marshal.GetLastWin32Error();
+                            // ERROR_INVALID_PARAMETER establishes that this snapshot PID is gone.
+                            // If it had children, their ancestry can no longer be verified.
+                            if (error == 87 && !children.ContainsKey(child))
+                            {
+                                continue;
+                            }
+
+                            throw new System.ComponentModel.Win32Exception(error, "OpenProcess failed for candidate descendant pid " + child + " of pid " + parent.Key + " (Win32 " + error + ")");
+                        }
+
+                        try
+                        {
+                            long created;
+                            long exit;
+                            long kernel;
+                            long user;
+                            if (!NativeMethods.GetProcessTimes(handle, out created, out exit, out kernel, out user))
+                            {
+                                int error = Marshal.GetLastWin32Error();
+                                throw new System.ComponentModel.Win32Exception(error, "GetProcessTimes failed for candidate descendant pid " + child + " (Win32 " + error + ")");
+                            }
+
+                            if (created < parent.Value)
+                            {
+                                continue;
+                            }
+
+                            int parentId = GetParentId(handle, child);
+                            if (parentId != parent.Key)
+                            {
+                                continue;
+                            }
+
+                            seen.Add(child);
+                            result.Add(new PinnedProcess(child, handle));
+                            handle = IntPtr.Zero; // Ownership transferred to the result.
+                            pending.Enqueue(new KeyValuePair<int, long>(child, created));
+                        }
+                        finally
+                        {
+                            if (handle != IntPtr.Zero)
+                            {
+                                NativeMethods.CloseHandle(handle);
+                            }
+                        }
+                    }
                 }
 
-                foreach (int child in list)
-                {
-                    if (seen.Contains(child))
-                    {
-                        continue;
-                    }
-
-                    IntPtr handle = NativeMethods.OpenProcess(
-                        NativeMethods.PROCESS_QUERY_LIMITED_INFORMATION | NativeMethods.SYNCHRONIZE | NativeMethods.PROCESS_TERMINATE,
-                        false,
-                        (uint)child);
-                    if (handle == IntPtr.Zero)
-                    {
-                        continue;
-                    }
-
-                    long created;
-                    long exit;
-                    long kernel;
-                    long user;
-                    int parentId;
-                    if (!NativeMethods.GetProcessTimes(handle, out created, out exit, out kernel, out user) ||
-                        created < parent.Value ||
-                        !TryGetParentId(handle, out parentId) ||
-                        parentId != parent.Key)
-                    {
-                        NativeMethods.CloseHandle(handle);
-                        continue;
-                    }
-
-                    seen.Add(child);
-                    result.Add(new PinnedProcess(child, handle));
-                    pending.Enqueue(new KeyValuePair<int, long>(child, created));
-                }
+                return result.ToArray();
             }
+            catch
+            {
+                foreach (PinnedProcess process in result)
+                {
+                    process.Dispose();
+                }
 
-            return result.ToArray();
+                throw;
+            }
         }
 
-        private static bool TryGetParentId(IntPtr handle, out int parentId)
+        private static int GetParentId(IntPtr handle, int processId)
         {
-            parentId = 0;
             NativeMethods.PROCESS_BASIC_INFORMATION info = new NativeMethods.PROCESS_BASIC_INFORMATION();
             int returnLength;
-            if (NativeMethods.NtQueryInformationProcess(handle, 0, ref info, Marshal.SizeOf(typeof(NativeMethods.PROCESS_BASIC_INFORMATION)), out returnLength) != 0)
+            int status = NativeMethods.NtQueryInformationProcess(handle, 0, ref info, Marshal.SizeOf(typeof(NativeMethods.PROCESS_BASIC_INFORMATION)), out returnLength);
+            if (status != 0)
             {
-                return false;
+                throw new InvalidOperationException("NtQueryInformationProcess failed for candidate descendant pid " + processId + ": NTSTATUS 0x" + status.ToString("X8"));
             }
 
-            parentId = (int)info.InheritedFromUniqueProcessId.ToInt64();
-            return true;
+            return (int)info.InheritedFromUniqueProcessId.ToInt64();
         }
     }
 
@@ -609,22 +660,22 @@ namespace PowerToysPerformance
         [DllImport("kernel32.dll", CharSet = CharSet.Ansi)]
         public static extern IntPtr GetProcAddress(IntPtr hModule, string procName);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, uint th32ProcessID);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool Process32First(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
 
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
         public static extern bool Process32Next(IntPtr hSnapshot, ref PROCESSENTRY32 lppe);
 
         [DllImport("kernel32.dll")]
         public static extern bool CloseHandle(IntPtr hObject);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
 
-        [DllImport("kernel32.dll")]
+        [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool GetProcessTimes(IntPtr hProcess, out long lpCreationTime, out long lpExitTime, out long lpKernelTime, out long lpUserTime);
 
         [DllImport("kernel32.dll")]
@@ -715,24 +766,70 @@ function Get-RootProcesses
     # Opening the handle first means the process id can't be reused while the path is checked or
     # while the caller uses the process. Dispose the processes when done with them.
     $prefix = $Folder.TrimEnd('\') + '\'
-    return @(Get-Process -Name $Name -ErrorAction SilentlyContinue | Where-Object {
-        if ($_.SessionId -ne $sessionId)
+    $candidates = @(Get-Process -Name $Name -ErrorAction SilentlyContinue)
+    $selected = New-Object System.Collections.Generic.List[System.Diagnostics.Process]
+    try
+    {
+        foreach ($process in $candidates)
         {
-            return $false
+            try
+            {
+                if ($process.get_SessionId() -ne $sessionId)
+                {
+                    continue
+                }
+
+                # Invoke accessors explicitly: PowerShell property adapters can hide getter errors.
+                $null = $process.get_Handle()
+                $path = $process.get_MainModule().FileName
+                if (-not $path)
+                {
+                    if ($process.get_HasExited()) { continue }
+                    throw 'The executable path is unavailable.'
+                }
+            }
+            catch
+            {
+                $failure = $_.Exception.GetBaseException()
+                # A handle-backed positive exit is benign; access failure is not absence.
+                $exited = $false
+                try { $exited = $process.get_HasExited() } catch {}
+                if ($exited) { continue }
+                $detail = 'HRESULT 0x{0:X8}' -f $failure.HResult
+                if ($failure -is [ComponentModel.Win32Exception])
+                {
+                    $detail += "; Win32 $($failure.NativeErrorCode)"
+                }
+                throw "Can't inspect PowerToys candidate pid $($process.Id): $($failure.Message) ($detail). Exit it manually before retrying."
+            }
+
+            if ($path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase))
+            {
+                $selected.Add($process)
+            }
         }
 
-        $path = $null
-        try
+        return $selected.ToArray()
+    }
+    catch
+    {
+        $script:unconfirmedProcessExit = $true
+        foreach ($process in $selected)
         {
-            $null = $_.Handle
-            $path = $_.Path
+            $process.Dispose()
         }
-        catch
+        throw
+    }
+    finally
+    {
+        foreach ($process in $candidates)
         {
+            if (-not $selected.Contains($process))
+            {
+                $process.Dispose()
+            }
         }
-
-        $path -and $path.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)
-    })
+    }
 }
 
 function Stop-Processes
@@ -883,14 +980,10 @@ function Stop-LaunchedProcesses
     {
         try
         {
-            if ($process.HasExited)
-            {
-                continue
-            }
-
             if ([string]::Equals($process.StartInfo.FileName, $runnerPath, [StringComparison]::OrdinalIgnoreCase))
             {
-                Stop-Runner -Process $process -Folder $root
+                try { Stop-Runner -Process $process -Folder $root }
+                finally { Stop-ProcessAndDescendants -Process $process }
             }
             else
             {
@@ -1038,13 +1131,17 @@ function Backup-File
 
 function Restore-Files
 {
+    $restored = $true
     foreach ($path in $script:backups.Keys)
     {
         try
         {
             if ($null -eq $script:backups[$path])
             {
-                Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+                if (Test-Path -LiteralPath $path)
+                {
+                    Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+                }
             }
             else
             {
@@ -1053,8 +1150,26 @@ function Restore-Files
         }
         catch
         {
+            $restored = $false
             Write-Warning "Couldn't restore $path`: $($_.Exception.Message)"
         }
+    }
+
+    return $restored
+}
+
+function Save-FileBackups
+{
+    if ($script:backups.Count -eq 0) { return }
+    try
+    {
+        $backupFile = Join-Path $OutputDirectory ('file-backup-' + $started.ToString('yyyyMMdd-HHmmss') + '.clixml')
+        $script:backups | Export-Clixml -LiteralPath $backupFile -ErrorAction Stop
+        Write-Warning "Individual-file originals (path-to-bytes mapping; null means originally absent) are in $backupFile."
+    }
+    catch
+    {
+        Write-Warning "Couldn't save individual-file originals: $($_.Exception.Message). They remain in `$script:backups only until this script exits."
     }
 }
 
@@ -1640,7 +1755,6 @@ function Measure-SvgThumbnail
         # Same command line as src\modules\previewpane\FileExplorerDllExporter: file and thumbnail size.
         $start = [Diagnostics.Stopwatch]::GetTimestamp()
         $process = Start-TargetProcess -Path $svgThumbnailPath -Arguments ('"{0}" 256' -f $svg)
-        $startTimeUtc = $process.StartTime.ToUniversalTime()
         if (-not $process.WaitForExit(60000))
         {
             Stop-ProcessAndDescendants -Process $process
@@ -1648,24 +1762,14 @@ function Measure-SvgThumbnail
         }
 
         $exit = [Diagnostics.Stopwatch]::GetTimestamp()
+        # Parent exit is not family exit, including the missing-bitmap failure path.
+        Stop-ProcessAndDescendants -Process $process
         if (-not (Test-Path -LiteralPath $bitmap))
         {
             throw "The SVG thumbnail provider exited with code $($process.ExitCode) without writing $bitmap."
         }
 
         Add-Sample -Name 'SvgThumbnail' -Iteration $iteration -Metrics ([ordered]@{ ExitMs = Get-ElapsedMs -From $start -To $exit })
-        $descendants = [PowerToysPerformance.ProcessTree]::GetDescendants($process.Id, $startTimeUtc)
-        try
-        {
-            Wait-PinnedProcesses -Processes $descendants
-        }
-        finally
-        {
-            foreach ($descendant in $descendants)
-            {
-                $descendant.Dispose()
-            }
-        }
     }
 }
 
@@ -1911,19 +2015,7 @@ finally
         if ($script:unconfirmedProcessExit)
         {
             $recovery = if ($null -ne $script:dataSnapshot) { "The originals are in $($script:dataSnapshot.Path)." } else { 'No data snapshot was taken.' }
-            if ($script:backups.Count -ne 0)
-            {
-                try
-                {
-                    $backupFile = Join-Path $OutputDirectory ('file-backup-' + $started.ToString('yyyyMMdd-HHmmss') + '.clixml')
-                    $script:backups | Export-Clixml -LiteralPath $backupFile
-                    $recovery += " Individual-file originals (path-to-bytes mapping; null means originally absent) are in $backupFile."
-                }
-                catch
-                {
-                    Write-Warning "Couldn't save individual-file originals: $($_.Exception.Message). They remain in `$script:backups only until this script exits."
-                }
-            }
+            Save-FileBackups
             Write-Warning "PowerToys restoration and restart were skipped because process exit could not be confirmed. $recovery Stop the remaining processes before restoring originals or starting PowerToys manually."
             if ($stopFailures.Count -eq 0)
             {
@@ -1932,7 +2024,11 @@ finally
             throw ($stopFailures -join '; ')
         }
 
-        Restore-Files
+        $filesRestored = Restore-Files
+        if (-not $filesRestored)
+        {
+            Save-FileBackups
+        }
         $canRestart = $null -eq $script:dataSnapshot
         if (-not $canRestart)
         {
@@ -1946,7 +2042,7 @@ finally
             }
         }
 
-        if ($canRestart)
+        if ($canRestart -and $filesRestored)
         {
             foreach ($path in $script:stoppedRunnerPaths)
             {
@@ -1958,7 +2054,8 @@ finally
         }
         else
         {
-            Write-Warning "PowerToys restart was skipped because data restoration failed. Restore the originals from $($script:dataSnapshot.Path) before starting PowerToys manually."
+            $recovery = if ($null -ne $script:dataSnapshot -and -not $canRestart) { " Restore the originals from $($script:dataSnapshot.Path)." } else { '' }
+            Write-Warning "PowerToys restart was skipped because data restoration failed.$recovery Recover any failed individual files from the reported CLIXML originals before starting PowerToys manually."
         }
     }
     finally

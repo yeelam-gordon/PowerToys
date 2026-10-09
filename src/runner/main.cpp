@@ -286,14 +286,14 @@ int runner(bool isProcessElevated, bool openSettings, std::string settingsWindow
         // Record completion only after every registration was removed or already absent, so failures can be retried.
         if (isProcessElevated && !is_video_conference_cleanup_done())
         {
-            const LSTATUS result = clean_video_conference();
-            if (result == ERROR_SUCCESS)
+            const LSTATUS cleanupResult = clean_video_conference();
+            if (cleanupResult == ERROR_SUCCESS)
             {
                 mark_video_conference_cleanup_done();
             }
             else
             {
-                Logger::warn(L"Failed to clean up Video Conference Mute registrations, error: {}", result);
+                Logger::warn(L"Failed to clean up Video Conference Mute registrations, error: {}", cleanupResult);
             }
         }
 

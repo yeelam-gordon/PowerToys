@@ -343,9 +343,14 @@ UINT __stdcall CleanVideoConferenceRegistryCA(MSIHANDLE hInstall)
 {
     HRESULT hr = S_OK;
     UINT er = ERROR_SUCCESS;
+    LSTATUS result = ERROR_SUCCESS;
     hr = WcaInitialize(hInstall, "CleanVideoConferenceRegistry");
     ExitOnFailure(hr, "Failed to initialize");
-    clean_video_conference();
+    result = clean_video_conference();
+    if (result != ERROR_SUCCESS)
+    {
+        WcaLog(LOGMSG_STANDARD, "Failed to clean up Video Conference Mute registrations, error: %ld", result);
+    }
 LExit:
     er = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
     return WcaFinalize(er);

@@ -55,7 +55,8 @@ Samples per scenario that run first and are left out of the summary.
 Wait after the last startup milestone before sampling memory.
 
 .PARAMETER Label
-Name for this run. It's used in the result file name and by Compare-StartupPerformance.ps1.
+Filename component for this run, without path separators or invalid filename characters.
+It's used in the result file name and by Compare-StartupPerformance.ps1.
 
 .PARAMETER OutputDirectory
 Folder for the JSON result file. The copy of the PowerToys data folder is kept here during the run,
@@ -85,6 +86,13 @@ param(
     [ValidateRange(0, 60000)]
     [int]$SettleMilliseconds = 3000,
 
+    [ValidateScript({
+        if ([string]::IsNullOrWhiteSpace($_) -or $_.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0 -or $_ -in '.', '..')
+        {
+            throw 'Label must be a nonempty filename component without path separators or invalid filename characters.'
+        }
+        return $true
+    })]
     [string]$Label = 'run',
 
     [string]$OutputDirectory = (Join-Path $env:TEMP 'PowerToys-Startup-Performance')
@@ -320,8 +328,9 @@ namespace PowerToysPerformance
 
     public static class ProcessTree
     {
-        // Live processes that descend from the given one, including those whose parent has already
-        // exited. The caller must keep the root process open. The process snapshot can be stale, so
+        // Processes reachable through parent entries in one snapshot, even if the retained root
+        // has exited. Missing intermediate parents or later births can hide historical descendants.
+        // The caller must keep the root process open. The process snapshot can be stale, so
         // each process is opened first and then checked: its parent id has to match and it has to
         // be created after its parent. Only the snapshot's candidate parent chain is inspected;
         // inability to inspect a candidate is not proof that the family has exited.
@@ -737,12 +746,23 @@ function Resolve-OutputDirectory
 {
     param([string]$Directory, [string]$DataFolder, [bool]$TakeOver)
 
+    $namespacePattern = '(^|::)(\\\\[?.]\\|\\{1,2}\?\?\\|\\Device\\)'
+    if ($Directory.Replace('/', '\') -match $namespacePattern)
+    {
+        throw 'OutputDirectory does not support extended or device namespace paths. Use an ordinary drive or UNC path.'
+    }
+
     $provider = $null
     $drive = $null
     $path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Directory, [ref]$provider, [ref]$drive)
     if ($provider.Name -ne 'FileSystem')
     {
         throw 'OutputDirectory must be a filesystem path.'
+    }
+
+    if ($path.Replace('/', '\') -match $namespacePattern)
+    {
+        throw 'OutputDirectory does not support extended or device namespace paths. Use an ordinary drive or UNC path.'
     }
 
     $path = [IO.Path]::GetFullPath($path)
@@ -1166,6 +1186,7 @@ function Save-FileBackups
         $backupFile = Join-Path $OutputDirectory ('file-backup-' + $started.ToString('yyyyMMdd-HHmmss') + '.clixml')
         $script:backups | Export-Clixml -LiteralPath $backupFile -ErrorAction Stop
         Write-Warning "Individual-file originals (path-to-bytes mapping; null means originally absent) are in $backupFile."
+        return $backupFile
     }
     catch
     {
@@ -2015,7 +2036,7 @@ finally
         if ($script:unconfirmedProcessExit)
         {
             $recovery = if ($null -ne $script:dataSnapshot) { "The originals are in $($script:dataSnapshot.Path)." } else { 'No data snapshot was taken.' }
-            Save-FileBackups
+            $null = Save-FileBackups
             Write-Warning "PowerToys restoration and restart were skipped because process exit could not be confirmed. $recovery Stop the remaining processes before restoring originals or starting PowerToys manually."
             if ($stopFailures.Count -eq 0)
             {
@@ -2025,10 +2046,12 @@ finally
         }
 
         $filesRestored = Restore-Files
+        $fileBackup = $null
         if (-not $filesRestored)
         {
-            Save-FileBackups
+            $fileBackup = Save-FileBackups
         }
+        $restoreError = $null
         $canRestart = $null -eq $script:dataSnapshot
         if (-not $canRestart)
         {
@@ -2038,6 +2061,7 @@ finally
             }
             catch
             {
+                $restoreError = $_.Exception
                 Write-Warning "Couldn't restore PowerToys data: $($_.Exception.Message). The originals are in $($script:dataSnapshot.Path)."
             }
         }
@@ -2055,7 +2079,13 @@ finally
         else
         {
             $recovery = if ($null -ne $script:dataSnapshot -and -not $canRestart) { " Restore the originals from $($script:dataSnapshot.Path)." } else { '' }
-            Write-Warning "PowerToys restart was skipped because data restoration failed.$recovery Recover any failed individual files from the reported CLIXML originals before starting PowerToys manually."
+            $individualRecovery = ''
+            if (-not $filesRestored)
+            {
+                $individualRecovery = if ($fileBackup) { " Recover individual files from $fileBackup before starting PowerToys manually." } else { ' Individual-file originals were not exported; they remain in $script:backups only until this script exits.' }
+            }
+            Write-Warning "PowerToys restart was skipped because data restoration failed.$recovery$individualRecovery"
+            throw [InvalidOperationException]::new("Required PowerToys restoration failed.$recovery$individualRecovery", $restoreError)
         }
     }
     finally

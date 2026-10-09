@@ -193,6 +193,13 @@ function Assert
         }
         Assert ([NativeBoundaryProbe.NativeMethods]::Closed.Contains(500) -eq ($fault -ne 'snapshot')) "Snapshot handle disposal: $fault"
     }
+    [NativeBoundaryProbe.NativeMethods]::Reset('none', 0, $probeTime.ToFileTimeUtc())
+    [NativeBoundaryProbe.NativeMethods]::Ids = [int[]](103)
+    [NativeBoundaryProbe.NativeMethods]::Parents = [int[]](101)
+    [NativeBoundaryProbe.NativeMethods]::ActualParents = [int[]](101)
+    [NativeBoundaryProbe.NativeMethods]::Created = [long[]]($probeTime.ToFileTimeUtc() + 3)
+    $missingIntermediate = @([NativeBoundaryProbe.ProcessTree]::GetDescendants(100, $probeTime))
+    Assert ($missingIntermediate.Count -eq 0 -and [NativeBoundaryProbe.NativeMethods]::Opened.Count -eq 0) 'Known limitation: absent historical intermediate hides a live grandchild; this empty result is NOT proof of family quiescence'
 }
 
 foreach ($file in 'Measure-StartupPerformance.ps1', 'Compare-StartupPerformance.ps1', 'Test-StartupPerformanceBoundaries.ps1')
@@ -223,7 +230,37 @@ $firstWrite = @($ast.FindAll({
 Assert ($null -ne $preflight -and $preflight.Extent.StartOffset -lt $firstWrite.Extent.StartOffset) 'Output validation precedes writes, snapshot, and takeover'
 Assert ($workAssignment.Extent.StartOffset -gt $preflight.Extent.StartOffset) 'Work folder uses normalized output'
 
+$labelParameter = @($ast.ParamBlock.Parameters | Where-Object { $_.Name.VariablePath.UserPath -eq 'Label' })[0]
+$validateLabel = [scriptblock]::Create("[CmdletBinding()]`nparam($($labelParameter.Extent.Text))`n`$script:labelBodyCalls++`nreturn `$Label")
+$script:labelBodyCalls = 0
+Assert ($labelParameter.Extent.StartOffset -lt $firstWrite.Extent.StartOffset) 'Actual Label parameter guard binds before writes and takeover'
+foreach ($value in '', ' ', '.', '..', '..\Microsoft\PowerToys\leaked', 'folder/name', 'C:\output', 'FileSystem::run',
+    'bad:name', 'bad*name', 'bad?name', 'bad<name', 'bad>name', 'bad"name', 'bad|name', ("bad" + [char]0), ("bad" + [char]31))
+{
+    $threw = $false
+    try { $null = & $validateLabel -Label $value } catch { $threw = $true }
+    Assert ($threw -and $script:labelBodyCalls -eq 0) 'Actual Label guard rejects invalid filename component before body entry'
+}
+foreach ($value in 'run', 'main', 'ReadyToRun-x64', 'AOT_v2.1', 'release preview', ([string][char]0x6E2C + [char]0x8A66))
+{
+    Assert ((& $validateLabel -Label $value) -ceq $value) "Normal Label preserved unchanged: $value"
+}
+Assert ((& $validateLabel) -eq 'run') 'Default Label remains run'
+
 $dataFolder = 'C:\fake-data\PowerToys'
+foreach ($takeOver in $true, $false)
+{
+    foreach ($path in '\\?\C:\fake-data\PowerToys\out', '\\.\C:\fake-data\PowerToys\out',
+        '\\?\UNC\server\share\out', '\??\C:\fake-data\PowerToys\out', '\\??\C:\fake-data\PowerToys\out',
+        '\Device\HarddiskVolume3\out', '//?/C:/fake-data/PowerToys/out',
+        'FileSystem::\\?\C:\fake-data\PowerToys\out', 'Microsoft.PowerShell.Core\FileSystem::\\?\C:\fake-data\PowerToys\out')
+    {
+        $rejected = $false
+        try { $null = Resolve-OutputDirectory -Directory $path -DataFolder $dataFolder -TakeOver $takeOver }
+        catch { $rejected = $_.Exception.Message -like '*does not support extended or device namespace*ordinary drive or UNC*' }
+        Assert $rejected "Reject unsupported output namespace before side effects (takeover $takeOver): $path"
+    }
+}
 foreach ($path in $dataFolder, ($dataFolder + '\'), 'c:\FAKE-DATA\POWERTOYS\out', ($dataFolder + '\out\..\out'))
 {
     $rejected = $false
@@ -246,6 +283,7 @@ foreach ($path in 'C:\external-output', 'C:\fake-data\PowerToys-results')
     Assert ((Resolve-OutputDirectory -Directory $path -DataFolder $dataFolder -TakeOver $true) -eq $path) "Accept external or prefix-sibling output: $path"
 }
 Assert ((Resolve-OutputDirectory -Directory $dataFolder -DataFolder $dataFolder -TakeOver $false) -eq $dataFolder) 'Non-takeover output remains allowed'
+Assert ((Resolve-OutputDirectory -Directory 'FileSystem::C:\external-output' -DataFolder $dataFolder -TakeOver $true) -eq 'C:\external-output') 'Ordinary filesystem-provider-qualified output remains allowed'
 Assert ((Resolve-OutputDirectory -Directory '.\fake-output\..\results' -DataFolder $dataFolder -TakeOver $true) -eq (Join-Path $PWD.Path 'results')) 'Relative output follows PowerShell location and normalizes parent segments'
 Push-Location $PSScriptRoot
 try
@@ -618,6 +656,21 @@ function Start-Process
     $script:restarts.Add($FilePath)
 }
 
+foreach ($exportFault in $false, $true)
+{
+    Reset-Recovery
+    $script:backups = @{ 'C:\fake-data\original.bin' = [byte[]](1, 2, 3); 'C:\fake-data\absent.bin' = $null }
+    $script:exportFailure = $exportFault
+    $paths = @(Save-FileBackups)
+    Assert ($paths.Count -eq [int](-not $exportFault)) "Exact backup export returns a recovery path only after successful export: failure $exportFault"
+    if (-not $exportFault)
+    {
+        Assert ($paths[0] -eq 'C:\external-output\file-backup-20261009-120000.clixml' -and $script:exportedBackups.ContainsKey($paths[0])) 'Reported CLIXML path has an actually completed export'
+    }
+}
+Reset-Recovery
+Assert (@(Save-FileBackups).Count -eq 0) 'No individual originals means no reported recovery file'
+
 Reset-Recovery
 $status = @(Restore-DataFolder)
 Assert ($status.Count -eq 1 -and $status[0] -is [bool] -and $status[0]) 'Successful restore returns exactly one true Boolean'
@@ -661,8 +714,18 @@ foreach ($fault in 'none', 'copy', 'delete', 'directory', 'unexpected', 'no-snap
         'stop' { $script:launched = @(New-TestProcess -Fault kill) }
     }
     $threw = $false
-    try { & $finalizer } catch { $threw = $true }
-    Assert ($threw -eq ($fault -eq 'stop')) "Finalizer preserves unexpected cleanup error visibility: $fault"
+    $cleanupError = $null
+    try { & $finalizer } catch { $threw = $true; $cleanupError = $_.Exception }
+    Assert ($threw -eq ($fault -notin 'none', 'no-snapshot')) "Finalizer terminates after required recovery fails, not after success: $fault"
+    if ($fault -notin 'none', 'no-snapshot', 'stop')
+    {
+        Assert ($cleanupError.Message -like 'Required PowerToys restoration failed*') "Required restoration failure is a terminating command error: $fault"
+        Assert (($script:warnings -join ' ') -notlike '*CLIXML*' -and ($script:warnings -join ' ') -notlike '*Recover individual files*') "Data-only restoration failure does not invent individual-file recovery: $fault"
+        if ($fault -eq 'unexpected')
+        {
+            Assert ($cleanupError.InnerException.Message -like '*Injected enumeration failure*') 'Unexpected data restoration exception remains the terminating cleanup error cause'
+        }
+    }
     Assert ($script:disposed -eq 1) "Recorder disposed independently: $fault"
     if ($fault -in 'none', 'no-snapshot')
     {
@@ -827,11 +890,15 @@ foreach ($fault in 'bytes', 'absence', 'bytes-export')
     $script:exportFailure = $fault -eq 'bytes-export'
     $status = @(Restore-Files)
     Assert ($status.Count -eq 1 -and $status[0] -is [bool] -and -not $status[0]) "Actual individual restore reports failure as a single Boolean: $fault"
-    & $finalizer
+    $threw = $false
+    $cleanupError = $null
+    try { & $finalizer } catch { $threw = $true; $cleanupError = $_.Exception }
+    Assert ($threw -and $cleanupError.Message -like 'Required PowerToys restoration failed*') "Individual restoration failure terminates after retaining recovery evidence: $fault"
     Assert ($script:restarts.Count -eq 0 -and $script:disposed -eq 1 -and $script:backups.Count -eq 2) "Failed individual recovery withholds restart and keeps memory originals: $fault"
     if ($script:exportFailure)
     {
         Assert ($script:exportedBackups.Count -eq 0 -and ($script:warnings -join ' ') -like '*only until this script exits*') 'Individual restore plus export failure honestly reports nondurable cache'
+        Assert (($script:warnings -join ' ') -notlike '*clixml*' -and $cleanupError.Message -notlike '*clixml*') 'Failed export never claims CLIXML recovery exists'
     }
     else
     {

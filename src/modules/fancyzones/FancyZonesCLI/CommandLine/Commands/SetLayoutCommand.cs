@@ -32,13 +32,9 @@ internal sealed partial class SetLayoutCommand : FancyZonesBaseCommand
         _monitor = new Option<int?>("--monitor", "-m") { Description = Properties.Resources.set_layout_opt_monitor };
         _monitor.Validators.Add(result =>
         {
-            if (result.Tokens.Count == 0)
-            {
-                return;
-            }
-
-            int? monitor = result.GetValueOrDefault<int?>();
-            if (monitor.HasValue && monitor.Value < 1)
+            if (result.Tokens.Count == 1 &&
+                int.TryParse(result.Tokens[0].Value, NumberStyles.Integer, CultureInfo.CurrentCulture, out int monitor) &&
+                monitor < 1)
             {
                 result.AddError(Properties.Resources.set_layout_error_monitor_index);
             }
@@ -51,10 +47,15 @@ internal sealed partial class SetLayoutCommand : FancyZonesBaseCommand
 
         Validators.Add(commandResult =>
         {
-            int? monitor = commandResult.GetValue(_monitor);
-            bool all = commandResult.GetValue(_all);
+            // Typed getters can throw before the parser reports conversion errors or selects help.
+            var monitor = commandResult.GetResult(_monitor);
+            var all = commandResult.GetResult(_all);
 
-            if (monitor.HasValue && all)
+            if (monitor?.Tokens.Count == 1 &&
+                int.TryParse(monitor.Tokens[0].Value, NumberStyles.Integer, CultureInfo.CurrentCulture, out _) &&
+                all is { Implicit: false } &&
+                (all.Tokens.Count == 0 ||
+                    (all.Tokens.Count == 1 && bool.TryParse(all.Tokens[0].Value, out bool applyAll) && applyAll)))
             {
                 commandResult.AddError(Properties.Resources.set_layout_error_both_options);
             }

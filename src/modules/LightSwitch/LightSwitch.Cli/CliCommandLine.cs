@@ -85,8 +85,9 @@ internal sealed class CliCommandLine
             // The parser leaves an invalid Boolean assignment such as --help=invalid
             // unmatched and treats the option as true. Validate individual tokens using
             // the parser rather than reimplementing its aliases or assignment syntax.
+            // Absent Boolean options also have implicit results in the GA parser.
             var token = assignmentValidator.Parse(new[] { argument });
-            if (token.Errors.Count != 0 && token.RootCommandResult.Children.OfType<OptionResult>().Any())
+            if (token.Errors.Count != 0 && token.RootCommandResult.Children.OfType<OptionResult>().Any(option => !option.Implicit))
             {
                 errors.AddRange(token.Errors.Select(error => error.Message));
             }
@@ -95,8 +96,8 @@ internal sealed class CliCommandLine
         var jsonResult = parsed.GetResult(presentation.Json);
         bool json = jsonResult?.Errors.Any() != true && parsed.GetValue(presentation.Json);
         bool onlyJson = parsed.UnmatchedTokens.Count == 0 &&
-            parsed.GetResult(presentation.Help) is null && parsed.GetResult(presentation.Version) is null &&
-            !parsed.Tokens.Any(token => token.Type == TokenType.DoubleDash);
+            parsed.GetResult(presentation.Help)?.Implicit != false && parsed.GetResult(presentation.Version)?.Implicit != false &&
+            !parsed.Tokens.Any(token => token.Type is TokenType.DoubleDash or TokenType.Directive);
 
         return errors.Count == 0
             ? (expandedArgs, json, onlyJson || parsed.GetValue(presentation.Help), parsed.GetValue(presentation.Version), null)
@@ -105,6 +106,12 @@ internal sealed class CliCommandLine
 
     internal CliRequest CreateRequest(ParseResult result)
     {
+        // Clearing registered directives does not stop the GA parser from consuming them.
+        if (result.Tokens.Any(token => token.Type == TokenType.Directive))
+        {
+            throw new CliException("INVALID_ARGUMENT", Resources.Error_UnsupportedDirective);
+        }
+
         if (result.CommandResult.Command == _enable)
         {
             string? mode = result.GetValue(_mode) switch

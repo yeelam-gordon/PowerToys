@@ -5,7 +5,6 @@
 using System;
 using System.Collections.Generic;
 using System.CommandLine;
-using System.CommandLine.Invocation;
 using System.Globalization;
 
 using FancyZonesCLI.Utils;
@@ -16,9 +15,6 @@ namespace FancyZonesCLI.CommandLine.Commands;
 
 internal sealed partial class SetLayoutCommand : FancyZonesBaseCommand
 {
-    private static readonly string[] AliasesMonitor = ["--monitor", "-m"];
-    private static readonly string[] AliasesAll = ["--all", "-a"];
-
     private const string DefaultLayoutUuid = "{00000000-0000-0000-0000-000000000000}";
 
     private readonly Argument<string> _layoutId;
@@ -28,49 +24,50 @@ internal sealed partial class SetLayoutCommand : FancyZonesBaseCommand
     public SetLayoutCommand()
         : base("set-layout", Properties.Resources.cmd_set_layout)
     {
-        AddAlias("s");
+        Aliases.Add("s");
 
-        _layoutId = new Argument<string>("layout", Properties.Resources.set_layout_arg_layout);
-        AddArgument(_layoutId);
+        _layoutId = new Argument<string>("layout") { Description = Properties.Resources.set_layout_arg_layout };
+        Arguments.Add(_layoutId);
 
-        _monitor = new Option<int?>(AliasesMonitor, Properties.Resources.set_layout_opt_monitor);
-        _monitor.AddValidator(result =>
+        _monitor = new Option<int?>("--monitor", "-m") { Description = Properties.Resources.set_layout_opt_monitor };
+        _monitor.Validators.Add(result =>
         {
-            if (result.Tokens.Count == 0)
+            if (result.Tokens.Count == 1 &&
+                int.TryParse(result.Tokens[0].Value, NumberStyles.Integer, CultureInfo.CurrentCulture, out int monitor) &&
+                monitor < 1)
             {
-                return;
-            }
-
-            int? monitor = result.GetValueOrDefault<int?>();
-            if (monitor.HasValue && monitor.Value < 1)
-            {
-                result.ErrorMessage = Properties.Resources.set_layout_error_monitor_index;
+                result.AddError(Properties.Resources.set_layout_error_monitor_index);
             }
         });
 
-        _all = new Option<bool>(AliasesAll, Properties.Resources.set_layout_opt_all);
+        _all = new Option<bool>("--all", "-a") { Description = Properties.Resources.set_layout_opt_all };
 
-        AddOption(_monitor);
-        AddOption(_all);
+        Options.Add(_monitor);
+        Options.Add(_all);
 
-        AddValidator(commandResult =>
+        Validators.Add(commandResult =>
         {
-            int? monitor = commandResult.GetValueForOption(_monitor);
-            bool all = commandResult.GetValueForOption(_all);
+            // Typed getters can throw before the parser reports conversion errors or selects help.
+            var monitor = commandResult.GetResult(_monitor);
+            var all = commandResult.GetResult(_all);
 
-            if (monitor.HasValue && all)
+            if (monitor?.Tokens.Count == 1 &&
+                int.TryParse(monitor.Tokens[0].Value, NumberStyles.Integer, CultureInfo.CurrentCulture, out _) &&
+                all is { Implicit: false } &&
+                (all.Tokens.Count == 0 ||
+                    (all.Tokens.Count == 1 && bool.TryParse(all.Tokens[0].Value, out bool applyAll) && applyAll)))
             {
-                commandResult.ErrorMessage = Properties.Resources.set_layout_error_both_options;
+                commandResult.AddError(Properties.Resources.set_layout_error_both_options);
             }
         });
     }
 
-    protected override string Execute(InvocationContext context)
+    protected override string Execute(ParseResult parseResult)
     {
         // FancyZones running guard is handled by FancyZonesBaseCommand.
-        string layout = context.ParseResult.GetValueForArgument(_layoutId);
-        int? monitor = context.ParseResult.GetValueForOption(_monitor);
-        bool all = context.ParseResult.GetValueForOption(_all);
+        string layout = parseResult.GetValue(_layoutId);
+        int? monitor = parseResult.GetValue(_monitor);
+        bool all = parseResult.GetValue(_all);
         Logger.LogInfo($"SetLayout called with layout: '{layout}', monitor: {(monitor.HasValue ? monitor.Value.ToString(CultureInfo.InvariantCulture) : "<default>")}, all: {all}");
 
         var (targetCustomLayout, targetTemplate) = ResolveTargetLayout(layout);

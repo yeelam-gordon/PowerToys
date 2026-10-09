@@ -3,9 +3,12 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.CommandLine.Parsing;
+using System.CommandLine;
+using System.Globalization;
 using System.IO;
 using System.IO.Abstractions.TestingHelpers;
+using System.Linq;
+using System.Threading.Tasks;
 
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -168,11 +171,109 @@ public class SettingsCliTests
     [DataRow("status")]
     public void TestCommandParsingReportsMissingArguments(string command)
     {
-        var parser = new Parser(Program.CreateRootCommand());
-
-        var parseResult = parser.Parse([command]);
+        var parseResult = Program.CreateRootCommand().Parse([command]);
 
         Assert.IsTrue(parseResult.Errors.Count > 0);
+    }
+
+    [DataTestMethod]
+    [DataRow("enable")]
+    [DataRow("disable")]
+    [DataRow("status")]
+    public async Task TestMissingModuleArgumentsReturnFailureWithoutExecutingCommands(string command)
+    {
+        using var stdout = new StringWriter(CultureInfo.InvariantCulture);
+        using var stderr = new StringWriter(CultureInfo.InvariantCulture);
+        var parseResult = Program.CreateRootCommand().Parse([command]);
+
+        var exitCode = await parseResult.InvokeAsync(new InvocationConfiguration { Output = stdout, Error = stderr });
+
+        Assert.AreNotEqual(0, exitCode);
+        Assert.IsFalse(string.IsNullOrWhiteSpace(stderr.ToString()));
+        Assert.IsFalse(settingsUtils.SettingsExists());
+    }
+
+    [DataTestMethod]
+    [DataRow("enable")]
+    [DataRow("disable")]
+    [DataRow("status")]
+    public void TestCommandParsingPreservesModuleArgument(string command)
+    {
+        var root = Program.CreateRootCommand();
+        var selectedCommand = root.Subcommands.Single(item => item.Name == command);
+        var moduleArg = (Argument<string>)selectedCommand.Arguments.Single();
+
+        var parseResult = root.Parse([command, "FancyZones"]);
+
+        Assert.AreEqual(0, parseResult.Errors.Count);
+        Assert.AreSame(selectedCommand, parseResult.CommandResult.Command);
+        Assert.AreEqual("FancyZones", parseResult.GetRequiredValue(moduleArg));
+        Assert.IsFalse(settingsUtils.SettingsExists());
+    }
+
+    [DataTestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task TestVersionWithSubcommandFailsWithoutExecutingCommands(bool asynchronous)
+    {
+        int calls = 0;
+        var root = Program.CreateRootCommand();
+        foreach (var command in root.Subcommands)
+        {
+            command.SetAction(_ => calls++);
+        }
+
+        using var stdout = new StringWriter(CultureInfo.InvariantCulture);
+        using var stderr = new StringWriter(CultureInfo.InvariantCulture);
+        using var versionOutput = new StringWriter(CultureInfo.InvariantCulture);
+        Assert.AreEqual(0, root.Parse(["--version"]).Invoke(new InvocationConfiguration { Output = versionOutput, Error = stderr }));
+        var parsed = root.Parse(["--version", "list"]);
+        var configuration = new InvocationConfiguration { Output = stdout, Error = stderr };
+        int exit = asynchronous ? await parsed.InvokeAsync(configuration) : parsed.Invoke(configuration);
+
+        Assert.AreEqual(1, exit);
+        StringAssert.Contains(stderr.ToString(), parsed.Errors.Single().Message);
+        Assert.IsFalse(stdout.ToString().Contains(versionOutput.ToString().Trim(), StringComparison.Ordinal));
+        Assert.AreEqual(0, calls);
+    }
+
+    [DataTestMethod]
+    [DataRow("list", true)]
+    [DataRow("list", false)]
+    [DataRow("status", true)]
+    [DataRow("status", false)]
+    public void TestCommandParsingPreservesJsonOption(string command, bool json)
+    {
+        var root = Program.CreateRootCommand();
+        var selectedCommand = root.Subcommands.Single(item => item.Name == command);
+        var jsonOpt = (Option<bool>)selectedCommand.Options.Single(item => item.Name == "--json");
+        string[] args = command == "status"
+            ? [command, "FancyZones", $"--json={json.ToString().ToLowerInvariant()}"]
+            : [command, $"--json={json.ToString().ToLowerInvariant()}"];
+
+        var parseResult = root.Parse(args);
+
+        Assert.AreEqual(0, parseResult.Errors.Count);
+        Assert.AreEqual(json, parseResult.GetValue(jsonOpt));
+        Assert.IsFalse(settingsUtils.SettingsExists());
+    }
+
+    [DataTestMethod]
+    [DataRow("--help")]
+    [DataRow("-h")]
+    [DataRow("-?")]
+    public async Task TestHelpAliasesDoNotExecuteModuleCommands(string alias)
+    {
+        using var stdout = new StringWriter(CultureInfo.InvariantCulture);
+        using var stderr = new StringWriter(CultureInfo.InvariantCulture);
+        var parseResult = Program.CreateRootCommand().Parse(["enable", alias]);
+
+        var exitCode = await parseResult.InvokeAsync(new InvocationConfiguration { Output = stdout, Error = stderr });
+
+        Assert.AreEqual(0, exitCode);
+        StringAssert.Contains(stdout.ToString(), "module");
+        Assert.AreEqual(string.Empty, stderr.ToString());
+        Assert.IsFalse(settingsUtils.SettingsExists());
     }
 
     [DataTestMethod]

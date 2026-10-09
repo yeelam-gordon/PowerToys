@@ -14,11 +14,14 @@
     <Nullable>enable</Nullable>
     <!-- Ensure WindowsDesktop runtime pack is included for consistent WindowsBase.dll version -->
     <UseWPF>true</UseWPF>
+    <!-- CA1010: System.CommandLine's Command implements only the non-generic IEnumerable. -->
+    <NoWarn>$(NoWarn);CA1010</NoWarn>
     </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NJsonSchema" />
     <PackageReference Include="System.CommandLine" />
+    <Compile Include="$(RepoRoot)src\common\CommandLine\VersionOptionErrorAction.cs" Link="CommandLine\VersionOptionErrorAction.cs" />
   </ItemGroup>
 
   <ItemGroup>

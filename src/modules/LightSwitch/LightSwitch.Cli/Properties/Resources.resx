@@ -130,6 +130,9 @@ JSON help/version output is local: version, success, and help or cliVersion.</va
     <value>Specify a command. The schedule command requires enable or disable.</value>
     <comment>schedule, enable, and disable are literal command names and must not be translated.</comment>
   </data>
+  <data name="Error_UnsupportedDirective" xml:space="preserve">
+    <value>Parser directives are not supported.</value>
+  </data>
   <data name="Error_TimedOut" xml:space="preserve">
     <value>The request timed out or was cancelled. It may already have taken effect; run status before trying again.</value>
     <comment>status is a literal command name and must not be translated. Preserve the warning that the command may already have taken effect.</comment>

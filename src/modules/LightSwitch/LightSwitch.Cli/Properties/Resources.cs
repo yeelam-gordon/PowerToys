@@ -42,6 +42,8 @@ internal static class Resources
 
     internal static string Error_CommandRequired => Get(nameof(Error_CommandRequired));
 
+    internal static string Error_UnsupportedDirective => Get(nameof(Error_UnsupportedDirective));
+
     internal static string Error_TimedOut => Get(nameof(Error_TimedOut));
 
     internal static string Error_UnexpectedFailure => Get(nameof(Error_UnexpectedFailure));

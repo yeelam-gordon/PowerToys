@@ -119,7 +119,11 @@ redrawing or that a downstream PowerDisplay profile has completed.
 ## Implementation
 
 The C# CLI parses arguments with the repository's pinned System.CommandLine
-package. It connects to the service through a duplex named pipe, verifies the
+GA package. It expands response files once and reuses that argument snapshot for
+presentation and command parsing, with further response-file expansion disabled.
+Recursive Boolean options preserve the CLI's own help/version dispatch; built-in
+presentation options and parser directives are removed from these parsing roots.
+It connects to the service through a duplex named pipe, verifies the
 server executable, sends one request, reads one response, and closes.
 
 The pipe name is `PowerToys_LightSwitch_Cli_<sessionId>`. Its access control

@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
+    <Compile Include="$(RepoRoot)src\common\CommandLine\VersionOptionErrorAction.cs" Link="CommandLine\VersionOptionErrorAction.cs" />
   </ItemGroup>
 
   <ItemGroup>

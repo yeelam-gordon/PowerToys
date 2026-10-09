@@ -18,7 +18,12 @@
 
   <ItemGroup>
     <PackageReference Include="System.CommandLine" />
+    <Compile Include="$(RepoRoot)src\common\CommandLine\VersionOptionErrorAction.cs" Link="CommandLine\VersionOptionErrorAction.cs" />
     <PackageReference Include="Microsoft.Windows.CsWin32" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="FancyZonesEditor.UnitTests" />
   </ItemGroup>
 
   <ItemGroup>

@@ -67,7 +67,7 @@ public sealed class CliApplicationTests
         using var stderr = new StringWriter(CultureInfo.InvariantCulture);
         int exit = await application.RunAsync((arguments + " --json").Split(' '), stdout, stderr);
 
-        Assert.AreEqual(0, exit);
+        Assert.AreEqual(0, exit, $"stdout: {stdout}; stderr: {stderr}");
         Assert.AreEqual(1, calls);
         Assert.IsNotNull(receivedRequest);
         using var requestDocument = JsonDocument.Parse(receivedRequest);
@@ -92,6 +92,24 @@ public sealed class CliApplicationTests
         using var output = JsonDocument.Parse(stdout.ToString());
         Assert.IsTrue(output.RootElement.GetProperty("success").GetBoolean());
         Assert.AreEqual(string.Empty, stderr.ToString());
+    }
+
+    [TestMethod]
+    [DataRow("", false, true)]
+    [DataRow("--json", true, true)]
+    [DataRow("--json=false", false, true)]
+    [DataRow("--help=false", false, false)]
+    [DataRow("--version=false", false, false)]
+    [DataRow("status --json", true, false)]
+    [DataRow("schedule enable --mode fixed-hours --json", true, false)]
+    public void ImplicitBooleanResultsDoNotCountAsSuppliedPresentationOptions(string arguments, bool json, bool help)
+    {
+        var presentation = CliCommandLine.ParsePresentationOptions(arguments.Split(' ', StringSplitOptions.RemoveEmptyEntries));
+
+        Assert.IsNull(presentation.Error);
+        Assert.AreEqual(json, presentation.Json);
+        Assert.AreEqual(help, presentation.Help);
+        Assert.IsFalse(presentation.Version);
     }
 
     [TestMethod]
@@ -137,12 +155,17 @@ public sealed class CliApplicationTests
     [DataRow("light --help=true --help=false")]
     [DataRow("light --help=false --help=true")]
     [DataRow("toggle --version=false --version=true")]
+    [DataRow("[parse]")]
+    [DataRow("[parse] --json")]
+    [DataRow("[bogus] --json")]
     [DataRow("[parse] toggle")]
     [DataRow("[parse] dark --help=false")]
     [DataRow("[suggest] light")]
     [DataRow("[suggest:6] dark")]
     [DataRow("[bogus] schedule disable")]
     [DataRow("[env:FOO=bar] schedule enable --mode fixed-hours")]
+    [DataRow("--json --")]
+    [DataRow("--json -- --help")]
     public async Task InvalidArgumentsProduceOneJsonErrorWithoutCallingTheService(string arguments)
     {
         int calls = 0;
@@ -182,6 +205,8 @@ public sealed class CliApplicationTests
     [DataRow("--json=false")]
     [DataRow("--json false")]
     [DataRow("--json=false --help=true")]
+    [DataRow("--version --help")]
+    [DataRow("--help --version")]
     [DataRow("schedule enable --mode --json false --help")]
     [DataRow("[parse] light --help")]
     [DataRow("[suggest] dark --help=true")]
@@ -203,6 +228,8 @@ public sealed class CliApplicationTests
     [TestMethod]
     [DataRow("--json", "help")]
     [DataRow("--json --help", "help")]
+    [DataRow("--json --version --help", "help")]
+    [DataRow("--json --help --version", "help")]
     [DataRow("schedule enable --json --help", "help")]
     [DataRow("--json --version", "cliVersion")]
     [DataRow("light --version --json", "cliVersion")]
@@ -436,6 +463,7 @@ public sealed class CliApplicationTests
     }
 
     [TestMethod]
+    [DataRow("--")]
     [DataRow("schedule enable --mode -- --json")]
     [DataRow("schedule enable --mode -- --help")]
     [DataRow("schedule enable --mode -- --version")]

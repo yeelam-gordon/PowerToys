@@ -41,6 +41,7 @@
     </ClCompile>
     <ClCompile Include="StringUtils.Tests.cpp" />
     <ClCompile Include="ColorUtils.Tests.cpp" />
+    <ClCompile Include="CleanVideoConference.Tests.cpp" />
     <ClCompile Include="TimeUtils.Tests.cpp" />
     <ClCompile Include="WinApiError.Tests.cpp" />
     <ClCompile Include="Serialized.Tests.cpp" />

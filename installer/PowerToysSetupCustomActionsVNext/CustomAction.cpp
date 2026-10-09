@@ -15,6 +15,7 @@
 #include "../../src/common/version/version.h"
 #include "../../src/common/Telemetry/EtwTrace/EtwTrace.h"
 #include "../../src/common/utils/package.h"
+#include "../../src/common/utils/clean_video_conference.h"
 
 #include <winrt/Windows.ApplicationModel.h>
 #include <winrt/Windows.Foundation.h>
@@ -334,6 +335,24 @@ UINT __stdcall CheckGPOCA(MSIHANDLE hInstall)
 
 LExit:
     UINT er = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
+    return WcaFinalize(er);
+}
+
+// We've deprecated Video Conference Mute. This Custom Action cleans up any stray registry entry for the driver dll.
+UINT __stdcall CleanVideoConferenceRegistryCA(MSIHANDLE hInstall)
+{
+    HRESULT hr = S_OK;
+    UINT er = ERROR_SUCCESS;
+    LSTATUS result = ERROR_SUCCESS;
+    hr = WcaInitialize(hInstall, "CleanVideoConferenceRegistry");
+    ExitOnFailure(hr, "Failed to initialize");
+    result = clean_video_conference();
+    if (result != ERROR_SUCCESS)
+    {
+        WcaLog(LOGMSG_STANDARD, "Failed to clean up Video Conference Mute registrations, error: %ld", result);
+    }
+LExit:
+    er = SUCCEEDED(hr) ? ERROR_SUCCESS : ERROR_INSTALL_FAILURE;
     return WcaFinalize(er);
 }
 
@@ -1591,6 +1610,8 @@ UINT __stdcall TerminateProcessesCA(MSIHANDLE hInstall)
         L"PowerToys.ImageResizerCLI.exe",
         L"PowerToys.ImageResizer.CLI.exe",
         L"PowerToys.LightSwitchService.exe",
+        // Also matches the installed shim PowerToys.LightSwitch.CLI.exe.
+        L"PowerToys.LightSwitch.Cli.exe",
         L"PowerToys.PowerDisplay.exe",
         // Also matches the installed shim PowerToys.PowerDisplay.CLI.exe.
         L"PowerToys.PowerDisplay.Cli.exe",

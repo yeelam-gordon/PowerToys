@@ -281,14 +281,20 @@ int runner(bool isProcessElevated, bool openSettings, std::string settingsWindow
         chdir_current_executable();
 
         // We deprecated a utility called Video Conference Mute, which registered itself as a video input device.
-        // When running elevated, we try to clean up the device registration from previous installations.
-        // A user-scope installer can't remove the HKCR / HKLM WOW6432Node registration due to lack of permissions,
-        // and upgrades from 0.87 or older may still have it, so the elevated runner is the only place this reliably happens.
-        // The cleanup only needs to happen once, so a marker is recorded after the first elevated run and checked on later starts.
+        // The installer attempts cleanup; elevated Runner provides a fallback, including for user-scope upgrades
+        // where the installer cannot remove HKCR / HKLM WOW6432Node registrations.
+        // Record completion only after every registration was removed or already absent, so failures can be retried.
         if (isProcessElevated && !is_video_conference_cleanup_done())
         {
-            clean_video_conference();
-            mark_video_conference_cleanup_done();
+            const LSTATUS result = clean_video_conference();
+            if (result == ERROR_SUCCESS)
+            {
+                mark_video_conference_cleanup_done();
+            }
+            else
+            {
+                Logger::warn(L"Failed to clean up Video Conference Mute registrations, error: {}", result);
+            }
         }
 
         // Load PowerToys DLLs

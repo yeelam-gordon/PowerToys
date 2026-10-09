@@ -39,6 +39,9 @@
     <ClCompile Include="ColorUtils.Tests.cpp">
       <Filter>Source Files\Pure Functions</Filter>
     </ClCompile>
+    <ClCompile Include="CleanVideoConference.Tests.cpp">
+      <Filter>Source Files\Registry</Filter>
+    </ClCompile>
     <ClCompile Include="TimeUtils.Tests.cpp">
       <Filter>Source Files\Pure Functions</Filter>
     </ClCompile>

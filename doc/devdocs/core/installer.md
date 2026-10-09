@@ -16,7 +16,7 @@
 - Separate builds for machine-wide and user-scope installation
 - Supports x64 and ARM64
 - Custom actions DLL must be signed separately before installer build
-- WXS files generated during build process for file components
+- WXS files generated during build process for file components (into `installer\PowerToysSetupVNext\obj\<platform>\Generated`, with deterministic GUIDs for harvested file-list components)
 - Localization handling for resource DLLs
 - Firewall exceptions for certain modules
 
@@ -24,8 +24,11 @@
 
 - First builds `PowerToysSetupCustomActionsVNext` DLL and signs it
 - Then builds the installer without cleaning, to reuse the signed DLL
-- Uses PowerShell scripts to modify .wxs files before build
-- Restores original .wxs files after build completes
+- `generateAllFileComponents.ps1` copies the checked-in template .wxs files to `obj\<platform>\Generated` and fills them in; checked-in .wxs files are never modified
+- Component GUIDs for harvested file-list components are UUIDv5 values derived from component ID, install scope, platform, install directory and file set, so the same inputs produce the same GUIDs
+  - CLI satellite components populated in the generated `Resources.wxs` still use random `New-Guid` values. The checked-in resource template is preserved, including its pipeline localization conditions.
+  - `MonacoSRC.wxs` is regenerated every build by `generateMonacoWxs.ps1`, which still uses `heat ... -gg` (random GUID generation) and a fresh `New-Guid` for the `RemoveMonacoSRCFolders` component.
+  - Determinism alone does not establish component-rule compliance: changing a harvested file set changes its component GUID even when existing files and registry resources remain shared across versions. These mutable components and the remaining random GUIDs require separate compatibility assessment before changing `MajorUpgrade` to late removal (`afterInstallExecute`). The current declaration retains WiX's default early removal (`afterInstallValidate`).
 - Scripts (`applyBuildInfo.ps1` and `generateFileList.ps1`) dynamically update files list for installer
   - Helps manage all self-contained dependencies (.NET, WinAppSDK DLLs, etc.)
   - Avoids manual maintenance of file lists
@@ -33,7 +36,7 @@
 ### Special Build Processes
 
 - .NET applications need publishing for correct WebView2 DLL inclusion
-- WXS files backed up and regenerated during build
+- WXS files regenerated into `obj\` during build
 - Monaco UI components (JavaScript/HTML) generated during build
 - Localization files downloaded from server during CI release builds
 

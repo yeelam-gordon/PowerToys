@@ -1,0 +1,12 @@
+LeanCSharp-Speed-CLI-1: startup median 41.8 ms (min 26.3, max 135.9); private 4.0 MB; working set 14.1 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.6 M cycles over 10s
+Rust-CLI-1: startup median 30.0 ms (min 28.7, max 52.3); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 2.8 M cycles over 10s
+Rust-CLI-2: startup median 30.2 ms (min 27.9, max 54.5); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.7 M cycles over 10s
+LeanCSharp-Speed-CLI-2: startup median 32.8 ms (min 26.2, max 49.1); private 3.7 MB; working set 13.8 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.5 M cycles over 10s
+LeanCSharp-Speed-CLI-3: startup median 27.8 ms (min 24.5, max 47.2); private 3.7 MB; working set 13.8 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.8 M cycles over 10s
+Rust-CLI-3: startup median 30.5 ms (min 28.4, max 32.8); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.5 M cycles over 10s
+LeanCSharp-Speed-Settings-1: startup median 29.5 ms (min 28.4, max 38.5); private 4.3 MB; working set 14.8 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.3 M cycles over 10s
+Rust-Settings-1: startup median 28.8 ms (min 28.2, max 40.8); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.6 M cycles over 10s
+Rust-Settings-2: startup median 28.3 ms (min 28.1, max 33.1); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 2.5 M cycles over 10s
+LeanCSharp-Speed-Settings-2: startup median 29.5 ms (min 27.6, max 31.2); private 4.1 MB; working set 14.8 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.7 M cycles over 10s
+LeanCSharp-Speed-Settings-3: startup median 27.8 ms (min 27.5, max 31.7); private 3.9 MB; working set 14.5 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.5 M cycles over 10s
+Rust-Settings-3: startup median 29.5 ms (min 27.2, max 34.8); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.4 M cycles over 10s

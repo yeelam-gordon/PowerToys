@@ -158,6 +158,10 @@ to select the native output.
 
 ### NativeAOT experiment results
 
+For a separate, narrower C# architecture probe, see
+[Awake.LeanProbe](Awake.LeanProbe/README.md). Its measurements must not be interpreted
+as the footprint of a feature-complete replacement.
+
 Measured on one x64 Windows machine on October 13, 2026, using the `measure` example
 from the final Rust rewrite commit `93a394bbcc` in PowerToys PR #51181. Each Release
 executable ran `for 5m --pid {pid}`. Startup is the median of five launches until

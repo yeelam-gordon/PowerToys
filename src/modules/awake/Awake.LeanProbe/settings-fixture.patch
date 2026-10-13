@@ -1,0 +1,41 @@
+diff --git a/src/modules/awake/Awake/awake/examples/measure.rs b/src/modules/awake/Awake/awake/examples/measure.rs
+index edf7db23d5..f03a7d23e9 100644
+--- a/src/modules/awake/Awake/awake/examples/measure.rs
++++ b/src/modules/awake/Awake/awake/examples/measure.rs
+@@ -29,7 +29,13 @@ fn main() {
+     let label = args.next().expect("label");
+     let exe = args.next().expect("exe");
+     let pid = std::process::id().to_string();
+-    let rest: Vec<String> = args.map(|a| a.replace("{pid}", &pid)).collect();
++    let settings = std::env::temp_dir()
++        .join(format!("awake-measure-{}", std::process::id()))
++        .join("Awake")
++        .join("settings.json");
++    let rest: Vec<String> = args
++        .map(|a| a.replace("{pid}", &pid).replace("{settings}", &settings.to_string_lossy()))
++        .collect();
+ 
+     let mut startups = Vec::new();
+     let mut last = None;
+@@ -96,15 +102,20 @@ fn scaled(value: u64, unit: f64) -> f64 {
+ /// Starts the program and waits for its tray window, which both implementations create with
+ /// the class `Awake.MessageWindow` once they are ready.
+ fn start(exe: &str, args: &[String]) -> (Launched, Duration) {
+-    let started = Instant::now();
+     // Keep logs and settings out of the real profile; harmless for builds that ignore it.
+     let data_dir = std::env::temp_dir().join(format!("awake-measure-{}", std::process::id()));
++    std::fs::create_dir_all(data_dir.join("Awake")).expect("create isolated settings fixture");
++    std::fs::write(
++        data_dir.join("Awake").join("settings.json"),
++        r#"{"name":"Awake","version":"1.0","properties":{"mode":2,"keepDisplayOn":false,"intervalHours":0,"intervalMinutes":5,"customTrayTimes":{},"expirationDateTime":"2030-01-01T00:00:00+00:00"}}"#,
++    ).expect("write isolated settings fixture");
+     let env = [
+         (hook_names::DATA_DIR, data_dir.into_os_string()),
+         (hook_names::OBJECT_SUFFIX, OsString::from("-measure")),
+     ];
+     let args: Vec<&str> = args.iter().map(String::as_str).collect();
+     // The runner's flags; the launcher passes no standard handles, as the runner does not.
++    let started = Instant::now();
+     let child = runner::launch(exe, &args, &env, DETACHED_PROCESS).expect("start");
+     loop {
+         if window_of(child.pid).is_some() {

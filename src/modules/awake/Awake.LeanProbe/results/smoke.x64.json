@@ -1,0 +1,30 @@
+[
+  {
+    "arguments": "for nonsense",
+    "exitCode": 1,
+    "elapsedMs": 25,
+    "stderr": "InvalidDuration: nonsense\r\n",
+    "result": "PASS"
+  },
+  {
+    "arguments": "--pid",
+    "exitCode": 1,
+    "elapsedMs": 21,
+    "stderr": "--pid requires a value.\r\n",
+    "result": "PASS"
+  },
+  {
+    "arguments": "for 2s --pid 44428",
+    "exitCode": 0,
+    "elapsedMs": 2051,
+    "stderr": "",
+    "result": "PASS"
+  },
+  {
+    "arguments": "for 5m --pid 43936",
+    "exitCode": 0,
+    "elapsedMs": 3439,
+    "stderr": "",
+    "result": "PASS"
+  }
+]

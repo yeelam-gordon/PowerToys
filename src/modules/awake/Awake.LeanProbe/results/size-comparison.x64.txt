@@ -1,0 +1,12 @@
+LeanCSharp-CLI-1: startup median 28.2 ms (min 25.6, max 131.5); private 4.0 MB; working set 14.3 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.9 M cycles over 10s
+Rust-CLI-1: startup median 31.2 ms (min 29.0, max 44.5); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.7 M cycles over 10s
+Rust-CLI-2: startup median 30.3 ms (min 29.0, max 35.9); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 2.8 M cycles over 10s
+LeanCSharp-CLI-2: startup median 28.1 ms (min 26.2, max 37.2); private 4.3 MB; working set 14.5 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.3 M cycles over 10s
+LeanCSharp-CLI-3: startup median 28.1 ms (min 25.9, max 32.6); private 4.3 MB; working set 14.5 MB; handles 196; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 4.0 M cycles over 10s
+Rust-CLI-3: startup median 29.7 ms (min 28.7, max 37.0); private 2.1 MB; working set 11.9 MB; handles 162; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.2 M cycles over 10s
+LeanCSharp-Settings-1: startup median 29.2 ms (min 28.2, max 33.9); private 4.4 MB; working set 15.0 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.2 M cycles over 10s
+Rust-Settings-1: startup median 28.4 ms (min 27.0, max 40.6); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.3 M cycles over 10s
+Rust-Settings-2: startup median 30.5 ms (min 28.2, max 33.7); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.7 M cycles over 10s
+LeanCSharp-Settings-2: startup median 29.9 ms (min 27.8, max 32.9); private 4.2 MB; working set 14.8 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 0.00 ms and 3.7 M cycles over 10s
+LeanCSharp-Settings-3: startup median 29.8 ms (min 28.6, max 38.2); private 4.4 MB; working set 15.0 MB; handles 197; threads 5; GDI 7; USER 5; idle CPU 15.62 ms and 3.4 M cycles over 10s
+Rust-Settings-3: startup median 31.6 ms (min 27.8, max 63.8); private 2.1 MB; working set 11.9 MB; handles 164; threads 6; GDI 7; USER 5; idle CPU 0.00 ms and 3.3 M cycles over 10s

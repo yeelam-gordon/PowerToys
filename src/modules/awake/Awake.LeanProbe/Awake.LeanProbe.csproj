@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="$(RepoRoot)src\Common.Dotnet.CsWinRT.props" />
+  <Import Project="$(RepoRoot)src\Common.SelfContained.props" />
+  <Import Project="$(RepoRoot)src\Common.Dotnet.AotCompatibility.props" />
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <AssemblyName>PowerToys.Awake.LeanProbe</AssemblyName>
+    <OutputPath>$(RepoRoot)$(Platform)\$(Configuration)\AwakeLeanProbe\</OutputPath>
+    <PublishDir>$(OutputPath)publish\</PublishDir>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <OptimizationPreference>Size</OptimizationPreference>
+    <IlcFoldIdenticalMethodBodies>true</IlcFoldIdenticalMethodBodies>
+    <ApplicationIcon>..\Awake\Assets\Awake\Awake.ico</ApplicationIcon>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Awake\Core\CommandLineArgumentNormalizer.cs" Link="CommandLineArgumentNormalizer.cs" />
+    <Content Include="..\Awake\Assets\Awake\disabled.ico;..\Awake\Assets\Awake\indefinite.ico;..\Awake\Assets\Awake\timed.ico;..\Awake\Assets\Awake\expirable.ico" Link="Assets\Awake\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

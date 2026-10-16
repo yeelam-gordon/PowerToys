@@ -7,13 +7,16 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Pipes;
+using System.Linq;
 using System.Reflection;
 using System.Security.AccessControl;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Security.Principal;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
+using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.PowerToys.Settings.UI.Library.Utilities;
 using Microsoft.PowerToys.Settings.UI.ViewModels;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -397,6 +400,83 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
             Assert.AreEqual("""{"Name":"PC","Status":9}""", JsonConvert.SerializeObject(state));
         }
 
+        [TestMethod]
+        public void PairingRpcContractMatchesApplicationContract()
+        {
+            var contract = typeof(MouseWithoutBordersViewModel).GetNestedType("ISettingsSyncHelper", BindingFlags.NonPublic);
+            var generate = contract!.GetMethod("GenerateNewKey")!;
+            var connect = contract.GetMethod("ConnectToMachine")!;
+
+            Assert.AreEqual(typeof(Task<string>), generate.ReturnType);
+            Assert.AreEqual(0, generate.GetParameters().Length);
+            Assert.AreEqual(typeof(Task), connect.ReturnType);
+            CollectionAssert.AreEqual(
+                new[] { typeof(string), typeof(string) },
+                connect.GetParameters().Select(parameter => parameter.ParameterType).ToArray());
+        }
+
+        [TestMethod]
+        public void ConnectTextFieldsRemainOwnedByPageWithoutBindings()
+        {
+            var document = XDocument.Load(FindRepositoryFile(@"src\settings-ui\Settings.UI\SettingsXAML\Views\MouseWithoutBordersPage.xaml"));
+            XNamespace xaml = "http://schemas.microsoft.com/winfx/2006/xaml";
+            foreach (var property in new[] { "ConnectSecurityKey", "ConnectPCName" })
+            {
+                var textBox = document.Descendants().Single(element => (string)element.Attribute(xaml + "Name") == property + "TextBox");
+                Assert.IsNull(textBox.Attribute("Text"));
+                Assert.AreEqual(
+                    "{x:Bind ViewModel.CanConnectPairing, Mode=OneWay}",
+                    (string)textBox.Ancestors().Single(element => element.Name.LocalName == "SettingsCard").Attribute("IsEnabled"));
+            }
+        }
+
+        [TestMethod]
+        public void PairingSetupResourceExplainsExplicitRepairInEitherMode()
+        {
+            var resourcePath = FindRepositoryFile(@"src\settings-ui\Settings.UI\Strings\en-us\Resources.resw");
+            var document = XDocument.Load(resourcePath);
+            var value = document
+                .Descendants("data")
+                .Single(element => (string)element.Attribute("name") == "MouseWithoutBorders_PairingSetupRequired.Title")
+                .Element("value")!
+                .Value;
+
+            Assert.AreEqual(
+                "The saved pairing key cannot be used in the current mode. Generate a new key or connect using a key from another computer.",
+                value);
+        }
+
+        [TestMethod]
+        public void PairingSetupWarningAndConnectSourceWiringDoesNotRequireAnExistingKey()
+        {
+            var viewModel = File.ReadAllText(FindRepositoryFile(@"src\settings-ui\Settings.UI\ViewModels\MouseWithoutBordersViewModel.cs"));
+            StringAssert.Contains(viewModel, "public bool ShowPairingSetupRequired => PairingSetupRequired;");
+            StringAssert.Contains(viewModel, "public bool CanConnectPairing => CanManagePairing;");
+            StringAssert.Contains(viewModel, "public bool CanManagePairing => !_isPairingPending && (!UseService || IsElevated);");
+
+            var program = File.ReadAllText(FindRepositoryFile(@"src\modules\MouseWithoutBorders\App\Class\Program.cs"));
+            var start = program.IndexOf("public Task ConnectToMachine(", StringComparison.Ordinal);
+            var end = program.IndexOf("public Task<string> GenerateNewKey(", start, StringComparison.Ordinal);
+            var connect = program.Substring(start, end - start);
+            StringAssert.Contains(connect, "EnsurePairingOperationAuthorized(Settings.IsProtectedMode, _canManageServicePairing);");
+            StringAssert.Contains(connect, "Setting.Values.MyKey = securityKey;");
+            Assert.IsFalse(connect.Contains("_settings.HasPairingKey", StringComparison.Ordinal));
+            Assert.IsFalse(program.Contains("EnsureConnectOperationAvailable", StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public void StartupDoesNotReplaceUnavailableSavedPairingKey()
+        {
+            var source = File.ReadAllText(FindRepositoryFile(@"src\modules\MouseWithoutBorders\App\Core\InitAndCleanup.cs"));
+            var start = source.IndexOf("catch (Exception e) when (e is FormatException or CryptographicException or ArgumentException)", StringComparison.Ordinal);
+            var end = source.IndexOf("Logger.Log(e.Message);", start, StringComparison.Ordinal);
+            var failure = source.Substring(start, end - start);
+            StringAssert.Contains(failure, "Encryption.MyKey = string.Empty;");
+            StringAssert.Contains(failure, "Encryption.GeneratedKey = false;");
+            Assert.IsFalse(failure.Contains("Setting.Values.MyKey =", StringComparison.Ordinal));
+            Assert.IsFalse(failure.Contains("CreateRandomKey", StringComparison.Ordinal));
+        }
+
         private static async Task<(NamedPipeServerStream Server, NamedPipeClientStream Client)> CreateConnectedPairAsync(string pipeName = null)
         {
             pipeName ??= UniquePipeName();
@@ -425,6 +505,24 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests
         private static string UniquePipeName()
         {
             return $"PowerToys.MWB.v2.UnitTest.{Environment.ProcessId}.{Guid.NewGuid():N}";
+        }
+
+        private static string FindRepositoryFile(string relativePath)
+        {
+            var directory = new DirectoryInfo(AppContext.BaseDirectory);
+            while (directory != null)
+            {
+                var candidate = Path.Combine(directory.FullName, relativePath);
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+
+                directory = directory.Parent;
+            }
+
+            Assert.Fail($"Could not locate {relativePath}.");
+            return string.Empty;
         }
 
         private static string GetKnownEmbeddedMicrosoftSignedDependencyPath()

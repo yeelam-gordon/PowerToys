@@ -19,6 +19,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library.Utilities
         public const string SettingsSyncProtocol = "PowerToys.MouseWithoutBorders.v2.SettingsSync";
         public const string SettingsExecutableFileName = "PowerToys.Settings.exe";
         public const string MouseWithoutBordersExecutableFileName = "PowerToys.MouseWithoutBorders.exe";
+        public const string PairingConfiguredIndicator = "********";
 
         public static string GetSettingsSyncPipeName(int sessionId)
         {

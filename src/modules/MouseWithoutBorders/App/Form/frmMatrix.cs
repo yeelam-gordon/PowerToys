@@ -135,7 +135,9 @@ namespace MouseWithoutBorders
         internal void UpdateKeyTextBox()
         {
             _ = Helper.GetUserName();
-            textBoxEnc.Text = Encryption.MyKey;
+            textBoxEnc.ReadOnly = Class.Settings.IsProtectedMode;
+            buttonNewKey.Enabled = !Class.Settings.IsProtectedMode;
+            textBoxEnc.Text = Setting.Values.PairingKeyDisplayText;
         }
 
         private void InitAll()
@@ -505,6 +507,11 @@ namespace MouseWithoutBorders
 
         private bool UpdateKey(string newKey)
         {
+            if (Class.Settings.IsProtectedMode)
+            {
+                return false;
+            }
+
             if (!Encryption.IsKeyValid(newKey, out string rv))
             {
                 ShowKeyErrorMsg(rv);
@@ -513,6 +520,7 @@ namespace MouseWithoutBorders
 
             if (!newKey.Equals(Encryption.MyKey, StringComparison.OrdinalIgnoreCase))
             {
+                Setting.Values.MyKey = newKey;
                 Encryption.MyKey = newKey;
                 Encryption.GeneratedKey = false;
             }
@@ -1111,6 +1119,11 @@ namespace MouseWithoutBorders
 
         private void ButtonNewKey_Click(object sender, EventArgs e)
         {
+            if (Class.Settings.IsProtectedMode)
+            {
+                return;
+            }
+
             string message = "Do you really want to generate a new key?\r\n" +
                 "(You would need to enter this key in all other machines to re-establish the connections)";
 

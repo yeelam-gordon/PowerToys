@@ -48,18 +48,25 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             DataContext = ViewModel;
             InitializeComponent();
 
-            Loaded += (s, e) => ViewModel.OnPageLoaded();
+            Loaded += async (s, e) =>
+            {
+                ClearPairingUI();
+                ViewModel.OnPageLoaded();
+                await ViewModel.LoadPairingKeyAsync();
+            };
+            Unloaded += (s, e) => ClearPairingUI();
         }
 
         private void OnConfigFileUpdate()
         {
             // Note: FileSystemWatcher raise notification multiple times for single update operation.
             // Todo: Handle duplicate events either by somehow suppress them or re-read the configuration every time since we will be updating the UI only if something is changed.
-            this.DispatcherQueue.TryEnqueue(() =>
+            this.DispatcherQueue.TryEnqueue(async () =>
             {
                 if (ViewModel.LoadUpdatedSettings())
                 {
                     ViewModel.NotifyUpdatedSettings();
+                    await ViewModel.LoadPairingKeyAsync();
                 }
             });
         }
@@ -150,19 +157,40 @@ namespace Microsoft.PowerToys.Settings.UI.Views
 
         private void ShowConnectFields()
         {
-            ViewModel.ConnectFieldsVisible = true;
+            if (ViewModel.CanConnectPairing)
+            {
+                ViewModel.ConnectFieldsVisible = true;
+            }
         }
 
         private async Task Connect()
         {
-            if (ConnectPCNameTextBox.Text.Length != 0 && ConnectSecurityKeyTextBox.Text.Length != 0)
+            var pcName = ConnectPCNameTextBox.Text;
+            var securityKey = ConnectSecurityKeyTextBox.Text.Trim();
+            if (await ViewModel.SubmitConnectionRequestAsync(pcName, securityKey))
             {
-                string pcName = ConnectPCNameTextBox.Text;
-                string securityKey = ConnectSecurityKeyTextBox.Text.Trim();
-
-                await ViewModel.SubmitConnectionRequestAsync(pcName, securityKey);
-
                 ConnectPCNameTextBox.Text = string.Empty;
+                ConnectSecurityKeyTextBox.Text = string.Empty;
+                ViewModel.ConnectFieldsVisible = false;
+            }
+        }
+
+        private async void ServiceMode_Toggled(object sender, RoutedEventArgs e)
+        {
+            ClearPairingUI();
+            await ViewModel.LoadPairingKeyAsync();
+        }
+
+        private void ClearPairingUI()
+        {
+            ViewModel.ResetPairingUiState();
+            if (ConnectPCNameTextBox != null)
+            {
+                ConnectPCNameTextBox.Text = string.Empty;
+            }
+
+            if (ConnectSecurityKeyTextBox != null)
+            {
                 ConnectSecurityKeyTextBox.Text = string.Empty;
             }
         }

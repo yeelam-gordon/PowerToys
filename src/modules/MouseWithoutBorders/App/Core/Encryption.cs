@@ -104,6 +104,14 @@ internal static class Encryption
         }
     }
 
+    private static void EnsurePairingKeyAvailable()
+    {
+        if (string.IsNullOrWhiteSpace(MyKey))
+        {
+            throw new CryptographicException("Pairing setup is required.");
+        }
+    }
+
     private static byte[] GenLegalKey(byte[] salt)
     {
         return Rfc2898DeriveBytes.Pbkdf2(
@@ -116,6 +124,8 @@ internal static class Encryption
 
     internal static Stream GetEncryptedStream(Stream encryptedStream)
     {
+        EnsurePairingKeyAvailable();
+
         // A fresh random salt and IV are generated for every connection and sent in the
         // clear ahead of the cipher text. Neither value is secret: deriving the symmetric
         // key still requires the shared secret. The random salt prevents an attacker from
@@ -134,6 +144,8 @@ internal static class Encryption
 
     internal static Stream GetDecryptedStream(Stream encryptedStream)
     {
+        EnsurePairingKeyAvailable();
+
         byte[] header = new byte[SaltSize + SymAlBlockSize];
         ExchangeEncryptionHeader(encryptedStream, header, send: false);
 

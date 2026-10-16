@@ -792,6 +792,11 @@ internal static class MachineStuff
 
     internal static void ShowSetupForm(bool reopenSockets = false)
     {
+        if (Class.Settings.IsProtectedMode)
+        {
+            return;
+        }
+
         Logger.LogDebug("========== BEGIN THE SETUP EXPERIENCE ==========", true);
         Setting.Values.MyKey = Encryption.MyKey = Encryption.CreateRandomKey();
         Encryption.GeneratedKey = true;
@@ -837,6 +842,11 @@ internal static class MachineStuff
 
     internal static void ShowMachineMatrix()
     {
+        if (Class.Settings.IsProtectedMode)
+        {
+            return;
+        }
+
         if (!Setting.Values.ShowOriginalUI)
         {
             return;

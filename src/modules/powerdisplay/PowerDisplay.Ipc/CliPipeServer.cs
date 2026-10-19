@@ -61,7 +61,7 @@ public sealed class CliPipeServer
     private readonly ICliLogger _logger;
 
     /// <summary>
-    /// Initialises the server with the request handler that will be called for each connection.
+    /// Initializes the server with the request handler that will be called for each connection.
     /// </summary>
     /// <param name="processor">The processor that handles each request. Must not be null.</param>
     /// <param name="logger">Optional host logger. When omitted, logging is disabled.</param>
@@ -409,7 +409,7 @@ public sealed class CliPipeServer
             int read = await reader.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false);
             if (read == 0)
             {
-                // End of stream: null when nothing was read, otherwise the (unterminated) tail.
+                // End of stream: null when nothing was read; otherwise the (unterminated) tail.
                 return builder.Length == 0 ? null : builder.ToString();
             }
 

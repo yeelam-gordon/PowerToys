@@ -27,6 +27,51 @@ public sealed class SettingsKeyTests
     }
 
     [TestMethod]
+    public void SettingsListenerStartsAfterKeyInitializationOnUserDesktop()
+    {
+        var source = ReadRepositorySource(@"src\modules\MouseWithoutBorders\App\Class\Program.cs");
+        var initialization = source.IndexOf("InitAndCleanup.Init();", StringComparison.Ordinal);
+        var listener = source.IndexOf("StartSettingSyncThread();", StringComparison.Ordinal);
+
+        Assert.IsTrue(initialization >= 0 && listener > initialization);
+        StringAssert.Contains(source[initialization..listener], "if (!Common.RunOnLogonDesktop)");
+        Assert.IsFalse(source[initialization..listener].Contains("Encryption.MyKey", StringComparison.Ordinal));
+    }
+
+    [TestMethod]
+    public void LegacyFormsValidateBeforeChangingPairingState()
+    {
+        var matrix = ReadRepositorySource(@"src\modules\MouseWithoutBorders\App\Form\frmMatrix.cs");
+        StringAssert.Contains(matrix, "UpdateKey(Regex.Replace(textBoxEnc.Text, @\"\\s+\", string.Empty))");
+        var update = matrix[matrix.IndexOf("private bool UpdateKey(", StringComparison.Ordinal)..];
+        Assert.IsTrue(update.IndexOf("Encryption.IsKeyValid(newKey,", StringComparison.Ordinal) < update.IndexOf("Setting.Values.MyKey = newKey;", StringComparison.Ordinal));
+
+        var wizard = ReadRepositorySource(@"src\modules\MouseWithoutBorders\App\Form\Settings\SetupPage2a.cs");
+        StringAssert.Contains(wizard, "Encryption.IsKeyValid(Regex.Replace(SecurityCodeField.Text, @\"\\s+\", string.Empty), out _)");
+        var click = wizard[wizard.IndexOf("private void LinkButtonClick(", StringComparison.Ordinal)..];
+        var validation = click.IndexOf("if (!Encryption.IsKeyValid(key,", StringComparison.Ordinal);
+        Assert.IsTrue(validation >= 0);
+        foreach (var mutation in new[] { "Encryption.MyKey = key;", "Setting.Values.MyKey =", "MachineStuff.MachineMatrix =", "MachineStuff.MachinePool.Initialize(", "SendNextPage(" })
+        {
+            Assert.IsTrue(click.IndexOf(mutation, StringComparison.Ordinal) > validation, mutation);
+        }
+
+        StringAssert.Contains(click[validation..click.IndexOf("Encryption.MyKey = key;", StringComparison.Ordinal)], "return;");
+    }
+
+    private static string ReadRepositorySource(string relativePath)
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory != null && !File.Exists(Path.Combine(directory.FullName, relativePath)))
+        {
+            directory = directory.Parent;
+        }
+
+        Assert.IsNotNull(directory, "Repository source must be available for the wiring check.");
+        return File.ReadAllText(Path.Combine(directory.FullName, relativePath));
+    }
+
+    [TestMethod]
     public void EmptyDisplayDoesNotGenerateOrSaveAKey()
     {
         var properties = new MouseWithoutBordersProperties();
@@ -52,7 +97,7 @@ public sealed class SettingsKeyTests
     [DataRow("mwb-dpapi:v1:!")]
     [DataRow("mwb-dpapi:v1:")]
     [DataRow("mwb-dpapi:v2:TEST")]
-    public void EncodedDisplayDoesNotEstablishRuntimeDecryptability(string value)
+    public void EncryptedDisplayDoesNotValidateStoredKey(string value)
     {
         using var identity = WindowsIdentity.GetCurrent();
         var properties = new MouseWithoutBordersProperties();

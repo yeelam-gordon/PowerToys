@@ -232,7 +232,6 @@ namespace MouseWithoutBorders.Class
                 StartInputCallbackThread();
                 if (!Common.RunOnLogonDesktop)
                 {
-                    StartSettingSyncThread();
                     CommandEventHandler.StartListening();
                 }
 
@@ -241,6 +240,11 @@ namespace MouseWithoutBorders.Class
                 Application.SetCompatibleTextRenderingDefault(false);
 
                 InitAndCleanup.Init();
+                if (!Common.RunOnLogonDesktop)
+                {
+                    StartSettingSyncThread();
+                }
+
                 Core.Helper.WndProcCounter++;
 
                 var formScreen = new FrmScreen();

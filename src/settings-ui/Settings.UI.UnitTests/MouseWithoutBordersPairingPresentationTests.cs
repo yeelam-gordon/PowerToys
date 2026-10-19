@@ -188,9 +188,10 @@ public sealed class MouseWithoutBordersPairingPresentationTests
     {
         var setup = ReadSource(@"src\modules\MouseWithoutBorders\App\Form\Settings\SetupPage2a.cs");
         StringAssert.Contains(setup, "SecurityCodeField.Enabled = !Class.Settings.IsProtectedMode;");
-        StringAssert.Contains(setup, "LinkButton.Enabled = !Class.Settings.IsProtectedMode && SecurityCodeField.Text.Length >= 16 && ComputerNameField.Text.Trim().Length > 0;");
+        StringAssert.Contains(setup, "LinkButton.Enabled = !Class.Settings.IsProtectedMode && Encryption.IsKeyValid(Regex.Replace(SecurityCodeField.Text, @\"\\s+\", string.Empty), out _) && ComputerNameField.Text.Trim().Length > 0;");
         StringAssert.Contains(setup, "if (Class.Settings.IsProtectedMode)");
-        StringAssert.Contains(setup, "Encryption.MyKey = Regex.Replace(SecurityCodeField.Text, @\"\\s+\", string.Empty);");
+        StringAssert.Contains(setup, "var key = Regex.Replace(SecurityCodeField.Text, @\"\\s+\", string.Empty);");
+        StringAssert.Contains(setup, "Encryption.MyKey = key;");
         StringAssert.Contains(setup, "Setting.Values.MyKey = Encryption.MyKey;");
         var matrix = ReadSource(@"src\modules\MouseWithoutBorders\App\Form\frmMatrix.cs");
         StringAssert.Contains(matrix, "textBoxEnc.ReadOnly = Class.Settings.IsProtectedMode;");

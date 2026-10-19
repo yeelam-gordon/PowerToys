@@ -24,6 +24,7 @@ public sealed class SettingsKeyTests
     public void SettingsRequiresPairingKeyCodec()
     {
         Assert.ThrowsException<ArgumentNullException>(() => new Class.Settings(null!));
+        Assert.ThrowsException<ArgumentNullException>(() => new Class.Settings(null!, new MouseWithoutBordersSettings(), null!));
     }
 
     [TestMethod]
@@ -184,7 +185,7 @@ public sealed class SettingsKeyTests
         Assert.IsFalse(setter.Contains("return", StringComparison.Ordinal));
         StringAssert.Contains(
             setter,
-            "_properties.SecurityKey.Value = storedKey;\n                    }\n\n                    if (!PauseInstantSaving)\n                    {\n                        SaveSettings();\n                    }");
+            "_properties.SecurityKey.Value = storedKey;\n\n                    if (!PauseInstantSaving)\n                    {\n                        SaveSettings();\n                    }");
     }
 
     [TestMethod]
@@ -294,6 +295,36 @@ public sealed class SettingsKeyTests
         Assert.AreEqual("ACCEPTED", loaded.Properties.SecurityKey.Value);
         Assert.AreEqual("ACCEPTED", settings.MyKey);
         Assert.AreEqual("PREVIOUS", previous.SecurityKey.Value);
+    }
+
+    [TestMethod]
+    public void ReusedKeyResolvesCurrentPropertiesAfterDecryptionReturns()
+    {
+        var previous = new MouseWithoutBordersProperties();
+        previous.SecurityKey.Value = "ACCEPTED";
+        var loaded = new MouseWithoutBordersSettings();
+        loaded.Properties.SecurityKey.Value = "RELOADED";
+        Class.Settings settings = null!;
+        var encryptions = 0;
+        var codec = new CallbackPairingKeyCodec(
+            () => encryptions++,
+            () => settings.ApplyLoadedSettings(loaded, () => { }, () => { }, () => { }, () => { }));
+        settings = CreateSettings(previous, codec);
+        var previousKey = Encryption.MyKey;
+        try
+        {
+            // Keep the reload's runtime-key comparison from reopening sockets.
+            Encryption.MyKey = "RELOADED";
+            settings.MyKey = "ACCEPTED";
+
+            Assert.AreEqual("ACCEPTED", loaded.Properties.SecurityKey.Value);
+            Assert.AreEqual("ACCEPTED", previous.SecurityKey.Value);
+            Assert.AreEqual(0, encryptions);
+        }
+        finally
+        {
+            Encryption.MyKey = previousKey;
+        }
     }
 
     [TestMethod]
@@ -454,6 +485,7 @@ public sealed class SettingsKeyTests
     {
         var settings = (Class.Settings)RuntimeHelpers.GetUninitializedObject(typeof(Class.Settings));
         SetField(settings, "_loadingSettingsLock", Activator.CreateInstance(typeof(System.Threading.Lock))!);
+        SetField(settings, "_pairingKeyLock", Activator.CreateInstance(typeof(System.Threading.Lock))!);
         SetField(settings, "_properties", properties);
         SetField(settings, "_pairingKeyCodec", codec);
         settings.PauseInstantSaving = true;
@@ -463,15 +495,33 @@ public sealed class SettingsKeyTests
     private static void SetField(Class.Settings settings, string name, object value) =>
         typeof(Class.Settings).GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(settings, value);
 
-    private sealed class CallbackPairingKeyCodec(Action duringEncryption) : IPairingKeyCodec
+    private sealed class CallbackPairingKeyCodec(Action duringEncryption, Action? duringDecryption = null) : IPairingKeyCodec
     {
+        private bool _isDecrypting;
+
         public string Encrypt(string value)
         {
             duringEncryption();
             return value;
         }
 
-        public string Decrypt(string value) => value;
+        public string Decrypt(string value)
+        {
+            if (!_isDecrypting)
+            {
+                _isDecrypting = true;
+                try
+                {
+                    duringDecryption?.Invoke();
+                }
+                finally
+                {
+                    _isDecrypting = false;
+                }
+            }
+
+            return value;
+        }
 
         public bool IsEncrypted(string value) => false;
     }

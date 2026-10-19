@@ -370,10 +370,20 @@ public sealed class MouseWithoutBordersPairingPresentationTests
     }
 
     [TestMethod]
-    public void SettingsReloadSourceContractPublishesUnderExistingSettingsLock()
+    public void SettingsReloadSourceContractUsesConvertedKeyInTheReloadOwner()
     {
         var source = ReadSource(@"src\modules\MouseWithoutBorders\App\Class\Setting.cs").Replace("\r\n", "\n");
-        StringAssert.Contains(source, "lock (_loadingSettingsLock)\n                    {\n                        PauseInstantSaving = true;\n                        last_properties = _properties;\n                        _settings = settings;\n                        _properties = settings.Properties;\n                    }");
+        var start = source.IndexOf("private void UpdateSettingsFromJson()", StringComparison.Ordinal);
+        var end = source.IndexOf("public void SaveSettings()", start, StringComparison.Ordinal);
+        var reload = source.Substring(start, end - start);
+        StringAssert.Contains(reload, "ApplyLoadedSettings(\n                        settings,");
+        StringAssert.Contains(reload, "_settings = settings;\n            _properties = settings.Properties;");
+        StringAssert.Contains(reload, "var shouldReopenSockets = UpdateRuntimeKey();");
+        StringAssert.Contains(reload, "SocketStuff.InvalidKeyFound = false;");
+        StringAssert.Contains(reload, "InitAndCleanup.ReopenSocketDueToReadError = true;");
+        StringAssert.Contains(reload, "Common.ReopenSockets(true);");
+        Assert.IsFalse(reload.Contains("lock (_loadingSettingsLock)", StringComparison.Ordinal));
+        Assert.IsFalse(reload.Contains("Encryption.MyKey =", StringComparison.Ordinal));
     }
 
     [TestMethod]

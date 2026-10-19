@@ -48,6 +48,7 @@ namespace MouseWithoutBorders.Class
 
         private readonly SettingsUtils _settingsUtils;
         private readonly Lock _loadingSettingsLock = new Lock();
+        private readonly Lock _pairingKeyLock = new Lock();
         private readonly IFileSystemWatcher _watcher;
         private readonly IPairingKeyCodec _pairingKeyCodec;
 
@@ -82,62 +83,14 @@ namespace MouseWithoutBorders.Class
                 var settings = _settingsUtils.GetSettingsOrDefault<MouseWithoutBordersSettings>("MouseWithoutBorders");
                 if (settings != null)
                 {
-                    MouseWithoutBordersProperties last_properties;
-                    lock (_loadingSettingsLock)
-                    {
-                        PauseInstantSaving = true;
-                        last_properties = _properties;
-                        _settings = settings;
-                        _properties = settings.Properties;
-                    }
+                    PauseInstantSaving = true;
 
-                    // Keep track of the need to resend the machine matrix.
-                    bool shouldSendMachineMatrix = false;
-
-                    // Keep track of the need to save into the settings file.
-                    bool shouldSaveNewSettingsValues = false;
-
-                    if (last_properties != null)
-                    {
-                        // Same as in CheckBoxCircle_CheckedChanged
-                        if (last_properties.WrapMouse != _settings.Properties.WrapMouse)
-                        {
-                            shouldSendMachineMatrix = true;
-                        }
-
-                        // Same as CheckBoxDrawMouse_CheckedChanged
-                        if (last_properties.DrawMouseCursor != _settings.Properties.DrawMouseCursor && !_settings.Properties.DrawMouseCursor)
-                        {
-                            CustomCursor.ShowFakeMouseCursor(int.MinValue, int.MinValue);
-                        }
-
-                        if (!Enumerable.SequenceEqual(last_properties.MachineMatrixString, _settings.Properties.MachineMatrixString))
-                        {
-                            _properties.MachineMatrixString = _settings.Properties.MachineMatrixString;
-                            MachineStuff.MachineMatrix = null; // Forces read next time it's needed.
-                            shouldSendMachineMatrix = true;
-                        }
-
-                        var shouldReopenSockets = UpdateRuntimeKey();
-
-                        if (shouldReopenSockets)
-                        {
-                            SocketStuff.InvalidKeyFound = false;
-                            InitAndCleanup.ReopenSocketDueToReadError = true;
-                            Common.ReopenSockets(true);
-                        }
-
-                        if (shouldSendMachineMatrix)
-                        {
-                            MachineStuff.SendMachineMatrix();
-                            shouldSaveNewSettingsValues = true;
-                        }
-
-                        if (shouldSaveNewSettingsValues)
-                        {
-                            SaveSettings();
-                        }
-                    }
+                    ApplyLoadedSettings(
+                        settings,
+                        () => CustomCursor.ShowFakeMouseCursor(int.MinValue, int.MinValue),
+                        () => MachineStuff.MachineMatrix = null,
+                        MachineStuff.SendMachineMatrix,
+                        SaveSettings);
                 }
             }
             catch (IOException ex)
@@ -146,6 +99,71 @@ namespace MouseWithoutBorders.Class
             }
 
             PauseInstantSaving = false;
+        }
+
+        // Exercise the reload ordering with substitute cursor/cache/network/save effects in tests.
+        // Production supplies the real effects above; adoption and comparison stay in this path.
+        internal void ApplyLoadedSettings(
+            MouseWithoutBordersSettings settings,
+            Action hideFakeMouseCursor,
+            Action invalidateMachineMatrix,
+            Action sendMachineMatrix,
+            Action saveSettings)
+        {
+            var last_properties = _properties;
+
+            _settings = settings;
+            _properties = settings.Properties;
+
+            // Keep track of the need to resend the machine matrix.
+            bool shouldSendMachineMatrix = false;
+
+            // Keep track of the need to save into the settings file.
+            bool shouldSaveNewSettingsValues = false;
+
+            if (last_properties != null)
+            {
+                // Same as in CheckBoxCircle_CheckedChanged
+                if (last_properties.WrapMouse != _settings.Properties.WrapMouse)
+                {
+                    shouldSendMachineMatrix = true;
+                }
+
+                // Same as CheckBoxDrawMouse_CheckedChanged
+                if (last_properties.DrawMouseCursor != _settings.Properties.DrawMouseCursor && !_settings.Properties.DrawMouseCursor)
+                {
+                    hideFakeMouseCursor();
+                }
+
+                // The cursor path reads DrawMouse under _loadingSettingsLock. A writer may
+                // finish replacing last_properties' matrix during that wait, so compare here,
+                // not when adopting the loaded properties above.
+                if (!Enumerable.SequenceEqual(last_properties.MachineMatrixString, _settings.Properties.MachineMatrixString))
+                {
+                    invalidateMachineMatrix(); // Forces read next time it's needed.
+                    shouldSendMachineMatrix = true;
+                }
+
+                var shouldReopenSockets = UpdateRuntimeKey();
+
+                if (shouldReopenSockets)
+                {
+                    SocketStuff.InvalidKeyFound = false;
+                    InitAndCleanup.ReopenSocketDueToReadError = true;
+                    Common.ReopenSockets(true);
+                }
+
+                if (shouldSendMachineMatrix)
+                {
+                    sendMachineMatrix();
+                    shouldSaveNewSettingsValues = true;
+                }
+
+                if (shouldSaveNewSettingsValues)
+                {
+                    saveSettings();
+                }
+            }
         }
 
         public void SaveSettings()
@@ -216,6 +234,16 @@ namespace MouseWithoutBorders.Class
             UpdateSettingsFromJson();
         }
 
+        // Initialize the same settings state without starting a file watcher or network work.
+        internal Settings(SettingsUtils settingsUtils, MouseWithoutBordersSettings settings, IPairingKeyCodec pairingKeyCodec)
+        {
+            ArgumentNullException.ThrowIfNull(pairingKeyCodec);
+            _pairingKeyCodec = pairingKeyCodec;
+            _settingsUtils = settingsUtils;
+            _settings = settings;
+            _properties = settings.Properties;
+        }
+
         internal string Username { get; set; }
 
         internal bool IsMyKeyRandom { get; set; }
@@ -230,15 +258,20 @@ namespace MouseWithoutBorders.Class
                 }
             }
 
-            set
+            set => SetMachineMatrix(value.Split(","));
+        }
+
+        internal void SetMachineMatrix(IEnumerable<string> machineNames)
+        {
+            lock (_loadingSettingsLock)
             {
-                lock (_loadingSettingsLock)
+                // Capture one properties instance and replace its list in one assignment.
+                // Reload adoption is intentionally not under this lock: MachineStuff takes
+                // McMatrixLock before this lock, so reversing that order could deadlock.
+                _properties.ReplaceMachineMatrixString(machineNames);
+                if (!PauseInstantSaving)
                 {
-                    _properties.MachineMatrixString = new List<string>(value.Split(","));
-                    if (!PauseInstantSaving)
-                    {
-                        SaveSettings();
-                    }
+                    SaveSettings();
                 }
             }
         }
@@ -510,7 +543,7 @@ namespace MouseWithoutBorders.Class
         {
             get
             {
-                lock (_loadingSettingsLock)
+                lock (_pairingKeyLock)
                 {
                     if (!IsProtectedMode && string.IsNullOrEmpty(_properties.SecurityKey.Value))
                     {
@@ -531,14 +564,15 @@ namespace MouseWithoutBorders.Class
 
             set
             {
-                lock (_loadingSettingsLock)
+                lock (_pairingKeyLock)
                 {
                     bool reuseStoredKey = false;
-                    if (!string.IsNullOrEmpty(_properties.SecurityKey.Value))
+                    var storedKey = _properties.SecurityKey.Value;
+                    if (!string.IsNullOrEmpty(storedKey))
                     {
                         try
                         {
-                            reuseStoredKey = string.Equals(_pairingKeyCodec.Decrypt(_properties.SecurityKey.Value), value, StringComparison.Ordinal);
+                            reuseStoredKey = string.Equals(_pairingKeyCodec.Decrypt(storedKey), value, StringComparison.Ordinal);
                         }
                         catch (Exception ex) when (ex is CryptographicException or ArgumentException or FormatException)
                         {
@@ -548,9 +582,11 @@ namespace MouseWithoutBorders.Class
 
                     if (!reuseStoredKey)
                     {
-                        var storedKey = _pairingKeyCodec.Encrypt(value);
-                        _properties.SecurityKey.Value = storedKey;
+                        storedKey = _pairingKeyCodec.Encrypt(value);
                     }
+
+                    // Reload adoption can replace the properties during either codec call.
+                    _properties.SecurityKey.Value = storedKey;
 
                     if (!PauseInstantSaving)
                     {

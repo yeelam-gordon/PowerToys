@@ -22,6 +22,25 @@ namespace Microsoft.PowerToys.Settings.UI.UnitTests;
 [TestClass]
 public sealed class MouseWithoutBordersPairingPresentationTests
 {
+    [TestMethod]
+    public void PairingPageLoadedSourceContractReloadsSettingsBeforeNotificationsAndCurrentKeyRead()
+    {
+        // This checks page wiring, not a WinUI Loaded event.
+        var page = ReadSource(@"src\settings-ui\Settings.UI\SettingsXAML\Views\MouseWithoutBordersPage.xaml.cs").Replace("\r\n", "\n");
+        var start = page.IndexOf("Loaded += async (s, e) =>", StringComparison.Ordinal);
+        var end = page.IndexOf("Unloaded +=", start, StringComparison.Ordinal);
+        StringAssert.Contains(page.Substring(start, end - start), """
+            ClearPairingUI();
+                            ViewModel.OnPageLoaded();
+                            if (ViewModel.LoadUpdatedSettings())
+                            {
+                                ViewModel.NotifyUpdatedSettings();
+                            }
+
+                            await ViewModel.LoadPairingKeyAsync();
+            """.Replace("\r\n", "\n"));
+    }
+
     [DataTestMethod]
     [DataRow(false, false)]
     [DataRow(false, true)]
@@ -301,7 +320,7 @@ public sealed class MouseWithoutBordersPairingPresentationTests
         StringAssert.Contains(getter, "UseService\n            ? IsElevated\n                ? _servicePairingKey ?? string.Empty");
         StringAssert.Contains(getter, ": PairingSetupRequired ? string.Empty : Settings.Properties.SecurityKey.Value;");
         var page = ReadSource(@"src\settings-ui\Settings.UI\SettingsXAML\Views\MouseWithoutBordersPage.xaml.cs").Replace("\r\n", "\n");
-        StringAssert.Contains(page, "ViewModel.OnPageLoaded();\n                await ViewModel.LoadPairingKeyAsync();");
+        StringAssert.Contains(page, "await ViewModel.LoadPairingKeyAsync();");
         StringAssert.Contains(page, "ViewModel.NotifyUpdatedSettings();\n                            await ViewModel.LoadPairingKeyAsync();");
         var resources = XDocument.Parse(ReadSource(@"src\settings-ui\Settings.UI\Strings\en-us\Resources.resw"));
         Assert.AreEqual("Pairing could not be loaded or updated. Try again.", resources.Root.Elements("data").Single(element => (string)element.Attribute("name") == "MouseWithoutBorders_PairingUpdateFailed.Message").Element("value").Value);

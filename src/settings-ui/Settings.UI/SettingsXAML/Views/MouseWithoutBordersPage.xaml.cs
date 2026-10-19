@@ -55,6 +55,11 @@ namespace Microsoft.PowerToys.Settings.UI.Views
             {
                 ClearPairingUI();
                 ViewModel.OnPageLoaded();
+                if (ViewModel.LoadUpdatedSettings())
+                {
+                    ViewModel.NotifyUpdatedSettings();
+                }
+
                 await ViewModel.LoadPairingKeyAsync();
             };
             Unloaded += (s, e) => ClearPairingUI();

@@ -401,6 +401,7 @@ public sealed class SettingsKeyTests
         properties.SecurityKey.Value = string.Empty;
         var settings = CreateSettings(properties, new PassthroughPairingKeyCodec());
         settings.PauseInstantSaving = false;
+        Assert.IsFalse(settings.IsPairingKeyModeMismatch);
         Assert.IsFalse(string.IsNullOrWhiteSpace(settings.MyKey));
         Assert.IsFalse(PairingKeyCodec.IsEncryptedValue(settings.MyKey));
         Assert.AreEqual(settings.MyKey, properties.SecurityKey.Value);
@@ -417,12 +418,20 @@ public sealed class SettingsKeyTests
     }
 
     [DataTestMethod]
-    [DataRow(false)]
-    [DataRow(true)]
-    public void ModeMismatchPreservesSavedValueUntilExplicitReplacement(bool serviceMode)
+    [DataRow(false, false, false)]
+    [DataRow(false, false, true)]
+    [DataRow(false, true, false)]
+    [DataRow(false, true, true)]
+    [DataRow(true, false, false)]
+    [DataRow(true, false, true)]
+    [DataRow(true, true, false)]
+    [DataRow(true, true, true)]
+    public void ModeMismatchPreservesSavedValueUntilExplicitReplacement(bool serviceMode, bool firstRun, bool showOriginalUI)
     {
         using var identity = WindowsIdentity.GetCurrent();
         var properties = new MouseWithoutBordersProperties();
+        properties.FirstRun = firstRun;
+        properties.ShowOriginalUI = showOriginalUI;
         var serviceCodec = new DpapiPairingKeyCodec(identity.User!);
         var normalCodec = new PassthroughPairingKeyCodec();
         properties.SecurityKey.Value = serviceMode ? "OLD-NORMAL-KEY" : serviceCodec.Encrypt("OLD-SERVICE-KEY");
@@ -437,6 +446,8 @@ public sealed class SettingsKeyTests
             Assert.IsTrue(settings.UpdateRuntimeKey());
             Assert.AreEqual(string.Empty, Encryption.MyKey);
             Assert.AreEqual(0u, Encryption.MagicNumber);
+            Assert.IsTrue(settings.IsPairingKeyModeMismatch);
+            Assert.IsFalse(Encryption.KeyCorrupted);
             Assert.ThrowsException<CryptographicException>(() => _ = settings.MyKey);
             if (!serviceMode)
             {
@@ -444,6 +455,7 @@ public sealed class SettingsKeyTests
             }
 
             Assert.IsFalse(settings.UpdateRuntimeKey());
+            Assert.IsFalse(Encryption.KeyCorrupted);
             Assert.AreEqual(savedValue, properties.SecurityKey.Value);
 
             settings.MyKey = "EXPLICIT-REPLACEMENT";
@@ -451,6 +463,49 @@ public sealed class SettingsKeyTests
             Assert.AreEqual("EXPLICIT-REPLACEMENT", settings.MyKey);
             Assert.AreEqual("EXPLICIT-REPLACEMENT", Encryption.MyKey);
             Assert.AreEqual(serviceMode, PairingKeyCodec.IsEncryptedValue(properties.SecurityKey.Value));
+            Assert.IsFalse(settings.IsPairingKeyModeMismatch);
+        }
+        finally
+        {
+            Encryption.MyKey = previousKey;
+            Encryption.MagicNumber = previousMagic;
+            Encryption.KeyCorrupted = previousCorrupted;
+        }
+    }
+
+    [TestMethod]
+    public void LegacyStartupModeMismatchSourceContract()
+    {
+        // WinForms startup cannot run in this unit test; check its wiring to the runtime-tested settings boundary.
+        var startup = ReadRepositorySource(@"src\modules\MouseWithoutBorders\App\Core\InitAndCleanup.cs");
+        StringAssert.Contains(startup, "Encryption.KeyCorrupted = !Setting.Values.IsPairingKeyModeMismatch;");
+        var matrix = ReadRepositorySource(@"src\modules\MouseWithoutBorders\App\Core\MachineStuff.cs");
+        matrix = matrix[matrix.IndexOf("internal static void ShowMachineMatrix()", StringComparison.Ordinal)..];
+        StringAssert.Contains(matrix, "if (!Setting.Values.ShowOriginalUI)");
+        StringAssert.Contains(matrix, "if (Setting.Values.FirstRun && !Setting.Values.IsPairingKeyModeMismatch && !Common.AtLeastOneSocketConnected())");
+        StringAssert.Contains(matrix, "MachineStuff.ShowSetupForm();");
+        StringAssert.Contains(matrix, "Common.MatrixForm = new FrmMatrix();");
+    }
+
+    [TestMethod]
+    public void ProtectedKeyFailureStillReportsCorruptionWithoutReplacingSavedValue()
+    {
+        const string stored = "mwb-dpapi:v1:!";
+        using var identity = WindowsIdentity.GetCurrent();
+        var properties = new MouseWithoutBordersProperties();
+        properties.SecurityKey.Value = stored;
+        var settings = CreateSettings(properties, new DpapiPairingKeyCodec(identity.User!));
+        var previousKey = Encryption.MyKey;
+        var previousMagic = Encryption.MagicNumber;
+        var previousCorrupted = Encryption.KeyCorrupted;
+        try
+        {
+            Encryption.MyKey = string.Empty;
+            Encryption.KeyCorrupted = false;
+            Assert.IsFalse(settings.IsPairingKeyModeMismatch);
+            Assert.IsFalse(settings.UpdateRuntimeKey());
+            Assert.IsTrue(Encryption.KeyCorrupted);
+            Assert.AreEqual(stored, properties.SecurityKey.Value);
         }
         finally
         {

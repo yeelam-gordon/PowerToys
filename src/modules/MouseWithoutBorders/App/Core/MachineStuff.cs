@@ -852,7 +852,7 @@ internal static class MachineStuff
 #if NEW_SETTINGS_FORM
         Common.ShowSetupForm();
 #else
-        if (Setting.Values.FirstRun && !Common.AtLeastOneSocketConnected())
+        if (Setting.Values.FirstRun && !Setting.Values.IsPairingKeyModeMismatch && !Common.AtLeastOneSocketConnected())
         {
             MachineStuff.ShowSetupForm();
         }

@@ -98,7 +98,7 @@ internal static class InitAndCleanup
         }
         catch (Exception e) when (e is FormatException or CryptographicException or ArgumentException)
         {
-            Encryption.KeyCorrupted = true;
+            Encryption.KeyCorrupted = !Setting.Values.IsPairingKeyModeMismatch;
             Encryption.MyKey = string.Empty;
             Encryption.GeneratedKey = false;
             Logger.Log(e.Message);

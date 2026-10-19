@@ -208,7 +208,7 @@ public sealed class MouseWithoutBordersPairingPresentationTests
         var end = source.IndexOf("private static string[] mcMatrix;", start, StringComparison.Ordinal);
         var show = source.Substring(start, end - start);
         Assert.IsFalse(show.Contains("if (Class.Settings.IsProtectedMode)", StringComparison.Ordinal));
-        StringAssert.Contains(show, "if (Setting.Values.FirstRun && !Common.AtLeastOneSocketConnected())");
+        StringAssert.Contains(show, "if (Setting.Values.FirstRun && !Setting.Values.IsPairingKeyModeMismatch && !Common.AtLeastOneSocketConnected())");
         StringAssert.Contains(show, "Common.MatrixForm = new FrmMatrix();");
         StringAssert.Contains(show, "Common.MatrixForm.Show();");
         StringAssert.Contains(show, "Common.MatrixForm.Activate();");

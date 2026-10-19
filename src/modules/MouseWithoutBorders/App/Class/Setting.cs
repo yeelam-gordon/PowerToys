@@ -539,6 +539,19 @@ namespace MouseWithoutBorders.Class
             }
         }
 
+        internal bool IsPairingKeyModeMismatch
+        {
+            get
+            {
+                lock (_pairingKeyLock)
+                {
+                    var storedKey = _properties.SecurityKey.Value;
+                    return !string.IsNullOrEmpty(storedKey) &&
+                        (_pairingKeyCodec is DpapiPairingKeyCodec) != PairingKeyCodec.IsEncryptedValue(storedKey);
+                }
+            }
+        }
+
         internal string MyKey
         {
             get
@@ -599,6 +612,7 @@ namespace MouseWithoutBorders.Class
         internal bool UpdateRuntimeKey()
         {
             string key;
+            bool keyCorrupted = false;
             try
             {
                 key = MyKey;
@@ -606,8 +620,10 @@ namespace MouseWithoutBorders.Class
             catch (Exception ex) when (ex is CryptographicException or ArgumentException or FormatException)
             {
                 key = string.Empty;
+                keyCorrupted = !IsPairingKeyModeMismatch;
             }
 
+            Encryption.KeyCorrupted = keyCorrupted;
             if (Encryption.MyKey == key)
             {
                 return false;
@@ -615,7 +631,6 @@ namespace MouseWithoutBorders.Class
 
             Encryption.MyKey = key;
             Encryption.MagicNumber = string.IsNullOrEmpty(key) ? 0 : Encryption.Get24BitHash(key);
-            Encryption.KeyCorrupted = string.IsNullOrEmpty(key);
             return true;
         }
 

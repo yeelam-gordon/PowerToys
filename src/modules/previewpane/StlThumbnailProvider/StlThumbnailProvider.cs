@@ -49,7 +49,7 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Stl
         /// <returns>A thumbnail rendered from the Stl model.</returns>
         public static Bitmap? GetThumbnail(Stream? stream, uint cx)
         {
-            if (cx > MaxThumbnailSize || !IsSafeToParse(stream))
+            if (cx > MaxThumbnailSize || stream == null || !IsSafeToParse(stream))
             {
                 return null;
             }
@@ -142,7 +142,7 @@ namespace Microsoft.PowerToys.ThumbnailHandler.Stl
 
                 stream.Position = initialPosition + 80;
                 Span<byte> triangleCountBytes = stackalloc byte[sizeof(uint)];
-                if (stream.Read(triangleCountBytes) != triangleCountBytes.Length)
+                if (stream.ReadAtLeast(triangleCountBytes, triangleCountBytes.Length, throwOnEndOfStream: false) != triangleCountBytes.Length)
                 {
                     return false;
                 }

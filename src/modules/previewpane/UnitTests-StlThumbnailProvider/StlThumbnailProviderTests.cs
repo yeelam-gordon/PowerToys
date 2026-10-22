@@ -98,6 +98,16 @@ namespace StlThumbnailProviderUnitTests
             Assert.IsTrue(StlThumbnailProvider.IsSafeToParse(stream));
         }
 
+        [TestMethod]
+        public void ValidBinaryStlWithShortReadsShouldPassPreflight()
+        {
+            using var original = CreateValidBinaryStl("binary with short reads");
+            using var stream = new ShortReadStream(original.ToArray());
+
+            Assert.IsTrue(StlThumbnailProvider.IsSafeToParse(stream));
+            Assert.AreEqual(0L, stream.Position);
+        }
+
         [DataTestMethod]
         [DataRow(true, false, false, DisplayName = "Leading CRLF")]
         [DataRow(false, true, false, DisplayName = "UTF-8 BOM")]
@@ -215,7 +225,7 @@ namespace StlThumbnailProviderUnitTests
             Assert.IsNotNull(thumbnail);
         }
 
-        private static MemoryStream CreateBinaryStl(uint triangleCount, int facetBytes, string header = null)
+        private static MemoryStream CreateBinaryStl(uint triangleCount, int facetBytes, string? header = null)
         {
             var stream = new MemoryStream(new byte[84 + facetBytes]);
             if (header != null)
@@ -232,6 +242,14 @@ namespace StlThumbnailProviderUnitTests
 
             stream.Position = 0;
             return stream;
+        }
+
+        private sealed class ShortReadStream(byte[] data) : MemoryStream(data)
+        {
+            public override int Read(Span<byte> buffer)
+            {
+                return base.Read(buffer[..Math.Min(buffer.Length, 1)]);
+            }
         }
 
         private static MemoryStream CreateValidBinaryStl(string header)

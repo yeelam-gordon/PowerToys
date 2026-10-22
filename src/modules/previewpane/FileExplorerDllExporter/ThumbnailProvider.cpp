@@ -107,6 +107,7 @@ IFACEMETHODIMP ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPH
         std::filesystem::create_directories(directory);
         const auto fileName = directory / (std::wstring{ guidString.get() } + m_extension);
         const auto bitmapName = directory / (std::wstring{ guidString.get() } + L".bmp");
+        const auto svgProfile = directory / (std::wstring{ guidString.get() } + L".WebView2");
         auto removeFiles = wil::scope_exit([&] {
             for (const auto& path : { fileName, bitmapName })
             {
@@ -115,6 +116,27 @@ IFACEMETHODIMP ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPH
                 if (error)
                 {
                     Logger::error(L"Failed to remove thumbnail temporary file. Error: {}", error.value());
+                }
+            }
+
+            if (m_extension == L".svg")
+            {
+                // Browser descendants may still be releasing files after the job is closed.
+                std::error_code error;
+                for (int attempt = 0; attempt < 20; ++attempt)
+                {
+                    std::filesystem::remove_all(svgProfile, error);
+                    if (!error)
+                    {
+                        break;
+                    }
+
+                    Sleep(50);
+                }
+
+                if (error)
+                {
+                    Logger::error(L"Failed to remove thumbnail browser data. Error: {}", error.value());
                 }
             }
         });
@@ -154,7 +176,8 @@ IFACEMETHODIMP ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPH
     }
     catch (const std::exception& error)
     {
-        Logger::error(L"Thumbnail provider {} failed. Error: {}", m_exeName, winrt::to_hstring(error.what()));
+        const std::wstring errorMessage{ winrt::to_hstring(error.what()) };
+        Logger::error(L"Thumbnail provider {} failed. Error: {}", m_exeName, errorMessage);
         return E_FAIL;
     }
 }

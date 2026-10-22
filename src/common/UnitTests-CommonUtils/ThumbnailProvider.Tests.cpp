@@ -311,6 +311,25 @@ namespace UnitTestsCommonUtils
             { L"PowerToys.StlThumbnailProvider.exe", L"src\\modules\\previewpane\\UnitTests-StlThumbnailProvider\\HelperFiles\\sample.stl", L".stl" },
         };
 
+        bool is_valid_thumbnail_bitmap(const std::filesystem::path& path, LONG maximumDimension)
+        {
+            const auto bitmap = static_cast<HBITMAP>(
+                LoadImageW(nullptr, path.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
+            BITMAP information{};
+            const auto valid = bitmap &&
+                               GetObjectW(bitmap, sizeof(information), &information) == sizeof(information) &&
+                               information.bmWidth > 0 &&
+                               information.bmHeight > 0 &&
+                               information.bmWidth <= maximumDimension &&
+                               information.bmHeight <= maximumDimension;
+            if (bitmap)
+            {
+                DeleteObject(bitmap);
+            }
+
+            return valid;
+        }
+
         enum class configuration_source
         {
             unresolved,
@@ -851,20 +870,7 @@ namespace UnitTestsCommonUtils
                 std::error_code outputError;
                 const auto outputExists =
                     std::filesystem::is_regular_file(output, outputError);
-                const auto bitmap = static_cast<HBITMAP>(
-                    LoadImageW(nullptr, output.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
-                BITMAP bitmapInformation{};
-                const auto bitmapLoaded = bitmap &&
-                                          GetObjectW(bitmap, sizeof(bitmapInformation), &bitmapInformation) == sizeof(bitmapInformation) &&
-                                          bitmapInformation.bmWidth > 0 &&
-                                          bitmapInformation.bmHeight > 0 &&
-                                          bitmapInformation.bmWidth <= 256 &&
-                                          bitmapInformation.bmHeight <= 256;
-                if (bitmap)
-                {
-                    DeleteObject(bitmap);
-                }
-
+                const auto bitmapLoaded = is_valid_thumbnail_bitmap(output, 256);
                 const auto succeeded =
                     result.status == thumbnail_provider::launch_status::completed &&
                     result.exit_code == 0 &&
@@ -928,6 +934,49 @@ namespace UnitTestsCommonUtils
 
             Assert::AreEqual<size_t>(ARRAYSIZE(providers), successes);
             Assert::IsTrue(slowest.count() < thumbnail_provider::default_timeout_ms);
+        }
+
+        TEST_METHOD (LaunchInJob_ConcurrentSvgProvidersUseSeparateProfiles)
+        {
+            const auto configuration = resolve_integration_configuration(
+                get_test_module_path(),
+                get_environment_path(L"POWERTOYS_THUMBNAIL_PROVIDER_EXECUTABLE_DIRECTORY"),
+                get_environment_path(L"POWERTOYS_REPOSITORY_ROOT"));
+            Assert::IsTrue(validate_integration_configuration(configuration).empty());
+
+            TestHelpers::TempDirectory directory;
+            const auto& svgProvider = providers[0];
+            std::vector<std::filesystem::path> inputs;
+            std::vector<std::future<thumbnail_provider::launch_result>> launches;
+            for (int index = 0; index < 2; ++index)
+            {
+                const auto input = std::filesystem::path{ directory.path() } /
+                                   (L"concurrent-" + std::to_wstring(index) + L".svg");
+                std::filesystem::copy_file(configuration.repository_root / svgProvider.sample, input);
+                inputs.push_back(input);
+                launches.push_back(std::async(std::launch::async, [&, input] {
+                    return thumbnail_provider::launch_in_job(
+                        configuration.executable_directory / svgProvider.executable,
+                        quote_argument(input) + L" 256");
+                }));
+            }
+
+            for (auto& launch : launches)
+            {
+                const auto result = launch.get();
+                Assert::IsTrue(result.status == thumbnail_provider::launch_status::completed);
+                Assert::AreEqual<DWORD>(0, result.exit_code);
+            }
+
+            for (auto input : inputs)
+            {
+                input.replace_extension(L".bmp");
+                Assert::IsTrue(is_valid_thumbnail_bitmap(input, 256));
+                input.replace_extension(L".WebView2");
+                Assert::IsTrue(
+                    std::filesystem::is_directory(input),
+                    L"Each SVG parser must create its own browser profile beside its staged input.");
+            }
         }
 
         TEST_METHOD (LaunchInJob_Timeout_TerminatesParentAndDescendant)
@@ -1108,6 +1157,13 @@ namespace UnitTestsCommonUtils
 
             wil::unique_handle helperProcess{ processInformation.hProcess };
             wil::unique_handle helperThread{ processInformation.hThread };
+            auto terminateHelper = wil::scope_exit([&] {
+                if (WaitForSingleObject(helperProcess.get(), 0) != WAIT_OBJECT_0)
+                {
+                    TerminateProcess(helperProcess.get(), ERROR_PROCESS_ABORTED);
+                    WaitForSingleObject(helperProcess.get(), 2'000);
+                }
+            });
             Assert::IsTrue(
                 AssignProcessToJobObject(outerJob.get(), helperProcess.get()),
                 L"Could not assign the test helper to its outer job.");

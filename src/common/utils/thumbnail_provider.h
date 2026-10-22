@@ -102,7 +102,8 @@ namespace thumbnail_provider
 
                 if (result == S_FALSE)
                 {
-                    return S_OK;
+                    file.close();
+                    return file.good() ? S_OK : STG_E_WRITEFAULT;
                 }
 
                 if (bytesRead == 0)

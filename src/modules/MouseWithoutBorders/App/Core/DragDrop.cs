@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
 using Microsoft.PowerToys.Telemetry;
@@ -56,6 +57,8 @@ internal static class DragDrop
     private static bool isDragging;
     private static volatile bool mouseDown;
     private static long transientDragValidationGeneration;
+    private static long currentDragGeneration;
+    private static Task dragNotificationTask = Task.CompletedTask;
 
     internal static bool IsDragging
     {
@@ -72,17 +75,18 @@ internal static class DragDrop
 
         if (wParam == WM.WM_LBUTTONDOWN)
         {
-            _ = Interlocked.Exchange(
-                ref transientDragValidationGeneration,
-                Clipboard.BeginTransientDragFileValidation());
-            MouseDown = true;
+            _ = BeginDragGesture();
             DragMachine = MachineStuff.desMachineID;
             MachineStuff.dropMachineID = ID.NONE;
             Logger.LogDebug("DragDropStep01: MouseDown");
         }
         else if (wParam == WM.WM_LBUTTONUP)
         {
-            MouseDown = false;
+            lock (DragActivationLock)
+            {
+                MouseDown = false;
+            }
+
             Logger.LogDebug("DragDropStep01: MouseUp");
         }
 
@@ -91,6 +95,23 @@ internal static class DragDrop
             IsDropping = false;
             Clipboard.LastIDWithClipboardData = ID.NONE;
         }
+    }
+
+    internal static long BeginDragGesture()
+    {
+        lock (DragActivationLock)
+        {
+            long generation = Clipboard.BeginTransientDragFileValidation();
+            _ = Interlocked.Exchange(ref transientDragValidationGeneration, generation);
+            _ = Interlocked.Exchange(ref currentDragGeneration, generation);
+            MouseDown = true;
+            return generation;
+        }
+    }
+
+    internal static bool IsCurrentDragGeneration(long generation)
+    {
+        return generation != 0 && Interlocked.Read(ref currentDragGeneration) == generation;
     }
 
     internal static void DragDropStep02()
@@ -211,63 +232,76 @@ internal static class DragDrop
 
             _ = Interlocked.Exchange(ref dragDropStep05ExCalledByIpc, 1);
 
-            if (!MouseDown)
+            LocalPathLease lease = null;
+            if (MouseDown)
             {
-                Clipboard.CancelTransientDragFileValidation(validationGeneration);
-                Logger.LogDebug("DragDropStep05: Drag ended before path validation started.");
-                _ = NativeMethods.PostMessage(Common.MainForm.Handle, NativeMethods.WM_HIDE_DD_HELPER, (IntPtr)0, (IntPtr)0);
+                _ = LocalPathLease.TryCreate(dragFileName, out lease);
+            }
+
+            if (!TryCompleteDragFileValidation(validationGeneration, dragFileName, lease, out bool activated))
+            {
+                lease?.Dispose();
                 return;
             }
 
-            if (LocalPathLease.TryCreate(dragFileName, out LocalPathLease lease))
+            if (!activated)
             {
-                bool activated = false;
-                lock (DragActivationLock)
-                {
-                    if (MouseDown && Clipboard.TrySetValidatedTransientDragFile(validationGeneration, dragFileName, lease))
-                    {
-                        /*
-                         * possibleDropMachineID is used as desID sent in DragDropStep06();
-                         * */
-                        if (MachineStuff.dropMachineID == ID.NONE)
-                        {
-                            MachineStuff.dropMachineID = MachineStuff.newDesMachineID;
-                        }
-
-                        DragDropStep06();
-                        activated = true;
-                    }
-                }
-
-                if (activated)
-                {
-                    Logger.LogDebug("DragDropStep05: File dragging: " + dragFileName);
-                    _ = NativeMethods.PostMessage(Common.MainForm.Handle, NativeMethods.WM_HIDE_DD_HELPER, (IntPtr)1, (IntPtr)0);
-                    Logger.LogDebug("DragDropStep05: WM_HIDE_DDHelper sent");
-                }
-                else
-                {
-                    lease.Dispose();
-                    Logger.LogDebug("DragDropStep05: Drag ended before path validation completed.");
-                    _ = NativeMethods.PostMessage(Common.MainForm.Handle, NativeMethods.WM_HIDE_DD_HELPER, (IntPtr)0, (IntPtr)0);
-                }
+                lease?.Dispose();
+                Logger.Log("DragDropStep05: Drag ended or path validation failed: [" + dragFileName + "]");
             }
-            else
-            {
-                Clipboard.CancelTransientDragFileValidation(validationGeneration);
-                Logger.Log("DragDropStep05: Rejected non-local or unstable path: [" + dragFileName + "]");
-                _ = NativeMethods.PostMessage(Common.MainForm.Handle, NativeMethods.WM_HIDE_DD_HELPER, (IntPtr)0, (IntPtr)0);
-            }
+
+            _ = NativeMethods.PostMessage(
+                Common.MainForm.Handle,
+                NativeMethods.WM_HIDE_DD_HELPER,
+                activated ? (IntPtr)1 : IntPtr.Zero,
+                checked((IntPtr)validationGeneration));
         }
         else
         {
-            Logger.LogDebug("DragDropStep05: IsDropping == true, change drop machine...");
-            IsDropping = false;
-            Common.MainFormVisible = true; // WM_HIDE_DRAG_DROP
-            SendDropBegin(); // To dropMachineID set in DragDropStep03
-        }
+            lock (DragActivationLock)
+            {
+                if (!IsCurrentDragGeneration(validationGeneration))
+                {
+                    return;
+                }
 
-        MouseDown = false;
+                Logger.LogDebug("DragDropStep05: IsDropping == true, change drop machine...");
+                IsDropping = false;
+                Common.MainFormVisible = true; // WM_HIDE_DRAG_DROP
+                SendDropBegin(); // To dropMachineID set in DragDropStep03
+                MouseDown = false;
+            }
+        }
+    }
+
+    internal static bool TryCompleteDragFileValidation(long generation, string path, LocalPathLease lease, out bool activated)
+    {
+        lock (DragActivationLock)
+        {
+            activated = false;
+            if (!IsCurrentDragGeneration(generation))
+            {
+                return false;
+            }
+
+            if (MouseDown && lease != null && Clipboard.TrySetValidatedTransientDragFile(generation, path, lease))
+            {
+                if (MachineStuff.dropMachineID == ID.NONE)
+                {
+                    MachineStuff.dropMachineID = MachineStuff.newDesMachineID;
+                }
+
+                DragDropStep06();
+                activated = true;
+            }
+            else
+            {
+                Clipboard.CancelTransientDragFileValidation(generation);
+            }
+
+            MouseDown = false;
+            return true;
+        }
     }
 
     private static void DragDropStep06()
@@ -421,20 +455,45 @@ internal static class DragDrop
 
     private static void SendClipboardBeatDragDrop()
     {
-        Common.SendPackage(ID.ALL, PackageType.ClipboardDragDrop);
+        _ = QueueDragNotification(() => Common.SendPackage(ID.ALL, PackageType.ClipboardDragDrop));
     }
 
     private static void SendDropBegin()
     {
         Logger.LogDebug("SendDropBegin...");
-        Common.SendPackage(MachineStuff.dropMachineID, PackageType.ClipboardDragDropOperation);
+        ID destination = MachineStuff.dropMachineID;
+        _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropOperation));
     }
 
     private static void SendClipboardBeatDragDropEnd()
     {
         if (MachineStuff.desMachineID != Common.MachineID)
         {
-            Common.SendPackage(MachineStuff.desMachineID, PackageType.ClipboardDragDropEnd);
+            ID destination = MachineStuff.desMachineID;
+            _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropEnd));
+        }
+    }
+
+    internal static Task QueueDragNotification(Action send)
+    {
+        lock (DragActivationLock)
+        {
+            dragNotificationTask = dragNotificationTask.ContinueWith(
+                _ =>
+                {
+                    try
+                    {
+                        send();
+                    }
+                    catch (Exception exception)
+                    {
+                        Logger.Log(exception);
+                    }
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.None,
+                TaskScheduler.Default);
+            return dragNotificationTask;
         }
     }
 

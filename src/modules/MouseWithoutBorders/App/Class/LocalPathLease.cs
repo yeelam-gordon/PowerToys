@@ -20,6 +20,7 @@ internal sealed class LocalPathLease : IDisposable
     private const uint FileShareDelete = 0x00000004;
     private const uint GenericRead = 0x80000000;
     private const uint FileReadAttributes = 0x00000080;
+    private const uint FileTraverse = 0x00000020;
     private const uint OpenExisting = 3;
     private const uint FileFlagBackupSemantics = 0x02000000;
     private const uint FileFlagOpenReparsePoint = 0x00200000;
@@ -158,18 +159,14 @@ internal sealed class LocalPathLease : IDisposable
             }
 
             string currentPath = deviceRoot + Path.DirectorySeparatorChar;
-            if (!TryOpenComponent(
-                currentPath,
-                FileReadAttributes,
-                FileShareRead,
-                handles,
-                out FileAttributes attributes,
-                out _)
-                || (attributes & FileAttributes.ReparsePoint) != 0)
+            SafeFileHandle rootHandle = OpenValidationDirectory(currentPath);
+            if (rootHandle == null)
             {
                 return null;
             }
 
+            handles.Add(rootHandle);
+            FileAttributes attributes = FileAttributes.Directory;
             string relativePath = physicalPath[(deviceRoot.Length + 1)..];
             string[] components = relativePath.Split(
                 new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar },
@@ -180,23 +177,22 @@ internal sealed class LocalPathLease : IDisposable
             {
                 currentPath = Path.Combine(currentPath, components[index]);
                 bool isLast = index == components.Length - 1;
-                uint desiredAccess = isLast ? GenericRead : FileReadAttributes;
-                uint shareMode = isLast
-                    ? FileShareRead | FileShareWrite | FileShareDelete
-                    : FileShareRead;
-                if (!TryOpenComponent(
-                    currentPath,
-                    desiredAccess,
-                    shareMode,
-                    handles,
-                    out attributes,
-                    out long componentLength)
-                    || (attributes & FileAttributes.ReparsePoint) != 0)
+                long componentLength = 0;
+                SafeFileHandle handle = isLast
+                    ? OpenComponent(
+                        currentPath,
+                        GenericRead,
+                        FileShareRead | FileShareWrite | FileShareDelete,
+                        out attributes,
+                        out componentLength)
+                    : OpenValidationDirectory(currentPath);
+                if (handle == null)
                 {
                     return null;
                 }
 
-                if (!isLast && (attributes & FileAttributes.Directory) == 0)
+                handles.Add(handle);
+                if (isLast && (attributes & FileAttributes.ReparsePoint) != 0)
                 {
                     return null;
                 }
@@ -325,11 +321,31 @@ internal sealed class LocalPathLease : IDisposable
             && !deviceName.Equals("WebDavRedirector", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool TryOpenComponent(
+    internal static SafeFileHandle OpenValidationDirectory(string path)
+    {
+        // Attribute-only opens do not participate in share-access accounting.
+        // FILE_TRAVERSE (FILE_EXECUTE) does, without requiring directory listing.
+        SafeFileHandle handle = OpenComponent(
+            path,
+            FileReadAttributes | FileTraverse,
+            FileShareRead,
+            out FileAttributes attributes,
+            out _);
+
+        if (handle != null
+            && (attributes & (FileAttributes.Directory | FileAttributes.ReparsePoint)) != FileAttributes.Directory)
+        {
+            handle.Dispose();
+            return null;
+        }
+
+        return handle;
+    }
+
+    private static SafeFileHandle OpenComponent(
         string path,
         uint desiredAccess,
         uint shareMode,
-        List<SafeFileHandle> handles,
         out FileAttributes attributes,
         out long length)
     {
@@ -348,19 +364,18 @@ internal sealed class LocalPathLease : IDisposable
         if (handle.IsInvalid)
         {
             handle.Dispose();
-            return false;
+            return null;
         }
 
         if (!GetFileInformationByHandle(handle, out ByHandleFileInformation information))
         {
             handle.Dispose();
-            return false;
+            return null;
         }
 
-        handles.Add(handle);
         attributes = (FileAttributes)information.FileAttributes;
         length = ((long)information.FileSizeHigh << 32) | information.FileSizeLow;
-        return true;
+        return handle;
     }
 
     [StructLayout(LayoutKind.Sequential)]

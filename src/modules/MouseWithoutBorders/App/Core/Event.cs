@@ -113,7 +113,10 @@ internal static class Event
                     MousePackage.Md.Y = (e.Y - MachineStuff.primaryScreenBounds.Top) * 65535 / Common.screenHeight;
                 }
 
-                Common.SkSend(MousePackage, null, false);
+                if (!DragDrop.TryQueueInputPacket(MousePackage, static package => Common.SkSend(package, null, false, resetDestinationOnFailure: false)))
+                {
+                    Common.SkSend(MousePackage, null, false);
+                }
 
                 if (MousePackage.Md.dwFlags is WM.WM_LBUTTONUP or WM.WM_RBUTTONUP)
                 {
@@ -211,7 +214,7 @@ internal static class Event
                 // Ask current machine to hide the Mouse cursor
                 if (newDesMachineID != ID.ALL && MachineStuff.desMachineID != Common.MachineID)
                 {
-                    Common.SendPackage(MachineStuff.desMachineID, PackageType.HideMouse);
+                    _ = DragDrop.QueueMachineSwitchCleanup(MachineStuff.desMachineID, Common.SendPackage);
                 }
 
                 Common.DesMachineID = newDesMachineID;
@@ -264,7 +267,11 @@ internal static class Event
                 KeybdPackage.Type = PackageType.Keyboard;
                 KeybdPackage.Kd = e;
                 KeybdPackage.DateTime = Common.GetTick();
-                Common.SkSend(KeybdPackage, null, false);
+                if (!DragDrop.TryQueueInputPacket(KeybdPackage, static package => Common.SkSend(package, null, false, resetDestinationOnFailure: false)))
+                {
+                    Common.SkSend(KeybdPackage, null, false);
+                }
+
                 if (KeybdPackage.Kd.dwFlags is WM.WM_KEYUP or WM.WM_SYSKEYUP)
                 {
                     Thread.Sleep(10);

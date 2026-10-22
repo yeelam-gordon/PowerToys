@@ -24,7 +24,7 @@ namespace StlThumbnailProviderUnitTests
 
             StlThumbnailProvider provider = new StlThumbnailProvider(filePath);
 
-            Bitmap bitmap = provider.GetThumbnail(256);
+            Bitmap? bitmap = provider.GetThumbnail(256);
 
             Assert.IsTrue(bitmap != null);
         }
@@ -37,7 +37,7 @@ namespace StlThumbnailProviderUnitTests
 
             StlThumbnailProvider provider = new StlThumbnailProvider(filePath);
 
-            Bitmap bitmap = provider.GetThumbnail(0);
+            Bitmap? bitmap = provider.GetThumbnail(0);
 
             Assert.IsTrue(bitmap == null);
         }
@@ -50,7 +50,7 @@ namespace StlThumbnailProviderUnitTests
 
             StlThumbnailProvider provider = new StlThumbnailProvider(filePath);
 
-            Bitmap bitmap = provider.GetThumbnail(10001);
+            Bitmap? bitmap = provider.GetThumbnail(10001);
 
             Assert.IsTrue(bitmap == null);
         }
@@ -60,7 +60,7 @@ namespace StlThumbnailProviderUnitTests
         {
             using (var stream = new MemoryStream())
             {
-                Bitmap thumbnail = StlThumbnailProvider.GetThumbnail(stream, 256);
+                Bitmap? thumbnail = StlThumbnailProvider.GetThumbnail(stream, 256);
                 Assert.IsTrue(thumbnail == null);
             }
         }
@@ -68,7 +68,7 @@ namespace StlThumbnailProviderUnitTests
         [TestMethod]
         public void CheckNoStlNullStreamShouldReturnNullBitmap()
         {
-            Bitmap thumbnail = StlThumbnailProvider.GetThumbnail(null, 256);
+            Bitmap? thumbnail = StlThumbnailProvider.GetThumbnail(null, 256);
             Assert.IsTrue(thumbnail == null);
         }
 

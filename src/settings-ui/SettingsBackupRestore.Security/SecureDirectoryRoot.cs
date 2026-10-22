@@ -58,9 +58,14 @@ public sealed class SecureDirectoryRoot : IDisposable
     }
 
     /// <summary>
-    /// Creates a missing directory tree through an existing ancestor handle, then opens the requested root.
+    /// Creates a missing directory tree through an existing ancestor handle and retains the validated root handle.
     /// </summary>
     public static SecureDirectoryRoot OpenOrCreate(string path)
+    {
+        return OpenOrCreate(path, afterDirectoryCreated: null);
+    }
+
+    internal static SecureDirectoryRoot OpenOrCreate(string path, Action? afterDirectoryCreated)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         string fullPath = Path.GetFullPath(path);
@@ -80,13 +85,20 @@ public sealed class SecureDirectoryRoot : IDisposable
             throw new DirectoryNotFoundException($"No existing ancestor was found for {fullPath}.");
         }
 
-        using (SecureDirectoryRoot ancestorRoot = Open(ancestor))
+        using SecureDirectoryRoot ancestorRoot = Open(ancestor);
+        string[] components = SecurePath.NormalizeRelative(Path.GetRelativePath(ancestor, fullPath)).Split('\\');
+        SafeFileHandle rootHandle = ancestorRoot.OpenDirectoryChain(components, createMissing: true, exclusiveLast: false, writableLast: true);
+        try
         {
-            string relativePath = Path.GetRelativePath(ancestor, fullPath);
-            ancestorRoot.CreateDirectory(relativePath);
+            afterDirectoryCreated?.Invoke();
+            string finalPath = ancestorRoot.ValidateOpenedHandle(rootHandle, expectDirectory: true, rejectHardLinks: false);
+            return new SecureDirectoryRoot(rootHandle, finalPath);
         }
-
-        return Open(fullPath);
+        catch
+        {
+            rootHandle.Dispose();
+            throw;
+        }
     }
 
     private static SecureDirectoryRoot Open(string path, bool writable)
@@ -568,7 +580,8 @@ public sealed class SecureDirectoryRoot : IDisposable
         string[] components,
         bool createMissing,
         bool exclusiveLast,
-        List<string>? createdDirectories = null)
+        List<string>? createdDirectories = null,
+        bool writableLast = false)
     {
         SafeFileHandle current = handle;
         SafeFileHandle? ownedCurrent = null;
@@ -580,12 +593,13 @@ public sealed class SecureDirectoryRoot : IDisposable
             for (int index = 0; index < components.Length; index++)
             {
                 bool createExclusively = createMissing && exclusiveLast && index == components.Length - 1;
+                uint existingAccess = writableLast && index == components.Length - 1 ? WritableDirectoryAccess : ReadOnlyDirectoryAccess;
                 uint desiredAccess;
                 SafeFileHandle next;
                 bool wasCreated;
                 if (!createMissing)
                 {
-                    desiredAccess = ReadOnlyDirectoryAccess;
+                    desiredAccess = existingAccess;
                     next = OpenRelative(
                         current,
                         components[index],
@@ -611,7 +625,7 @@ public sealed class SecureDirectoryRoot : IDisposable
                 {
                     try
                     {
-                        desiredAccess = ReadOnlyDirectoryAccess;
+                        desiredAccess = existingAccess;
                         next = OpenRelative(
                             current,
                             components[index],

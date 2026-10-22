@@ -9,4 +9,10 @@ namespace Microsoft.PowerToys.SettingsBackupRestore.Security;
 /// <summary>
 /// Result of a production backup comparison or write.
 /// </summary>
-public sealed record BackupOperationResult(bool BackupCreated, bool PreviousBackupExists, string? ArchiveFileName, Exception? RetentionError = null);
+public sealed record BackupOperationResult(bool BackupCreated, bool PreviousBackupExists, string? ArchiveFileName, Exception? RetentionError = null)
+{
+    /// <summary>
+    /// Gets a temporary-file cleanup failure reported separately from the completed operation.
+    /// </summary>
+    public Exception? StagingCleanupError { get; internal set; }
+}

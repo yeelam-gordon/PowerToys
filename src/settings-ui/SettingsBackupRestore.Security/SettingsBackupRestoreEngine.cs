@@ -30,6 +30,8 @@ public sealed class SettingsBackupRestoreEngine
         policy = BackupRestorePolicy.Parse(policyJson);
     }
 
+    internal Action<SecureDirectoryRoot>? BeforeStagingCleanup { get; set; }
+
     /// <summary>
     /// Compares settings with the newest archive and optionally writes a compatible .ptb archive.
     /// </summary>
@@ -52,6 +54,8 @@ public sealed class SettingsBackupRestoreEngine
         SecureDirectoryRoot? backupRoot = null;
         SecureDirectoryRoot? stagingParent = null;
         SecureDirectoryRoot? previousStaging = null;
+        BackupOperationResult? result = null;
+        Exception? operationError = null;
         try
         {
             if (Directory.Exists(backupRootPath))
@@ -83,12 +87,12 @@ public sealed class SettingsBackupRestoreEngine
                 .ToList();
             if (updated.Count == 0)
             {
-                return new BackupOperationResult(false, latestArchive != null, latestArchive);
+                return result = new BackupOperationResult(false, latestArchive != null, latestArchive);
             }
 
             if (dryRun)
             {
-                return new BackupOperationResult(true, latestArchive != null, latestArchive);
+                return result = new BackupOperationResult(true, latestArchive != null, latestArchive);
             }
 
             string archiveName = CreateArchive(
@@ -108,11 +112,25 @@ public sealed class SettingsBackupRestoreEngine
                 retentionError = exception;
             }
 
-            return new BackupOperationResult(true, latestArchive != null, archiveName, retentionError);
+            return result = new BackupOperationResult(true, latestArchive != null, archiveName, retentionError);
+        }
+        catch (Exception exception)
+        {
+            operationError = exception;
+            throw;
         }
         finally
         {
-            CleanupStaging(previousStaging);
+            Exception? cleanupError = CleanupStaging(previousStaging);
+            if (operationError != null && cleanupError != null)
+            {
+                operationError.Data["StagingCleanupError"] = cleanupError;
+            }
+            else if (result != null)
+            {
+                result.StagingCleanupError = cleanupError;
+            }
+
             stagingParent?.Dispose();
             backupRoot?.Dispose();
         }
@@ -131,6 +149,8 @@ public sealed class SettingsBackupRestoreEngine
         using SecureDirectoryRoot stagingParent = SecureDirectoryRoot.Open(stagingParentPath);
         string archiveName = GetLatestArchiveFileName(backupRoot) ?? throw new FileNotFoundException("No settings backup was found.");
         SecureDirectoryRoot? staging = null;
+        RestoreOperationResult? result = null;
+        Exception? operationError = null;
         try
         {
             using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
@@ -196,15 +216,28 @@ public sealed class SettingsBackupRestoreEngine
 
             if (operations.Count == 0)
             {
-                return new RestoreOperationResult(false, false);
+                return result = new RestoreOperationResult(false, false);
             }
 
             ApplyRestoreOperations(settingsRoot, operations);
-            return new RestoreOperationResult(true, policy.RestartAfterRestore);
+            return result = new RestoreOperationResult(true, policy.RestartAfterRestore);
+        }
+        catch (Exception exception)
+        {
+            operationError = exception;
+            throw;
         }
         finally
         {
-            CleanupStaging(staging);
+            Exception? cleanupError = CleanupStaging(staging);
+            if (operationError != null && cleanupError != null)
+            {
+                operationError.Data["StagingCleanupError"] = cleanupError;
+            }
+            else if (result != null)
+            {
+                result.StagingCleanupError = cleanupError;
+            }
         }
     }
 
@@ -420,20 +453,30 @@ public sealed class SettingsBackupRestoreEngine
         return JsonNode.DeepEquals(JsonNode.Parse(left), JsonNode.Parse(right));
     }
 
-    private static void CleanupStaging(SecureDirectoryRoot? staging)
+    private Exception? CleanupStaging(SecureDirectoryRoot? staging)
     {
         if (staging == null)
         {
-            return;
+            return null;
         }
 
         try
         {
-            staging.DeleteTree();
+            try
+            {
+                BeforeStagingCleanup?.Invoke(staging);
+                staging.DeleteTree();
+            }
+            finally
+            {
+                staging.Dispose();
+            }
+
+            return null;
         }
-        finally
+        catch (Exception exception)
         {
-            staging.Dispose();
+            return exception;
         }
     }
 

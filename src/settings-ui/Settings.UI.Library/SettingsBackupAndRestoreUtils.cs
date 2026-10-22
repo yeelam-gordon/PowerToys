@@ -76,6 +76,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
                 var engine = CreateEngine();
                 RestoreOperationResult result = engine.Restore(appBasePath, settingsBackupAndRestoreDir, Path.GetTempPath());
+                LogStagingCleanupError(result.StagingCleanupError);
                 if (result.SettingsChanged)
                 {
                     return (result.RestartRequired, "RESTART APP", "Success");
@@ -85,12 +86,12 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             }
             catch (JsonException ex)
             {
-                Logger.LogError("Invalid settings JSON during restore.", ex);
+                LogBackupOrRestoreError("Invalid settings JSON during restore.", ex);
                 return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error");
             }
             catch (Exception ex)
             {
-                Logger.LogError("Error restoring settings.", ex);
+                LogBackupOrRestoreError("Error restoring settings.", ex);
                 return (false, "General_SettingsBackupAndRestore_RestoreError", "Error");
             }
         }
@@ -175,6 +176,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                         Environment.MachineName,
                         DateTime.UtcNow);
                     lastBackupExists = result.PreviousBackupExists;
+                    LogStagingCleanupError(result.StagingCleanupError);
                     if (result.RetentionError != null)
                     {
                         Logger.LogError("The settings backup was created, but older backups could not all be removed.", result.RetentionError);
@@ -189,14 +191,31 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                 }
                 catch (JsonException ex)
                 {
-                    Logger.LogError("Invalid settings JSON during backup.", ex);
+                    LogBackupOrRestoreError("Invalid settings JSON during backup.", ex);
                     return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error", lastBackupExists, string.Empty);
                 }
                 catch (Exception ex)
                 {
-                    Logger.LogError("Error backing up settings.", ex);
+                    LogBackupOrRestoreError("Error backing up settings.", ex);
                     return (false, "General_SettingsBackupAndRestore_BackupError", "Error", lastBackupExists, string.Empty);
                 }
+            }
+        }
+
+        private static void LogBackupOrRestoreError(string message, Exception exception)
+        {
+            Logger.LogError(message, exception);
+            if (exception.Data["StagingCleanupError"] is Exception cleanupError)
+            {
+                LogStagingCleanupError(cleanupError);
+            }
+        }
+
+        private static void LogStagingCleanupError(Exception cleanupError)
+        {
+            if (cleanupError != null)
+            {
+                Logger.LogError("Temporary settings files could not be removed.", cleanupError);
             }
         }
 

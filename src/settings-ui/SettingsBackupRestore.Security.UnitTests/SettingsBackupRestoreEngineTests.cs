@@ -129,6 +129,96 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void StagingCleanupDoesNotReplaceCompletedOperation(bool restore)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string sourceSettings = test.CreateFile(@"source\settings.json", """{"value":1}""");
+        test.CreateFile(@"target\settings.json", """{"value":0}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = DateTime.UtcNow;
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", now);
+        File.WriteAllText(sourceSettings, """{"value":2}""");
+        FileStream? stagingLock = null;
+        engine.BeforeStagingCleanup = root =>
+            stagingLock = new FileStream(Path.Combine(root.FinalPath, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        try
+        {
+            if (restore)
+            {
+                RestoreOperationResult result = engine.Restore(target, backups, staging);
+                Assert.IsNotNull(result.StagingCleanupError);
+                Assert.IsTrue(result.SettingsChanged);
+                Assert.IsTrue(result.RestartRequired);
+                using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(Path.Combine(target, "settings.json")));
+                Assert.AreEqual(1, settings.RootElement.GetProperty("value").GetInt32());
+            }
+            else
+            {
+                BackupOperationResult result = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", now.AddMinutes(1));
+                Assert.IsNotNull(result.StagingCleanupError);
+                Assert.IsTrue(result.BackupCreated);
+                Assert.IsTrue(File.Exists(Path.Combine(backups, result.ArchiveFileName!)));
+            }
+        }
+        finally
+        {
+            stagingLock?.Dispose();
+        }
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void StagingCleanupDoesNotReplaceOriginalFailure(bool restore)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\settings.json", "{}");
+        using (ZipArchive archive = ZipFile.Open(Path.Combine(backups, "settings_1.ptb"), ZipArchiveMode.Create))
+        {
+            using StreamWriter writer = new(archive.CreateEntry("settings.json").Open());
+            writer.Write("{");
+        }
+
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        FileStream? stagingLock = null;
+        engine.BeforeStagingCleanup = root =>
+            stagingLock = new FileStream(Path.Combine(root.FinalPath, "settings.json"), FileMode.Open, FileAccess.Read, FileShare.Read);
+        try
+        {
+            try
+            {
+                if (restore)
+                {
+                    engine.Restore(source, backups, staging);
+                }
+                else
+                {
+                    engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+                }
+
+                Assert.Fail("Invalid settings must retain their JSON error.");
+            }
+            catch (JsonException exception)
+            {
+                Assert.IsInstanceOfType<System.ComponentModel.Win32Exception>(exception.Data["StagingCleanupError"]);
+            }
+        }
+        finally
+        {
+            stagingLock?.Dispose();
+        }
+    }
+
+    [TestMethod]
     public void ProductionBackupManifestAndChangedDryRunPreserveCompatibility()
     {
         using TestDirectory test = new();

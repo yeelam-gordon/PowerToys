@@ -16,6 +16,41 @@ namespace Microsoft.PowerToys.SettingsBackupRestore.Security.UnitTests;
 public sealed class SecureFileSystemTests
 {
     [TestMethod]
+    public void OpenOrCreatePreservesCreatedRootDuringIntermediateReplacement()
+    {
+        using TestDirectory test = new();
+        string ancestor = test.CreateDirectory("ancestor");
+        string alternate = test.CreateDirectory(@"alternate\leaf");
+        string requested = Path.Combine(ancestor, @"new\leaf");
+        string moved = Path.Combine(ancestor, "moved");
+        string expectedRoot = requested;
+        using SecureDirectoryRoot root = SecureDirectoryRoot.OpenOrCreate(
+            requested,
+            () =>
+            {
+                try
+                {
+                    Directory.Move(Path.Combine(ancestor, "new"), moved);
+                }
+                catch (IOException exception) when ((exception.HResult & 0xffff) is 5 or 32)
+                {
+                    return;
+                }
+
+                expectedRoot = Path.Combine(moved, "leaf");
+                test.CreateDirectoryJunction(@"ancestor\new", Path.GetDirectoryName(alternate)!);
+            });
+        using (SecureFile file = root.CreateNewFile("settings.json"))
+        {
+            file.OverwriteAllText("{}");
+        }
+
+        Assert.IsTrue(string.Equals(expectedRoot, root.FinalPath, StringComparison.OrdinalIgnoreCase));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(alternate).Length);
+        Assert.AreEqual("{}", File.ReadAllText(Path.Combine(expectedRoot, "settings.json")));
+    }
+
+    [TestMethod]
     public void FinalPathAndContainmentUseOpenedRootHandle()
     {
         using TestDirectory test = new();

@@ -125,61 +125,6 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
-    public void ProductionPreviewListsActionsExclusionsAndRestart()
-    {
-        using TestDirectory test = new();
-        string source = test.CreateDirectory("source");
-        string target = test.CreateDirectory("target");
-        string backups = test.CreateDirectory("backups");
-        string staging = test.CreateDirectory("staging");
-        test.CreateFile(@"source\FancyZones\settings.json", "{}");
-        test.CreateFile(@"source\Keyboard Manager\default.json", "{}");
-        test.CreateFile(@"source\NewModule\settings.json", "{}");
-        test.CreateFile(@"source\PowerToys\ignored.json", "{}");
-        test.CreateFile(@"target\FancyZones\settings.json", "{}");
-        test.CreateFile(@"target\Keyboard Manager\default.json", "{}");
-        SettingsBackupRestoreEngine engine = new(PolicyJson);
-        BackupOperationResult backup = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
-        using (ZipArchive archive = ZipFile.Open(Path.Combine(backups, backup.ArchiveFileName!), ZipArchiveMode.Update))
-        using (StreamWriter writer = new(archive.CreateEntry("PowerToys/ignored.json").Open()))
-        {
-            writer.Write("{}");
-        }
-
-        RestorePreviewViewModel preview = engine.CreateRestorePreview(target, backups, staging);
-
-        Assert.AreEqual(RestoreMode.Merge, preview.Items.Single(item => item.Module == "FancyZones").RestoreMode);
-        Assert.AreEqual(RestoreMode.Overwrite, preview.Items.Single(item => item.Module == "Keyboard Manager").RestoreMode);
-        Assert.AreEqual(RestoreMode.Create, preview.Items.Single(item => item.Module == "NewModule").RestoreMode);
-        Assert.IsFalse(preview.Items.Single(item => item.SettingsPath.EndsWith("ignored.json", StringComparison.Ordinal)).Included);
-        Assert.IsTrue(preview.RestartAfterRestore);
-        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
-    }
-
-    [TestMethod]
-    public void RestoreRejectsArchiveChangedAfterPreview()
-    {
-        using TestDirectory test = new();
-        string source = test.CreateDirectory("source");
-        string target = test.CreateDirectory("target");
-        string backups = test.CreateDirectory("backups");
-        string staging = test.CreateDirectory("staging");
-        test.CreateFile(@"source\settings.json", """{"value":1}""");
-        test.CreateFile(@"target\settings.json", """{"value":0}""");
-        SettingsBackupRestoreEngine engine = new(PolicyJson);
-        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
-        RestorePreviewViewModel preview = engine.CreateRestorePreview(target, backups, staging);
-        using (ZipArchive archive = ZipFile.Open(Path.Combine(backups, preview.ArchiveFileName!), ZipArchiveMode.Update))
-        {
-            archive.CreateEntry("changed.json");
-        }
-
-        Assert.ThrowsException<InvalidDataException>(() =>
-            engine.Restore(target, backups, staging, preview.ArchiveFileName, preview.ArchiveSha256));
-        Assert.AreEqual("""{"value":0}""", File.ReadAllText(Path.Combine(target, "settings.json")));
-    }
-
-    [TestMethod]
     public void ProductionEnginePreservesWindowsDistinctUnicodePaths()
     {
         using TestDirectory test = new();
@@ -219,15 +164,15 @@ public sealed class SettingsBackupRestoreEngineTests
         using FileStream backupLock = new(backupUnrelated, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
 
         BackupOperationResult backup = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
-        RestorePreviewViewModel preview = engine.CreateRestorePreview(target, backups, staging);
+        RestoreOperationResult restore = engine.Restore(target, backups, staging);
 
         Assert.IsTrue(backup.BackupCreated);
-        Assert.AreEqual(1, preview.Items.Count);
-        Assert.AreEqual("settings.json", preview.Items[0].SettingsPath);
+        Assert.IsTrue(restore.SettingsChanged);
+        Assert.AreEqual("""{"value":1}""", JsonNode.Parse(File.ReadAllText(Path.Combine(target, "settings.json")))!.ToJsonString());
     }
 
     [TestMethod]
-    public void UnsafeArchiveFailsClosedBeforePreviewOrRestoreWrites()
+    public void InvalidArchiveLeavesSettingsUnchanged()
     {
         using TestDirectory test = new();
         string target = test.CreateDirectory("target");
@@ -244,9 +189,101 @@ public sealed class SettingsBackupRestoreEngineTests
 
         SettingsBackupRestoreEngine engine = new(PolicyJson);
 
-        Assert.ThrowsException<InvalidDataException>(() => engine.CreateRestorePreview(target, backups, staging));
         Assert.ThrowsException<InvalidDataException>(() => engine.Restore(target, backups, staging));
         Assert.AreEqual("""{"value":"current"}""", File.ReadAllText(targetSettings));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void BackupRejectsSharedFileEntries(bool dryRun)
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string shared = test.CreateFile(@"shared\settings.json", """{"value":1}""");
+        test.CreateHardLink(@"settings\settings.json", shared);
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+
+        Assert.ThrowsException<IOException>(() =>
+            engine.Backup(settings, backups, staging, dryRun, "1.2.3", "test-machine", DateTime.UtcNow));
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(backups).Length);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+        Assert.AreEqual("""{"value":1}""", File.ReadAllText(shared));
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void BackupRejectsRedirectedModuleDirectories(bool dryRun)
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string shared = test.CreateDirectory("shared");
+        test.CreateFile(@"shared\settings.json", """{"value":1}""");
+        test.CreateDirectoryJunction(@"settings\module", shared);
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+
+        Assert.ThrowsException<IOException>(() =>
+            engine.Backup(settings, backups, staging, dryRun, "1.2.3", "test-machine", DateTime.UtcNow));
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(backups).Length);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void RestoreValidatesAllExistingTargetsBeforeUpdatingSettings()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\A\settings.json", """{"value":"new-a"}""");
+        test.CreateFile(@"source\Z\settings.json", """{"value":"new-z"}""");
+        string first = test.CreateFile(@"target\A\settings.json", """{"value":"old-a"}""");
+        string shared = test.CreateFile(@"shared\settings.json", """{"value":"old-z"}""");
+        test.CreateHardLink(@"target\Z\settings.json", shared);
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+
+        Assert.ThrowsException<IOException>(() => engine.Restore(target, backups, staging));
+
+        Assert.AreEqual("""{"value":"old-a"}""", File.ReadAllText(first));
+        Assert.AreEqual("""{"value":"old-z"}""", File.ReadAllText(shared));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void RestoreReadsLegacyArchiveAndPreservesNoRestartPolicy()
+    {
+        using TestDirectory test = new();
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string archivePath = Path.Combine(backups, $"settings_{DateTime.UtcNow.ToFileTimeUtc()}.ptb");
+        using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+        {
+            using (StreamWriter writer = new(archive.CreateEntry(@"Module\settings.json").Open()))
+            {
+                writer.Write("""{"value":1}""");
+            }
+
+            using StreamWriter manifest = new(archive.CreateEntry("manifest.json").Open());
+            manifest.Write("""{"CreateDateTime":"2026-08-16 07:00:00Z","Version":"1.2.3","UpdatedFiles":["\\Module\\settings.json"],"BackupSource":"test-machine","UnchangedFiles":[]}""");
+        }
+
+        SettingsBackupRestoreEngine engine = new(PolicyJson.Replace("\"RestartAfterRestore\": true", "\"RestartAfterRestore\": false", StringComparison.Ordinal));
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsTrue(result.SettingsChanged);
+        Assert.IsFalse(result.RestartRequired);
+        Assert.AreEqual(1, JsonNode.Parse(File.ReadAllText(Path.Combine(target, @"Module\settings.json")))!["value"]!.GetValue<int>());
         Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
     }
 

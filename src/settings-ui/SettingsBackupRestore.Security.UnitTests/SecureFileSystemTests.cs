@@ -212,7 +212,7 @@ public sealed class SecureFileSystemTests
         using SecureDirectoryRoot root = SecureDirectoryRoot.Open(rootPath);
         IOException exception = Assert.ThrowsException<IOException>(() => root.OpenFileForOverwrite("settings.json"));
 
-        StringAssert.Contains(exception.Message, "overwrite rejected before truncation");
+        StringAssert.Contains(exception.Message, "access rejected before truncation");
         Assert.AreEqual("original", File.ReadAllText(targetPath));
         Assert.AreEqual("original", File.ReadAllText(aliasPath));
     }

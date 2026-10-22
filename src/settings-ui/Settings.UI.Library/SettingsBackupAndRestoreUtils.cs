@@ -1,23 +1,16 @@
-﻿// Copyright (c) Microsoft Corporation
+// Copyright (c) Microsoft Corporation
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
 using System;
-using System.Buffers;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Globalization;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.RegularExpressions;
 using System.Threading;
 
 using ManagedCommon;
-using Microsoft.PowerToys.Settings.UI.Library.Utilities;
 using Microsoft.PowerToys.SettingsBackupRestore.Security;
 
 namespace Microsoft.PowerToys.Settings.UI.Library
@@ -25,268 +18,48 @@ namespace Microsoft.PowerToys.Settings.UI.Library
     public class SettingsBackupAndRestoreUtils
     {
         private static SettingsBackupAndRestoreUtils instance;
+        private static readonly Lock BackupSettingsInternalLock = new();
         private (bool Success, string Severity, bool LastBackupExists, DateTime? LastRan) lastBackupSettingsResults;
-        private static Lock backupSettingsInternalLock = new Lock();
-        private static Lock removeOldBackupsLock = new Lock();
-
-        public DateTime LastBackupStartTime { get; set; }
-
-        private static readonly JsonSerializerOptions _serializerOptions = new JsonSerializerOptions
-        {
-            WriteIndented = true,
-        };
 
         private SettingsBackupAndRestoreUtils()
         {
             LastBackupStartTime = DateTime.MinValue;
         }
 
-        public static SettingsBackupAndRestoreUtils Instance
-        {
-            get
-            {
-                if (instance == null)
-                {
-                    instance = new SettingsBackupAndRestoreUtils();
-                }
+        public static SettingsBackupAndRestoreUtils Instance => instance ??= new SettingsBackupAndRestoreUtils();
 
-                return instance;
-            }
-        }
+        public DateTime LastBackupStartTime { get; set; }
 
-        private sealed class JsonMergeHelper
-        {
-            // mostly from https://stackoverflow.com/questions/58694837/system-text-json-merge-two-objects
-            // but with some update to prevent array item duplicates
-            public static string Merge(string originalJson, string newContent)
-            {
-                var outputBuffer = new ArrayBufferWriter<byte>();
-
-                using (JsonDocument jDoc1 = JsonDocument.Parse(originalJson))
-                using (JsonDocument jDoc2 = JsonDocument.Parse(newContent))
-                using (var jsonWriter = new Utf8JsonWriter(outputBuffer, new JsonWriterOptions { Indented = true }))
-                {
-                    JsonElement root1 = jDoc1.RootElement;
-                    JsonElement root2 = jDoc2.RootElement;
-
-                    if (root1.ValueKind != JsonValueKind.Array && root1.ValueKind != JsonValueKind.Object)
-                    {
-                        throw new InvalidOperationException($"The original JSON document to merge new content into must be a container type. Instead it is {root1.ValueKind}.");
-                    }
-
-                    if (root1.ValueKind != root2.ValueKind)
-                    {
-                        return originalJson;
-                    }
-
-                    if (root1.ValueKind == JsonValueKind.Array)
-                    {
-                        MergeArrays(jsonWriter, root1, root2, false);
-                    }
-                    else
-                    {
-                        MergeObjects(jsonWriter, root1, root2);
-                    }
-                }
-
-                return Encoding.UTF8.GetString(outputBuffer.WrittenSpan);
-            }
-
-            private static void MergeObjects(Utf8JsonWriter jsonWriter, JsonElement root1, JsonElement root2)
-            {
-                jsonWriter.WriteStartObject();
-
-                // Write all the properties of the first document.
-                // If a property exists in both documents, either:
-                // * Merge them, if the value kinds match (e.g. both are objects or arrays),
-                // * Completely override the value of the first with the one from the second, if the value kind mismatches (e.g. one is object, while the other is an array or string),
-                // * Or favor the value of the first (regardless of what it may be), if the second one is null (i.e. don't override the first).
-                foreach (JsonProperty property in root1.EnumerateObject())
-                {
-                    string propertyName = property.Name;
-
-                    JsonValueKind newValueKind;
-
-                    if (root2.TryGetProperty(propertyName, out JsonElement newValue) && (newValueKind = newValue.ValueKind) != JsonValueKind.Null)
-                    {
-                        jsonWriter.WritePropertyName(propertyName);
-
-                        JsonElement originalValue = property.Value;
-                        JsonValueKind originalValueKind = originalValue.ValueKind;
-
-                        if (newValueKind == JsonValueKind.Object && originalValueKind == JsonValueKind.Object)
-                        {
-                            MergeObjects(jsonWriter, originalValue, newValue); // Recursive call
-                        }
-                        else if (newValueKind == JsonValueKind.Array && originalValueKind == JsonValueKind.Array)
-                        {
-                            MergeArrays(jsonWriter, originalValue, newValue, false);
-                        }
-                        else
-                        {
-                            newValue.WriteTo(jsonWriter);
-                        }
-                    }
-                    else
-                    {
-                        property.WriteTo(jsonWriter);
-                    }
-                }
-
-                // Write all the properties of the second document that are unique to it.
-                foreach (JsonProperty property in root2.EnumerateObject())
-                {
-                    if (!root1.TryGetProperty(property.Name, out _))
-                    {
-                        property.WriteTo(jsonWriter);
-                    }
-                }
-
-                jsonWriter.WriteEndObject();
-            }
-
-            private static void MergeArrays(Utf8JsonWriter jsonWriter, JsonElement root1, JsonElement root2, bool allowDupes)
-            {
-                // just does one level!!!
-                jsonWriter.WriteStartArray();
-
-                if (allowDupes)
-                {
-                    // Write all the elements from both JSON arrays
-                    foreach (JsonElement element in root1.EnumerateArray())
-                    {
-                        element.WriteTo(jsonWriter);
-                    }
-
-                    foreach (JsonElement element in root2.EnumerateArray())
-                    {
-                        element.WriteTo(jsonWriter);
-                    }
-                }
-                else
-                {
-                    var arrayItems = new HashSet<string>();
-                    foreach (JsonElement element in root1.EnumerateArray())
-                    {
-                        element.WriteTo(jsonWriter);
-                        arrayItems.Add(element.ToString());
-                    }
-
-                    foreach (JsonElement element in root2.EnumerateArray())
-                    {
-                        if (!arrayItems.Contains(element.ToString()))
-                        {
-                            element.WriteTo(jsonWriter);
-                        }
-                    }
-                }
-
-                jsonWriter.WriteEndArray();
-            }
-        }
-
-        private static bool TryCreateDirectory(string path)
-        {
-            try
-            {
-                if (!Directory.Exists(path))
-                {
-                    Directory.CreateDirectory(path);
-                    return true;
-                }
-            }
-            catch (Exception ex3)
-            {
-                Logger.LogError($"There was an error in TryCreateDirectory {path}: {ex3.Message}", ex3);
-                return false;
-            }
-
-            return true;
-        }
-
-        private static bool TryDeleteDirectory(string path)
-        {
-            try
-            {
-                if (Directory.Exists(path))
-                {
-                    Directory.Delete(path, true);
-                    return true;
-                }
-            }
-            catch (Exception ex3)
-            {
-                Logger.LogError($"There was an error in TryDeleteDirectory {path}: {ex3.Message}", ex3);
-                return false;
-            }
-
-            return true;
-        }
-
-        /// <summary>
-        /// Method <c>SetRegSettingsBackupAndRestoreItem</c> helper method to write to the registry.
-        /// </summary>
         public static void SetRegSettingsBackupAndRestoreItem(string itemName, string itemValue)
         {
             using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software\\Microsoft", true))
+            using (var ptKey = key.OpenSubKey("PowerToys", true) ?? key.CreateSubKey("PowerToys"))
             {
-                var ptKey = key.OpenSubKey("PowerToys", true);
-                if (ptKey != null)
-                {
-                    ptKey.SetValue(itemName, itemValue);
-                }
-                else
-                {
-                    var newPtKey = key.CreateSubKey("PowerToys");
-                    newPtKey.SetValue(itemName, itemValue);
-                }
+                ptKey.SetValue(itemName, itemValue);
             }
         }
 
-        /// <summary>
-        /// Method <c>GetRegSettingsBackupAndRestoreRegItem</c> helper method to read from the registry.
-        /// </summary>
         public static string GetRegSettingsBackupAndRestoreRegItem(string itemName)
         {
             using (var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Software\\Microsoft\\PowerToys"))
             {
-                if (key != null)
-                {
-                    var val = key.GetValue(itemName);
-                    if (val != null)
-                    {
-                        return val.ToString();
-                    }
-                }
+                return key?.GetValue(itemName)?.ToString();
             }
-
-            return null;
         }
 
-        /// <summary>
-        /// Method <c>RestoreSettings</c> returns a folder that has the latest backup in it.
-        /// </summary>
-        /// <returns>
-        /// A tuple that indicates if the backup was done or not, and a message.
-        /// The message usually is a localized reference key.
-        /// </returns>
-        public (bool Success, string Message, string Severity) RestoreSettings(
-            string appBasePath,
-            string settingsBackupAndRestoreDir,
-            string archiveFileName = null,
-            string archiveSha256 = null)
+        public (bool Success, string Message, string Severity) RestoreSettings(string appBasePath, string settingsBackupAndRestoreDir)
         {
             try
             {
-                // verify inputs
                 if (!Directory.Exists(appBasePath))
                 {
-                    return (false, $"Invalid appBasePath {appBasePath}", "Error");
+                    Logger.LogError($"Invalid settings directory {appBasePath}");
+                    return (false, "General_SettingsBackupAndRestore_RestoreError", "Error");
                 }
 
                 if (string.IsNullOrEmpty(settingsBackupAndRestoreDir))
                 {
-                    return (false, $"General_SettingsBackupAndRestore_NoBackupSyncPath", "Error");
+                    return (false, "General_SettingsBackupAndRestore_NoBackupSyncPath", "Error");
                 }
 
                 if (!Directory.Exists(settingsBackupAndRestoreDir))
@@ -297,126 +70,42 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
                 if (SettingsBackupRestoreEngine.GetLatestArchiveFileName(settingsBackupAndRestoreDir) == null)
                 {
-                    return (false, $"General_SettingsBackupAndRestore_NoBackupsFound", "Warning");
+                    return (false, "General_SettingsBackupAndRestore_NoBackupsFound", "Warning");
                 }
 
-                var engine = new SettingsBackupRestoreEngine(GetBackupRestoreSettingsJson());
-                RestoreOperationResult result = engine.Restore(appBasePath, settingsBackupAndRestoreDir, Path.GetTempPath(), archiveFileName, archiveSha256);
+                var engine = CreateEngine();
+                RestoreOperationResult result = engine.Restore(appBasePath, settingsBackupAndRestoreDir, Path.GetTempPath());
                 if (result.SettingsChanged)
                 {
-                    return (result.RestartRequired, $"RESTART APP", "Success");
+                    return (result.RestartRequired, "RESTART APP", "Success");
                 }
 
-                return (false, $"General_SettingsBackupAndRestore_NothingToRestore", "Informational");
+                return (false, "General_SettingsBackupAndRestore_NothingToRestore", "Informational");
             }
-            catch (Exception ex2)
+            catch (JsonException ex)
             {
-                Logger.LogError("Error in RestoreSettings, " + ex2.ToString());
-                return (false, $"General_SettingsBackupAndRestore_BackupError", "Error");
+                Logger.LogError("Invalid settings JSON during restore.", ex);
+                return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error");
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError("Error restoring settings.", ex);
+                return (false, "General_SettingsBackupAndRestore_RestoreError", "Error");
             }
         }
 
-        /// <summary>
-        /// Method <c>GetSettingsBackupAndRestoreDir</c> returns the path of the backup and restore location.
-        /// </summary>
-        /// <remarks>
-        /// This will return a default location based on user documents if non is set.
-        /// </remarks>
         public string GetSettingsBackupAndRestoreDir()
         {
             string settingsBackupAndRestoreDir = GetRegSettingsBackupAndRestoreRegItem("SettingsBackupAndRestoreDir");
             if (settingsBackupAndRestoreDir == null)
             {
                 settingsBackupAndRestoreDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PowerToys\\Backup");
+                SetRegSettingsBackupAndRestoreItem("SettingsBackupAndRestoreDir", settingsBackupAndRestoreDir);
             }
 
             return settingsBackupAndRestoreDir;
         }
 
-        private List<string> GetBackupSettingsFiles(string settingsBackupAndRestoreDir)
-        {
-            return Directory.GetFiles(settingsBackupAndRestoreDir, "settings_*.ptb", SearchOption.TopDirectoryOnly).ToList().Where(f => Regex.IsMatch(f, "settings_(\\d{1,19}).ptb")).ToList();
-        }
-
-        /// <summary>
-        /// Method <c>GetLatestSettingsFolder</c> returns a folder that has the latest backup in it.
-        /// </summary>
-        /// <remarks>
-        /// The backup will usually be a backup file that has to be extracted to a temp folder. This will do that for us.
-        /// </remarks>
-        private string GetLatestSettingsFolder()
-        {
-            string settingsBackupAndRestoreDir = GetSettingsBackupAndRestoreDir();
-
-            if (settingsBackupAndRestoreDir == null)
-            {
-                return null;
-            }
-
-            if (!Directory.Exists(settingsBackupAndRestoreDir))
-            {
-                return null;
-            }
-
-            var settingsBackupFolders = new Dictionary<long, string>();
-
-            var settingsBackupFiles = GetBackupSettingsFiles(settingsBackupAndRestoreDir).ToDictionary(x => long.Parse(Path.GetFileName(x).Replace("settings_", string.Empty).Replace(".ptb", string.Empty), CultureInfo.InvariantCulture));
-
-            var latestFolder = 0L;
-            var latestFile = 0L;
-
-            if (settingsBackupFolders.Count > 0)
-            {
-                latestFolder = settingsBackupFolders.OrderByDescending(x => x.Key).FirstOrDefault().Key;
-            }
-
-            if (settingsBackupFiles.Count > 0)
-            {
-                latestFile = settingsBackupFiles.OrderByDescending(x => x.Key).FirstOrDefault().Key;
-            }
-
-            if (latestFile == 0 && latestFolder == 0)
-            {
-                return null;
-            }
-            else if (latestFolder >= latestFile)
-            {
-                return settingsBackupFolders[latestFolder];
-            }
-            else
-            {
-                var tempPath = Path.GetTempPath();
-
-                var fullBackupDir = Path.Combine(tempPath, "PowerToys_settings_" + latestFile.ToString(CultureInfo.InvariantCulture));
-
-                lock (backupSettingsInternalLock)
-                {
-                    if (!Directory.Exists(fullBackupDir) || !File.Exists(Path.Combine(fullBackupDir, "manifest.json")))
-                    {
-                        TryDeleteDirectory(fullBackupDir);
-                        ZipFile.ExtractToDirectory(settingsBackupFiles[latestFile], fullBackupDir);
-                    }
-                }
-
-                ThreadPool.QueueUserWorkItem((x) =>
-                {
-                    try
-                    {
-                        RemoveOldBackups(tempPath, 1, TimeSpan.FromDays(7));
-                    }
-                    catch
-                    {
-                        // hmm, ok
-                    }
-                });
-
-                return fullBackupDir;
-            }
-        }
-
-        /// <summary>
-        /// Method <c>GetLatestBackupFileName</c> returns the name of the newest backup file.
-        /// </summary>
         public string GetLatestBackupFileName()
         {
             string settingsBackupAndRestoreDir = GetSettingsBackupAndRestoreDir();
@@ -425,79 +114,11 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                 : SettingsBackupRestoreEngine.GetLatestArchiveFileName(settingsBackupAndRestoreDir) ?? string.Empty;
         }
 
-        /// <summary>
-        /// Method <c>GetLatestSettingsBackupManifest</c> get's the meta data from a backup file.
-        /// </summary>
         public JsonNode GetLatestSettingsBackupManifest()
         {
-            var engine = new SettingsBackupRestoreEngine(GetBackupRestoreSettingsJson());
-            return engine.GetLatestManifest(GetSettingsBackupAndRestoreDir(), Path.GetTempPath());
+            return CreateEngine().GetLatestManifest(GetSettingsBackupAndRestoreDir(), Path.GetTempPath());
         }
 
-        public RestorePreviewViewModel GetRestorePreview(string appBasePath, string settingsBackupAndRestoreDir)
-        {
-            var engine = new SettingsBackupRestoreEngine(GetBackupRestoreSettingsJson());
-            return engine.CreateRestorePreview(appBasePath, settingsBackupAndRestoreDir, Path.GetTempPath());
-        }
-
-        /// <summary>
-        /// Method <c>IsIncludeFile</c> check's to see if a settings file is to be included during backup and restore.
-        /// </summary>
-        private static bool IsIncludeFile(JsonNode settings, string name)
-        {
-            foreach (var test in (JsonArray)settings["IncludeFiles"])
-            {
-                if (Regex.IsMatch(name, WildCardToRegular(test.ToString())))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Method <c>IsIgnoreFile</c> check's to see if a settings file is to be ignored during backup and restore.
-        /// </summary>
-        private static bool IsIgnoreFile(JsonNode settings, string name)
-        {
-            foreach (var test in (JsonArray)settings["IgnoreFiles"])
-            {
-                if (Regex.IsMatch(name, WildCardToRegular(test.ToString())))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Class <c>GetSettingsFiles</c> returns the effective list of settings files.
-        /// </summary>
-        /// <remarks>
-        /// Handles all the included/exclude files.
-        /// </remarks>
-        private static string[] GetSettingsFiles(JsonNode settings, string path)
-        {
-            if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
-            {
-                return Array.Empty<string>();
-            }
-
-            return Directory.GetFiles(path, "*.json", SearchOption.AllDirectories).Where(s => IsIncludeFile(settings, s) && !IsIgnoreFile(settings, s)).ToArray();
-        }
-
-        /// <summary>
-        /// Method <c>BackupSettings</c> does the backup process.
-        /// </summary>
-        /// <returns>
-        /// A tuple that indicates if the backup was done or not, and a message.
-        /// The message usually is a localized reference key.
-        /// </returns>
-        /// <remarks>
-        /// This is a wrapper for BackupSettingsInternal, so we can check the time to run.
-        /// </remarks>
         public (bool Success, string Message, string Severity, bool LastBackupExists, string OptionalMessage) BackupSettings(string appBasePath, string settingsBackupAndRestoreDir, bool dryRun)
         {
             var sw = Stopwatch.StartNew();
@@ -508,74 +129,44 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             return results;
         }
 
-        /// <summary>
-        /// Method <c>DryRunBackup</c> wrapper function to do a dry-run backup
-        /// </summary>
         public (bool Success, string Message, string Severity, bool LastBackupExists, string OptionalMessage) DryRunBackup()
         {
             var settingsUtils = SettingsUtils.Default;
             var appBasePath = Path.GetDirectoryName(settingsUtils.GetSettingsFilePath());
-            string settingsBackupAndRestoreDir = GetSettingsBackupAndRestoreDir();
-            var results = BackupSettings(appBasePath, settingsBackupAndRestoreDir, true);
-            lastBackupSettingsResults = (results.Success, results.Severity, results.LastBackupExists, DateTime.UtcNow);
-            return results;
+            return BackupSettings(appBasePath, GetSettingsBackupAndRestoreDir(), true);
         }
 
-        /// <summary>
-        /// Method <c>GetLastBackupSettingsResults</c> gets the results from the last backup process
-        /// </summary>
-        /// <returns>
-        /// A tuple that indicates if the backup was done or not, and other information
-        /// </returns>
         public (bool Success, bool HadError, bool LastBackupExists, DateTime? LastRan) GetLastBackupSettingsResults()
         {
             return (lastBackupSettingsResults.Success, lastBackupSettingsResults.Severity == "Error", lastBackupSettingsResults.LastBackupExists, lastBackupSettingsResults.LastRan);
         }
 
-        /// <summary>
-        /// Method <c>BackupSettingsInternal</c> does the backup process.
-        /// </summary>
-        /// <returns>
-        /// A tuple that indicates if the backup was done or not, and a message.
-        /// The message usually is a localized reference key.
-        /// </returns>
         private (bool Success, string Message, string Severity, bool LastBackupExists, string OptionalMessage) BackupSettingsInternal(string appBasePath, string settingsBackupAndRestoreDir, bool dryRun)
         {
             var lastBackupExists = false;
-
-            lock (backupSettingsInternalLock)
+            lock (BackupSettingsInternalLock)
             {
-                // simulated delay to validate behavior
-                // Thread.Sleep(1000);
                 try
                 {
-                    // verify inputs
                     if (!Directory.Exists(appBasePath))
                     {
-                        return (false, $"Invalid appBasePath {appBasePath}", "Error", lastBackupExists, string.Empty);
+                        Logger.LogError($"Invalid settings directory {appBasePath}");
+                        return (false, "General_SettingsBackupAndRestore_NoSettingsFilesFound", "Error", lastBackupExists, string.Empty);
                     }
 
                     if (string.IsNullOrEmpty(settingsBackupAndRestoreDir))
                     {
-                        return (false, $"General_SettingsBackupAndRestore_NoBackupSyncPath", "Error", lastBackupExists, "\n" + settingsBackupAndRestoreDir);
+                        return (false, "General_SettingsBackupAndRestore_NoBackupSyncPath", "Error", lastBackupExists, string.Empty);
                     }
 
-                    if (!Path.IsPathRooted(settingsBackupAndRestoreDir))
+                    if (!Path.IsPathRooted(settingsBackupAndRestoreDir) ||
+                        SecurePath.IsContained(Path.GetFullPath(appBasePath), Path.GetFullPath(settingsBackupAndRestoreDir)))
                     {
-                        return (false, $"Invalid settingsBackupAndRestoreDir, not rooted", "Error", lastBackupExists, "\n" + settingsBackupAndRestoreDir);
+                        Logger.LogError("Backup location must be rooted and outside the settings directory.");
+                        return (false, "General_SettingsBackupAndRestore_InvalidBackupLocation", "Error", lastBackupExists, string.Empty);
                     }
 
-                    string fullAppPath = Path.GetFullPath(appBasePath);
-                    string fullBackupPath = Path.GetFullPath(settingsBackupAndRestoreDir);
-                    if (SecurePath.IsContained(fullAppPath, fullBackupPath))
-                    {
-                        // backup cannot be under app
-                        Logger.LogError($"BackupSettings, backup cannot be under app");
-                        return (false, "General_SettingsBackupAndRestore_InvalidBackupLocation", "Error", lastBackupExists, "\n" + appBasePath);
-                    }
-
-                    var engine = new SettingsBackupRestoreEngine(GetBackupRestoreSettingsJson());
-                    BackupOperationResult result = engine.Backup(
+                    BackupOperationResult result = CreateEngine().Backup(
                         appBasePath,
                         settingsBackupAndRestoreDir,
                         Path.GetTempPath(),
@@ -586,313 +177,35 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                     lastBackupExists = result.PreviousBackupExists;
                     if (!result.BackupCreated)
                     {
-                        return (false, $"General_SettingsBackupAndRestore_NothingToBackup", "Informational", lastBackupExists, string.Empty);
+                        return (false, "General_SettingsBackupAndRestore_NothingToBackup", "Informational", lastBackupExists, string.Empty);
                     }
 
-                    return (true, $"General_SettingsBackupAndRestore_BackupComplete", "Success", lastBackupExists, string.Empty);
+                    return (true, "General_SettingsBackupAndRestore_BackupComplete", "Success", lastBackupExists, string.Empty);
                 }
-                catch (InvalidDataException ex)
+                catch (JsonException ex)
                 {
-                    Logger.LogError($"There was an error backing up settings: {ex.Message}", ex);
-                    return (false, "General_SettingsBackupAndRestore_NoSettingsFilesFound", "Error", lastBackupExists, string.Empty);
+                    Logger.LogError("Invalid settings JSON during backup.", ex);
+                    return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error", lastBackupExists, string.Empty);
                 }
-                catch (Exception ex2)
+                catch (Exception ex)
                 {
-                    Logger.LogError($"There was an error backing up settings: {ex2.Message}", ex2);
-                    return (false, $"General_SettingsBackupAndRestore_SettingsFormatError", "Error", lastBackupExists, string.Empty);
+                    Logger.LogError("Error backing up settings.", ex);
+                    return (false, "General_SettingsBackupAndRestore_BackupError", "Error", lastBackupExists, string.Empty);
                 }
             }
         }
 
-        /// <summary>
-        /// Searches for the config file (Json) in two possible paths and returns its content.
-        /// </summary>
-        /// <returns>Returns the content of the config file (Json) as string.</returns>
-        /// <exception cref="FileNotFoundException">Thrown if file is not found.</exception>
-        /// <remarks>If the settings window is launched from an installed instance of PT we need the path "...\Settings\\backup_restore_settings.json" and if the settings window is launched from a local VS build of PT we need the path "...\backup_restore_settings.json".</remarks>
+        private static SettingsBackupRestoreEngine CreateEngine()
+        {
+            return new SettingsBackupRestoreEngine(GetBackupRestoreSettingsJson());
+        }
+
         private static string GetBackupRestoreSettingsJson()
         {
             using Stream stream = typeof(SettingsBackupAndRestoreUtils).Assembly.GetManifestResourceStream("PowerToys.Settings.BackupRestoreSettings.json")
                 ?? throw new FileNotFoundException("The embedded backup_restore_settings.json resource could not be found.");
             using StreamReader reader = new(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
             return reader.ReadToEnd();
-        }
-
-        /// <summary>
-        /// Method <c>WildCardToRegular</c> is so we can use 'normal' wildcard syntax and instead of regex
-        /// </summary>
-        private static string WildCardToRegular(string value)
-        {
-            return "^" + Regex.Escape(value).Replace("\\*", ".*") + "$";
-        }
-
-        /// <summary>
-        /// Method <c>GetExportVersion</c> gets the version of the settings file that we want to backup.
-        /// It will be formatted and all problematic settings removed from it.
-        /// </summary>
-        public static string GetExportVersion(JsonNode backupRestoreSettings, string settingFileKey, string settingsFileName)
-        {
-            var ignoredSettings = GetIgnoredSettings(backupRestoreSettings, settingFileKey);
-            var settingsFile = JsonDocument.Parse(File.ReadAllText(settingsFileName));
-
-            var outputBuffer = new ArrayBufferWriter<byte>();
-
-            using (var jsonWriter = new Utf8JsonWriter(outputBuffer, new JsonWriterOptions { Indented = true }))
-            {
-                jsonWriter.WriteStartObject();
-                foreach (var property in settingsFile.RootElement.EnumerateObject().OrderBy(p => p.Name))
-                {
-                    if (!ignoredSettings.Contains(property.Name))
-                    {
-                        property.WriteTo(jsonWriter);
-                    }
-                }
-
-                jsonWriter.WriteEndObject();
-            }
-
-            if (settingFileKey.Equals("\\PowerToys Run\\settings.json", StringComparison.OrdinalIgnoreCase))
-            {
-                // PowerToys Run hack fix-up
-                var ptRunIgnoredSettings = GetPTRunIgnoredSettings(backupRestoreSettings);
-                var ptrSettings = JsonNode.Parse(Encoding.UTF8.GetString(outputBuffer.WrittenSpan));
-
-                foreach (JsonObject pluginToChange in ptRunIgnoredSettings)
-                {
-                    foreach (JsonObject plugin in (JsonArray)ptrSettings["plugins"])
-                    {
-                        if (plugin["Id"].ToString() == pluginToChange["Id"].ToString())
-                        {
-                            foreach (var nameOfPropertyToRemove in (JsonArray)pluginToChange["Names"])
-                            {
-                                plugin.Remove(nameOfPropertyToRemove.ToString());
-                            }
-                        }
-                    }
-                }
-
-                return ptrSettings.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-            }
-            else
-            {
-                return JsonNode.Parse(Encoding.UTF8.GetString(outputBuffer.WrittenSpan)).ToJsonString(new JsonSerializerOptions { WriteIndented = true });
-            }
-        }
-
-        /// <summary>
-        /// Method <c>GetPTRunIgnoredSettings</c> gets the 'Run-Plugin-level' settings we should ignore because they are problematic to backup/restore.
-        /// </summary>
-        private static JsonArray GetPTRunIgnoredSettings(JsonNode backupRestoreSettings)
-        {
-            ArgumentNullException.ThrowIfNull(backupRestoreSettings);
-
-            if (backupRestoreSettings["IgnoredPTRunSettings"] != null)
-            {
-                return (JsonArray)backupRestoreSettings["IgnoredPTRunSettings"];
-            }
-
-            return new JsonArray();
-        }
-
-        /// <summary>
-        /// Method <c>GetIgnoredSettings</c> gets the 'top-level' settings we should ignore because they are problematic to backup/restore.
-        /// </summary>
-        private static string[] GetIgnoredSettings(JsonNode backupRestoreSettings, string settingFileKey)
-        {
-            ArgumentNullException.ThrowIfNull(backupRestoreSettings);
-
-            if (settingFileKey.StartsWith("\\", StringComparison.OrdinalIgnoreCase))
-            {
-                settingFileKey = settingFileKey.Substring(1);
-            }
-
-            if (backupRestoreSettings["IgnoredSettings"] != null)
-            {
-                if (backupRestoreSettings["IgnoredSettings"][settingFileKey] != null)
-                {
-                    var settingsArray = (JsonArray)backupRestoreSettings["IgnoredSettings"][settingFileKey];
-
-                    Console.WriteLine("settingsArray " + settingsArray.GetType().FullName);
-
-                    var settingsList = new List<string>();
-
-                    foreach (var setting in settingsArray)
-                    {
-                        settingsList.Add(setting.ToString());
-                    }
-
-                    return settingsList.ToArray();
-                }
-                else
-                {
-                    return Array.Empty<string>();
-                }
-            }
-
-            return Array.Empty<string>();
-        }
-
-        /// <summary>
-        /// Method <c>RemoveOldBackups</c> is a helper that prevents is from having some runaway disk usages.
-        /// </summary>
-        private static void RemoveOldBackups(string location, int minNumberToKeep, TimeSpan deleteIfOlderThanTs)
-        {
-            if (!removeOldBackupsLock.TryEnter(1000))
-            {
-                return;
-            }
-
-            try
-            {
-                DateTime deleteIfOlder = DateTime.UtcNow.Subtract(deleteIfOlderThanTs);
-
-                var settingsBackupFolders = Directory.GetDirectories(location, "settings_*", SearchOption.TopDirectoryOnly).ToList().Where(f => Regex.IsMatch(f, "settings_(\\d{1,19})")).ToDictionary(x => long.Parse(Path.GetFileName(x).Replace("settings_", string.Empty), CultureInfo.InvariantCulture)).ToList();
-
-                settingsBackupFolders.AddRange(Directory.GetDirectories(location, "PowerToys_settings_*", SearchOption.TopDirectoryOnly).ToList().Where(f => Regex.IsMatch(f, "PowerToys_settings_(\\d{1,19})")).ToDictionary(x => long.Parse(Path.GetFileName(x).Replace("PowerToys_settings_", string.Empty), CultureInfo.InvariantCulture)));
-
-                var settingsBackupFiles = Directory.GetFiles(location, "settings_*.ptb", SearchOption.TopDirectoryOnly).ToList().Where(f => Regex.IsMatch(f, "settings_(\\d{1,19}).ptb")).ToDictionary(x => long.Parse(Path.GetFileName(x).Replace("settings_", string.Empty).Replace(".ptb", string.Empty), CultureInfo.InvariantCulture));
-
-                if (settingsBackupFolders.Count + settingsBackupFiles.Count <= minNumberToKeep)
-                {
-                    return;
-                }
-
-                foreach (var item in settingsBackupFolders)
-                {
-                    var backupTime = DateTime.FromFileTimeUtc(item.Key);
-
-                    if (item.Value.Contains("PowerToys_settings_", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // this is a temp backup and we want to clean based on the time it was created in the temp place, not the time that the backup was made.
-                        var folderCreatedTime = new DirectoryInfo(item.Value).CreationTimeUtc;
-
-                        if (folderCreatedTime > backupTime)
-                        {
-                            backupTime = folderCreatedTime;
-                        }
-                    }
-
-                    if (backupTime < deleteIfOlder)
-                    {
-                        try
-                        {
-                            Logger.LogInfo($"RemoveOldBackups killing {item.Value}");
-                            Directory.Delete(item.Value, true);
-                        }
-                        catch (Exception ex2)
-                        {
-                            Logger.LogError($"Failed to remove a setting backup folder ({item.Value}), because: ({ex2.Message})");
-                        }
-                    }
-                }
-
-                foreach (var item in settingsBackupFiles)
-                {
-                    var backupTime = DateTime.FromFileTimeUtc(item.Key);
-
-                    if (backupTime < deleteIfOlder)
-                    {
-                        try
-                        {
-                            Logger.LogInfo($"RemoveOldBackups killing {item.Value}");
-                            File.Delete(item.Value);
-                        }
-                        catch (Exception ex2)
-                        {
-                            Logger.LogError($"Failed to remove a setting backup folder ({item.Value}), because: ({ex2.Message})");
-                        }
-                    }
-                }
-            }
-            finally
-            {
-                removeOldBackupsLock.Exit();
-            }
-        }
-
-        /// <summary>
-        /// Class <c>JsonNormalizer</c> is a utility class to 'normalize' a JSON file so that it can be compared to another JSON file.
-        /// This really just means to fully sort it. This does not work for any JSON file where the order of the node is relevant.
-        /// </summary>
-        private sealed class JsonNormalizer
-        {
-            public static string Normalize(string json)
-            {
-                var doc1 = JsonNormalizer.Deserialize(json);
-                var newJson1 = JsonSerializer.Serialize(doc1, _serializerOptions);
-                return newJson1;
-            }
-
-            private static List<object> DeserializeArray(string json)
-            {
-                var result = JsonSerializer.Deserialize<List<object>>(json);
-
-                var updates = new List<object>();
-
-                foreach (var item in result)
-                {
-                    if (item != null)
-                    {
-                        var currentItem = (JsonElement)item;
-
-                        if (currentItem.ValueKind == JsonValueKind.Object)
-                        {
-                            updates.Add(Deserialize(currentItem.ToString()));
-                        }
-                        else if (((JsonElement)item).ValueKind == JsonValueKind.Array)
-                        {
-                            updates.Add(DeserializeArray(currentItem.ToString()));
-                        }
-                        else
-                        {
-                            updates.Add(item);
-                        }
-                    }
-                    else
-                    {
-                        updates.Add(item);
-                    }
-                }
-
-                return updates.OrderBy(x => JsonSerializer.Serialize(x)).ToList();
-            }
-
-            private static Dictionary<string, object> Deserialize(string json)
-            {
-                var doc = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-
-                var updates = new Dictionary<string, object>();
-
-                foreach (var item in doc)
-                {
-                    if (item.Value != null)
-                    {
-                        if (((JsonElement)item.Value).ValueKind == JsonValueKind.Object)
-                        {
-                            updates.Add(item.Key, Deserialize(((JsonElement)item.Value).ToString()));
-                        }
-                        else if (((JsonElement)item.Value).ValueKind == JsonValueKind.Array)
-                        {
-                            updates.Add(item.Key, DeserializeArray(((JsonElement)item.Value).ToString()));
-                        }
-                    }
-                }
-
-                foreach (var item in updates)
-                {
-                    doc.Remove(item.Key);
-                    doc.Add(item.Key, item.Value);
-                }
-
-                var ordered = new Dictionary<string, object>();
-
-                foreach (var item in doc.Keys.OrderBy(x => x))
-                {
-                    ordered.Add(item, doc[item]);
-                }
-
-                return ordered;
-            }
         }
     }
 }

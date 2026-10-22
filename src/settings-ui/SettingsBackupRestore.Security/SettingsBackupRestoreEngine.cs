@@ -8,7 +8,6 @@ using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -110,11 +109,14 @@ public sealed class SettingsBackupRestoreEngine
     }
 
     /// <summary>
-    /// Builds the restore confirmation model from the newest validated archive.
+    /// Restores included settings from the newest validated archive.
     /// </summary>
-    public RestorePreviewViewModel CreateRestorePreview(string settingsRootPath, string backupRootPath, string stagingParentPath)
+    public RestoreOperationResult Restore(
+        string settingsRootPath,
+        string backupRootPath,
+        string stagingParentPath)
     {
-        using SecureDirectoryRoot settingsRoot = SecureDirectoryRoot.OpenReadOnly(settingsRootPath);
+        using SecureDirectoryRoot settingsRoot = SecureDirectoryRoot.Open(settingsRootPath);
         using SecureDirectoryRoot backupRoot = SecureDirectoryRoot.OpenReadOnly(backupRootPath);
         using SecureDirectoryRoot stagingParent = SecureDirectoryRoot.Open(stagingParentPath);
         string archiveName = GetLatestArchiveFileName(backupRoot) ?? throw new FileNotFoundException("No settings backup was found.");
@@ -122,44 +124,6 @@ public sealed class SettingsBackupRestoreEngine
         try
         {
             using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
-            string archiveSha256 = ComputeSha256(archiveFile);
-            staging = BackupRestoreArchive.ExtractToExclusiveStaging(archiveFile, stagingParent);
-            return RestorePreviewViewModel.Create(
-                    policy,
-                    staging.EnumerateFiles(fileFilter: IsJsonOrManifest),
-                    settingsRoot.EnumerateFiles(fileFilter: IsIncludedJson))
-                .WithArchiveIdentity(archiveName, archiveSha256);
-        }
-        finally
-        {
-            CleanupStaging(staging);
-        }
-    }
-
-    /// <summary>
-    /// Restores included settings from the newest validated archive.
-    /// </summary>
-    public RestoreOperationResult Restore(
-        string settingsRootPath,
-        string backupRootPath,
-        string stagingParentPath,
-        string? archiveFileName = null,
-        string? expectedArchiveSha256 = null)
-    {
-        using SecureDirectoryRoot settingsRoot = SecureDirectoryRoot.Open(settingsRootPath);
-        using SecureDirectoryRoot backupRoot = SecureDirectoryRoot.OpenReadOnly(backupRootPath);
-        using SecureDirectoryRoot stagingParent = SecureDirectoryRoot.Open(stagingParentPath);
-        string archiveName = archiveFileName ?? GetLatestArchiveFileName(backupRoot) ?? throw new FileNotFoundException("No settings backup was found.");
-        SecureDirectoryRoot? staging = null;
-        try
-        {
-            using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
-            if (expectedArchiveSha256 != null &&
-                !string.Equals(ComputeSha256(archiveFile), expectedArchiveSha256, StringComparison.Ordinal))
-            {
-                throw new InvalidDataException("The selected settings backup changed after preview.");
-            }
-
             staging = BackupRestoreArchive.ExtractToExclusiveStaging(archiveFile, stagingParent);
             HashSet<string> currentPaths = new(settingsRoot.EnumerateFiles(fileFilter: IsIncludedJson), WindowsPathComparer.Instance);
             List<RestoreWriteOperation> operations = [];
@@ -341,15 +305,16 @@ public sealed class SettingsBackupRestoreEngine
             {
                 continue;
             }
-            catch
+            catch (Exception archiveException)
             {
                 archiveFile?.Dispose();
                 try
                 {
                     backupRoot.DeleteEntry(archiveName, isDirectory: false);
                 }
-                catch
+                catch (Exception cleanupException)
                 {
+                    archiveException.Data["ArchiveCleanupError"] = cleanupException;
                 }
 
                 throw;
@@ -378,13 +343,7 @@ public sealed class SettingsBackupRestoreEngine
         {
             if (DateTime.FromFileTimeUtc(timestamp) < deleteBefore)
             {
-                try
-                {
-                    backupRoot.DeleteEntry(path, isDirectory: false);
-                }
-                catch
-                {
-                }
+                backupRoot.DeleteEntry(path, isDirectory: false);
             }
         }
     }
@@ -427,14 +386,6 @@ public sealed class SettingsBackupRestoreEngine
         return JsonNode.DeepEquals(JsonNode.Parse(left), JsonNode.Parse(right));
     }
 
-    private static string ComputeSha256(SecureFile archiveFile)
-    {
-        archiveFile.Stream.Position = 0;
-        string hash = Convert.ToHexString(SHA256.HashData(archiveFile.Stream));
-        archiveFile.Stream.Position = 0;
-        return hash;
-    }
-
     private static void CleanupStaging(SecureDirectoryRoot? staging)
     {
         if (staging == null)
@@ -444,13 +395,7 @@ public sealed class SettingsBackupRestoreEngine
 
         try
         {
-            try
-            {
-                staging.DeleteTree();
-            }
-            catch
-            {
-            }
+            staging.DeleteTree();
         }
         finally
         {

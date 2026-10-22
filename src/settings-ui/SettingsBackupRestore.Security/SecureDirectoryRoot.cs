@@ -124,11 +124,11 @@ public sealed class SecureDirectoryRoot : IDisposable
     }
 
     /// <summary>
-    /// Opens a non-reparse file for same-handle reads.
+    /// Opens a non-reparse, single-link file for same-handle reads.
     /// </summary>
     public SecureFile OpenFileForRead(string relativePath, FileShare share = FileShare.Read)
     {
-        return OpenFile(relativePath, FileAccess.Read, share, createNew: false, createParents: false, rejectHardLinks: false);
+        return OpenFile(relativePath, FileAccess.Read, share, createNew: false, createParents: false, rejectHardLinks: true);
     }
 
     /// <summary>
@@ -722,7 +722,7 @@ public sealed class SecureDirectoryRoot : IDisposable
 
         if (rejectHardLinks && metadata.LinkCount != 1)
         {
-            throw new IOException($"Existing target has {metadata.LinkCount} hard links; overwrite rejected before truncation.");
+            throw new IOException($"Existing file has {metadata.LinkCount} hard links; access rejected before truncation or reading.");
         }
     }
 

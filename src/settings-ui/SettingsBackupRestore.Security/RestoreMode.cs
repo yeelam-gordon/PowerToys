@@ -10,11 +10,6 @@ namespace Microsoft.PowerToys.SettingsBackupRestore.Security;
 public enum RestoreMode
 {
     /// <summary>
-    /// Create a settings file that does not currently exist.
-    /// </summary>
-    Create,
-
-    /// <summary>
     /// Merge backup JSON into the current JSON.
     /// </summary>
     Merge,

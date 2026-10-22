@@ -56,10 +56,13 @@ internal sealed class TestDirectory : IDisposable
         };
 
         using Process process = Process.Start(startInfo)!;
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        Assert.AreEqual(0, process.ExitCode, $"mklink failed. stdout: {output} stderr: {error}");
+        if (!process.WaitForExit(10_000))
+        {
+            process.Kill();
+            Assert.Fail($"mklink timed out after 10 seconds (PID {process.Id}).");
+        }
+
+        Assert.AreEqual(0, process.ExitCode, $"mklink failed: {process.StandardError.ReadToEnd()}");
         links.Add(linkPath);
         return linkPath;
     }

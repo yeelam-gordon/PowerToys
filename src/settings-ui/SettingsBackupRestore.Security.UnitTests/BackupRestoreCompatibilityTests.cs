@@ -16,22 +16,6 @@ public sealed class BackupRestoreCompatibilityTests
 {
     private static readonly int[] ExpectedMergedItems = [1, 2, 3, 3];
 
-    private static readonly string[] PreviewArchivePaths =
-    [
-        "manifest.json",
-        @"Keyboard Manager\default.json",
-        @"FancyZones\settings.json",
-        @"PowerToys\log_settings.json",
-    ];
-
-    private static readonly string[] PreviewCurrentPaths =
-    [
-        @"Keyboard Manager\default.json",
-        @"FancyZones\settings.json",
-        @"Workspaces\workspaces.json",
-        @"Unlisted\diagnostics.json",
-    ];
-
     [TestMethod]
     public void ProductionPolicyPreservesIncludeIgnoreAndCustomOverwrite()
     {
@@ -115,54 +99,6 @@ public sealed class BackupRestoreCompatibilityTests
     }
 
     [TestMethod]
-    public void RestorePreviewListsModulesExclusionsModesAndRestart()
-    {
-        BackupRestorePolicy policy = LoadProductionPolicy();
-        RestorePreviewViewModel preview = RestorePreviewViewModel.Create(
-            policy,
-            PreviewArchivePaths,
-            PreviewCurrentPaths);
-
-        RestorePreviewItem keyboardManager = preview.Items.Single(item => item.Module == "Keyboard Manager");
-        RestorePreviewItem fancyZones = preview.Items.Single(item => item.Module == "FancyZones");
-        RestorePreviewItem ignored = preview.Items.Single(item => item.SettingsPath == @"PowerToys\log_settings.json");
-
-        Assert.IsTrue(keyboardManager.Included);
-        Assert.AreEqual(RestoreMode.Overwrite, keyboardManager.RestoreMode);
-        Assert.IsTrue(fancyZones.Included);
-        Assert.AreEqual(RestoreMode.Merge, fancyZones.RestoreMode);
-        Assert.IsFalse(ignored.Included);
-        Assert.AreEqual("Excluded by IgnoreFiles", ignored.ExclusionReason);
-        Assert.IsFalse(preview.Items.Any(item => item.SettingsPath == @"Workspaces\workspaces.json"));
-        Assert.IsFalse(preview.Items.Any(item => item.SettingsPath == @"Unlisted\diagnostics.json"));
-        Assert.IsTrue(preview.RestartAfterRestore);
-        StringAssert.Contains(preview.SecurityBoundaryStatement, "handle-relative I/O remain the security boundary");
-    }
-
-    [TestMethod]
-    public void RestorePreviewRetainsWindowsDistinctUnicodeArchivePaths()
-    {
-        const string policyJson = """
-            {
-              "IncludeFiles": ["*"],
-              "IgnoreFiles": [],
-              "CustomRestoreSettings": {},
-              "RestartAfterRestore": false
-            }
-            """;
-        BackupRestorePolicy policy = BackupRestorePolicy.Parse(policyJson);
-
-        RestorePreviewViewModel preview = RestorePreviewViewModel.Create(
-            policy,
-            ["σ.json", "ς.json"],
-            []);
-
-        Assert.AreEqual(2, preview.Items.Count);
-        Assert.IsTrue(preview.Items.Any(item => item.SettingsPath == "σ.json"));
-        Assert.IsTrue(preview.Items.Any(item => item.SettingsPath == "ς.json"));
-    }
-
-    [TestMethod]
     public void CustomOverwriteKeepsWindowsDistinctUnicodePathsSeparate()
     {
         const string policyJson = """
@@ -178,32 +114,6 @@ public sealed class BackupRestoreCompatibilityTests
 
         Assert.AreEqual(RestoreMode.Overwrite, policy.GetRestoreMode("σ.json"));
         Assert.AreEqual(RestoreMode.Merge, policy.GetRestoreMode("ς.json"));
-    }
-
-    [TestMethod]
-    public void RestorePreviewDistinguishesCreateFromExistingTargetActions()
-    {
-        const string policyJson = """
-            {
-              "IncludeFiles": ["*"],
-              "IgnoreFiles": [],
-              "CustomRestoreSettings": {
-                "\\existing.json": { "overwrite": true },
-                "\\σ.json": { "overwrite": true }
-              }
-            }
-            """;
-        BackupRestorePolicy policy = BackupRestorePolicy.Parse(policyJson);
-
-        RestorePreviewViewModel preview = RestorePreviewViewModel.Create(
-            policy,
-            ["existing.json", "new.json", "σ.json", "ς.json"],
-            ["existing.json", "σ.json"]);
-
-        Assert.AreEqual(RestoreMode.Overwrite, preview.Items.Single(item => item.SettingsPath == "existing.json").RestoreMode);
-        Assert.AreEqual(RestoreMode.Create, preview.Items.Single(item => item.SettingsPath == "new.json").RestoreMode);
-        Assert.AreEqual(RestoreMode.Overwrite, preview.Items.Single(item => item.SettingsPath == "σ.json").RestoreMode);
-        Assert.AreEqual(RestoreMode.Create, preview.Items.Single(item => item.SettingsPath == "ς.json").RestoreMode);
     }
 
     private static BackupRestorePolicy LoadProductionPolicy()

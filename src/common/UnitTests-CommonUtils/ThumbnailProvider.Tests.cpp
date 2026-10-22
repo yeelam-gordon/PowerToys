@@ -769,7 +769,7 @@ namespace UnitTestsCommonUtils
                 return;
             }
 
-            TestHelpers::TempDirectory tempDirectory;
+            nonthrowing_temp_directory tempDirectory;
             std::chrono::milliseconds slowest{};
             size_t executions = 0;
             size_t successes = 0;
@@ -934,6 +934,7 @@ namespace UnitTestsCommonUtils
 
             Assert::AreEqual<size_t>(ARRAYSIZE(providers), successes);
             Assert::IsTrue(slowest.count() < thumbnail_provider::default_timeout_ms);
+            Assert::IsTrue(tempDirectory.cleanup(), L"Provider fixtures and browser data must be removed.");
         }
 
         TEST_METHOD (LaunchInJob_ConcurrentSvgProvidersUseSeparateProfiles)
@@ -944,7 +945,7 @@ namespace UnitTestsCommonUtils
                 get_environment_path(L"POWERTOYS_REPOSITORY_ROOT"));
             Assert::IsTrue(validate_integration_configuration(configuration).empty());
 
-            TestHelpers::TempDirectory directory;
+            nonthrowing_temp_directory directory;
             const auto& svgProvider = providers[0];
             std::vector<std::filesystem::path> inputs;
             std::vector<std::future<thumbnail_provider::launch_result>> launches;
@@ -977,6 +978,8 @@ namespace UnitTestsCommonUtils
                     std::filesystem::is_directory(input),
                     L"Each SVG parser must create its own browser profile beside its staged input.");
             }
+
+            Assert::IsTrue(directory.cleanup(), L"Concurrent SVG browser data must be removed.");
         }
 
         TEST_METHOD (LaunchInJob_Timeout_TerminatesParentAndDescendant)

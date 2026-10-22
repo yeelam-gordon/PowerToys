@@ -287,7 +287,7 @@ public sealed class SettingsBackupRestoreEngine
     }
 
     /// <summary>
-    /// Gets the newest compatible archive name without opening untrusted child paths by name.
+    /// Gets the newest archive candidate name; the selected file is validated when its contents are opened.
     /// </summary>
     public static string? GetLatestArchiveFileName(string backupRootPath)
     {
@@ -302,7 +302,7 @@ public sealed class SettingsBackupRestoreEngine
 
     private static string? GetLatestArchiveFileName(SecureDirectoryRoot backupRoot)
     {
-        return backupRoot.EnumerateFiles(recursive: false, fileFilter: IsArchiveCandidate)
+        return backupRoot.EnumerateTopLevelFileNames()
             .Select(path => (Path: path, Timestamp: ParseArchiveTimestamp(path)))
             .Where(item => item.Timestamp.HasValue && Path.GetDirectoryName(item.Path) == string.Empty)
             .OrderByDescending(item => item.Timestamp)
@@ -409,7 +409,7 @@ public sealed class SettingsBackupRestoreEngine
 
     private static void RemoveOldArchives(SecureDirectoryRoot backupRoot, DateTime deleteBefore, int minimumToKeep)
     {
-        List<(string Path, long Timestamp)> archives = backupRoot.EnumerateFiles(recursive: false, fileFilter: IsArchiveCandidate)
+        List<(string Path, long Timestamp)> archives = backupRoot.EnumerateTopLevelFileNames()
             .Select(path => (Path: path, Timestamp: ParseArchiveTimestamp(path)))
             .Where(item => item.Timestamp.HasValue && Path.GetDirectoryName(item.Path) == string.Empty)
             .Select(item => (item.Path, item.Timestamp!.Value))
@@ -437,11 +437,6 @@ public sealed class SettingsBackupRestoreEngine
     private static bool IsJsonOrManifest(string path)
     {
         return path.EndsWith(".json", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private static bool IsArchiveCandidate(string path)
-    {
-        return ParseArchiveTimestamp(path).HasValue;
     }
 
     private static long? ParseArchiveTimestamp(string path)

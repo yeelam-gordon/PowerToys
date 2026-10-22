@@ -201,6 +201,16 @@ public sealed class SecureDirectoryRoot : IDisposable
         return files;
     }
 
+    internal IReadOnlyList<string> EnumerateTopLevelFileNames()
+    {
+        ThrowIfDisposed();
+
+        // Names are candidates only; content access still requires a validated handle-relative open.
+        return Directory.EnumerateFiles(GetFinalPath(handle), "*", SearchOption.TopDirectoryOnly)
+            .Select(path => Path.GetFileName(path))
+            .ToArray();
+    }
+
     /// <summary>
     /// Removes all validated entries below this app-owned root and marks the root itself for deletion.
     /// </summary>

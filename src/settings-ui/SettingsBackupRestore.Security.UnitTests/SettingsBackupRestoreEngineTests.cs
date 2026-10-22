@@ -601,6 +601,81 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow("inspect")]
+    [DataRow("backup")]
+    [DataRow("dry-run")]
+    [DataRow("restore")]
+    public void LockedOlderArchiveDoesNotBlockTheLatestArchive(string operation)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string current = test.CreateFile(@"source\settings.json", """{"value":1}""");
+        string targetSettings = test.CreateFile(@"target\settings.json", """{"value":0}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = DateTime.UtcNow;
+        BackupOperationResult first = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", now);
+        File.WriteAllText(current, """{"value":2}""");
+        BackupOperationResult latest = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", now.AddMinutes(1));
+        File.WriteAllText(current, """{"value":3}""");
+        using FileStream olderLock = new(Path.Combine(backups, first.ArchiveFileName!), FileMode.Open, FileAccess.Read, FileShare.None);
+
+        switch (operation)
+        {
+            case "inspect":
+                Assert.AreEqual(latest.ArchiveFileName, SettingsBackupRestoreEngine.GetLatestArchiveFileName(backups));
+                Assert.IsNotNull(engine.GetLatestManifest(backups));
+                break;
+            case "backup":
+            case "dry-run":
+                BackupOperationResult result = engine.Backup(source, backups, staging, operation == "dry-run", "1.2.3", "test-machine", now.AddMinutes(2));
+                Assert.IsTrue(result.BackupCreated);
+                Assert.IsNull(result.RetentionError);
+                Assert.AreEqual(operation == "dry-run" ? 2 : 3, Directory.GetFiles(backups, "*.ptb").Length);
+                break;
+            case "restore":
+                Assert.IsTrue(engine.Restore(target, backups, staging).SettingsChanged);
+                using (JsonDocument settings = JsonDocument.Parse(File.ReadAllText(targetSettings)))
+                {
+                    Assert.AreEqual(2, settings.RootElement.GetProperty("value").GetInt32());
+                }
+
+                break;
+            default:
+                Assert.Fail("Unknown test operation.");
+                break;
+        }
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void SelectedArchiveStillRequiresSingleLinkValidation()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string shared = test.CreateDirectory("shared");
+        test.CreateFile(@"source\settings.json", """{"value":1}""");
+        string targetSettings = test.CreateFile(@"target\settings.json", """{"value":0}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = DateTime.UtcNow;
+        BackupOperationResult first = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", now);
+        string sharedArchive = Path.Combine(shared, "archive.ptb");
+        File.Copy(Path.Combine(backups, first.ArchiveFileName!), sharedArchive);
+        test.CreateHardLink($"backups\\settings_{now.AddMinutes(1).ToFileTimeUtc()}.ptb", sharedArchive);
+
+        Assert.ThrowsException<IOException>(() => engine.GetLatestManifest(backups));
+        Assert.ThrowsException<IOException>(() => engine.Restore(target, backups, staging));
+        Assert.AreEqual("""{"value":0}""", File.ReadAllText(targetSettings));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
     public void InvalidArchiveLeavesSettingsUnchanged()
     {
         using TestDirectory test = new();

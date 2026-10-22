@@ -693,6 +693,32 @@ public sealed class ClipboardHelperTests
         CollectionAssert.AreEqual(ExpectedQueuedInputOrder, sent);
     }
 
+    [TestMethod]
+    public void HelperCallback_ReentrantDataRetrievalCannotConsumeNewGeneration()
+    {
+        long pendingGeneration = 1;
+        string[] files = new string[1];
+        files[0] = "old.txt";
+        Assert.IsFalse(DragFileCallback.TryReadFile(
+            ref pendingGeneration,
+            () =>
+            {
+                _ = Interlocked.Exchange(ref pendingGeneration, 2);
+                return files;
+            },
+            out string? oldFile,
+            out long oldGeneration));
+        Assert.IsNull(oldFile);
+        Assert.AreEqual(1L, oldGeneration);
+        Assert.AreEqual(2L, pendingGeneration);
+
+        files[0] = "current.txt";
+        Assert.IsTrue(DragFileCallback.TryReadFile(ref pendingGeneration, () => files, out string? currentFile, out long currentGeneration));
+        Assert.AreEqual("current.txt", currentFile);
+        Assert.AreEqual(2L, currentGeneration);
+        Assert.AreEqual(0L, pendingGeneration);
+    }
+
     private static bool TryMoveDirectory(string sourceDirectory, string destinationDirectory)
     {
         try

@@ -118,28 +118,23 @@ namespace MouseWithoutBorders
 
         private void FormHelper_DragEnter(object sender, DragEventArgs e)
         {
-            object o = e.Data.GetData(DataFormats.FileDrop);
-
-            if (o != null)
+            if (DragFileCallback.TryReadFile(
+                ref dragValidationGeneration,
+                () => e.Data.GetData(DataFormats.FileDrop),
+                out string fileName,
+                out long validationGeneration))
             {
                 e.Effect = DragDropEffects.Copy;
-                Array ar = (string[])o;
+                Hide();
 
-                if (ar.Length > 0)
+                try
                 {
-                    string fileName = ar.GetValue(0).ToString();
-                    Hide();
-
-                    try
-                    {
-                        long validationGeneration = Interlocked.Exchange(ref dragValidationGeneration, 0);
-                        remoteClipboardHelper.SendDragFile(fileName, validationGeneration);
-                    }
-                    catch (Exception ex)
-                    {
-                        EventLogger.LogEvent("FormHelper_DragEnter: " + ex.Message, EventLogEntryType.Error);
-                        QuitDueToCommunicationError();
-                    }
+                    remoteClipboardHelper.SendDragFile(fileName, validationGeneration);
+                }
+                catch (Exception ex)
+                {
+                    EventLogger.LogEvent("FormHelper_DragEnter: " + ex.Message, EventLogEntryType.Error);
+                    QuitDueToCommunicationError();
                 }
             }
         }

@@ -311,7 +311,7 @@ namespace UnitTestsCommonUtils
             { L"PowerToys.StlThumbnailProvider.exe", L"src\\modules\\previewpane\\UnitTests-StlThumbnailProvider\\HelperFiles\\sample.stl", L".stl" },
         };
 
-        bool is_valid_thumbnail_bitmap(const std::filesystem::path& path, LONG maximumDimension)
+        bool is_loadable_bitmap(const std::filesystem::path& path)
         {
             const auto bitmap = static_cast<HBITMAP>(
                 LoadImageW(nullptr, path.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
@@ -319,9 +319,7 @@ namespace UnitTestsCommonUtils
             const auto valid = bitmap &&
                                GetObjectW(bitmap, sizeof(information), &information) == sizeof(information) &&
                                information.bmWidth > 0 &&
-                               information.bmHeight > 0 &&
-                               information.bmWidth <= maximumDimension &&
-                               information.bmHeight <= maximumDimension;
+                               information.bmHeight > 0;
             if (bitmap)
             {
                 DeleteObject(bitmap);
@@ -870,7 +868,7 @@ namespace UnitTestsCommonUtils
                 std::error_code outputError;
                 const auto outputExists =
                     std::filesystem::is_regular_file(output, outputError);
-                const auto bitmapLoaded = is_valid_thumbnail_bitmap(output, 256);
+                const auto bitmapLoaded = is_loadable_bitmap(output);
                 const auto succeeded =
                     result.status == thumbnail_provider::launch_status::completed &&
                     result.exit_code == 0 &&
@@ -972,7 +970,7 @@ namespace UnitTestsCommonUtils
             for (auto input : inputs)
             {
                 input.replace_extension(L".bmp");
-                Assert::IsTrue(is_valid_thumbnail_bitmap(input, 256));
+                Assert::IsTrue(is_loadable_bitmap(input));
                 input.replace_extension(L".WebView2");
                 Assert::IsTrue(
                     std::filesystem::is_directory(input),

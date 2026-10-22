@@ -209,6 +209,14 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             {
                 LogStagingCleanupError(cleanupError);
             }
+
+            if (exception.Data["RestoreRollbackErrors"] is Exception[] rollbackErrors)
+            {
+                foreach (Exception rollbackError in rollbackErrors)
+                {
+                    Logger.LogError("A settings change could not be undone after restore failed.", rollbackError);
+                }
+            }
         }
 
         private static void LogStagingCleanupError(Exception cleanupError)

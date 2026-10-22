@@ -32,6 +32,10 @@ public sealed class SettingsBackupRestoreEngine
 
     internal Action<SecureDirectoryRoot>? BeforeStagingCleanup { get; set; }
 
+    internal Action<string>? AfterRestoreWrite { get; set; }
+
+    internal Action<string>? AfterRestoreRollbackFileClosed { get; set; }
+
     /// <summary>
     /// Compares settings with the newest archive and optionally writes a compatible .ptb archive.
     /// </summary>
@@ -175,13 +179,14 @@ public sealed class SettingsBackupRestoreEngine
                         {
                             string originalJson = currentFile.ReadAllText();
                             string currentJson = policy.CreateExportVersion(relativePath, originalJson);
-                            if (JsonEquivalent(currentJson, restoreJson))
+                            RestoreMode restoreMode = policy.GetRestoreMode(relativePath);
+                            if (JsonEquivalent(currentJson, restoreJson, ignoreArrayOrder: restoreMode == RestoreMode.Merge))
                             {
                                 currentFile.Dispose();
                                 continue;
                             }
 
-                            string contents = policy.GetRestoreMode(relativePath) == RestoreMode.Overwrite
+                            string contents = restoreMode == RestoreMode.Overwrite
                                 ? restoreJson
                                 : JsonSettingsMerge.Merge(originalJson, restoreJson);
                             if (JsonEquivalent(originalJson, contents))
@@ -448,9 +453,37 @@ public sealed class SettingsBackupRestoreEngine
         return long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out long timestamp) ? timestamp : null;
     }
 
-    private static bool JsonEquivalent(string left, string right)
+    private static bool JsonEquivalent(string left, string right, bool ignoreArrayOrder = false)
     {
-        return JsonNode.DeepEquals(JsonNode.Parse(left), JsonNode.Parse(right));
+        JsonNode? leftNode = JsonNode.Parse(left);
+        JsonNode? rightNode = JsonNode.Parse(right);
+        if (ignoreArrayOrder)
+        {
+            leftNode = SortJsonForComparison(leftNode);
+            rightNode = SortJsonForComparison(rightNode);
+        }
+
+        return JsonNode.DeepEquals(leftNode, rightNode);
+    }
+
+    private static JsonNode? SortJsonForComparison(JsonNode? node)
+    {
+        if (node is JsonObject jsonObject)
+        {
+            return new JsonObject(jsonObject
+                .OrderBy(property => property.Key, StringComparer.Ordinal)
+                .Select(property => KeyValuePair.Create(property.Key, SortJsonForComparison(property.Value))));
+        }
+
+        if (node is JsonArray jsonArray)
+        {
+            return new JsonArray(jsonArray
+                .Select(SortJsonForComparison)
+                .OrderBy(item => item?.ToJsonString(), StringComparer.Ordinal)
+                .ToArray());
+        }
+
+        return node?.DeepClone();
     }
 
     private Exception? CleanupStaging(SecureDirectoryRoot? staging)
@@ -480,9 +513,8 @@ public sealed class SettingsBackupRestoreEngine
         }
     }
 
-    private static void ApplyRestoreOperations(SecureDirectoryRoot settingsRoot, List<RestoreWriteOperation> operations)
+    private void ApplyRestoreOperations(SecureDirectoryRoot settingsRoot, List<RestoreWriteOperation> operations)
     {
-        List<string> createdFiles = [];
         SortedSet<string> createdDirectories = new(WindowsPathComparer.Instance);
         List<RestoreWriteOperation> overwritten = [];
         try
@@ -498,7 +530,6 @@ public sealed class SettingsBackupRestoreEngine
                 }
 
                 operation.TargetFile = settingsRoot.CreateNewFile(operation.RelativePath);
-                createdFiles.Add(operation.RelativePath);
             }
 
             foreach (RestoreWriteOperation operation in operations)
@@ -509,6 +540,7 @@ public sealed class SettingsBackupRestoreEngine
                 }
 
                 operation.TargetFile!.OverwriteAllText(operation.NewContents);
+                AfterRestoreWrite?.Invoke(operation.RelativePath);
             }
         }
         catch (Exception restoreException)
@@ -523,14 +555,17 @@ public sealed class SettingsBackupRestoreEngine
 
             foreach (RestoreWriteOperation operation in operations.Where(operation => operation.IsNew))
             {
-                operation.TargetFile?.Dispose();
-                operation.TargetFile = null;
-            }
-
-            for (int index = createdFiles.Count - 1; index >= 0; index--)
-            {
-                string path = createdFiles[index];
-                TryRollback(() => settingsRoot.DeleteEntry(path, isDirectory: false), rollbackErrors);
+                if (operation.TargetFile != null)
+                {
+                    TryRollback(operation.TargetFile.MarkForDeletion, rollbackErrors);
+                    TryRollback(
+                        () =>
+                        {
+                            operation.Dispose();
+                            AfterRestoreRollbackFileClosed?.Invoke(operation.RelativePath);
+                        },
+                        rollbackErrors);
+                }
             }
 
             foreach (string directory in createdDirectories.OrderByDescending(path => path.Length))

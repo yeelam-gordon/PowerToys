@@ -333,6 +333,108 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    public void RestoreSkipsReorderedPowerToysRunPlugins()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(
+            @"source\PowerToys Run\settings.json",
+            """{"plugins":[{"Id":"other","Name":"Other"},{"Id":"525995402BEF4A8CA860D92F6D108092","Name":"Plugin"}]}""");
+        const string currentJson = """
+            {"plugins":[{"Name":"Plugin","Id":"525995402BEF4A8CA860D92F6D108092","IconPathDark":"dark","IconPathLight":"light"},{"Name":"Other","Id":"other"}]}
+            """;
+        string current = test.CreateFile(@"target\PowerToys Run\settings.json", currentJson);
+        SettingsBackupRestoreEngine engine = new(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "backup_restore_settings.json")));
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsFalse(result.SettingsChanged);
+        Assert.IsFalse(result.RestartRequired);
+        Assert.AreEqual(currentJson, File.ReadAllText(current));
+    }
+
+    [TestMethod]
+    public void RestorePreservesArrayOrderForOverwrite()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\Keyboard Manager\default.json", """{"items":[1,2]}""");
+        string current = test.CreateFile(@"target\Keyboard Manager\default.json", """{"items":[2,1]}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsTrue(result.SettingsChanged);
+        Assert.IsTrue(result.RestartRequired);
+        using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(current));
+        Assert.AreEqual(1, settings.RootElement.GetProperty("items")[0].GetInt32());
+        Assert.AreEqual(2, settings.RootElement.GetProperty("items")[1].GetInt32());
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void RestoreRollbackRemovesCreatedFileAndPreservesReplacement(bool replaceAfterClose)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\existing.json", """{"value":2}""");
+        test.CreateFile(@"source\created.json", """{"created":true}""");
+        const string originalJson = """{"value":1}""";
+        string existing = test.CreateFile(@"target\existing.json", originalJson);
+        string created = Path.Combine(target, "created.json");
+        const string replacementJson = """{"replacement":true}""";
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        IOException failure = new("Injected restore write failure.");
+        int writeCount = 0;
+        engine.AfterRestoreWrite = _ =>
+        {
+            if (++writeCount == 2)
+            {
+                throw failure;
+            }
+        };
+        engine.AfterRestoreRollbackFileClosed = relativePath =>
+        {
+            Assert.AreEqual("created.json", relativePath);
+            if (replaceAfterClose)
+            {
+                File.Delete(created);
+                File.WriteAllText(created, replacementJson);
+            }
+        };
+
+        IOException actual = Assert.ThrowsException<IOException>(() => engine.Restore(target, backups, staging));
+
+        Assert.AreSame(failure, actual);
+        Assert.AreEqual(2, writeCount);
+        Assert.AreEqual(originalJson, File.ReadAllText(existing));
+        if (replaceAfterClose)
+        {
+            Assert.IsTrue(File.Exists(created));
+            Assert.AreEqual(replacementJson, File.ReadAllText(created));
+        }
+        else
+        {
+            Assert.IsFalse(File.Exists(created));
+        }
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
     public void BackupDoesNotPublishAnArchiveBeyondRestoreLimits()
     {
         using TestDirectory test = new();

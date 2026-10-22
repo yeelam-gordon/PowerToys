@@ -990,7 +990,7 @@ lon
 longdate
 lowlevel
 LOWORD
-lparam
+LPARAM
 LPBITMAPINFOHEADER
 lpch
 LPCITEMIDLIST
@@ -1887,7 +1887,7 @@ SYSDEADCHAR
 sysdm
 SYSICONINDEX
 SYSKEY
-syskeydown
+SYSKEYDOWN
 SYSKEYUP
 SYSLIB
 sysmenu
@@ -2216,7 +2216,7 @@ WORKSPACESSNAPSHOTTOOL
 WORKSPACESWINDOWARRANGER
 worktree
 wox
-wparam
+WPARAM
 wpf
 wpftmp
 wpfui
@@ -2272,6 +2272,6 @@ zonable
 zoneset
 Zoneszonabletester
 Zoomin
-zoomit
+Zoomit
 ZOOMITX
 Zorder

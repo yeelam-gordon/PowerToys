@@ -65,6 +65,16 @@ namespace
         return fixtureSequence;
     }
 
+    wchar_t* TestCopyClipboardText(wchar_t* destination, const wchar_t* source)
+    {
+        Assert::IsTrue(source == clipboardText.data());
+        const auto end = std::find(clipboardText.begin(), clipboardText.end(), L'\0');
+        Assert::IsTrue(end != clipboardText.end(), L"String copy requires a terminator within the supplied clipboard text.");
+        const size_t length = static_cast<size_t>(end - clipboardText.begin());
+        Assert::IsTrue(length < clipboardBytes / sizeof(wchar_t), L"String copy must fit within the supplied clipboard text.");
+        return wcscpy(destination, source);
+    }
+
     void SetText(const std::wstring& text, bool terminated = true)
     {
         clipboardText.assign(text.begin(), text.end());
@@ -86,6 +96,8 @@ namespace
 #define GlobalLock TestGlobalLock
 #define GlobalUnlock TestGlobalUnlock
 #define GetClipboardSequenceNumber TestGetClipboardSequenceNumber
+// Fail a reader regression before attempting a string copy outside the fixture.
+#define wcscpy TestCopyClipboardText
 #include "..\ZoomIt\DemoType.cpp"
 #undef OpenClipboard
 #undef CloseClipboard
@@ -95,6 +107,7 @@ namespace
 #undef GlobalLock
 #undef GlobalUnlock
 #undef GetClipboardSequenceNumber
+#undef wcscpy
 
 namespace DemoTypeClipboardTests
 {

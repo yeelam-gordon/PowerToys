@@ -56,7 +56,7 @@ public sealed class SettingsBackupRestoreEngine
         IReadOnlyDictionary<string, string> current = ReadSettings(settingsRoot);
         if (current.Count == 0)
         {
-            throw new InvalidDataException("No settings files were found.");
+            return new BackupOperationResult(false, false, null) { SettingsFilesFound = false };
         }
 
         SecureDirectoryRoot? backupRoot = null;
@@ -165,7 +165,6 @@ public sealed class SettingsBackupRestoreEngine
         {
             using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
             staging = BackupRestoreArchive.ExtractToExclusiveStaging(archiveFile, stagingParent);
-            SortedSet<string> currentPaths = new(settingsRoot.EnumerateFiles(fileFilter: IsIncludedJson), WindowsPathComparer.Instance);
             List<RestoreWriteOperation> operations = [];
             try
             {
@@ -178,9 +177,10 @@ public sealed class SettingsBackupRestoreEngine
 
                     using SecureFile backupFile = staging.OpenFileForRead(relativePath);
                     string restoreJson = policy.CreateExportVersion(relativePath, backupFile.ReadAllText());
-                    if (currentPaths.Contains(relativePath))
+                    SecureFile? readFile = settingsRoot.TryOpenFileForRead(relativePath);
+                    if (readFile != null)
                     {
-                        using (SecureFile readFile = settingsRoot.OpenFileForRead(relativePath))
+                        using (readFile)
                         {
                             if (GetRestoreContentsIfChanged(relativePath, readFile.ReadAllText(), restoreJson) == null)
                             {

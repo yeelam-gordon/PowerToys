@@ -144,6 +144,18 @@ public sealed class SecureDirectoryRoot : IDisposable
         return OpenFile(relativePath, FileAccess.Read, share, createNew: false, createParents: false, rejectHardLinks: true);
     }
 
+    internal SecureFile? TryOpenFileForRead(string relativePath)
+    {
+        try
+        {
+            return OpenFileForRead(relativePath);
+        }
+        catch (Win32Exception exception) when (exception.NativeErrorCode is 2 or 3)
+        {
+            return null;
+        }
+    }
+
     /// <summary>
     /// Opens a non-reparse, single-link file for same-handle overwrite without truncating it.
     /// </summary>

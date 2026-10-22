@@ -177,6 +177,12 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                         DateTime.UtcNow);
                     lastBackupExists = result.PreviousBackupExists;
                     LogStagingCleanupError(result.StagingCleanupError);
+                    if (!result.SettingsFilesFound)
+                    {
+                        Logger.LogError("No included settings files were found.");
+                        return (false, "General_SettingsBackupAndRestore_NoSettingsFilesFound", "Error", lastBackupExists, string.Empty);
+                    }
+
                     if (result.RetentionError != null)
                     {
                         Logger.LogError("The settings backup was created, but older backups could not all be removed.", result.RetentionError);
@@ -205,9 +211,19 @@ namespace Microsoft.PowerToys.Settings.UI.Library
         private static void LogBackupOrRestoreError(string message, Exception exception)
         {
             Logger.LogError(message, exception);
-            if (exception.Data["StagingCleanupError"] is Exception cleanupError)
+            foreach (string key in new[] { "StagingCleanupError", "StagingCleanupErrors", "ArchiveCleanupError", "CreatedFileCleanupError", "CreatedDirectoryCleanupError" })
             {
-                LogStagingCleanupError(cleanupError);
+                if (exception.Data[key] is Exception cleanupError)
+                {
+                    Logger.LogError($"Additional backup/restore file cleanup failed ({key}).", cleanupError);
+                }
+                else if (exception.Data[key] is Exception[] cleanupErrors)
+                {
+                    foreach (Exception error in cleanupErrors)
+                    {
+                        Logger.LogError($"Additional backup/restore file cleanup failed ({key}).", error);
+                    }
+                }
             }
 
             if (exception.Data["RestoreRollbackErrors"] is Exception[] rollbackErrors)

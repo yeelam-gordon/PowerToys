@@ -124,7 +124,7 @@ public sealed class BackupRestorePolicy
     public string CreateExportVersion(string relativePath, string settingsJson)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
-        ArgumentException.ThrowIfNullOrWhiteSpace(settingsJson);
+        ArgumentNullException.ThrowIfNull(settingsJson);
 
         string policyPath = NormalizePolicyPath(relativePath);
         string policyKey = policyPath.TrimStart('\\');

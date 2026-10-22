@@ -402,6 +402,43 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void RestoreDoesNotOpenCurrentFilesAbsentFromTheArchive(bool redirectedDirectory)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\Keyboard Manager\default.json", """{"value":1}""");
+        string current = test.CreateFile(@"target\Keyboard Manager\default.json", """{"value":0}""");
+        string unrelated;
+        if (redirectedDirectory)
+        {
+            string outside = test.CreateDirectory("outside");
+            unrelated = test.CreateFile(@"outside\settings.json", """{"untouched":true}""");
+            test.CreateDirectoryJunction(@"target\FancyZones", outside);
+        }
+        else
+        {
+            unrelated = test.CreateFile(@"target\FancyZones\settings.json", """{"untouched":true}""");
+        }
+
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        using (FileStream unrelatedLock = new(unrelated, FileMode.Open, FileAccess.Read, FileShare.None))
+        {
+            Assert.IsTrue(engine.Restore(target, backups, staging).SettingsChanged);
+        }
+
+        using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(current));
+        Assert.AreEqual(1, settings.RootElement.GetProperty("value").GetInt32());
+        Assert.AreEqual("""{"untouched":true}""", File.ReadAllText(unrelated));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
     public void RestoreSkipsReorderedPowerToysRunPlugins()
     {
         using TestDirectory test = new();

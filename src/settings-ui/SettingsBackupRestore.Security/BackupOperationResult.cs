@@ -12,6 +12,11 @@ namespace Microsoft.PowerToys.SettingsBackupRestore.Security;
 public sealed record BackupOperationResult(bool BackupCreated, bool PreviousBackupExists, string? ArchiveFileName, Exception? RetentionError = null)
 {
     /// <summary>
+    /// Gets a value indicating whether the source contains any included settings files.
+    /// </summary>
+    public bool SettingsFilesFound { get; internal init; } = true;
+
+    /// <summary>
     /// Gets a temporary-file cleanup failure reported separately from the completed operation.
     /// </summary>
     public Exception? StagingCleanupError { get; internal set; }

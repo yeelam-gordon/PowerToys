@@ -313,9 +313,9 @@ namespace MouseWithoutBorders.Class
                             }
                         }
 
+                        DragDrop.DragDropStep01(wParam);
                         MouseEvent(hookCallbackMouseData, dx, dy);
 
-                        DragDrop.DragDropStep01(wParam);
                         DragDrop.DragDropStep09(wParam);
                     }
 

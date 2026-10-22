@@ -153,7 +153,26 @@ internal static class DragDrop
         }
     }
 
-    private static int dragDropStep05ExCalledByIpc;
+    private static long dragValidationCallbackGeneration;
+
+    internal static bool TryRecordDragValidationCallback(long generation)
+    {
+        lock (DragActivationLock)
+        {
+            if (!IsCurrentDragGeneration(generation))
+            {
+                return false;
+            }
+
+            _ = Interlocked.Exchange(ref dragValidationCallbackGeneration, generation);
+            return true;
+        }
+    }
+
+    internal static bool HasDragValidationCallback(long generation)
+    {
+        return generation != 0 && Interlocked.Read(ref dragValidationCallbackGeneration) == generation;
+    }
 
     internal static void DragDropStep04()
     {
@@ -162,10 +181,10 @@ internal static class DragDrop
             IntPtr h = (IntPtr)NativeMethods.FindWindow(null, Helper.HELPER_FORM_TEXT);
             if (h.ToInt32() > 0)
             {
-                _ = Interlocked.Exchange(ref dragDropStep05ExCalledByIpc, 0);
+                long generation = Interlocked.Read(ref currentDragGeneration);
                 _ = Helper.SendMessageToHelper(
                     SharedConst.SET_DRAG_VALIDATION_GENERATION_CMD,
-                    checked((IntPtr)Interlocked.Read(ref transientDragValidationGeneration)),
+                    checked((IntPtr)generation),
                     IntPtr.Zero);
 
                 Common.MainForm.Hide();
@@ -178,7 +197,7 @@ internal static class DragDrop
 
                 for (int i = -10; i < 10; i++)
                 {
-                    if (dragDropStep05ExCalledByIpc > 0)
+                    if (!IsCurrentDragGeneration(generation) || HasDragValidationCallback(generation))
                     {
                         Logger.LogDebug("DragDropStep04: DragDropStep05ExCalledByIpc.");
                         break;
@@ -230,7 +249,11 @@ internal static class DragDrop
                 return;
             }
 
-            _ = Interlocked.Exchange(ref dragDropStep05ExCalledByIpc, 1);
+            if (!TryRecordDragValidationCallback(validationGeneration))
+            {
+                Clipboard.CancelTransientDragFileValidation(validationGeneration);
+                return;
+            }
 
             LocalPathLease lease = null;
             if (MouseDown)
@@ -471,6 +494,21 @@ internal static class DragDrop
         {
             ID destination = MachineStuff.desMachineID;
             _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropEnd));
+        }
+    }
+
+    internal static bool TryQueueInputPacket(DATA package, Action<DATA> send)
+    {
+        lock (DragActivationLock)
+        {
+            if (dragNotificationTask.IsCompleted)
+            {
+                return false;
+            }
+
+            DATA snapshot = new(package.Bytes);
+            _ = QueueDragNotification(() => send(snapshot));
+            return true;
         }
     }
 

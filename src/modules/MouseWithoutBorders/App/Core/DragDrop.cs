@@ -126,7 +126,10 @@ internal static class DragDrop
         }
         else
         {
-            SendCheckExplorerDragDrop();
+            _ = QueueExplorerDragDropCheck(
+                MachineStuff.newDesMachineID,
+                MachineStuff.desMachineID,
+                static package => Common.SkSend(package, null, false, resetDestinationOnFailure: false));
             Logger.LogDebug("DragDropStep02: SendCheckExplorerDragDrop sent");
         }
     }
@@ -425,7 +428,7 @@ internal static class DragDrop
         });
     }
 
-    private static void SendCheckExplorerDragDrop()
+    internal static Task QueueExplorerDragDropCheck(ID source, ID destination, Action<DATA> send)
     {
         DATA package = new();
         package.Type = PackageType.ExplorerDragDrop;
@@ -436,12 +439,12 @@ internal static class DragDrop
          * new des machine since the previous des machine will get this and set
          * to possibleDropMachineID in DragDropStep3()
          * */
-        package.Src = MachineStuff.newDesMachineID;
+        package.Src = source;
 
-        package.Des = MachineStuff.desMachineID;
+        package.Des = destination;
         package.MachineName = Common.MachineName;
 
-        Common.SkSend(package, null, false);
+        return QueueDragNotification(() => send(package));
     }
 
     internal static void ChangeDropMachine()
@@ -478,14 +481,14 @@ internal static class DragDrop
 
     private static void SendClipboardBeatDragDrop()
     {
-        _ = QueueDragNotification(() => Common.SendPackage(ID.ALL, PackageType.ClipboardDragDrop));
+        _ = QueueDragNotification(() => Common.SendPackage(ID.ALL, PackageType.ClipboardDragDrop, resetDestinationOnFailure: false));
     }
 
     private static void SendDropBegin()
     {
         Logger.LogDebug("SendDropBegin...");
         ID destination = MachineStuff.dropMachineID;
-        _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropOperation));
+        _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropOperation, resetDestinationOnFailure: false));
     }
 
     private static void SendClipboardBeatDragDropEnd()
@@ -493,13 +496,13 @@ internal static class DragDrop
         if (MachineStuff.desMachineID != Common.MachineID)
         {
             ID destination = MachineStuff.desMachineID;
-            _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropEnd));
+            _ = QueueDragNotification(() => Common.SendPackage(destination, PackageType.ClipboardDragDropEnd, resetDestinationOnFailure: false));
         }
     }
 
-    internal static Task QueueMachineSwitchCleanup(ID destination, Action<ID, PackageType> send)
+    internal static Task QueueMachineSwitchCleanup(ID destination, Action<ID, PackageType, bool> send)
     {
-        return QueueDragNotification(() => send(destination, PackageType.HideMouse));
+        return QueueDragNotification(() => send(destination, PackageType.HideMouse, false));
     }
 
     internal static bool TryQueueInputPacket(DATA package, Action<DATA> send)

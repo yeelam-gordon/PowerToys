@@ -703,6 +703,7 @@ public sealed class ClipboardHelperTests
         bool cleanupFollowedModifier = false;
         ID cleanupDestination = ID.NONE;
         PackageType cleanupType = default;
+        bool cleanupResetDestinationOnFailure = true;
         ID keyUpDestination = ID.NONE;
         Task first = DragDrop.QueueDragNotification(() =>
         {
@@ -719,12 +720,13 @@ public sealed class ClipboardHelperTests
             keyDown.Kd.dwFlags = 0x0100;
             Assert.IsTrue(DragDrop.TryQueueInputPacket(keyDown, packet => oldModifierDown = packet.Des == (ID)7));
 
-            Task cleanup = DragDrop.QueueMachineSwitchCleanup(destination, (oldDestination, type) =>
+            Task cleanup = DragDrop.QueueMachineSwitchCleanup(destination, (oldDestination, type, resetDestinationOnFailure) =>
             {
                 cleanupFollowedModifier = oldModifierDown;
                 cleanupDestination = oldDestination;
                 cleanupType = type;
                 oldModifierDown = false;
+                cleanupResetDestinationOnFailure = resetDestinationOnFailure;
             });
             Assert.IsFalse(cleanup.IsCompleted, "Switch cleanup must queue without waiting for the blocked send.");
 
@@ -750,7 +752,107 @@ public sealed class ClipboardHelperTests
         Assert.IsFalse(oldModifierDown);
         Assert.AreEqual((ID)7, cleanupDestination);
         Assert.AreEqual(PackageType.HideMouse, cleanupType);
+        Assert.IsFalse(cleanupResetDestinationOnFailure);
         Assert.AreEqual((ID)8, keyUpDestination);
+    }
+
+    [TestMethod]
+    public void DragDrop_DeferredCleanupFailurePreservesNewDestination()
+    {
+        using ManualResetEventSlim entered = new(false);
+        using ManualResetEventSlim release = new(false);
+        bool firstTimedOut = false;
+        ID destination = (ID)7;
+        Task first = DragDrop.QueueDragNotification(() =>
+        {
+            entered.Set();
+            firstTimedOut = !release.Wait(TimeSpan.FromSeconds(10));
+        });
+        Task? cleanup = null;
+        bool failureAttempted = false;
+        ID failedDestination = ID.NONE;
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+            cleanup = DragDrop.QueueMachineSwitchCleanup(destination, (oldDestination, _, resetDestinationOnFailure) =>
+            {
+                failureAttempted = true;
+                failedDestination = oldDestination;
+                if (resetDestinationOnFailure)
+                {
+                    destination = (ID)1;
+                }
+            });
+            destination = (ID)8;
+        }
+        finally
+        {
+            release.Set();
+            Assert.IsTrue(first.Wait(TimeSpan.FromSeconds(5)));
+            if (cleanup != null)
+            {
+                Assert.IsTrue(cleanup.Wait(TimeSpan.FromSeconds(5)));
+            }
+        }
+
+        Assert.IsFalse(firstTimedOut);
+        Assert.IsTrue(failureAttempted);
+        Assert.AreEqual((ID)7, failedDestination);
+        Assert.AreEqual((ID)8, destination);
+    }
+
+    [TestMethod]
+    public void DragDrop_ExplorerCheckFollowsPendingButtonDownAndCapturesRoute()
+    {
+        using ManualResetEventSlim entered = new(false);
+        using ManualResetEventSlim release = new(false);
+        string originalMachineName = Common.MachineName;
+        bool firstTimedOut = false;
+        bool sourceMouseDown = false;
+        bool checkSawMouseDown = false;
+        DATA? sentCheck = null;
+        Task first = DragDrop.QueueDragNotification(() =>
+        {
+            entered.Set();
+            firstTimedOut = !release.Wait(TimeSpan.FromSeconds(10));
+        });
+        Task? check = null;
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+            DATA buttonDown = new() { Type = PackageType.Mouse, Des = (ID)7 };
+            buttonDown.Md.dwFlags = 0x0201;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(buttonDown, packet => sourceMouseDown = packet.Md.dwFlags == 0x0201));
+            ID source = (ID)8;
+            ID destination = (ID)7;
+            Common.MachineName = "FixtureHost";
+            check = DragDrop.QueueExplorerDragDropCheck(source, destination, packet =>
+            {
+                checkSawMouseDown = sourceMouseDown;
+                sentCheck = packet;
+            });
+            Common.MachineName = "NextHost";
+            Assert.IsFalse(check.IsCompleted, "The check must queue without waiting for pending input.");
+        }
+        finally
+        {
+            release.Set();
+            Assert.IsTrue(first.Wait(TimeSpan.FromSeconds(5)));
+            if (check != null)
+            {
+                Assert.IsTrue(check.Wait(TimeSpan.FromSeconds(5)));
+            }
+
+            Common.MachineName = originalMachineName;
+        }
+
+        Assert.IsFalse(firstTimedOut);
+        Assert.IsTrue(checkSawMouseDown);
+        Assert.IsNotNull(sentCheck);
+        Assert.AreEqual(PackageType.ExplorerDragDrop, sentCheck.Type);
+        Assert.AreEqual((ID)8, sentCheck.Src);
+        Assert.AreEqual((ID)7, sentCheck.Des);
+        Assert.AreEqual("FixtureHost", sentCheck.MachineName);
     }
 
     [TestMethod]

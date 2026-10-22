@@ -496,14 +496,14 @@ internal static class Common
         }
     }
 
-    internal static void SendPackage(ID des, PackageType packageType)
+    internal static void SendPackage(ID des, PackageType packageType, bool resetDestinationOnFailure = true)
     {
         DATA package = new();
         package.Type = packageType;
         package.Des = des;
         package.MachineName = MachineName;
 
-        SkSend(package, null, false);
+        SkSend(package, null, false, resetDestinationOnFailure);
     }
 
     internal static void SendHeartBeat(bool initial = false)
@@ -898,7 +898,7 @@ internal static class Common
     private static long totalSendTime;
 #endif
 
-    internal static void SkSend(DATA data, uint? exceptDes, bool includeHandShakingSockets)
+    internal static void SkSend(DATA data, uint? exceptDes, bool includeHandShakingSockets, bool resetDestinationOnFailure = true)
     {
         bool connected = false;
 
@@ -954,7 +954,7 @@ internal static class Common
                 {
                     Logger.LogDebug("********** No active connection found for the remote machine! **********" + data.Des.ToString());
 
-                    if (data.Des == ID.NONE || MachineStuff.RemoveDeadMachines(data.Des))
+                    if ((data.Des == ID.NONE || MachineStuff.RemoveDeadMachines(data.Des)) && resetDestinationOnFailure)
                     {
                         // SwitchToMachine(MachineName.Trim());
                         MachineStuff.NewDesMachineID = DesMachineID = MachineID;

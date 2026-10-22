@@ -202,7 +202,7 @@ public sealed class SecureFileSystemTests
     }
 
     [TestMethod]
-    public void HardlinkedExistingTargetIsRejectedBeforeTruncation()
+    public void HardLinkedExistingTargetIsRejectedBeforeTruncation()
     {
         using TestDirectory test = new();
         string rootPath = test.CreateDirectory("root");

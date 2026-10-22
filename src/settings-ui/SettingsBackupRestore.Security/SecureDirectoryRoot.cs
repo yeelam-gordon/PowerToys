@@ -846,7 +846,7 @@ public sealed class SecureDirectoryRoot : IDisposable
         return result;
     }
 
-    private static void MarkForDeletion(SafeFileHandle fileHandle)
+    internal static void MarkForDeletion(SafeFileHandle fileHandle)
     {
         NativeMethods.FileDispositionInfo disposition = new() { DeleteFile = true };
         if (!NativeMethods.SetFileInformationByHandle(
@@ -855,7 +855,7 @@ public sealed class SecureDirectoryRoot : IDisposable
                 ref disposition,
                 (uint)Marshal.SizeOf<NativeMethods.FileDispositionInfo>()))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not delete app-owned staging entry by handle.");
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not delete the opened entry by handle.");
         }
     }
 

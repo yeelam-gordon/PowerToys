@@ -81,5 +81,10 @@ public sealed class SecureFile : IDisposable
         stream.Dispose();
     }
 
-    internal Stream Stream => stream;
+    internal FileStream Stream => stream;
+
+    internal void MarkForDeletion()
+    {
+        SecureDirectoryRoot.MarkForDeletion(stream.SafeFileHandle);
+    }
 }

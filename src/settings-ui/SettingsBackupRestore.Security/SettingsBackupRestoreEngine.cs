@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
@@ -68,7 +69,7 @@ public sealed class SettingsBackupRestoreEngine
             }
 
             string? latestArchive = backupRoot == null ? null : GetLatestArchiveFileName(backupRoot);
-            IReadOnlyDictionary<string, string> previous = new Dictionary<string, string>(WindowsPathComparer.Instance);
+            IReadOnlyDictionary<string, string> previous = new SortedDictionary<string, string>(WindowsPathComparer.Instance);
             if (latestArchive != null)
             {
                 stagingParent = SecureDirectoryRoot.Open(stagingParentPath);
@@ -97,8 +98,17 @@ public sealed class SettingsBackupRestoreEngine
                 productVersion,
                 machineName,
                 utcNow);
-            RemoveOldArchives(backupRoot!, utcNow.Subtract(TimeSpan.FromDays(60)), 10);
-            return new BackupOperationResult(true, latestArchive != null, archiveName);
+            Exception? retentionError = null;
+            try
+            {
+                RemoveOldArchives(backupRoot!, utcNow.Subtract(TimeSpan.FromDays(60)), 10);
+            }
+            catch (Exception exception)
+            {
+                retentionError = exception;
+            }
+
+            return new BackupOperationResult(true, latestArchive != null, archiveName, retentionError);
         }
         finally
         {
@@ -125,7 +135,7 @@ public sealed class SettingsBackupRestoreEngine
         {
             using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
             staging = BackupRestoreArchive.ExtractToExclusiveStaging(archiveFile, stagingParent);
-            HashSet<string> currentPaths = new(settingsRoot.EnumerateFiles(fileFilter: IsIncludedJson), WindowsPathComparer.Instance);
+            SortedSet<string> currentPaths = new(settingsRoot.EnumerateFiles(fileFilter: IsIncludedJson), WindowsPathComparer.Instance);
             List<RestoreWriteOperation> operations = [];
             try
             {
@@ -154,6 +164,12 @@ public sealed class SettingsBackupRestoreEngine
                             string contents = policy.GetRestoreMode(relativePath) == RestoreMode.Overwrite
                                 ? restoreJson
                                 : JsonSettingsMerge.Merge(originalJson, restoreJson);
+                            if (JsonEquivalent(originalJson, contents))
+                            {
+                                currentFile.Dispose();
+                                continue;
+                            }
+
                             operations.Add(new RestoreWriteOperation(relativePath, contents, originalJson, currentFile, isNew: false));
                         }
                         catch
@@ -193,9 +209,9 @@ public sealed class SettingsBackupRestoreEngine
     }
 
     /// <summary>
-    /// Reads the newest archive manifest through validated extraction handles.
+    /// Validates the newest archive and reads only its manifest through the opened handle.
     /// </summary>
-    public JsonNode? GetLatestManifest(string backupRootPath, string stagingParentPath)
+    public JsonNode? GetLatestManifest(string backupRootPath)
     {
         if (!Directory.Exists(backupRootPath))
         {
@@ -203,24 +219,26 @@ public sealed class SettingsBackupRestoreEngine
         }
 
         using SecureDirectoryRoot backupRoot = SecureDirectoryRoot.OpenReadOnly(backupRootPath);
-        using SecureDirectoryRoot stagingParent = SecureDirectoryRoot.Open(stagingParentPath);
         string? archiveName = GetLatestArchiveFileName(backupRoot);
         if (archiveName == null)
         {
             return null;
         }
 
-        SecureDirectoryRoot? staging = null;
-        try
+        using SecureFile archiveFile = backupRoot.OpenFileForRead(archiveName);
+        using ZipArchive archive = new(archiveFile.Stream, ZipArchiveMode.Read, leaveOpen: true);
+        IReadOnlyList<ArchiveEntryDescriptor> descriptors = BackupRestoreArchive.Validate(archive);
+        for (int index = 0; index < descriptors.Count; index++)
         {
-            staging = BackupRestoreArchive.ExtractToExclusiveStaging(backupRoot, archiveName, stagingParent);
-            using SecureFile manifest = staging.OpenFileForRead("manifest.json");
-            return JsonNode.Parse(manifest.ReadAllText());
+            ArchiveEntryDescriptor descriptor = descriptors[index];
+            if (!descriptor.IsDirectory && WindowsPathComparer.Instance.EqualsPath(descriptor.RelativePath, "manifest.json"))
+            {
+                using StreamReader reader = new(archive.Entries[index].Open());
+                return JsonNode.Parse(reader.ReadToEnd());
+            }
         }
-        finally
-        {
-            CleanupStaging(staging);
-        }
+
+        throw new FileNotFoundException("The settings backup manifest could not be found.");
     }
 
     /// <summary>
@@ -249,7 +267,7 @@ public sealed class SettingsBackupRestoreEngine
 
     private IReadOnlyDictionary<string, string> ReadSettings(SecureDirectoryRoot root)
     {
-        Dictionary<string, string> settings = new(WindowsPathComparer.Instance);
+        SortedDictionary<string, string> settings = new(WindowsPathComparer.Instance);
         foreach (string relativePath in root.EnumerateFiles(fileFilter: IsIncludedJson))
         {
             using SecureFile file = root.OpenFileForRead(relativePath);
@@ -268,6 +286,7 @@ public sealed class SettingsBackupRestoreEngine
         DateTime utcNow)
     {
         long timestamp = utcNow.ToFileTimeUtc();
+        SortedSet<string> updatedPaths = new(updated, WindowsPathComparer.Instance);
         for (int attempt = 0; attempt < 32; attempt++)
         {
             string archiveName = $"settings_{timestamp + attempt}.ptb";
@@ -290,7 +309,7 @@ public sealed class SettingsBackupRestoreEngine
                             UpdatedFiles = updated.Select(AddLegacyManifestPrefix).ToList(),
                             BackupSource = machineName,
                             UnchangedFiles = settings.Keys
-                                .Except(updated, WindowsPathComparer.Instance)
+                                .Where(path => !updatedPaths.Contains(path))
                                 .Select(AddLegacyManifestPrefix)
                                 .ToList(),
                         },
@@ -298,26 +317,38 @@ public sealed class SettingsBackupRestoreEngine
                     WriteEntry(archive, "manifest.json", manifest);
                 }
 
-                archiveFile.Dispose();
+                archiveFile.Stream.Flush(flushToDisk: true);
+                archiveFile.Stream.Position = 0;
+                using (ZipArchive archive = new(archiveFile.Stream, ZipArchiveMode.Read, leaveOpen: true))
+                {
+                    BackupRestoreArchive.Validate(archive);
+                }
+
                 return archiveName;
             }
-            catch (IOException) when (archiveFile == null)
+            catch (Win32Exception exception) when (archiveFile == null && exception.NativeErrorCode is 80 or 183)
             {
                 continue;
             }
             catch (Exception archiveException)
             {
-                archiveFile?.Dispose();
-                try
+                if (archiveFile != null)
                 {
-                    backupRoot.DeleteEntry(archiveName, isDirectory: false);
-                }
-                catch (Exception cleanupException)
-                {
-                    archiveException.Data["ArchiveCleanupError"] = cleanupException;
+                    try
+                    {
+                        archiveFile.MarkForDeletion();
+                    }
+                    catch (Exception cleanupException)
+                    {
+                        archiveException.Data["ArchiveCleanupError"] = cleanupException;
+                    }
                 }
 
                 throw;
+            }
+            finally
+            {
+                archiveFile?.Dispose();
             }
         }
 

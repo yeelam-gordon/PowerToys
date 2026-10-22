@@ -9,7 +9,7 @@ using System.Runtime.InteropServices;
 
 namespace Microsoft.PowerToys.SettingsBackupRestore.Security;
 
-internal sealed class WindowsPathComparer : IComparer<string>, IEqualityComparer<string>
+internal sealed class WindowsPathComparer : IComparer<string>
 {
     internal static WindowsPathComparer Instance { get; } = new();
 
@@ -42,17 +42,6 @@ internal sealed class WindowsPathComparer : IComparer<string>, IEqualityComparer
     internal bool EqualsPath(string left, string right)
     {
         return Compare(left, right) == 0;
-    }
-
-    public bool Equals(string? left, string? right)
-    {
-        return Compare(left, right) == 0;
-    }
-
-    public int GetHashCode(string value)
-    {
-        ArgumentNullException.ThrowIfNull(value);
-        return 0;
     }
 
     internal bool StartsWith(string value, string prefix)

@@ -6,6 +6,7 @@ using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -65,6 +66,69 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    public void BackupPreservesExistingArchiveWhenTimestampCollides()
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string settingsFile = test.CreateFile(@"settings\settings.json", """{"value":1}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = new(2026, 8, 16, 7, 0, 0, DateTimeKind.Utc);
+        BackupOperationResult first = engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", now);
+        string firstArchivePath = Path.Combine(backups, first.ArchiveFileName!);
+        byte[] firstArchive = File.ReadAllBytes(firstArchivePath);
+        File.WriteAllText(settingsFile, """{"value":2}""");
+
+        BackupOperationResult second = engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", now);
+
+        Assert.IsTrue(second.BackupCreated);
+        Assert.AreNotEqual(first.ArchiveFileName, second.ArchiveFileName);
+        CollectionAssert.AreEqual(firstArchive, File.ReadAllBytes(firstArchivePath));
+        Assert.AreEqual(2, Directory.GetFiles(backups, "*.ptb").Length);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void RetentionFailureDoesNotUndoASuccessfulBackup()
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string settingsFile = test.CreateFile(@"settings\settings.json", """{"value":1}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = DateTime.UtcNow;
+        DateTime oldTime = now.AddDays(-90);
+        BackupOperationResult first = engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", oldTime);
+        string oldArchive = Path.Combine(backups, first.ArchiveFileName!);
+        for (int index = 1; index <= 10; index++)
+        {
+            File.Copy(oldArchive, Path.Combine(backups, $"settings_{oldTime.ToFileTimeUtc() + index}.ptb"));
+        }
+
+        File.SetAttributes(oldArchive, FileAttributes.ReadOnly);
+        try
+        {
+            File.WriteAllText(settingsFile, """{"value":2}""");
+
+            BackupOperationResult result = engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", now);
+
+            Assert.IsTrue(result.BackupCreated);
+            Assert.IsNotNull(result.RetentionError);
+            Assert.IsTrue(File.Exists(Path.Combine(backups, result.ArchiveFileName!)));
+            Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+        }
+        finally
+        {
+            if (File.Exists(oldArchive))
+            {
+                File.SetAttributes(oldArchive, FileAttributes.Normal);
+            }
+        }
+    }
+
+    [TestMethod]
     public void ProductionBackupManifestAndChangedDryRunPreserveCompatibility()
     {
         using TestDirectory test = new();
@@ -78,7 +142,7 @@ public sealed class SettingsBackupRestoreEngineTests
         File.WriteAllText(Path.Combine(settings, "settings.json"), """{"value":2}""");
 
         BackupOperationResult dryRun = engine.Backup(settings, backups, staging, true, "1.2.3", "test-machine", now.AddMinutes(1));
-        JsonNode? manifest = engine.GetLatestManifest(backups, staging);
+        JsonNode? manifest = engine.GetLatestManifest(backups);
 
         Assert.IsTrue(dryRun.BackupCreated);
         Assert.AreEqual(1, Directory.GetFiles(backups, "*.ptb").Length);
@@ -86,6 +150,27 @@ public sealed class SettingsBackupRestoreEngineTests
         Assert.AreEqual("test-machine", manifest["BackupSource"]!.GetValue<string>());
         Assert.AreEqual(@"\settings.json", manifest["UpdatedFiles"]![0]!.GetValue<string>());
         Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    [DataRow("manifest.json")]
+    [DataRow("MANIFEST.JSON")]
+    public void LatestManifestPreservesWindowsNamesAndTextEncoding(string manifestName)
+    {
+        using TestDirectory test = new();
+        string backups = test.CreateDirectory("backups");
+        using (ZipArchive archive = ZipFile.Open(Path.Combine(backups, "settings_1.ptb"), ZipArchiveMode.Create))
+        {
+            using StreamWriter writer = new(archive.CreateEntry(manifestName).Open(), Encoding.Unicode);
+            writer.Write("""{"BackupSource":"test-machine"}""");
+        }
+
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+
+        JsonNode? manifest = engine.GetLatestManifest(backups);
+
+        Assert.AreEqual("test-machine", manifest!["BackupSource"]!.GetValue<string>());
+        Assert.AreEqual(1, Directory.GetFileSystemEntries(backups).Length);
     }
 
     [TestMethod]
@@ -122,6 +207,80 @@ public sealed class SettingsBackupRestoreEngineTests
         Assert.IsTrue(File.Exists(Path.Combine(target, @"NewModule\settings.json")));
         Assert.AreEqual("""{"ignored":"current"}""", File.ReadAllText(Path.Combine(target, @"PowerToys\ignored.json")));
         Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void RestoreSkipsAnUnchangedEffectiveMerge()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\settings.json", """{"items":[1,2]}""");
+        string current = test.CreateFile(@"target\settings.json", """{"items":[2,1],"currentOnly":true}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsFalse(result.SettingsChanged);
+        Assert.IsFalse(result.RestartRequired);
+        Assert.AreEqual("""{"items":[2,1],"currentOnly":true}""", File.ReadAllText(current));
+    }
+
+    [TestMethod]
+    public void BackupDoesNotPublishAnArchiveBeyondRestoreLimits()
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string relativePath = string.Join('\\', Enumerable.Repeat("d", BackupRestoreArchive.MaximumPathDepth)) + "\\settings.json";
+        test.CreateFile("settings\\" + relativePath, "{}");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+
+        Assert.ThrowsException<InvalidDataException>(() =>
+            engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow));
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(backups).Length);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void ProductionPolicyIgnoresRootRuntimeSettingsInBackupAndRestore()
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\settings.json", """{"value":1}""");
+        test.CreateFile(@"source\log_settings.json", """{"value":"backup"}""");
+        test.CreateFile(@"source\oobe_settings.json", """{"value":"backup"}""");
+        string log = test.CreateFile(@"target\log_settings.json", """{"value":"current"}""");
+        string oobe = test.CreateFile(@"target\oobe_settings.json", """{"value":"current"}""");
+        SettingsBackupRestoreEngine engine = new(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "backup_restore_settings.json")));
+
+        BackupOperationResult backup = engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        using (ZipArchive archive = ZipFile.Open(Path.Combine(backups, backup.ArchiveFileName!), ZipArchiveMode.Update))
+        {
+            Assert.IsNull(archive.GetEntry("log_settings.json"));
+            Assert.IsNull(archive.GetEntry("oobe_settings.json"));
+            using (StreamWriter writer = new(archive.CreateEntry("log_settings.json").Open()))
+            {
+                writer.Write("""{"value":"old-backup"}""");
+            }
+
+            using StreamWriter oobeWriter = new(archive.CreateEntry("oobe_settings.json").Open());
+            oobeWriter.Write("""{"value":"old-backup"}""");
+        }
+
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsTrue(result.SettingsChanged);
+        Assert.AreEqual("""{"value":"current"}""", File.ReadAllText(log));
+        Assert.AreEqual("""{"value":"current"}""", File.ReadAllText(oobe));
     }
 
     [TestMethod]

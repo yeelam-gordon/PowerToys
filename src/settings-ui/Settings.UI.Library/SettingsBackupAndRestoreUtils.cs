@@ -116,7 +116,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
         public JsonNode GetLatestSettingsBackupManifest()
         {
-            return CreateEngine().GetLatestManifest(GetSettingsBackupAndRestoreDir(), Path.GetTempPath());
+            return CreateEngine().GetLatestManifest(GetSettingsBackupAndRestoreDir());
         }
 
         public (bool Success, string Message, string Severity, bool LastBackupExists, string OptionalMessage) BackupSettings(string appBasePath, string settingsBackupAndRestoreDir, bool dryRun)
@@ -175,6 +175,11 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                         Environment.MachineName,
                         DateTime.UtcNow);
                     lastBackupExists = result.PreviousBackupExists;
+                    if (result.RetentionError != null)
+                    {
+                        Logger.LogError("The settings backup was created, but older backups could not all be removed.", result.RetentionError);
+                    }
+
                     if (!result.BackupCreated)
                     {
                         return (false, "General_SettingsBackupAndRestore_NothingToBackup", "Informational", lastBackupExists, string.Empty);

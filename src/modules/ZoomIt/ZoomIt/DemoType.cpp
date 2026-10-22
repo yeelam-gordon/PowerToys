@@ -345,7 +345,6 @@ DWORD GetClipboardSequence()
     DWORD sequence;
     if( !OpenClipboard( nullptr ) )
     {
-        CloseClipboard();
         return 0;
     }
     sequence = GetClipboardSequenceNumber();
@@ -360,40 +359,39 @@ DWORD GetClipboardSequence()
 //----------------------------------------------------------------------------
 wchar_t* GetClipboard()
 {
-    // Confirm clipboard accessibility and data format
-    if( !OpenClipboard( nullptr ) && !IsClipboardFormatAvailable( CF_UNICODETEXT ) )
+    if( !OpenClipboard( nullptr ) )
     {
-        CloseClipboard();
+        return nullptr;
+    }
+    auto closeClipboard = wil::scope_exit( [] { CloseClipboard(); } );
+    if( !IsClipboardFormatAvailable( CF_UNICODETEXT ) )
+    {
         return nullptr;
     }
     HANDLE hData = GetClipboardData( CF_UNICODETEXT );
     if( hData == nullptr )
     {
-        CloseClipboard();
         return nullptr;
     }
 
     // Confirm clipboard size doesn't exceed MAX_INPUT_SIZE
     size_t size = GlobalSize( hData );
-    if( size <= 0 || size > MAX_INPUT_SIZE )
+    if( size < sizeof(wchar_t) || size > MAX_INPUT_SIZE )
     {
-        GlobalUnlock( hData );
-        CloseClipboard();
         return nullptr;
     }
 
     const wchar_t* pData = static_cast<wchar_t*>(GlobalLock( hData ));
     if( pData == nullptr )
     {
-        GlobalUnlock( hData );
-        CloseClipboard();
         return nullptr;
     }
+    auto unlockData = wil::scope_exit( [hData] { GlobalUnlock( hData ); } );
 
-    wchar_t* data = new wchar_t[size / sizeof(wchar_t)];
-    wcscpy( data, pData );
-    GlobalUnlock( hData );
-    CloseClipboard();
+    const size_t textLen = wcsnlen_s( pData, size / sizeof(wchar_t) );
+    wchar_t* data = new wchar_t[textLen + 1];
+    memcpy( data, pData, textLen * sizeof(wchar_t) );
+    data[textLen] = L'\0';
     return data;
 }
 
@@ -1216,20 +1214,13 @@ bool GetDemoTypeClipboard()
     g_ClipboardCache = GetClipboard();
 
     // Confirm clipboard data begins with the safety prefix
-    if( g_ClipboardCache == nullptr || g_ClipboardCache[0] != g_ClipboardCache[0] || g_ClipboardCache[safetyPrefixLen] == '\0' )
+    if( g_ClipboardCache == nullptr
+     || wcsncmp( g_ClipboardCache, safetyPrefix, safetyPrefixLen ) != 0
+     || g_ClipboardCache[safetyPrefixLen] == L'\0' )
     {
         ResetDemoTypeClipboard();
         return false;
     }
-    for( int i = 1; i < safetyPrefixLen; i++ )
-    {
-        if( g_ClipboardCache[i] != safetyPrefix[i] || g_ClipboardCache[i] == '\0' )
-        {
-            ResetDemoTypeClipboard();
-            return false;
-        }
-    }
-    
     g_Text.assign( g_ClipboardCache + safetyPrefixLen );
     g_Clipboard = true;
     g_Index = 0;

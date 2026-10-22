@@ -36,6 +36,9 @@
     <ClCompile Include="DictationBadgeTests.cpp" />
     <ClCompile Include="DictationFinalizationTests.cpp" />
     <ClCompile Include="PasteChaperoneTests.cpp" />
+    <ClCompile Include="DemoTypeClipboardTests.cpp">
+      <PreprocessorDefinitions>_CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="WhisperLanguageTests.cpp" />
     <ClCompile Include="..\ZoomIt\third_party\whisper\whisper.cpp">
       <WarningLevel>TurnOffAllWarnings</WarningLevel>

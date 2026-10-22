@@ -29,7 +29,6 @@ ThumbnailProvider::~ThumbnailProvider()
     InterlockedDecrement(&g_cDllRef);
 }
 
-
 IFACEMETHODIMP ThumbnailProvider::QueryInterface(REFIID riid, void** ppv)
 {
     static const QITAB qit[] = {
@@ -72,7 +71,6 @@ IFACEMETHODIMP ThumbnailProvider::Initialize(IStream* pStream, DWORD grfMode)
     }
     return hr;
 }
-
 
 IFACEMETHODIMP ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPHATYPE* pdwAlpha)
 {
@@ -160,4 +158,3 @@ IFACEMETHODIMP ThumbnailProvider::GetThumbnail(UINT cx, HBITMAP* phbmp, WTS_ALPH
         return E_FAIL;
     }
 }
-

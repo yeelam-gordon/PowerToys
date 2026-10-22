@@ -24,6 +24,7 @@
             "PowerToys.ManagedCsWin32.dll",
             "PowerToys.Common.UI.dll",
             "PowerToys.Settings.UI.Lib.dll",
+            "PowerToys.SettingsBackupRestore.Security.dll",
             "PowerToys.GPOWrapper.dll",
             "PowerToys.GPOWrapperProjection.dll",
             "PowerToys.AllExperiments.dll",

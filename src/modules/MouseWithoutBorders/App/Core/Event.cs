@@ -113,7 +113,7 @@ internal static class Event
                     MousePackage.Md.Y = (e.Y - MachineStuff.primaryScreenBounds.Top) * 65535 / Common.screenHeight;
                 }
 
-                if (!DragDrop.TryQueueInputPacket(MousePackage, static package => Common.SkSend(package, null, false)))
+                if (!DragDrop.TryQueueInputPacket(MousePackage, static package => Common.SkSend(package, null, false, resetDestinationOnFailure: false)))
                 {
                     Common.SkSend(MousePackage, null, false);
                 }
@@ -267,7 +267,7 @@ internal static class Event
                 KeybdPackage.Type = PackageType.Keyboard;
                 KeybdPackage.Kd = e;
                 KeybdPackage.DateTime = Common.GetTick();
-                if (!DragDrop.TryQueueInputPacket(KeybdPackage, static package => Common.SkSend(package, null, false)))
+                if (!DragDrop.TryQueueInputPacket(KeybdPackage, static package => Common.SkSend(package, null, false, resetDestinationOnFailure: false)))
                 {
                     Common.SkSend(KeybdPackage, null, false);
                 }

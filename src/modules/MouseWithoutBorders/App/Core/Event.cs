@@ -214,7 +214,7 @@ internal static class Event
                 // Ask current machine to hide the Mouse cursor
                 if (newDesMachineID != ID.ALL && MachineStuff.desMachineID != Common.MachineID)
                 {
-                    Common.SendPackage(MachineStuff.desMachineID, PackageType.HideMouse);
+                    _ = DragDrop.QueueMachineSwitchCleanup(MachineStuff.desMachineID, Common.SendPackage);
                 }
 
                 Common.DesMachineID = newDesMachineID;

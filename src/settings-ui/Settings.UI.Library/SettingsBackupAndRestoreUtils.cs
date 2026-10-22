@@ -11,14 +11,15 @@ using System.Text.Json.Nodes;
 using System.Threading;
 
 using ManagedCommon;
+using Microsoft.PowerToys.Settings.UI.Library.Utilities;
 using Microsoft.PowerToys.SettingsBackupRestore.Security;
 
 namespace Microsoft.PowerToys.Settings.UI.Library
 {
     public class SettingsBackupAndRestoreUtils
     {
-        private static SettingsBackupAndRestoreUtils instance;
         private static readonly Lock BackupSettingsInternalLock = new();
+        private static SettingsBackupAndRestoreUtils instance;
         private (bool Success, string Severity, bool LastBackupExists, DateTime? LastRan) lastBackupSettingsResults;
 
         private SettingsBackupAndRestoreUtils()
@@ -100,7 +101,6 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             if (settingsBackupAndRestoreDir == null)
             {
                 settingsBackupAndRestoreDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "PowerToys\\Backup");
-                SetRegSettingsBackupAndRestoreItem("SettingsBackupAndRestoreDir", settingsBackupAndRestoreDir);
             }
 
             return settingsBackupAndRestoreDir;

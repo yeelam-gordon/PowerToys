@@ -1161,7 +1161,7 @@ namespace UnitTestsCommonUtils
             wil::unique_handle helperProcess{ processInformation.hProcess };
             wil::unique_handle helperThread{ processInformation.hThread };
             auto terminateHelper = wil::scope_exit([&] {
-                if (WaitForSingleObject(helperProcess.get(), 0) != WAIT_OBJECT_0)
+                if (helperProcess && WaitForSingleObject(helperProcess.get(), 0) != WAIT_OBJECT_0)
                 {
                     TerminateProcess(helperProcess.get(), ERROR_PROCESS_ABORTED);
                     WaitForSingleObject(helperProcess.get(), 2'000);

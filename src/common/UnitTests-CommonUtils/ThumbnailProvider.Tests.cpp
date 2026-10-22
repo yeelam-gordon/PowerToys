@@ -851,10 +851,25 @@ namespace UnitTestsCommonUtils
                 std::error_code outputError;
                 const auto outputExists =
                     std::filesystem::is_regular_file(output, outputError);
+                const auto bitmap = static_cast<HBITMAP>(
+                    LoadImageW(nullptr, output.c_str(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE));
+                BITMAP bitmapInformation{};
+                const auto bitmapLoaded = bitmap &&
+                                          GetObjectW(bitmap, sizeof(bitmapInformation), &bitmapInformation) == sizeof(bitmapInformation) &&
+                                          bitmapInformation.bmWidth > 0 &&
+                                          bitmapInformation.bmHeight > 0 &&
+                                          bitmapInformation.bmWidth <= 256 &&
+                                          bitmapInformation.bmHeight <= 256;
+                if (bitmap)
+                {
+                    DeleteObject(bitmap);
+                }
+
                 const auto succeeded =
                     result.status == thumbnail_provider::launch_status::completed &&
                     result.exit_code == 0 &&
-                    outputExists;
+                    outputExists &&
+                    bitmapLoaded;
 
                 const auto resultMessage =
                     L"Provider execution " +
@@ -870,7 +885,7 @@ namespace UnitTestsCommonUtils
                     L"; error=" +
                     std::to_wstring(result.error) +
                     L"; bitmap=" +
-                    (outputExists ? L"present" : L"missing") +
+                    (bitmapLoaded ? L"loaded" : L"missing_or_invalid") +
                     L"; elapsed_ms=" +
                     std::to_wstring(elapsed.count()) +
                     L".";

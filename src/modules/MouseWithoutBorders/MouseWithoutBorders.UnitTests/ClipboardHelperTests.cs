@@ -694,6 +694,66 @@ public sealed class ClipboardHelperTests
     }
 
     [TestMethod]
+    public void DragDrop_MachineSwitchCleanupFollowsPendingModifierAndCapturesOldDestination()
+    {
+        using ManualResetEventSlim entered = new(false);
+        using ManualResetEventSlim release = new(false);
+        bool firstTimedOut = false;
+        bool oldModifierDown = false;
+        bool cleanupFollowedModifier = false;
+        ID cleanupDestination = ID.NONE;
+        PackageType cleanupType = default;
+        ID keyUpDestination = ID.NONE;
+        Task first = DragDrop.QueueDragNotification(() =>
+        {
+            entered.Set();
+            firstTimedOut = !release.Wait(TimeSpan.FromSeconds(10));
+        });
+        Task? drained = null;
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+            ID destination = (ID)7;
+            DATA keyDown = new() { Type = PackageType.Keyboard, Des = destination };
+            keyDown.Kd.wVk = 0x11;
+            keyDown.Kd.dwFlags = 0x0100;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(keyDown, packet => oldModifierDown = packet.Des == (ID)7));
+
+            Task cleanup = DragDrop.QueueMachineSwitchCleanup(destination, (oldDestination, type) =>
+            {
+                cleanupFollowedModifier = oldModifierDown;
+                cleanupDestination = oldDestination;
+                cleanupType = type;
+                oldModifierDown = false;
+            });
+            Assert.IsFalse(cleanup.IsCompleted, "Switch cleanup must queue without waiting for the blocked send.");
+
+            destination = (ID)8;
+            DATA keyUp = new() { Type = PackageType.Keyboard, Des = destination };
+            keyUp.Kd.wVk = 0x11;
+            keyUp.Kd.dwFlags = 0x0101;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(keyUp, packet => keyUpDestination = packet.Des));
+            drained = DragDrop.QueueDragNotification(() => { });
+        }
+        finally
+        {
+            release.Set();
+            Assert.IsTrue(first.Wait(TimeSpan.FromSeconds(5)));
+            if (drained != null)
+            {
+                Assert.IsTrue(drained.Wait(TimeSpan.FromSeconds(5)));
+            }
+        }
+
+        Assert.IsFalse(firstTimedOut);
+        Assert.IsTrue(cleanupFollowedModifier);
+        Assert.IsFalse(oldModifierDown);
+        Assert.AreEqual((ID)7, cleanupDestination);
+        Assert.AreEqual(PackageType.HideMouse, cleanupType);
+        Assert.AreEqual((ID)8, keyUpDestination);
+    }
+
+    [TestMethod]
     public void HelperCallback_ReentrantDataRetrievalCannotConsumeNewGeneration()
     {
         long pendingGeneration = 1;

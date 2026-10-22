@@ -497,6 +497,11 @@ internal static class DragDrop
         }
     }
 
+    internal static Task QueueMachineSwitchCleanup(ID destination, Action<ID, PackageType> send)
+    {
+        return QueueDragNotification(() => send(destination, PackageType.HideMouse));
+    }
+
     internal static bool TryQueueInputPacket(DATA package, Action<DATA> send)
     {
         lock (DragActivationLock)

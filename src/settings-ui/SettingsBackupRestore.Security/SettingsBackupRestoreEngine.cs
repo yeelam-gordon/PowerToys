@@ -36,6 +36,8 @@ public sealed class SettingsBackupRestoreEngine
 
     internal Action<string>? BeforeRestoreFileCreate { get; set; }
 
+    internal Action<string>? BeforeRestoreFileOverwrite { get; set; }
+
     internal Action<string>? AfterRestoreRollbackFileClosed { get; set; }
 
     /// <summary>
@@ -178,22 +180,21 @@ public sealed class SettingsBackupRestoreEngine
                     string restoreJson = policy.CreateExportVersion(relativePath, backupFile.ReadAllText());
                     if (currentPaths.Contains(relativePath))
                     {
+                        using (SecureFile readFile = settingsRoot.OpenFileForRead(relativePath))
+                        {
+                            if (GetRestoreContentsIfChanged(relativePath, readFile.ReadAllText(), restoreJson) == null)
+                            {
+                                continue;
+                            }
+                        }
+
+                        BeforeRestoreFileOverwrite?.Invoke(relativePath);
                         SecureFile currentFile = settingsRoot.OpenFileForOverwrite(relativePath);
                         try
                         {
                             string originalJson = currentFile.ReadAllText();
-                            string currentJson = policy.CreateExportVersion(relativePath, originalJson);
-                            RestoreMode restoreMode = policy.GetRestoreMode(relativePath);
-                            if (JsonEquivalent(currentJson, restoreJson, ignoreArrayOrder: restoreMode == RestoreMode.Merge))
-                            {
-                                currentFile.Dispose();
-                                continue;
-                            }
-
-                            string contents = restoreMode == RestoreMode.Overwrite
-                                ? restoreJson
-                                : JsonSettingsMerge.Merge(originalJson, restoreJson);
-                            if (JsonEquivalent(originalJson, contents))
+                            string? contents = GetRestoreContentsIfChanged(relativePath, originalJson, restoreJson);
+                            if (contents == null)
                             {
                                 currentFile.Dispose();
                                 continue;
@@ -308,6 +309,21 @@ public sealed class SettingsBackupRestoreEngine
             .OrderByDescending(item => item.Timestamp)
             .Select(item => item.Path)
             .FirstOrDefault();
+    }
+
+    private string? GetRestoreContentsIfChanged(string relativePath, string originalJson, string restoreJson)
+    {
+        string currentJson = policy.CreateExportVersion(relativePath, originalJson);
+        RestoreMode restoreMode = policy.GetRestoreMode(relativePath);
+        if (JsonEquivalent(currentJson, restoreJson, ignoreArrayOrder: restoreMode == RestoreMode.Merge))
+        {
+            return null;
+        }
+
+        string contents = restoreMode == RestoreMode.Overwrite
+            ? restoreJson
+            : JsonSettingsMerge.Merge(originalJson, restoreJson);
+        return JsonEquivalent(originalJson, contents) ? null : contents;
     }
 
     private IReadOnlyDictionary<string, string> ReadSettings(SecureDirectoryRoot root)

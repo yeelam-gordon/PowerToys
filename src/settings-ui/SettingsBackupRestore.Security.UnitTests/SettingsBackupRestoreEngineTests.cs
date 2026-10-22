@@ -333,6 +333,75 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void RestoreSkipsUnchangedReadOnlyFilesAndRestoresWritableFiles(bool effectiveMerge)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\same.json", """{"value":1}""");
+        test.CreateFile(@"source\writable.json", """{"value":2}""");
+        string original = effectiveMerge ? """{"value":1,"currentOnly":true}""" : """{"value":1}""";
+        string readOnly = test.CreateFile(@"target\same.json", original);
+        string writable = test.CreateFile(@"target\writable.json", """{"value":0}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        File.SetAttributes(readOnly, FileAttributes.ReadOnly);
+        try
+        {
+            RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+            Assert.IsTrue(result.SettingsChanged);
+            Assert.IsTrue(result.RestartRequired);
+            Assert.AreEqual(original, File.ReadAllText(readOnly));
+            Assert.IsTrue((File.GetAttributes(readOnly) & FileAttributes.ReadOnly) != 0);
+            using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(writable));
+            Assert.AreEqual(2, settings.RootElement.GetProperty("value").GetInt32());
+            Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+        }
+        finally
+        {
+            File.SetAttributes(readOnly, FileAttributes.Normal);
+        }
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void RestoreRecomputesChangesAfterAcquiringTheWritableHandle(bool becomesUnchanged)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\settings.json", """{"value":1}""");
+        string current = test.CreateFile(@"target\settings.json", """{"value":2,"currentOnly":"first"}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        bool changedBeforeOpen = false;
+        engine.BeforeRestoreFileOverwrite = relativePath =>
+        {
+            Assert.AreEqual("settings.json", relativePath);
+            File.WriteAllText(current, becomesUnchanged ? """{"value":1,"currentOnly":"second"}""" : """{"value":3,"currentOnly":"second"}""");
+            changedBeforeOpen = true;
+        };
+
+        RestoreOperationResult result = engine.Restore(target, backups, staging);
+
+        Assert.IsTrue(changedBeforeOpen);
+        Assert.AreEqual(!becomesUnchanged, result.SettingsChanged);
+        Assert.AreEqual(!becomesUnchanged, result.RestartRequired);
+        using JsonDocument settings = JsonDocument.Parse(File.ReadAllText(current));
+        Assert.AreEqual(1, settings.RootElement.GetProperty("value").GetInt32());
+        Assert.AreEqual("second", settings.RootElement.GetProperty("currentOnly").GetString());
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
     public void RestoreSkipsReorderedPowerToysRunPlugins()
     {
         using TestDirectory test = new();

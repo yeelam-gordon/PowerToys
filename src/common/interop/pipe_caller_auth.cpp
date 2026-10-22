@@ -11,9 +11,7 @@
 
 #pragma comment(lib, "wintrust.lib")
 #pragma comment(lib, "crypt32.lib")
-// Note: the file version is read via the PE resource (kernel32 only), NOT the version.dll APIs, to
-// avoid a link-name collision with PowerToys' own static "Version.lib" project that the interop DLL
-// references.
+// Resolve version.dll APIs dynamically to avoid the interop DLL's static Version.lib name collision.
 
 namespace interop_auth
 {
@@ -105,17 +103,16 @@ namespace interop_auth
                 return false;
             }
             wchar_t name[256] = {};
-            const DWORD n = CertGetNameStringW(cert, CERT_NAME_SIMPLE_DISPLAY_TYPE, 0, nullptr, name, ARRAYSIZE(name));
-            // Case-insensitive: cert display-name casing can vary and this is a secondary check on top
-            // of the machine-root Authenticode chain in ChainsToMachineRoot.
-            return n > 1 && wcsstr(ToLower(name).c_str(), L"microsoft corporation") != nullptr;
+            char organizationOid[] = szOID_ORGANIZATION_NAME;
+            const DWORD n = CertGetNameStringW(cert, CERT_NAME_ATTR_TYPE, 0, organizationOid, name, ARRAYSIZE(name));
+            return n > 1 && _wcsicmp(name, L"Microsoft Corporation") == 0;
         }
 
         // Anchor the signer's chain in the LOCAL MACHINE root store only (HCCE_LOCAL_MACHINE) rather than
         // WinVerifyTrust's default user+machine union. The Runner runs as the same user as a potential
         // attacker, so a user-writable CurrentUser\Root could otherwise forge a "Microsoft" signer; a
         // non-admin cannot plant a machine root, so this defeats the forge.
-        bool ChainsToMachineRoot(PCCERT_CONTEXT leaf, HCERTSTORE additionalStore)
+        bool ChainsToMachineRoot(PCCERT_CONTEXT leaf, HCERTSTORE additionalStore, FILETIME* verificationTime)
         {
             if (!leaf)
             {
@@ -135,7 +132,7 @@ namespace interop_auth
                                 CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT;
 
             PCCERT_CHAIN_CONTEXT chain = nullptr;
-            if (!CertGetCertificateChain(HCCE_LOCAL_MACHINE, leaf, nullptr, additionalStore, &para, flags, nullptr, &chain))
+            if (!CertGetCertificateChain(HCCE_LOCAL_MACHINE, leaf, verificationTime, additionalStore, &para, flags, nullptr, &chain))
             {
                 return false;
             }
@@ -158,15 +155,12 @@ namespace interop_auth
             return ok;
         }
 
-        // Establishes that the file has a valid, untampered Authenticode signature (blocks unsigned,
-        // tampered, and signature-stapled binaries). The *trust anchor* decision is intentionally NOT
-        // taken from here (it consults the default user+machine store) — ChainsToMachineRoot re-anchors
-        // it against the machine store.
-        bool HasIntactAuthenticodeSignature(const std::wstring& path)
+        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path, HANDLE file = nullptr)
         {
             WINTRUST_FILE_INFO fileInfo = {};
             fileInfo.cbStruct = sizeof(fileInfo);
             fileInfo.pcwszFilePath = path.c_str();
+            fileInfo.hFile = file;
 
             WINTRUST_DATA wd = {};
             wd.cbStruct = sizeof(wd);
@@ -181,67 +175,66 @@ namespace interop_auth
             HWND noWindow = static_cast<HWND>(INVALID_HANDLE_VALUE);
             const LONG status = WinVerifyTrust(noWindow, &action, &wd);
 
-            wd.dwStateAction = WTD_STATEACTION_CLOSE;
-            WinVerifyTrust(noWindow, &action, &wd);
-
-            return status == ERROR_SUCCESS;
-        }
-
-        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path)
-        {
-            // 1) Integrity + valid signature (default store). Rejects unsigned / tampered / stapled.
-            if (!HasIntactAuthenticodeSignature(path))
-            {
-                return false;
-            }
-
-            // 2) Re-anchor trust in the machine root store and confirm the signer leaf is Microsoft.
-            HCERTSTORE hStore = nullptr;
-            HCRYPTMSG hMsg = nullptr;
-            if (!CryptQueryObject(CERT_QUERY_OBJECT_FILE,
-                                  path.c_str(),
-                                  CERT_QUERY_CONTENT_FLAG_PKCS7_SIGNED_EMBED,
-                                  CERT_QUERY_FORMAT_FLAG_BINARY,
-                                  0,
-                                  nullptr,
-                                  nullptr,
-                                  nullptr,
-                                  &hStore,
-                                  &hMsg,
-                                  nullptr))
-            {
-                return false;
-            }
-
             bool result = false;
-            DWORD signerSize = 0;
-            if (CryptMsgGetParam(hMsg, CMSG_SIGNER_INFO_PARAM, 0, nullptr, &signerSize) && signerSize > 0)
+            if (status == ERROR_SUCCESS)
             {
-                std::vector<BYTE> signerBuf(signerSize);
-                if (CryptMsgGetParam(hMsg, CMSG_SIGNER_INFO_PARAM, 0, signerBuf.data(), &signerSize))
+                if (auto* provider = WTHelperProvDataFromStateData(wd.hWVTStateData))
                 {
-                    auto* signer = reinterpret_cast<CMSG_SIGNER_INFO*>(signerBuf.data());
-                    CERT_INFO certInfo = {};
-                    certInfo.Issuer = signer->Issuer;
-                    certInfo.SerialNumber = signer->SerialNumber;
-                    PCCERT_CONTEXT leaf = CertGetSubjectCertificateFromStore(
-                        hStore, X509_ASN_ENCODING | PKCS_7_ASN_ENCODING, &certInfo);
-                    if (leaf)
+                    if (auto* signer = WTHelperGetProvSignerFromChain(provider, 0, FALSE, 0);
+                        signer && signer->csCertChain != 0 && signer->pasCertChain[0].pCert)
                     {
-                        result = LeafIsMicrosoft(leaf) && ChainsToMachineRoot(leaf, hStore);
-                        CertFreeCertificateContext(leaf);
+                        const auto leaf = signer->pasCertChain[0].pCert;
+                        result = LeafIsMicrosoft(leaf) && ChainsToMachineRoot(leaf, leaf->hCertStore, &signer->sftVerifyAsOf);
                     }
                 }
             }
 
-            if (hMsg)
+            wd.dwStateAction = WTD_STATEACTION_CLOSE;
+            WinVerifyTrust(noWindow, &action, &wd);
+
+            return result;
+        }
+
+        std::wstring ModuleOriginalFilename(const std::wstring& path)
+        {
+            HMODULE version = LoadLibraryExW(L"version.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+            if (!version)
             {
-                CryptMsgClose(hMsg);
+                return {};
             }
-            if (hStore)
+
+            std::wstring result;
+            const auto getSize = reinterpret_cast<decltype(&GetFileVersionInfoSizeW)>(GetProcAddress(version, "GetFileVersionInfoSizeW"));
+            const auto getInfo = reinterpret_cast<decltype(&GetFileVersionInfoW)>(GetProcAddress(version, "GetFileVersionInfoW"));
+            const auto query = reinterpret_cast<decltype(&VerQueryValueW)>(GetProcAddress(version, "VerQueryValueW"));
+            DWORD ignored = 0;
+            const DWORD versionSize = getSize ? getSize(path.c_str(), &ignored) : 0;
+            std::vector<BYTE> bytes(versionSize);
+            struct Translation
             {
-                CertCloseStore(hStore, 0);
+                WORD language;
+                WORD codePage;
+            };
+            Translation* translations = nullptr;
+            UINT size = 0;
+            if (getInfo && query && versionSize != 0 &&
+                getInfo(path.c_str(), 0, versionSize, bytes.data()) &&
+                query(bytes.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&translations), &size))
+            {
+                for (UINT i = 0; i < size / sizeof(Translation); ++i)
+                {
+                    wchar_t key[96]{};
+                    swprintf_s(key, L"\\StringFileInfo\\%04x%04x\\OriginalFilename", translations[i].language, translations[i].codePage);
+                    wchar_t* name = nullptr;
+                    UINT length = 0;
+                    if (query(bytes.data(), key, reinterpret_cast<void**>(&name), &length) && name && length > 1)
+                    {
+                        result.assign(name, length - 1);
+                        break;
+                    }
+                }
             }
+            FreeLibrary(version);
             return result;
         }
 
@@ -310,6 +303,36 @@ namespace interop_auth
             return 0;
         }
         return GetModuleVersion(self);
+    }
+
+    AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
+                                               const std::wstring& path,
+                                               unsigned long long expectedVersion,
+                                               const std::wstring& expectedOriginalFilename)
+    {
+        AuthResult result;
+        result.imagePath = path;
+        if (!file || file == INVALID_HANDLE_VALUE)
+        {
+            result.reasonCode = L"image-handle-missing";
+        }
+        else if (expectedVersion == 0 || GetModuleVersion(path) != expectedVersion)
+        {
+            result.reasonCode = L"version-mismatch";
+        }
+        else if (expectedOriginalFilename.empty() || _wcsicmp(ModuleOriginalFilename(path).c_str(), expectedOriginalFilename.c_str()) != 0)
+        {
+            result.reasonCode = L"original-filename-mismatch";
+        }
+        else if (!VerifyMicrosoftSignedMachineRoot(path, file))
+        {
+            result.reasonCode = L"not-microsoft-signed";
+        }
+        else
+        {
+            result.accepted = true;
+        }
+        return result;
     }
 
     AuthResult AuthenticateClient(HANDLE pipe, const CallerPolicy& policy, VerificationCache& cache)

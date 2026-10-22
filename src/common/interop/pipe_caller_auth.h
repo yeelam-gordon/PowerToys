@@ -147,4 +147,11 @@ namespace interop_auth
 
     // Version of the current process's own module (e.g. the Runner). Returns 0 on failure.
     unsigned long long GetOwnModuleVersion();
+
+    // The caller must pin path resolution and retain a write/delete-denying file handle
+    // through process creation. Unlike IPC authentication, this check also runs in Debug.
+    AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
+                                               const std::wstring& path,
+                                               unsigned long long expectedVersion,
+                                               const std::wstring& expectedOriginalFilename);
 }

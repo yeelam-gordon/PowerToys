@@ -29,6 +29,7 @@
 #include <common/themes/windows_colors.h>
 #include "settings_window.h"
 #include "settings_window_startup.h"
+#include "settings_launch_image.h"
 #include "bug_report.h"
 
 #define BUFSIZE 1024
@@ -440,6 +441,9 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
 {
     PROCESS_INFORMATION process_info = { 0 };
     HANDLE hToken = nullptr;
+#ifndef _DEBUG
+    SettingsLaunchImage launch_image;
+#endif
 
     // Arguments for calling the settings executable:
     // "C:\powertoys_path\PowerToysSettings.exe" powertoys_pipe settings_pipe powertoys_pid settings_theme
@@ -562,6 +566,37 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         goto LExit;
     }
 
+#ifndef _DEBUG
+    {
+        TOKEN_ELEVATION elevation{};
+        DWORD size = 0;
+        if (!GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &size))
+        {
+            Logger::error(L"Failed to query Runner elevation before launching Settings: {}", GetLastError());
+            goto LExit;
+        }
+        if (elevation.TokenIsElevated)
+        {
+            const HRESULT opened = launch_image.Open(executable_path);
+            if (FAILED(opened))
+            {
+                Logger::error(L"Failed to open Settings image for launch: {:#010x}", static_cast<unsigned long>(opened));
+                goto LExit;
+            }
+            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(launch_image.File(),
+                                                                               launch_image.Path(),
+                                                                               interop_auth::GetOwnModuleVersion(),
+                                                                               L"PowerToys.Settings.dll");
+            if (!verified.accepted)
+            {
+                Logger::error(L"Settings image could not be verified before launch: {}", verified.reasonCode);
+                goto LExit;
+            }
+            executable_path = launch_image.Path();
+        }
+    }
+#endif
+
     if (FALSE == process_created)
     {
         // The runner is not elevated or we failed to create the process using the
@@ -592,6 +627,10 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
             goto LExit;
         }
     }
+
+#ifndef _DEBUG
+    launch_image = {};
+#endif
 
     {
         std::unique_lock lock{ ipc_mutex };

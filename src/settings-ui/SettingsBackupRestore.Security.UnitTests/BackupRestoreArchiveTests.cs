@@ -23,6 +23,41 @@ public sealed class BackupRestoreArchiveTests
     ];
 
     [DataTestMethod]
+    [DataRow(1)]
+    [DataRow(100)]
+    public void ExtractionRejectsEntryLengthMismatch(int declaredLength)
+    {
+        using TestDirectory test = new();
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateStoredArchiveWithDeclaredLength(@"backups\settings_1.ptb", "settings.json", """{"value":1}""", declaredLength);
+        using SecureDirectoryRoot backupRoot = SecureDirectoryRoot.OpenReadOnly(backups);
+        using SecureDirectoryRoot stagingParent = SecureDirectoryRoot.Open(staging);
+
+        Assert.ThrowsException<InvalidDataException>(() =>
+        {
+            using SecureDirectoryRoot extracted = BackupRestoreArchive.ExtractToExclusiveStaging(backupRoot, "settings_1.ptb", stagingParent);
+        });
+
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    public void EntryLengthMismatchDoesNotExceedWriteBudget()
+    {
+        using TestDirectory test = new();
+        string path = test.CreateStoredArchiveWithDeclaredLength("settings.ptb", "settings.json", new string('x', 16_384), 1);
+        using ZipArchive archive = ZipFile.OpenRead(path);
+        ArchiveEntryDescriptor descriptor = BackupRestoreArchive.Validate(archive)[0];
+        using MemoryStream destination = new();
+
+        Assert.ThrowsException<InvalidDataException>(() =>
+            BackupRestoreArchive.CopyValidatedEntry(archive.Entries[0], descriptor, destination));
+
+        Assert.AreEqual(1L, destination.Length);
+    }
+
+    [DataTestMethod]
     [DataRow(@"..\escaped.json")]
     [DataRow(@"\rooted.json")]
     [DataRow(@"C:\rooted.json")]

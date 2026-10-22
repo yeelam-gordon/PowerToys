@@ -64,17 +64,6 @@ public sealed class SecureFile : IDisposable
         stream.Flush(flushToDisk: true);
     }
 
-    /// <summary>
-    /// Copies content to a newly created file through its existing handle.
-    /// </summary>
-    public void CopyFrom(Stream source)
-    {
-        ArgumentNullException.ThrowIfNull(source);
-        stream.Position = 0;
-        source.CopyTo(stream);
-        stream.Flush(flushToDisk: true);
-    }
-
     /// <inheritdoc />
     public void Dispose()
     {

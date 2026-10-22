@@ -155,8 +155,8 @@ public static class BackupRestoreArchive
                 beforeEntryCopy?.Invoke(index);
                 using SecureFile destination = staging.CreateNewFileInExistingDirectory(descriptor.RelativePath);
                 createdFiles.Add(descriptor.RelativePath);
-                using Stream source = entry.Open();
-                destination.CopyFrom(source);
+                CopyValidatedEntry(entry, descriptor, destination.Stream);
+                destination.Stream.Flush(flushToDisk: true);
             }
 
             SecureDirectoryRoot result = staging;
@@ -212,6 +212,30 @@ public static class BackupRestoreArchive
             }
 
             throw;
+        }
+    }
+
+    internal static void CopyValidatedEntry(ZipArchiveEntry entry, ArchiveEntryDescriptor descriptor, Stream destination)
+    {
+        using Stream source = entry.Open();
+        Span<byte> buffer = stackalloc byte[8192];
+        long remaining = descriptor.UncompressedLength;
+        while (remaining > 0)
+        {
+            int read = source.Read(buffer[..(int)Math.Min(buffer.Length, remaining)]);
+            if (read == 0)
+            {
+                throw new InvalidDataException($"Archive entry is shorter than its declared length: {entry.FullName}");
+            }
+
+            // Per-entry write bounds also preserve the validated aggregate extraction limit.
+            destination.Write(buffer[..read]);
+            remaining -= read;
+        }
+
+        if (source.ReadByte() != -1)
+        {
+            throw new InvalidDataException($"Archive entry exceeds its declared length: {entry.FullName}");
         }
     }
 

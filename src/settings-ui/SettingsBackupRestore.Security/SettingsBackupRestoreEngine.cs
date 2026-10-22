@@ -233,7 +233,10 @@ public sealed class SettingsBackupRestoreEngine
             ArchiveEntryDescriptor descriptor = descriptors[index];
             if (!descriptor.IsDirectory && WindowsPathComparer.Instance.EqualsPath(descriptor.RelativePath, "manifest.json"))
             {
-                using StreamReader reader = new(archive.Entries[index].Open());
+                using MemoryStream contents = new();
+                BackupRestoreArchive.CopyValidatedEntry(archive.Entries[index], descriptor, contents);
+                contents.Position = 0;
+                using StreamReader reader = new(contents);
                 return JsonNode.Parse(reader.ReadToEnd());
             }
         }

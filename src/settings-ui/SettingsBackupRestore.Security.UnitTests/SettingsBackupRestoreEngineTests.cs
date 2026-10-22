@@ -174,6 +174,19 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow(1)]
+    [DataRow(100)]
+    public void ManifestInspectionRejectsEntryLengthMismatch(int declaredLength)
+    {
+        using TestDirectory test = new();
+        string backups = test.CreateDirectory("backups");
+        test.CreateStoredArchiveWithDeclaredLength(@"backups\settings_1.ptb", "manifest.json", """{"BackupSource":"test-machine"}""", declaredLength);
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+
+        Assert.ThrowsException<InvalidDataException>(() => engine.GetLatestManifest(backups));
+    }
+
+    [TestMethod]
     public void ProductionRestoreUsesCreateMergeOverwriteIgnoreAndRestart()
     {
         using TestDirectory test = new();

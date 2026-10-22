@@ -51,6 +51,31 @@ public sealed class SecureFileSystemTests
     }
 
     [TestMethod]
+    public void FailedFileCreationPreservesAReplacementParentDirectory()
+    {
+        using TestDirectory test = new();
+        string rootPath = test.CreateDirectory("root");
+        string module = Path.Combine(rootPath, "module");
+        string moved = Path.Combine(rootPath, "moved");
+        using SecureDirectoryRoot root = SecureDirectoryRoot.Open(rootPath);
+        root.DirectoryBeforeValidationObserver = path =>
+        {
+            if (path == "module")
+            {
+                Directory.Move(module, moved);
+                Directory.CreateDirectory(module);
+                File.WriteAllText(Path.Combine(moved, "settings.json"), "existing");
+            }
+        };
+
+        Assert.ThrowsException<System.ComponentModel.Win32Exception>(() => root.CreateNewFile(@"module\settings.json"));
+
+        Assert.IsTrue(Directory.Exists(module));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(module).Length);
+        Assert.AreEqual("existing", File.ReadAllText(Path.Combine(moved, "settings.json")));
+    }
+
+    [TestMethod]
     public void FinalPathAndContainmentUseOpenedRootHandle()
     {
         using TestDirectory test = new();

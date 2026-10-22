@@ -16,6 +16,7 @@ namespace Microsoft.PowerToys.SettingsBackupRestore.Security;
 
 /// <summary>
 /// A directory root kept open while child objects are opened relative to its handle.
+/// Failed creation can leave empty parent directories rather than deleting them by pathname.
 /// </summary>
 public sealed class SecureDirectoryRoot : IDisposable
 {
@@ -517,7 +518,6 @@ public sealed class SecureDirectoryRoot : IDisposable
         string normalized = SecurePath.NormalizeRelative(relativePath);
         string[] components = normalized.Split('\\');
         SafeFileHandle? parentHandle = null;
-        List<string> createdDirectories = [];
 
         try
         {
@@ -527,8 +527,7 @@ public sealed class SecureDirectoryRoot : IDisposable
                 parentHandle = OpenDirectoryChain(
                     components[..^1],
                     createMissing: createParents,
-                    exclusiveLast: false,
-                    createdDirectories);
+                    exclusiveLast: false);
                 effectiveParent = parentHandle;
             }
 
@@ -565,11 +564,6 @@ public sealed class SecureDirectoryRoot : IDisposable
                 throw;
             }
         }
-        catch (Exception exception)
-        {
-            RollbackCreatedDirectories(createdDirectories, exception);
-            throw;
-        }
         finally
         {
             parentHandle?.Dispose();
@@ -580,13 +574,10 @@ public sealed class SecureDirectoryRoot : IDisposable
         string[] components,
         bool createMissing,
         bool exclusiveLast,
-        List<string>? createdDirectories = null,
         bool writableLast = false)
     {
         SafeFileHandle current = handle;
         SafeFileHandle? ownedCurrent = null;
-        List<string> created = createdDirectories ?? [];
-        int initialCreatedCount = created.Count;
 
         try
         {
@@ -674,11 +665,6 @@ public sealed class SecureDirectoryRoot : IDisposable
                     throw;
                 }
 
-                if (wasCreated)
-                {
-                    created.Add(string.Join('\\', components[..(index + 1)]));
-                }
-
                 ownedCurrent?.Dispose();
                 ownedCurrent = next;
                 current = next;
@@ -687,19 +673,6 @@ public sealed class SecureDirectoryRoot : IDisposable
             SafeFileHandle result = ownedCurrent ?? throw new InvalidOperationException("No directory component was opened.");
             ownedCurrent = null;
             return result;
-        }
-        catch (Exception exception)
-        {
-            ownedCurrent?.Dispose();
-            ownedCurrent = null;
-            if (created.Count > initialCreatedCount)
-            {
-                List<string> currentAttempt = created.GetRange(initialCreatedCount, created.Count - initialCreatedCount);
-                created.RemoveRange(initialCreatedCount, created.Count - initialCreatedCount);
-                RollbackCreatedDirectories(currentAttempt, exception);
-            }
-
-            throw;
         }
         finally
         {
@@ -870,27 +843,6 @@ public sealed class SecureDirectoryRoot : IDisposable
                 (uint)Marshal.SizeOf<NativeMethods.FileDispositionInfo>()))
         {
             throw new Win32Exception(Marshal.GetLastWin32Error(), "Could not delete the opened entry by handle.");
-        }
-    }
-
-    private void RollbackCreatedDirectories(List<string> createdDirectories, Exception originalException)
-    {
-        List<Exception> cleanupErrors = [];
-        for (int index = createdDirectories.Count - 1; index >= 0; index--)
-        {
-            try
-            {
-                DeleteEntry(createdDirectories[index], isDirectory: true);
-            }
-            catch (Exception cleanupException)
-            {
-                cleanupErrors.Add(cleanupException);
-            }
-        }
-
-        if (cleanupErrors.Count > 0)
-        {
-            originalException.Data["CreatedDirectoryCleanupErrors"] = cleanupErrors.ToArray();
         }
     }
 

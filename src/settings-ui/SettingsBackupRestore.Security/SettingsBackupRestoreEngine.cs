@@ -34,6 +34,8 @@ public sealed class SettingsBackupRestoreEngine
 
     internal Action<string>? AfterRestoreWrite { get; set; }
 
+    internal Action<string>? BeforeRestoreFileCreate { get; set; }
+
     internal Action<string>? AfterRestoreRollbackFileClosed { get; set; }
 
     /// <summary>
@@ -86,7 +88,8 @@ public sealed class SettingsBackupRestoreEngine
             }
 
             List<string> updated = current
-                .Where(item => !previous.TryGetValue(item.Key, out string? value) || !JsonEquivalent(item.Value, value))
+                .Where(item => !previous.TryGetValue(item.Key, out string? value) ||
+                    !JsonEquivalent(item.Value, value, ignoreArrayOrder: policy.GetRestoreMode(item.Key) == RestoreMode.Merge))
                 .Select(item => item.Key)
                 .ToList();
             if (updated.Count == 0)
@@ -142,6 +145,7 @@ public sealed class SettingsBackupRestoreEngine
 
     /// <summary>
     /// Restores included settings from the newest validated archive.
+    /// Rollback can leave empty settings directories rather than deleting directories by pathname.
     /// </summary>
     public RestoreOperationResult Restore(
         string settingsRootPath,
@@ -515,20 +519,12 @@ public sealed class SettingsBackupRestoreEngine
 
     private void ApplyRestoreOperations(SecureDirectoryRoot settingsRoot, List<RestoreWriteOperation> operations)
     {
-        SortedSet<string> createdDirectories = new(WindowsPathComparer.Instance);
         List<RestoreWriteOperation> overwritten = [];
         try
         {
             foreach (RestoreWriteOperation operation in operations.Where(operation => operation.IsNew))
             {
-                foreach (string directory in GetParentDirectories(operation.RelativePath))
-                {
-                    if (!settingsRoot.DirectoryExists(directory))
-                    {
-                        createdDirectories.Add(directory);
-                    }
-                }
-
+                BeforeRestoreFileCreate?.Invoke(operation.RelativePath);
                 operation.TargetFile = settingsRoot.CreateNewFile(operation.RelativePath);
             }
 
@@ -568,11 +564,6 @@ public sealed class SettingsBackupRestoreEngine
                 }
             }
 
-            foreach (string directory in createdDirectories.OrderByDescending(path => path.Length))
-            {
-                TryRollback(() => settingsRoot.DeleteEntry(directory, isDirectory: true), rollbackErrors);
-            }
-
             if (rollbackErrors.Count > 0)
             {
                 restoreException.Data["RestoreRollbackErrors"] = rollbackErrors.ToArray();
@@ -586,16 +577,6 @@ public sealed class SettingsBackupRestoreEngine
             {
                 operation.Dispose();
             }
-        }
-    }
-
-    private static IEnumerable<string> GetParentDirectories(string relativePath)
-    {
-        int separatorIndex = relativePath.IndexOf('\\');
-        while (separatorIndex >= 0)
-        {
-            yield return relativePath[..separatorIndex];
-            separatorIndex = relativePath.IndexOf('\\', separatorIndex + 1);
         }
     }
 

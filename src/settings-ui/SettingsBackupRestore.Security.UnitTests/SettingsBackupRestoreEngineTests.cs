@@ -435,6 +435,71 @@ public sealed class SettingsBackupRestoreEngineTests
     }
 
     [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void BackupUsesTheRestoreModeArrayComparison(bool overwrite)
+    {
+        using TestDirectory test = new();
+        string settings = test.CreateDirectory("settings");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        string relativePath = overwrite ? @"Keyboard Manager\default.json" : "settings.json";
+        string current = test.CreateFile("settings\\" + relativePath, """{"items":[1,2]}""");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        DateTime now = DateTime.UtcNow;
+        engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", now);
+        File.WriteAllText(current, """{"items":[2,1]}""");
+
+        BackupOperationResult dryRun = engine.Backup(settings, backups, staging, true, "1.2.3", "test-machine", now.AddMinutes(1));
+        BackupOperationResult backup = engine.Backup(settings, backups, staging, false, "1.2.3", "test-machine", now.AddMinutes(1));
+
+        Assert.AreEqual(overwrite, dryRun.BackupCreated);
+        Assert.AreEqual(overwrite, backup.BackupCreated);
+        Assert.AreEqual(overwrite ? 2 : 1, Directory.GetFiles(backups, "*.ptb").Length);
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public void RestoreRollbackPreservesConcurrentDirectories(bool replaceAfterClose)
+    {
+        using TestDirectory test = new();
+        string source = test.CreateDirectory("source");
+        string target = test.CreateDirectory("target");
+        string backups = test.CreateDirectory("backups");
+        string staging = test.CreateDirectory("staging");
+        test.CreateFile(@"source\Module\settings.json", """{"value":1}""");
+        string module = Path.Combine(target, "Module");
+        string moved = Path.Combine(target, "moved");
+        SettingsBackupRestoreEngine engine = new(PolicyJson);
+        engine.Backup(source, backups, staging, false, "1.2.3", "test-machine", DateTime.UtcNow);
+        if (!replaceAfterClose)
+        {
+            engine.BeforeRestoreFileCreate = _ => Directory.CreateDirectory(module);
+        }
+
+        IOException failure = new("Injected restore write failure.");
+        engine.AfterRestoreWrite = _ => throw failure;
+        engine.AfterRestoreRollbackFileClosed = _ =>
+        {
+            if (replaceAfterClose)
+            {
+                Directory.Move(module, moved);
+                Directory.CreateDirectory(module);
+            }
+        };
+
+        IOException actual = Assert.ThrowsException<IOException>(() => engine.Restore(target, backups, staging));
+
+        Assert.AreSame(failure, actual);
+        Assert.IsTrue(Directory.Exists(module));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(module).Length);
+        Assert.IsFalse(File.Exists(Path.Combine(module, "settings.json")));
+        Assert.AreEqual(0, Directory.GetFileSystemEntries(staging).Length);
+    }
+
+    [TestMethod]
     public void BackupDoesNotPublishAnArchiveBeyondRestoreLimits()
     {
         using TestDirectory test = new();

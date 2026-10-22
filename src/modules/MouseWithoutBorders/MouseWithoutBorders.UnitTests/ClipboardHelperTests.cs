@@ -11,6 +11,8 @@ namespace MouseWithoutBorders.UnitTests;
 [DoNotParallelize]
 public sealed class ClipboardHelperTests
 {
+    private static readonly int[] ExpectedQueuedInputOrder = { 1, 0x0202, 0x0101, 0x0201 };
+
     [DataTestMethod]
     [DataRow(@"\\attacker\share\file.txt")]
     [DataRow(@"//attacker/share/file.txt")]
@@ -624,6 +626,71 @@ public sealed class ClipboardHelperTests
 
         Assert.IsFalse(firstTimedOut);
         Assert.IsTrue(secondSent.IsSet);
+    }
+
+    [TestMethod]
+    public void DragDrop_ObsoleteCallbackCannotStopNewPositioning()
+    {
+        bool originalMouseDown = DragDrop.MouseDown;
+        try
+        {
+            long obsoleteGeneration = DragDrop.BeginDragGesture();
+            long currentGeneration = DragDrop.BeginDragGesture();
+            Assert.IsFalse(DragDrop.TryRecordDragValidationCallback(obsoleteGeneration));
+            Assert.IsFalse(DragDrop.HasDragValidationCallback(currentGeneration));
+            Assert.IsTrue(DragDrop.TryRecordDragValidationCallback(currentGeneration));
+            Assert.IsFalse(DragDrop.TryRecordDragValidationCallback(obsoleteGeneration));
+            Assert.IsTrue(DragDrop.HasDragValidationCallback(currentGeneration));
+        }
+        finally
+        {
+            Clipboard.LastDragDropFile = null;
+            DragDrop.MouseDown = originalMouseDown;
+        }
+    }
+
+    [TestMethod]
+    public void DragDrop_PendingActivationPreservesInputOrderAndSnapshots()
+    {
+        using ManualResetEventSlim entered = new(false);
+        using ManualResetEventSlim release = new(false);
+        List<int> sent = new();
+        bool firstTimedOut = false;
+        Task first = DragDrop.QueueDragNotification(() =>
+        {
+            entered.Set();
+            firstTimedOut = !release.Wait(TimeSpan.FromSeconds(10));
+        });
+        Task? drained = null;
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+            _ = DragDrop.QueueDragNotification(() => sent.Add(1));
+            DATA mouse = new() { Type = PackageType.Mouse, Des = (ID)7 };
+            mouse.Md.dwFlags = 0x0202;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(mouse, packet => sent.Add(packet.Md.dwFlags)));
+            DATA keyboard = new() { Type = PackageType.Keyboard, Des = (ID)7 };
+            keyboard.Kd.dwFlags = 0x0101;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(keyboard, packet => sent.Add(packet.Kd.dwFlags)));
+            keyboard.Kd.dwFlags = 0;
+            mouse.Md.dwFlags = 0x0201;
+            Assert.IsTrue(DragDrop.TryQueueInputPacket(mouse, packet => sent.Add(packet.Md.dwFlags)));
+            mouse.Md.dwFlags = 0;
+            drained = DragDrop.QueueDragNotification(() => { });
+            Assert.AreEqual(0, sent.Count);
+        }
+        finally
+        {
+            release.Set();
+            Assert.IsTrue(first.Wait(TimeSpan.FromSeconds(5)));
+            if (drained != null)
+            {
+                Assert.IsTrue(drained.Wait(TimeSpan.FromSeconds(5)));
+            }
+        }
+
+        Assert.IsFalse(firstTimedOut);
+        CollectionAssert.AreEqual(ExpectedQueuedInputOrder, sent);
     }
 
     private static bool TryMoveDirectory(string sourceDirectory, string destinationDirectory)

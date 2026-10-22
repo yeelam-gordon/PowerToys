@@ -24,6 +24,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="..\Settings.UI\Strings\en-us\Resources.resw" Link="BackupRestore.Resources.resw" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Settings.UI.Library\Settings.UI.Library.csproj" />
     <ProjectReference Include="..\Settings.UI\PowerToys.Settings.csproj" />
     <ProjectReference Include="..\Settings.UI.Cli\PowerToys.Settings.Cli.csproj" />

@@ -6,7 +6,9 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Reflection;
+using System.Xml.Linq;
 using Microsoft.PowerToys.Settings.UI.Library;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -17,9 +19,9 @@ public class SettingsBackupAndRestoreTests
 {
     [TestMethod]
     [DataRow(false, "General_SettingsBackupAndRestore_RestoreError", "")]
-    [DataRow(true, "General_SettingsBackupAndRestore_SettingsFormatError", "{")]
-    [DataRow(true, "General_SettingsBackupAndRestore_SettingsFormatError", "")]
-    [DataRow(true, "General_SettingsBackupAndRestore_SettingsFormatError", " \t\r\n ")]
+    [DataRow(true, "General_SettingsBackupAndRestore_RestoreSettingsFormatError", "{")]
+    [DataRow(true, "General_SettingsBackupAndRestore_RestoreSettingsFormatError", "")]
+    [DataRow(true, "General_SettingsBackupAndRestore_RestoreSettingsFormatError", " \t\r\n ")]
     public void RestoreReportsArchiveAndJsonErrorsWithoutChangingSettings(bool validArchive, string expectedMessage, string archivedSettings)
     {
         var directory = Directory.CreateTempSubdirectory("PowerToys-RestoreMessages-");
@@ -46,6 +48,9 @@ public class SettingsBackupAndRestoreTests
             Assert.IsFalse(result.Success);
             Assert.AreEqual("Error", result.Severity);
             Assert.AreEqual(expectedMessage, result.Message);
+            string message = XDocument.Load(Path.Combine(AppContext.BaseDirectory, "BackupRestore.Resources.resw"))
+                .Root.Elements("data").Single(item => item.Attribute("name").Value == result.Message).Element("value").Value;
+            Assert.IsFalse(message.TrimEnd().EndsWith(':'));
             Assert.AreEqual("""{"value":"current"}""", File.ReadAllText(current));
         }
         finally
@@ -57,9 +62,13 @@ public class SettingsBackupAndRestoreTests
     [TestMethod]
     [DataRow("")]
     [DataRow(" \t\r\n ")]
+    [DoNotParallelize]
     public void BackupReportsEmptyJsonAsMalformedSettings(string contents)
     {
         var directory = Directory.CreateTempSubdirectory("PowerToys-BackupMessages-");
+        using StringWriter output = new();
+        using TextWriterTraceListener listener = new(output);
+        Trace.Listeners.Add(listener);
         try
         {
             string settings = Directory.CreateDirectory(Path.Combine(directory.FullName, "settings")).FullName;
@@ -71,10 +80,13 @@ public class SettingsBackupAndRestoreTests
             Assert.IsFalse(result.Success);
             Assert.AreEqual("Error", result.Severity);
             Assert.AreEqual("General_SettingsBackupAndRestore_SettingsFormatError", result.Message);
+            Assert.AreEqual("settings.json", result.OptionalMessage.Trim());
+            StringAssert.Contains(output.ToString(), "Settings file: settings.json");
             Assert.AreEqual(0, Directory.GetFiles(backups).Length);
         }
         finally
         {
+            Trace.Listeners.Remove(listener);
             directory.Delete(recursive: true);
         }
     }

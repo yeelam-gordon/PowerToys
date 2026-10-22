@@ -87,7 +87,7 @@ namespace Microsoft.PowerToys.Settings.UI.Library
             catch (JsonException ex)
             {
                 LogBackupOrRestoreError("Invalid settings JSON during restore.", ex);
-                return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error");
+                return (false, "General_SettingsBackupAndRestore_RestoreSettingsFormatError", "Error");
             }
             catch (Exception ex)
             {
@@ -198,7 +198,8 @@ namespace Microsoft.PowerToys.Settings.UI.Library
                 catch (JsonException ex)
                 {
                     LogBackupOrRestoreError("Invalid settings JSON during backup.", ex);
-                    return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error", lastBackupExists, string.Empty);
+                    string details = ex.Data["SettingsRelativePath"] is string relativePath ? $" {relativePath}" : string.Empty;
+                    return (false, "General_SettingsBackupAndRestore_SettingsFormatError", "Error", lastBackupExists, details);
                 }
                 catch (Exception ex)
                 {
@@ -210,7 +211,8 @@ namespace Microsoft.PowerToys.Settings.UI.Library
 
         private static void LogBackupOrRestoreError(string message, Exception exception)
         {
-            Logger.LogError(message, exception);
+            string context = exception.Data["SettingsRelativePath"] is string relativePath ? $" Settings file: {relativePath}" : string.Empty;
+            Logger.LogError(message + context, exception);
             foreach (string key in new[] { "StagingCleanupError", "StagingCleanupErrors", "ArchiveCleanupError", "CreatedFileCleanupError", "CreatedDirectoryCleanupError" })
             {
                 if (exception.Data[key] is Exception cleanupError)

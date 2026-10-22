@@ -332,7 +332,15 @@ public sealed class SettingsBackupRestoreEngine
         foreach (string relativePath in root.EnumerateFiles(fileFilter: IsIncludedJson))
         {
             using SecureFile file = root.OpenFileForRead(relativePath);
-            settings.Add(relativePath, policy.CreateExportVersion(relativePath, file.ReadAllText()));
+            try
+            {
+                settings.Add(relativePath, policy.CreateExportVersion(relativePath, file.ReadAllText()));
+            }
+            catch (JsonException exception)
+            {
+                exception.Data["SettingsRelativePath"] = relativePath;
+                throw;
+            }
         }
 
         return settings;

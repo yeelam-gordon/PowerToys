@@ -545,6 +545,87 @@ public sealed class ClipboardHelperTests
         }
     }
 
+    [DataTestMethod]
+    [DataRow(true)]
+    [DataRow(false)]
+    public void DragDrop_ObsoleteValidationDoesNotCompleteNewGesture(bool hasValidatedPath)
+    {
+        string directory = Directory.CreateTempSubdirectory().FullName;
+        string path = Path.Combine(directory, "file.txt");
+        File.WriteAllText(path, "content");
+        LocalPathLease? lease = null;
+        bool originalMouseDown = DragDrop.MouseDown;
+        try
+        {
+            long obsoleteGeneration = DragDrop.BeginDragGesture();
+            if (hasValidatedPath)
+            {
+                lease = LocalPathLease.TryCreateForCurrentUser(path);
+                Assert.IsNotNull(lease);
+            }
+
+            long currentGeneration = DragDrop.BeginDragGesture();
+            Assert.IsFalse(DragDrop.TryCompleteDragFileValidation(obsoleteGeneration, path, lease, out bool activated));
+            Assert.IsFalse(activated);
+            Assert.IsTrue(DragDrop.MouseDown);
+            Assert.IsFalse(DragDrop.IsCurrentDragGeneration(obsoleteGeneration));
+            Assert.IsTrue(DragDrop.IsCurrentDragGeneration(currentGeneration));
+
+            lease ??= LocalPathLease.TryCreateForCurrentUser(path);
+            Assert.IsNotNull(lease);
+            Assert.IsTrue(Clipboard.TrySetValidatedTransientDragFile(currentGeneration, path, lease));
+            lease = null;
+        }
+        finally
+        {
+            lease?.Dispose();
+            Clipboard.LastDragDropFile = null;
+            DragDrop.MouseDown = originalMouseDown;
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [TestMethod]
+    public void DragDrop_OrderedNotificationsDoNotBlockButtonUp()
+    {
+        using ManualResetEventSlim entered = new(false);
+        using ManualResetEventSlim release = new(false);
+        using ManualResetEventSlim secondSent = new(false);
+        bool firstTimedOut = false;
+        Task first = DragDrop.QueueDragNotification(() =>
+        {
+            entered.Set();
+            firstTimedOut = !release.Wait(TimeSpan.FromSeconds(10));
+        });
+        Task? second = null;
+        Task? buttonUp = null;
+        try
+        {
+            Assert.IsTrue(entered.Wait(TimeSpan.FromSeconds(5)));
+            second = DragDrop.QueueDragNotification(secondSent.Set);
+            buttonUp = Task.Run(() => DragDrop.DragDropStep09(0x0202));
+            Assert.IsTrue(buttonUp.Wait(TimeSpan.FromSeconds(2)), "Button-up must not wait for a notification write.");
+            Assert.IsFalse(secondSent.IsSet, "Notifications must retain their enqueue order.");
+        }
+        finally
+        {
+            release.Set();
+            Assert.IsTrue(first.Wait(TimeSpan.FromSeconds(5)));
+            if (second != null)
+            {
+                Assert.IsTrue(second.Wait(TimeSpan.FromSeconds(5)));
+            }
+
+            if (buttonUp != null)
+            {
+                Assert.IsTrue(buttonUp.Wait(TimeSpan.FromSeconds(5)));
+            }
+        }
+
+        Assert.IsFalse(firstTimedOut);
+        Assert.IsTrue(secondSent.IsSet);
+    }
+
     private static bool TryMoveDirectory(string sourceDirectory, string destinationDirectory)
     {
         try

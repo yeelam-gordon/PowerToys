@@ -568,6 +568,7 @@ fesf
 FFFF
 fffffffzzz
 FFh
+ffi
 Figma
 figma
 FILEEXPLORER
@@ -694,6 +695,7 @@ HBRBACKGROUND
 hbrush
 hcblack
 HCCE
+HCERTSTORE
 HCRYPTHASH
 HCRYPTPROV
 hcursor
@@ -1302,6 +1304,7 @@ OFN
 ofs
 OICI
 OICIIO
+oids
 olditem
 oldpath
 oldtheme
@@ -1359,6 +1362,7 @@ pbi
 PBP
 pbrush
 pcb
+PCCERT
 pcch
 pcelt
 pch
@@ -1366,6 +1370,7 @@ pchast
 PCIDLIST
 PCTSTR
 PCWSTR
+pcwsz
 pdbs
 PDBs
 PDEVMODE
@@ -1515,6 +1520,7 @@ ptc
 PTCHAR
 ptcontrols
 ptd
+ptl
 PTOKEN
 ptstr
 ptsym
@@ -1614,6 +1620,7 @@ rgelt
 rgf
 rgh
 rgn
+rgpsz
 rgs
 rguid
 rhk
@@ -1669,6 +1676,7 @@ secondaryclickaction
 SECONDARYDISPLAY
 secpol
 securestring
+seekp
 SEEMASKINVOKEIDLIST
 SELCHANGE
 selfhost
@@ -1703,6 +1711,7 @@ SETWORKAREA
 SFBS
 sfgao
 SFGAOF
+sft
 SGNR
 SHACF
 SHANDLE
@@ -1821,6 +1830,7 @@ STARTUPINFO
 STARTUPINFOEX
 STARTUPINFOW
 startupscreen
+STATEACTION
 STATFLAG
 staticedge
 staticmethod
@@ -2232,12 +2242,14 @@ wsh
 wstr
 wsz
 WTA
+WTD
 WTNCA
 wtoi
 WTS
 WTSAT
 Wubi
 WUX
+WVT
 Wwanpp
 Wzhudev
 xap

@@ -6,6 +6,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 namespace
 {
     std::vector<wchar_t> clipboardText;
+    std::vector<std::wstring> clipboardCalls;
     SIZE_T clipboardBytes = 0;
     bool canOpen = true;
     bool hasText = true;
@@ -20,12 +21,14 @@ namespace
 
     BOOL TestOpenClipboard(HWND)
     {
+        clipboardCalls.push_back(L"OpenClipboard");
         ++openCount;
         return canOpen;
     }
 
     BOOL TestCloseClipboard()
     {
+        clipboardCalls.push_back(L"CloseClipboard");
         ++closeCount;
         return TRUE;
     }
@@ -50,12 +53,14 @@ namespace
 
     LPVOID TestGlobalLock(HGLOBAL)
     {
+        clipboardCalls.push_back(L"GlobalLock");
         ++lockCount;
         return canLock ? clipboardText.data() : nullptr;
     }
 
     BOOL TestGlobalUnlock(HGLOBAL)
     {
+        clipboardCalls.push_back(L"GlobalUnlock");
         ++unlockCount;
         return TRUE;
     }
@@ -118,6 +123,7 @@ namespace DemoTypeClipboardTests
             {
                 canOpen = hasText = hasData = canLock = true;
                 openCount = closeCount = lockCount = unlockCount = dataCount = 0;
+                clipboardCalls.clear();
                 g_Clipboard = false;
                 g_LastClipboardSeq = 0;
                 g_Text.clear();
@@ -232,6 +238,27 @@ namespace DemoTypeClipboardTests
                     Assert::AreEqual(3, closeCount);
                     Assert::AreEqual(0, lockCount);
                     Assert::AreEqual(0, unlockCount);
+                }
+
+                TEST_METHOD (AcceptsClipboardTextAtMaximumByteSize)
+                {
+                    const std::wstring text(MAX_INPUT_SIZE / sizeof(wchar_t) - 1, L'A');
+                    SetText(text);
+                    std::unique_ptr<wchar_t[]> copy(GetClipboard());
+                    Assert::IsNotNull(copy.get());
+                    Assert::AreEqual(text.c_str(), copy.get());
+                    Assert::AreEqual(1, unlockCount);
+                    Assert::AreEqual(1, closeCount);
+                }
+
+                TEST_METHOD (UnlocksClipboardDataBeforeClosingClipboard)
+                {
+                    std::unique_ptr<wchar_t[]> copy(GetClipboard());
+                    Assert::IsNotNull(copy.get());
+                    const std::vector<std::wstring> expectedCalls{
+                        L"OpenClipboard", L"GlobalLock", L"GlobalUnlock", L"CloseClipboard"
+                    };
+                    Assert::IsTrue(expectedCalls == clipboardCalls, L"Expected open, lock, unlock, then close.");
                 }
 
                 TEST_METHOD (FailedLockClosesWithoutUnlocking)

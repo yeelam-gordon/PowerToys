@@ -149,7 +149,7 @@ namespace interop_auth
     unsigned long long GetOwnModuleVersion();
 
     // The caller must pin path resolution and retain a write/delete-denying file handle
-    // through process creation. Unlike IPC authentication, this check also runs in Debug.
+    // through process creation. This helper always verifies signatures; callers gate unsigned Debug launches.
     AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
                                                const std::wstring& path,
                                                unsigned long long expectedVersion);

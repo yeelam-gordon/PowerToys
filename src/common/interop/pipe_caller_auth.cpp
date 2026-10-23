@@ -126,7 +126,7 @@ namespace interop_auth
             para.RequestedUsage.Usage.cUsageIdentifier = 1;
             para.RequestedUsage.Usage.rgpszUsageIdentifier = oids;
 
-            // Cached-only revocation: never hit the network; treat "unknown/offline" as not-revoked.
+            // Use cached revocation data only; the Authenticode chain policy below still applies.
             const DWORD flags = CERT_CHAIN_CACHE_ONLY_URL_RETRIEVAL |
                                 CERT_CHAIN_REVOCATION_CHECK_CACHE_ONLY |
                                 CERT_CHAIN_REVOCATION_CHECK_CHAIN_EXCLUDE_ROOT;

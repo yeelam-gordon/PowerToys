@@ -1213,9 +1213,10 @@ bool GetDemoTypeClipboard()
     delete[] g_ClipboardCache;
     g_ClipboardCache = GetClipboard();
 
-    // Confirm clipboard data begins with the safety prefix
+    // Preserve the existing prefix match, which ignores its first character.
     if( g_ClipboardCache == nullptr
-     || wcsncmp( g_ClipboardCache, safetyPrefix, safetyPrefixLen ) != 0
+     || g_ClipboardCache[0] == L'\0'
+     || wcsncmp( g_ClipboardCache + 1, safetyPrefix + 1, safetyPrefixLen - 1 ) != 0
      || g_ClipboardCache[safetyPrefixLen] == L'\0' )
     {
         ResetDemoTypeClipboard();

@@ -113,6 +113,7 @@ namespace DemoTypeClipboardTests
         TEST_METHOD_INITIALIZE(Initialize)
             {
                 canOpen = hasText = hasData = canLock = true;
+                fixtureSequence = 1;
                 openCount = closeCount = lockCount = unlockCount = dataCount = 0;
                 clipboardCalls.clear();
                 g_Clipboard = false;
@@ -157,7 +158,7 @@ namespace DemoTypeClipboardTests
 
                 TEST_METHOD (StopsAtFirstNull)
                 {
-                    SetText(std::wstring(L"[start]First\0Unused", 19), false);
+                    SetText(std::wstring(L"[start]First") + L'\0' + L"Unused", false);
                     Assert::IsTrue(GetDemoTypeClipboard());
                     Assert::AreEqual(L"First", g_Text.c_str());
                 }

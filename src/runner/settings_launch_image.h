@@ -49,6 +49,7 @@ public:
         return file.get();
     }
 
+    // Exact extended-length DOS path from the retained handle; do not strip its \\?\ prefix.
     const std::wstring& Path() const
     {
         return path;

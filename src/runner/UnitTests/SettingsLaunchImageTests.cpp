@@ -104,6 +104,18 @@ namespace RunnerUnitTests
             Assert::IsTrue(GetSystemDirectoryW(system, ARRAYSIZE(system)) != 0);
             return std::wstring(system) + L"\\" + filename;
         }
+
+        std::wstring MicrosoftRuntimeImagePath()
+        {
+            HMODULE module = nullptr;
+            Assert::IsTrue(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                                             MicrosoftRuntimeFilename,
+                                             &module) != FALSE);
+            wchar_t modulePath[MAX_PATH * 2]{};
+            const DWORD length = GetModuleFileNameW(module, modulePath, ARRAYSIZE(modulePath));
+            Assert::IsTrue(length != 0 && length < ARRAYSIZE(modulePath));
+            return (std::filesystem::path(modulePath).parent_path() / L"TestFixtures" / MicrosoftRuntimeFilename).wstring();
+        }
     }
 
     TEST_CLASS (SettingsLaunchImageTests)
@@ -148,7 +160,7 @@ namespace RunnerUnitTests
         TEST_METHOD (MatchingMicrosoftImageRequiresVersionAndFileHandle)
         {
             SettingsLaunchImage image;
-            Assert::IsTrue(SUCCEEDED(image.Open(SystemImagePath(MicrosoftRuntimeFilename))));
+            Assert::IsTrue(SUCCEEDED(image.Open(MicrosoftRuntimeImagePath())));
             const auto version = interop_auth::GetModuleVersion(image.Path());
             Assert::IsTrue(version != 0);
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
@@ -163,7 +175,7 @@ namespace RunnerUnitTests
         {
             LaunchFixture fixture;
             const std::wstring copy = fixture.first + L"\\sample.dat";
-            Assert::IsTrue(CopyFileW(SystemImagePath(MicrosoftRuntimeFilename).c_str(), copy.c_str(), FALSE) != FALSE);
+            Assert::IsTrue(CopyFileW(MicrosoftRuntimeImagePath().c_str(), copy.c_str(), FALSE) != FALSE);
             const auto version = interop_auth::GetModuleVersion(copy);
             {
                 SettingsLaunchImage pristine;

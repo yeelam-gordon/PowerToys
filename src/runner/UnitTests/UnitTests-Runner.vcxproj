@@ -68,5 +68,12 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Target Name="CopySettingsLaunchTestFixture" AfterTargets="Build">
+    <ItemGroup>
+      <SettingsLaunchSignedRuntime Include="$(VCInstallDir)Redist\MSVC\$(VCToolsRedistVersion)\$(Platform)\Microsoft.VC*.CRT\msvcp140.dll" />
+    </ItemGroup>
+    <Error Condition="'@(SettingsLaunchSignedRuntime->Count())' != '1'" Text="Expected one signed MSVC runtime fixture for toolchain $(VCToolsRedistVersion) and platform $(Platform)." />
+    <Copy SourceFiles="@(SettingsLaunchSignedRuntime)" DestinationFolder="$(OutDir)TestFixtures" SkipUnchangedFiles="true" />
+  </Target>
   <Import Project="$(RepoRoot)packages\Microsoft.Windows.CppWinRT.2.0.250303.1\build\native\Microsoft.Windows.CppWinRT.targets" Condition="Exists('$(RepoRoot)packages\Microsoft.Windows.CppWinRT.2.0.250303.1\build\native\Microsoft.Windows.CppWinRT.targets')" />
 </Project>

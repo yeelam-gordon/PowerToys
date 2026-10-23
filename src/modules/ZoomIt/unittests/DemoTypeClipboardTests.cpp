@@ -172,7 +172,7 @@ namespace DemoTypeClipboardTests
 
                 TEST_METHOD (RejectsShortOrIncorrectPrefix)
                 {
-                    for (const auto* text : { L"", L"[", L"x", L"[start", L"[start]", L"xstart]", L"xxxxxxxxstart]Text", L"[Start]Text" })
+                    for (const auto* text : { L"", L"[", L" ", L"[start", L"[start]", L" start]", L"        start]Text", L"[Start]Text" })
                     {
                         SetText(text);
                         Assert::IsFalse(GetDemoTypeClipboard(), text);
@@ -182,7 +182,7 @@ namespace DemoTypeClipboardTests
 
                 TEST_METHOD (AcceptsDemoTypePrefixWithDifferentFirstCharacter)
                 {
-                    for (const auto* text : { L"[start]Example", L"xstart]Example", L"!start]Example" })
+                    for (const auto* text : { L"[start]Example", L" start]Example", L"!start]Example" })
                     {
                         SetText(text);
                         Assert::IsTrue(GetDemoTypeClipboard(), text);
@@ -192,7 +192,7 @@ namespace DemoTypeClipboardTests
 
                 TEST_METHOD (RejectsEveryPrefixLengthWithoutScriptText)
                 {
-                    for (const auto* prefix : { L"[start]", L"xstart]" })
+                    for (const auto* prefix : { L"[start]", L" start]" })
                     {
                         for (size_t length = 0; length <= 7; ++length)
                         {

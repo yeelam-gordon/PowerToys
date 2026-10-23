@@ -496,7 +496,6 @@ EDITKEYBOARD
 EDITSHORTCUTS
 EDITTEXT
 eep
-Efast
 eku
 emojis
 ENABLEDELAYEDEXPANSION
@@ -990,7 +989,7 @@ lon
 longdate
 lowlevel
 LOWORD
-LPARAM
+lparam
 LPBITMAPINFOHEADER
 lpch
 LPCITEMIDLIST
@@ -1887,7 +1886,7 @@ SYSDEADCHAR
 sysdm
 SYSICONINDEX
 SYSKEY
-SYSKEYDOWN
+syskeydown
 SYSKEYUP
 SYSLIB
 sysmenu
@@ -2216,7 +2215,7 @@ WORKSPACESSNAPSHOTTOOL
 WORKSPACESWINDOWARRANGER
 worktree
 wox
-WPARAM
+wparam
 wpf
 wpftmp
 wpfui
@@ -2252,7 +2251,6 @@ XMN
 xmp
 Xoshiro
 xsi
-xstart
 xstyler
 XUP
 XVIRTUALSCREEN
@@ -2272,6 +2270,6 @@ zonable
 zoneset
 Zoneszonabletester
 Zoomin
-Zoomit
+zoomit
 ZOOMITX
 Zorder

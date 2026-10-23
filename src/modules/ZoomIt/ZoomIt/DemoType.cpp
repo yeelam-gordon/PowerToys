@@ -1199,7 +1199,7 @@ void ResetDemoTypeClipboard()
 //----------------------------------------------------------------------------
 bool GetDemoTypeClipboard()
 {
-    const int safetyPrefixLen = 7;
+    const size_t safetyPrefixLen = 7;
     const wchar_t safetyPrefix[] = L"[start]";
 
     // Check if we can reuse the clipboard cache
@@ -1215,9 +1215,8 @@ bool GetDemoTypeClipboard()
 
     // Preserve the existing prefix match, which ignores its first character.
     if( g_ClipboardCache == nullptr
-     || g_ClipboardCache[0] == L'\0'
-     || wcsncmp( g_ClipboardCache + 1, safetyPrefix + 1, safetyPrefixLen - 1 ) != 0
-     || g_ClipboardCache[safetyPrefixLen] == L'\0' )
+     || wcsnlen_s( g_ClipboardCache, safetyPrefixLen + 1 ) <= safetyPrefixLen
+     || wcsncmp( g_ClipboardCache + 1, safetyPrefix + 1, safetyPrefixLen - 1 ) != 0 )
     {
         ResetDemoTypeClipboard();
         return false;

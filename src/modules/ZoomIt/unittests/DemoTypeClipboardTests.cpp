@@ -70,16 +70,6 @@ namespace
         return fixtureSequence;
     }
 
-    wchar_t* TestCopyClipboardText(wchar_t* destination, const wchar_t* source)
-    {
-        Assert::IsTrue(source == clipboardText.data());
-        const auto end = std::find(clipboardText.begin(), clipboardText.end(), L'\0');
-        Assert::IsTrue(end != clipboardText.end(), L"String copy requires a terminator within the supplied clipboard text.");
-        const size_t length = static_cast<size_t>(end - clipboardText.begin());
-        Assert::IsTrue(length < clipboardBytes / sizeof(wchar_t), L"String copy must fit within the supplied clipboard text.");
-        return wcscpy(destination, source);
-    }
-
     void SetText(const std::wstring& text, bool terminated = true)
     {
         clipboardText.assign(text.begin(), text.end());
@@ -101,9 +91,11 @@ namespace
 #define GlobalLock TestGlobalLock
 #define GlobalUnlock TestGlobalUnlock
 #define GetClipboardSequenceNumber TestGetClipboardSequenceNumber
-// Fail a reader regression before attempting a string copy outside the fixture.
-#define wcscpy TestCopyClipboardText
+// Keep production CRT diagnostics separate from the test code.
+#pragma warning(push)
+#pragma warning(disable : 4996)
 #include "..\ZoomIt\DemoType.cpp"
+#pragma warning(pop)
 #undef OpenClipboard
 #undef CloseClipboard
 #undef IsClipboardFormatAvailable
@@ -112,7 +104,6 @@ namespace
 #undef GlobalLock
 #undef GlobalUnlock
 #undef GetClipboardSequenceNumber
-#undef wcscpy
 
 namespace DemoTypeClipboardTests
 {
@@ -196,6 +187,18 @@ namespace DemoTypeClipboardTests
                         SetText(text);
                         Assert::IsTrue(GetDemoTypeClipboard(), text);
                         Assert::AreEqual(L"Example", g_Text.c_str());
+                    }
+                }
+
+                TEST_METHOD (RejectsEveryPrefixLengthWithoutScriptText)
+                {
+                    for (const auto* prefix : { L"[start]", L"xstart]" })
+                    {
+                        for (size_t length = 0; length <= 7; ++length)
+                        {
+                            SetText(std::wstring(prefix, length));
+                            Assert::IsFalse(GetDemoTypeClipboard());
+                        }
                     }
                 }
 

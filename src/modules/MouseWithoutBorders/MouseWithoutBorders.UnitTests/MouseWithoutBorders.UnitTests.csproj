@@ -12,7 +12,6 @@
   <ItemGroup>
     <None Remove="Core\Logger.PrivateDump.expected.txt" />
     <None Remove="Core\Logger.PrivateDump.original.txt" />
-    <Compile Include="..\App\Helper\DragFileCallback.cs" Link="Helper\DragFileCallback.cs" />
   </ItemGroup>
 
   <ItemGroup>

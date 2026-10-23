@@ -796,18 +796,8 @@ namespace MouseWithoutBorders
                     break;
 
                 case NativeMethods.WM_HIDE_DD_HELPER:
-                    if (!Core.DragDrop.IsCurrentDragGeneration(m.LParam.ToInt64()))
-                    {
-                        break;
-                    }
-
                     Helper.MainForm3Pixels();
                     Common.MMSleep(0.2);
-                    if (!Core.DragDrop.IsCurrentDragGeneration(m.LParam.ToInt64()))
-                    {
-                        break;
-                    }
-
                     if (m.WParam.ToInt32() == 1)
                     {
                         InputSimulation.MouseUp(); // A file is being dragged

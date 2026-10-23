@@ -23,7 +23,6 @@ namespace MouseWithoutBorders
         private long lastClipboardEventTime;
 
         private IClipboardHelper remoteClipboardHelper;
-        private long dragValidationGeneration;
         private const string TEXT_TYPE_SEP = "{4CFF57F7-BEDD-43d5-AE8F-27A61E886F2F}";
 
         private const int MAX_TEXT_SIZE = 20 * 1024 * 1024;
@@ -118,23 +117,27 @@ namespace MouseWithoutBorders
 
         private void FormHelper_DragEnter(object sender, DragEventArgs e)
         {
-            if (DragFileCallback.TryReadFile(
-                ref dragValidationGeneration,
-                () => e.Data.GetData(DataFormats.FileDrop),
-                out string fileName,
-                out long validationGeneration))
+            object o = e.Data.GetData(DataFormats.FileDrop);
+
+            if (o != null)
             {
                 e.Effect = DragDropEffects.Copy;
-                Hide();
+                Array ar = (string[])o;
 
-                try
+                if (ar.Length > 0)
                 {
-                    remoteClipboardHelper.SendDragFile(fileName, validationGeneration);
-                }
-                catch (Exception ex)
-                {
-                    EventLogger.LogEvent("FormHelper_DragEnter: " + ex.Message, EventLogEntryType.Error);
-                    QuitDueToCommunicationError();
+                    string fileName = ar.GetValue(0).ToString();
+                    Hide();
+
+                    try
+                    {
+                        remoteClipboardHelper.SendDragFile(fileName);
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLogger.LogEvent("FormHelper_DragEnter: " + ex.Message, EventLogEntryType.Error);
+                        QuitDueToCommunicationError();
+                    }
                 }
             }
         }
@@ -448,11 +451,6 @@ namespace MouseWithoutBorders
 
                 case SharedConst.QUIT_CMD:
                     Process.GetCurrentProcess().Kill();
-                    break;
-
-                case SharedConst.SET_DRAG_VALIDATION_GENERATION_CMD:
-                    _ = Interlocked.Exchange(ref dragValidationGeneration, m.WParam.ToInt64());
-                    m.Result = (IntPtr)1;
                     break;
 
                 default:

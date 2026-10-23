@@ -144,17 +144,18 @@ namespace RunnerUnitTests
             Assert::IsTrue(MoveFileExW(moved.c_str(), source.c_str(), 0) != FALSE);
         }
 
-        TEST_METHOD (MatchingMicrosoftImageRequiresVersionAndOriginalFilename)
+        TEST_METHOD (MatchingMicrosoftImageRequiresVersionAndFileHandle)
         {
             SettingsLaunchImage image;
             Assert::IsTrue(SUCCEEDED(image.Open(SystemImagePath(MicrosoftRuntimeFilename))));
             const auto version = interop_auth::GetModuleVersion(image.Path());
             Assert::IsTrue(version != 0);
-            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version, MicrosoftRuntimeFilename);
+            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsTrue(verified.accepted, verified.reasonCode);
-            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version + 1, MicrosoftRuntimeFilename).accepted);
-            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), 0, MicrosoftRuntimeFilename).accepted);
-            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version, L"PowerToys.Settings.dll").accepted);
+            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version + 1).accepted);
+            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), 0).accepted);
+            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(nullptr, image.Path(), version).accepted);
+            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(INVALID_HANDLE_VALUE, image.Path(), version).accepted);
         }
 
         TEST_METHOD (ChangedImageIsRejectedEvenWithMatchingVersionResources)
@@ -166,7 +167,7 @@ namespace RunnerUnitTests
             {
                 SettingsLaunchImage pristine;
                 Assert::IsTrue(SUCCEEDED(pristine.Open(copy)));
-                const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(pristine.File(), pristine.Path(), version, MicrosoftRuntimeFilename);
+                const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(pristine.File(), pristine.Path(), version);
                 Assert::IsTrue(verified.accepted, verified.reasonCode);
             }
             {
@@ -185,7 +186,7 @@ namespace RunnerUnitTests
             Assert::IsTrue(SUCCEEDED(image.Open(copy)));
             Assert::IsTrue(version != 0);
             Assert::AreEqual(version, interop_auth::GetModuleVersion(image.Path()));
-            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version, MicrosoftRuntimeFilename);
+            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsFalse(verified.accepted);
             Assert::AreEqual(L"not-microsoft-signed", verified.reasonCode);
         }

@@ -11,7 +11,6 @@
 
 #pragma comment(lib, "wintrust.lib")
 #pragma comment(lib, "crypt32.lib")
-// Resolve version.dll APIs dynamically to avoid the interop DLL's static Version.lib name collision.
 
 namespace interop_auth
 {
@@ -196,49 +195,6 @@ namespace interop_auth
             return result;
         }
 
-        std::wstring ModuleOriginalFilename(const std::wstring& path)
-        {
-            HMODULE version = LoadLibraryExW(L"version.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-            if (!version)
-            {
-                return {};
-            }
-
-            std::wstring result;
-            const auto getSize = reinterpret_cast<decltype(&GetFileVersionInfoSizeW)>(GetProcAddress(version, "GetFileVersionInfoSizeW"));
-            const auto getInfo = reinterpret_cast<decltype(&GetFileVersionInfoW)>(GetProcAddress(version, "GetFileVersionInfoW"));
-            const auto query = reinterpret_cast<decltype(&VerQueryValueW)>(GetProcAddress(version, "VerQueryValueW"));
-            DWORD ignored = 0;
-            const DWORD versionSize = getSize ? getSize(path.c_str(), &ignored) : 0;
-            std::vector<BYTE> bytes(versionSize);
-            struct Translation
-            {
-                WORD language;
-                WORD codePage;
-            };
-            Translation* translations = nullptr;
-            UINT size = 0;
-            if (getInfo && query && versionSize != 0 &&
-                getInfo(path.c_str(), 0, versionSize, bytes.data()) &&
-                query(bytes.data(), L"\\VarFileInfo\\Translation", reinterpret_cast<void**>(&translations), &size))
-            {
-                for (UINT i = 0; i < size / sizeof(Translation); ++i)
-                {
-                    wchar_t key[96]{};
-                    swprintf_s(key, L"\\StringFileInfo\\%04x%04x\\OriginalFilename", translations[i].language, translations[i].codePage);
-                    wchar_t* name = nullptr;
-                    UINT length = 0;
-                    if (query(bytes.data(), key, reinterpret_cast<void**>(&name), &length) && name && length > 1)
-                    {
-                        result.assign(name, length - 1);
-                        break;
-                    }
-                }
-            }
-            FreeLibrary(version);
-            return result;
-        }
-
         // --- Per-process verification cache -------------------------------------------------------
         // The cache itself is the header-only interop_auth::VerificationCache, owned per pipe server so
         // verdicts are physically partitioned by policy (key = pid + creation-time). Only the helper to
@@ -308,8 +264,7 @@ namespace interop_auth
 
     AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
                                                const std::wstring& path,
-                                               unsigned long long expectedVersion,
-                                               const std::wstring& expectedOriginalFilename)
+                                               unsigned long long expectedVersion)
     {
         AuthResult result;
         result.imagePath = path;
@@ -320,10 +275,6 @@ namespace interop_auth
         else if (expectedVersion == 0 || GetModuleVersion(path) != expectedVersion)
         {
             result.reasonCode = L"version-mismatch";
-        }
-        else if (expectedOriginalFilename.empty() || _wcsicmp(ModuleOriginalFilename(path).c_str(), expectedOriginalFilename.c_str()) != 0)
-        {
-            result.reasonCode = L"original-filename-mismatch";
         }
         else if (!VerifyMicrosoftSignedMachineRoot(path, file))
         {

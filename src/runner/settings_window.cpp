@@ -585,8 +585,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
             }
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(launch_image.File(),
                                                                                launch_image.Path(),
-                                                                               interop_auth::GetOwnModuleVersion(),
-                                                                               L"PowerToys.Settings.dll");
+                                                                               interop_auth::GetOwnModuleVersion());
             if (!verified.accepted)
             {
                 Logger::error(L"Settings image could not be verified before launch: {}", verified.reasonCode);

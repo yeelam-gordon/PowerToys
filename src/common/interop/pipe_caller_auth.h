@@ -152,6 +152,5 @@ namespace interop_auth
     // through process creation. Unlike IPC authentication, this check also runs in Debug.
     AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
                                                const std::wstring& path,
-                                               unsigned long long expectedVersion,
-                                               const std::wstring& expectedOriginalFilename);
+                                               unsigned long long expectedVersion);
 }

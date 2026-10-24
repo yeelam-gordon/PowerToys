@@ -120,11 +120,48 @@ namespace RunnerUnitTests
             Assert::IsTrue(length != 0 && length < ARRAYSIZE(modulePath));
             return (std::filesystem::path(modulePath).parent_path() / L"TestFixtures" / MicrosoftRuntimeFilename).wstring();
         }
+
+        HRESULT GetFileSignaturePresence(const std::wstring& path, bool& hasSignature)
+        {
+            wil::unique_hfile file(CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, 0, nullptr));
+            if (!file)
+            {
+                return HRESULT_FROM_WIN32(GetLastError());
+            }
+            wil::unique_handle mapping(CreateFileMappingW(file.get(), nullptr, PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0, 0, nullptr));
+            if (!mapping)
+            {
+                return HRESULT_FROM_WIN32(GetLastError());
+            }
+            wil::unique_mapview_ptr<BYTE> image(static_cast<BYTE*>(MapViewOfFile(mapping.get(), FILE_MAP_READ, 0, 0, 0)));
+            if (!image)
+            {
+                return HRESULT_FROM_WIN32(GetLastError());
+            }
+            return interop_auth::GetMappedImageSignaturePresence(image.get(), hasSignature);
+        }
     }
 
     TEST_CLASS (SettingsLaunchImageTests)
     {
     public:
+        TEST_METHOD (LoadedHostSignatureMetadataMatchesItsImage)
+        {
+            wchar_t path[MAX_PATH * 2]{};
+            DWORD length = ARRAYSIZE(path);
+            Assert::IsTrue(QueryFullProcessImageNameW(GetCurrentProcess(), 0, path, &length) != FALSE);
+            bool fileHasSignature = true;
+            bool loadedHostHasSignature = true;
+            Assert::IsTrue(SUCCEEDED(GetFileSignaturePresence(std::wstring(path, length), fileHasSignature)));
+            Assert::IsTrue(SUCCEEDED(interop_auth::GetOwnModuleSignaturePresence(loadedHostHasSignature)));
+            Assert::AreEqual(fileHasSignature, loadedHostHasSignature);
+            Assert::AreEqual(interop_auth::GetModuleVersion(std::wstring(path, length)), interop_auth::GetOwnModuleVersion());
+            const auto message = L"Loaded host metadata: file signature=" + std::to_wstring(fileHasSignature) +
+                                 L", loaded signature=" + std::to_wstring(loadedHostHasSignature) +
+                                 L", version=" + std::to_wstring(interop_auth::GetOwnModuleVersion());
+            Logger::WriteMessage(message.c_str());
+        }
+
         TEST_METHOD (ResolvedImageRemainsStableWhenInputJunctionChanges)
         {
             LaunchFixture fixture;
@@ -167,9 +204,9 @@ namespace RunnerUnitTests
             Assert::IsTrue(SUCCEEDED(image.Open(MicrosoftRuntimeImagePath())));
             const auto version = interop_auth::GetModuleVersion(image.Path());
             Assert::IsTrue(version != 0);
-            bool isSigned = false;
-            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(image.Path(), isSigned)));
-            Assert::IsTrue(isSigned);
+            bool hasSignature = false;
+            Assert::IsTrue(SUCCEEDED(GetFileSignaturePresence(image.Path(), hasSignature)));
+            Assert::IsTrue(hasSignature);
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsTrue(verified.accepted, verified.reasonCode);
             Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version + 1).accepted);
@@ -209,8 +246,9 @@ namespace RunnerUnitTests
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsFalse(verified.accepted);
             Assert::AreEqual(L"not-microsoft-signed", verified.reasonCode);
-            bool isSigned = true;
-            Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(image.Path(), isSigned)));
+            bool hasSignature = true;
+            Assert::IsTrue(SUCCEEDED(GetFileSignaturePresence(image.Path(), hasSignature)));
+            Assert::IsTrue(hasSignature);
         }
 
         TEST_METHOD (UnsignedImageIsDistinguishedFromSignatureVerificationFailure)
@@ -234,23 +272,23 @@ namespace RunnerUnitTests
                 }
             }
 
-            bool isSigned = true;
-            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(copy, isSigned)));
-            Assert::IsFalse(isSigned);
+            bool hasSignature = true;
+            Assert::IsTrue(SUCCEEDED(GetFileSignaturePresence(copy, hasSignature)));
+            Assert::IsFalse(hasSignature);
 
             SettingsLaunchImage image;
             Assert::IsTrue(SUCCEEDED(image.Open(copy)));
             Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), interop_auth::GetModuleVersion(image.Path())).accepted);
-            Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(fixture.root + L"\\missing.exe", isSigned)));
+            Assert::IsTrue(FAILED(GetFileSignaturePresence(fixture.root + L"\\missing.exe", hasSignature)));
         }
 
         TEST_METHOD (MalformedSignatureMaterialDoesNotCountAsUnsigned)
         {
             LaunchFixture fixture;
             const auto source = MicrosoftRuntimeImagePath();
-            bool isSigned = false;
-            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(source, isSigned)));
-            Assert::IsTrue(isSigned);
+            bool hasSignature = false;
+            Assert::IsTrue(SUCCEEDED(GetFileSignaturePresence(source, hasSignature)));
+            Assert::IsTrue(hasSignature);
 
             std::ifstream original(std::filesystem::path(source), std::ios::binary);
             IMAGE_DOS_HEADER dos{};
@@ -289,7 +327,12 @@ namespace RunnerUnitTests
                     bytes.write(reinterpret_cast<const char*>(&mutation.value), mutation.length);
                     Assert::IsTrue(bytes.good());
                 }
-                Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(copy, isSigned)));
+                hasSignature = true;
+                const HRESULT presence = GetFileSignaturePresence(copy, hasSignature);
+                Assert::IsTrue(FAILED(presence) || hasSignature);
+                SettingsLaunchImage image;
+                Assert::IsTrue(SUCCEEDED(image.Open(copy)));
+                Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), interop_auth::GetModuleVersion(source)).accepted);
             }
         }
 

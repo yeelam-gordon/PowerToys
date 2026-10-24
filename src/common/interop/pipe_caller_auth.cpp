@@ -157,7 +157,7 @@ namespace interop_auth
             return ok;
         }
 
-        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path, HANDLE file = nullptr, LONG* signatureStatus = nullptr)
+        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path, HANDLE file = nullptr)
         {
             WINTRUST_FILE_INFO fileInfo = {};
             fileInfo.cbStruct = sizeof(fileInfo);
@@ -176,10 +176,6 @@ namespace interop_auth
             GUID action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
             HWND noWindow = static_cast<HWND>(INVALID_HANDLE_VALUE);
             const LONG status = WinVerifyTrust(noWindow, &action, &wd);
-            if (signatureStatus)
-            {
-                *signatureStatus = status;
-            }
 
             bool result = false;
             if (status == ERROR_SUCCESS)
@@ -201,36 +197,36 @@ namespace interop_auth
             return result;
         }
 
-        HRESULT GetEmbeddedSignaturePresence(HANDLE file, bool& hasSignature)
+        unsigned long long ReadModuleVersion(HMODULE module)
         {
-            HANDLE mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0, 0, nullptr);
-            if (!mapping)
+            if (!module)
             {
-                return HRESULT_FROM_WIN32(GetLastError());
+                return 0;
             }
-            void* image = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
-            if (!image)
+            unsigned long long result = 0;
+            if (HRSRC resource = FindResourceW(module, MAKEINTRESOURCEW(1 /* VS_VERSION_INFO */), RT_VERSION))
             {
-                const HRESULT error = HRESULT_FROM_WIN32(GetLastError());
-                CloseHandle(mapping);
-                return error;
-            }
-
-            HRESULT result = TRUST_E_SUBJECT_FORM_UNKNOWN;
-            {
-                static std::mutex imageMutex;
-                std::scoped_lock lock(imageMutex);
-                const auto* headers = ImageNtHeader(image);
-                if (headers && headers->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR_MAGIC &&
-                    headers->OptionalHeader.NumberOfRvaAndSizes > IMAGE_DIRECTORY_ENTRY_SECURITY)
+                if (HGLOBAL loaded = LoadResource(module, resource))
                 {
-                    const auto& certificate = headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];
-                    hasSignature = certificate.VirtualAddress != 0 || certificate.Size != 0;
-                    result = S_OK;
+                    const void* locked = LockResource(loaded);
+                    const DWORD size = SizeofResource(module, resource);
+                    if (locked && size >= sizeof(VS_FIXEDFILEINFO))
+                    {
+                        std::vector<BYTE> bytes(size);
+                        memcpy(bytes.data(), locked, size);
+                        for (size_t i = 0; i + sizeof(VS_FIXEDFILEINFO) <= bytes.size(); i += sizeof(DWORD))
+                        {
+                            VS_FIXEDFILEINFO version{};
+                            memcpy(&version, &bytes[i], sizeof(version));
+                            if (version.dwSignature == 0xFEEF04BD)
+                            {
+                                result = (static_cast<unsigned long long>(version.dwFileVersionMS) << 32) | version.dwFileVersionLS;
+                                break;
+                            }
+                        }
+                    }
                 }
             }
-            UnmapViewOfFile(image);
-            CloseHandle(mapping);
             return result;
         }
 
@@ -262,92 +258,64 @@ namespace interop_auth
         {
             return 0;
         }
-        unsigned long long result = 0;
-        if (HRSRC res = FindResourceW(mod, MAKEINTRESOURCEW(1 /* VS_VERSION_INFO */), RT_VERSION))
-        {
-            if (HGLOBAL glob = LoadResource(mod, res))
-            {
-                const void* locked = LockResource(glob);
-                const DWORD size = SizeofResource(mod, res);
-                if (locked != nullptr && size >= sizeof(VS_FIXEDFILEINFO))
-                {
-                    std::vector<BYTE> bytes(size);
-                    memcpy(bytes.data(), locked, size);
-                    for (size_t i = 0; i + sizeof(VS_FIXEDFILEINFO) <= bytes.size(); i += sizeof(DWORD))
-                    {
-                        VS_FIXEDFILEINFO ffi{};
-                        memcpy(&ffi, &bytes[i], sizeof(ffi));
-                        if (ffi.dwSignature == 0xFEEF04BD)
-                        {
-                            result = (static_cast<unsigned long long>(ffi.dwFileVersionMS) << 32) | ffi.dwFileVersionLS;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        const auto result = ReadModuleVersion(mod);
         FreeLibrary(mod);
         return result;
     }
 
     unsigned long long GetOwnModuleVersion()
     {
-        wchar_t self[MAX_PATH * 2] = {};
-        DWORD length = ARRAYSIZE(self);
-        if (!QueryFullProcessImageNameW(GetCurrentProcess(), 0, self, &length))
-        {
-            return 0;
-        }
-        return GetModuleVersion(std::wstring(self, length));
+        return ReadModuleVersion(GetModuleHandleW(nullptr));
     }
 
-    HRESULT GetModuleSignatureStatus(const std::wstring& path, bool& isSigned)
+    HRESULT GetMappedImageSignaturePresence(void* image, bool& hasSignature)
     {
-        HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-        if (file == INVALID_HANDLE_VALUE)
+        if (!image)
         {
-            return HRESULT_FROM_WIN32(GetLastError());
+            return E_INVALIDARG;
         }
-
-        LONG status = TRUST_E_FAIL;
-        VerifyMicrosoftSignedMachineRoot(path, file, &status);
-        bool signatureAbsent = false;
-        if (status == TRUST_E_NOSIGNATURE)
+        static std::mutex imageMutex;
+        std::scoped_lock lock(imageMutex);
+        const auto* headers = ImageNtHeader(image);
+        if (!headers)
         {
-            bool hasSignature = true;
-            const HRESULT presence = GetEmbeddedSignaturePresence(file, hasSignature);
-            if (FAILED(presence))
+            return TRUST_E_SUBJECT_FORM_UNKNOWN;
+        }
+        IMAGE_DATA_DIRECTORY certificate{};
+        if (headers->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR32_MAGIC)
+        {
+            const auto* optional = reinterpret_cast<const IMAGE_OPTIONAL_HEADER32*>(&headers->OptionalHeader);
+            if (optional->NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_SECURITY)
             {
-                status = presence;
+                return TRUST_E_SUBJECT_FORM_UNKNOWN;
             }
-            else
+            certificate = optional->DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];
+        }
+        else if (headers->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR64_MAGIC)
+        {
+            const auto* optional = reinterpret_cast<const IMAGE_OPTIONAL_HEADER64*>(&headers->OptionalHeader);
+            if (optional->NumberOfRvaAndSizes <= IMAGE_DIRECTORY_ENTRY_SECURITY)
             {
-                signatureAbsent = !hasSignature;
+                return TRUST_E_SUBJECT_FORM_UNKNOWN;
             }
+            certificate = optional->DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];
         }
-        CloseHandle(file);
-        if (signatureAbsent)
+        else
         {
-            isSigned = false;
-            return S_OK;
+            return TRUST_E_SUBJECT_FORM_UNKNOWN;
         }
-        if (status != ERROR_SUCCESS)
-        {
-            return static_cast<HRESULT>(status);
-        }
-        isSigned = true;
+        hasSignature = certificate.VirtualAddress != 0 || certificate.Size != 0;
         return S_OK;
     }
 
-    HRESULT GetOwnModuleSignatureStatus(bool& isSigned)
+    HRESULT GetOwnModuleSignaturePresence(bool& hasSignature)
     {
-        wchar_t self[MAX_PATH * 2]{};
-        DWORD length = ARRAYSIZE(self);
-        if (!QueryFullProcessImageNameW(GetCurrentProcess(), 0, self, &length))
+        HMODULE module = GetModuleHandleW(nullptr);
+        if (!module)
         {
             return HRESULT_FROM_WIN32(GetLastError());
         }
-        return GetModuleSignatureStatus(std::wstring(self, length), isSigned);
+        return GetMappedImageSignaturePresence(module, hasSignature);
     }
 
     AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
@@ -460,13 +428,13 @@ namespace interop_auth
             bool signatureOk = true;
             if (policy.requireMicrosoftSignature)
             {
-                bool serverIsSigned = true;
-                if (FAILED(GetOwnModuleSignatureStatus(serverIsSigned)))
+                bool serverHasSignature = true;
+                if (FAILED(GetOwnModuleSignaturePresence(serverHasSignature)))
                 {
                     signatureOk = false;
                     reason = L"server-signature-check-failed";
                 }
-                else if (serverIsSigned)
+                else if (serverHasSignature)
                 {
                     signatureOk = VerifyMicrosoftSignedMachineRoot(canonical);
                 }

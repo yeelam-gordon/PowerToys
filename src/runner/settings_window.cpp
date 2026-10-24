@@ -574,14 +574,14 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         }
         if (elevation.TokenIsElevated)
         {
-            bool runnerIsSigned = true;
-            const HRESULT signatureStatus = interop_auth::GetOwnModuleSignatureStatus(runnerIsSigned);
-            if (FAILED(signatureStatus))
+            bool runnerHasSignature = true;
+            const HRESULT metadataStatus = interop_auth::GetOwnModuleSignaturePresence(runnerHasSignature);
+            if (FAILED(metadataStatus))
             {
-                Logger::error(L"Failed to check Runner signature before launching Settings: {:#010x}", static_cast<unsigned long>(signatureStatus));
+                Logger::error(L"Failed to read Runner signing metadata before launching Settings: {:#010x}", static_cast<unsigned long>(metadataStatus));
                 goto LExit;
             }
-            if (runnerIsSigned)
+            if (runnerHasSignature)
             {
                 const HRESULT opened = launch_image.Open(executable_path);
                 if (FAILED(opened))

@@ -1,4 +1,5 @@
 #include "pch.h"
+#include <Helpers.h>
 #include <PowerRenameItem.h>
 #include <PowerRenameRegEx.h>
 #include <Renaming.h>
@@ -268,6 +269,41 @@ namespace PowerRenamePlanningTests
     TEST_CLASS (PlanningTests)
     {
     public:
+        TEST_METHOD (TrimmedFileNameRemovesWhitespaceAndTrailingDotsButKeepsLeadingDot)
+        {
+            struct TrimCase
+            {
+                PCWSTR id;
+                PCWSTR source;
+                PCWSTR expected;
+            };
+            const TrimCase cases[] = {
+                { L"CP2.01/whitespace-and-trailing-dots", L"\t  report.txt...  ", L"report.txt" },
+                { L"CP2.01/retained-leading-dot", L" .report.txt ", L".report.txt" },
+            };
+            for (const auto& test : cases)
+            {
+                wchar_t result[MAX_PATH] = {};
+                Assert::AreEqual(S_OK, GetTrimmedFileName(result, ARRAYSIZE(result), test.source), test.id);
+                Assert::AreEqual(test.expected, static_cast<PCWSTR>(result), test.id);
+            }
+        }
+
+        TEST_METHOD (TrimmedReplacementReplacesStaleCandidateBeforeValidation)
+        {
+            for (const bool useBoost : { false, true })
+            {
+                const PCWSTR context = useBoost ? L"CP2.01/prevalidation/Boost" : L"CP2.01/prevalidation/std";
+                auto engine = MakeEngine(useBoost, 0, L"aaa.txt", L"  done.txt...  ");
+                auto item = MakeItem(L"aaa.txt");
+                Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate"), context);
+                unsigned long index = 0;
+                Assert::IsTrue(DoRename(engine, index, item), context);
+                Assert::AreEqual(1UL, index, context);
+                AssertItem(item, 0, L"done.txt", Status::ShouldRename, true, context);
+            }
+        }
+
         TEST_METHOD (ScopeCaseAndNoMatchTuples)
         {
             const PlanningCase cases[] = {

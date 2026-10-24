@@ -198,6 +198,7 @@ namespace ViewModelTests
                 ["bool_use_boost_lib"] = true,
             };
             PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, new GeneralSettings(), messages);
+            Assert.AreEqual(0, messages.Count, "Constructing the view model must not send IPC.");
 
             viewModel.EnabledOnContextExtendedMenu = true;
 

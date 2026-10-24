@@ -30,6 +30,19 @@ namespace PowerRenamePlanningTests
             }
         };
 
+        class CachedFileTimeItem : public CPowerRenameItem
+        {
+        public:
+            CachedFileTimeItem(PowerRenameFlags source, const SYSTEMTIME& time)
+            {
+                m_isTimeParsed = true;
+                m_parsedTimeType = source;
+                m_time = time;
+            }
+
+            ~CachedFileTimeItem() override = default;
+        };
+
         struct PlanningCase
         {
             PCWSTR id;
@@ -115,6 +128,53 @@ namespace PowerRenamePlanningTests
         }
 
     public:
+        TEST_METHOD (GetTimeReturnsCachedTimestampForCreationDefaultAndSourcePrecedence)
+        {
+            struct CachedTimeCase
+            {
+                PCWSTR id;
+                DWORD flags;
+                PowerRenameFlags source;
+            };
+            const CachedTimeCase cases[] = {
+                { L"ITEM-CP1.02/default-creation", 0, CreationTime },
+                { L"ITEM-CP1.02/creation", CreationTime, CreationTime },
+                { L"ITEM-CP1.02/unrelated-flags", CaseSensitive | MetadataSourceXMP, CreationTime },
+                { L"ITEM-CP1.02/access", AccessTime, AccessTime },
+                { L"ITEM-CP1.02/creation-access", CreationTime | AccessTime, AccessTime },
+                { L"ITEM-CP1.02/modification", ModificationTime, ModificationTime },
+                { L"ITEM-CP1.02/creation-modification", CreationTime | ModificationTime, ModificationTime },
+                { L"ITEM-CP1.02/access-modification", AccessTime | ModificationTime, ModificationTime },
+                { L"ITEM-CP1.02/all-sources", CreationTime | AccessTime | ModificationTime, ModificationTime },
+            };
+            const SYSTEMTIME expected = { 2011, 8, 4, 25, 14, 37, 52, 123 };
+            for (const auto& test : cases)
+            {
+                CachedFileTimeItem item(test.source, expected);
+                SYSTEMTIME actual{};
+                Assert::AreEqual(S_OK, item.GetTime(test.flags, &actual), test.id);
+                Assert::AreEqual(expected.wYear, actual.wYear, test.id);
+                Assert::AreEqual(expected.wMonth, actual.wMonth, test.id);
+                Assert::AreEqual(expected.wDayOfWeek, actual.wDayOfWeek, test.id);
+                Assert::AreEqual(expected.wDay, actual.wDay, test.id);
+                Assert::AreEqual(expected.wHour, actual.wHour, test.id);
+                Assert::AreEqual(expected.wMinute, actual.wMinute, test.id);
+                Assert::AreEqual(expected.wSecond, actual.wSecond, test.id);
+                Assert::AreEqual(expected.wMilliseconds, actual.wMilliseconds, test.id);
+
+                actual = { 2024, 1, 1, 1, 1, 1, 1, 1 };
+                Assert::AreEqual(S_OK, item.GetTime(test.flags, &actual), test.id);
+                Assert::AreEqual(expected.wYear, actual.wYear, test.id);
+                Assert::AreEqual(expected.wMonth, actual.wMonth, test.id);
+                Assert::AreEqual(expected.wDayOfWeek, actual.wDayOfWeek, test.id);
+                Assert::AreEqual(expected.wDay, actual.wDay, test.id);
+                Assert::AreEqual(expected.wHour, actual.wHour, test.id);
+                Assert::AreEqual(expected.wMinute, actual.wMinute, test.id);
+                Assert::AreEqual(expected.wSecond, actual.wSecond, test.id);
+                Assert::AreEqual(expected.wMilliseconds, actual.wMilliseconds, test.id);
+            }
+        }
+
         TEST_METHOD (RealItemRenamePermissionControlsEligibilityAndRenameVisibility)
         {
             struct PermissionCase

@@ -191,6 +191,7 @@ namespace ViewModelTests
             foreach (string message in messages)
             {
                 PowerRenameSettingsIPCMessage sent = JsonSerializer.Deserialize<PowerRenameSettingsIPCMessage>(message);
+                Assert.IsNotNull(sent, "A changed PowerRename setting must send a non-null module IPC payload.");
                 Assert.IsTrue(sent.Powertoys.PowerRename.Properties.ExtendedContextMenuOnly.Value);
                 Assert.IsFalse(sent.Powertoys.PowerRename.Properties.ShowIcon.Value);
             }
@@ -271,6 +272,7 @@ namespace ViewModelTests
                 Startup = true,
                 Theme = "dark",
             };
+            generalSettings.Enabled.FancyZones = true;
             generalSettings.Enabled.PowerRename = !enabled;
             PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, generalSettings, messages);
             if (viewModel.IsEnabledGpoConfigured)

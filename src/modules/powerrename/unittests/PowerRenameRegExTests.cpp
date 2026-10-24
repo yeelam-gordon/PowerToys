@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "powerrename/lib/Settings.h"
 #include <PowerRenameInterfaces.h>
 #include <PowerRenameRegEx.h>
 #include "MockPowerRenameRegExEvents.h"
@@ -10,10 +9,7 @@ namespace PowerRenameRegExTests
 {
     TEST_CLASS(SimpleTests){
         public:
-TEST_CLASS_INITIALIZE(ClassInitialize)
-{
-    CSettingsInstance().SetUseBoostLib(false);
-}
+        static constexpr bool UseBoostLib = false;
 
 #define TESTS_PARTIAL
 #include "CommonRegExTests.h"
@@ -21,7 +17,7 @@ TEST_CLASS_INITIALIZE(ClassInitialize)
 TEST_METHOD(VerifyMatchAllWildcardUseRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -53,7 +49,7 @@ TEST_METHOD(VerifyReplaceFirstWildCardUseRegexMatchAllOccurrences)
 TEST_METHOD(VerifyHandleCapturingGroups)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions | CaseSensitive;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -85,7 +81,7 @@ TEST_METHOD(VerifyHandleCapturingGroups)
 TEST_METHOD (VerifyFileAttributesNoPadding)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions ;
     SYSTEMTIME fileTime = SYSTEMTIME{ 2020, 7, 3, 22, 15, 6, 42, 453 };
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
@@ -111,7 +107,7 @@ TEST_METHOD (VerifyFileAttributesNoPadding)
 TEST_METHOD (VerifyFileAttributesPadding)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     SYSTEMTIME fileTime = SYSTEMTIME{ 2020, 7, 3, 22, 15, 6, 42, 453 };
@@ -136,7 +132,7 @@ TEST_METHOD (VerifyFileAttributesPadding)
 TEST_METHOD (VerifyFileAttributesMonthAndDayNames)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -192,7 +188,7 @@ TEST_METHOD(VerifyLookbehindFails)
     };
 
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     Assert::IsTrue(renameRegEx->PutFlags(UseRegularExpressions) == S_OK);
 
     for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -210,7 +206,7 @@ TEST_METHOD(VerifyLookbehindFails)
 TEST_METHOD (Verify12and24HourTimeFormats)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 

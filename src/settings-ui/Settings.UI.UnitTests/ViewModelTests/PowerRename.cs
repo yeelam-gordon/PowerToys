@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 
 using Microsoft.PowerToys.Settings.UI.Library;
@@ -18,6 +20,10 @@ namespace ViewModelTests
     public class PowerRename
     {
         public const string GeneralSettingsFileName = "Test\\PowerRename";
+
+        private static readonly string[] ExpectedModuleMessageRootKeys = { "powertoys" };
+
+        private static readonly string[] ExpectedPowerRenameModuleKeys = { "PowerRename" };
 
         private Mock<SettingsUtils> mockGeneralSettingsUtils;
 
@@ -173,19 +179,162 @@ namespace ViewModelTests
         [TestMethod]
         public void EnabledOnContextExtendedMenuShouldSetValue2TrueWhenSuccessful()
         {
-            // Assert
-            Func<string, int> sendMockIPCConfigMSG = msg =>
+            var messages = new List<string>();
+            var localSettings = new PowerRenameLocalProperties();
+            PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, new GeneralSettings(), messages);
+
+            viewModel.EnabledOnContextExtendedMenu = true;
+
+            Assert.IsTrue(viewModel.EnabledOnContextExtendedMenu);
+            Assert.IsFalse(viewModel.EnabledOnContextMenu);
+            Assert.IsTrue(messages.Count > 0);
+            foreach (string message in messages)
             {
-                PowerRenameSettingsIPCMessage snd = JsonSerializer.Deserialize<PowerRenameSettingsIPCMessage>(msg);
-                Assert.IsTrue(snd.Powertoys.PowerRename.Properties.ShowIcon.Value);
-                return 0;
+                PowerRenameSettingsIPCMessage sent = JsonSerializer.Deserialize<PowerRenameSettingsIPCMessage>(message);
+                Assert.IsTrue(sent.Powertoys.PowerRename.Properties.ExtendedContextMenuOnly.Value);
+                Assert.IsFalse(sent.Powertoys.PowerRename.Properties.ShowIcon.Value);
+            }
+        }
+
+        [TestMethod]
+        [DataRow(nameof(PowerRenameViewModel.EnabledOnContextMenu), "bool_show_icon_on_menu")]
+        [DataRow(nameof(PowerRenameViewModel.EnabledOnContextExtendedMenu), "bool_show_extended_menu")]
+        [DataRow(nameof(PowerRenameViewModel.MRUEnabled), "bool_mru_enabled")]
+        [DataRow(nameof(PowerRenameViewModel.RestoreFlagsOnLaunch), "bool_persist_input")]
+        [DataRow(nameof(PowerRenameViewModel.UseBoostLib), "bool_use_boost_lib")]
+        public void ModuleBooleanSetterShouldSerializeTransitionsAndRetainOtherValues(string propertyName, string serializedKey)
+        {
+            var messages = new List<string>();
+            var localSettings = new PowerRenameLocalProperties
+            {
+                ShowIcon = true,
+                ExtendedContextMenuOnly = true,
+                MRUEnabled = true,
+                PersistState = true,
+                UseBoostLib = true,
+                MaxMRUSize = 17,
             };
+            var generalSettings = new GeneralSettings();
+            PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, generalSettings, messages);
+            var expectedProperties = new Dictionary<string, bool>
+            {
+                ["bool_show_icon_on_menu"] = true,
+                ["bool_show_extended_menu"] = true,
+                ["bool_mru_enabled"] = true,
+                ["bool_persist_input"] = true,
+                ["bool_use_boost_lib"] = true,
+            };
+            (Action<bool> setValue, Func<bool> getValue) = GetModuleBooleanAccessors(viewModel, propertyName);
 
-            // arrange
-            PowerRenameViewModel viewModel = new PowerRenameViewModel(mockPowerRenamePropertiesUtils.Object, SettingsRepository<GeneralSettings>.GetInstance(mockGeneralSettingsUtils.Object), sendMockIPCConfigMSG, GeneralSettingsFileName);
+            Assert.IsTrue(getValue());
+            foreach (bool value in new[] { false, true, false })
+            {
+                messages.Clear();
+                setValue(value);
+                expectedProperties[serializedKey] = value;
 
-            // act
-            viewModel.EnabledOnContextMenu = true;
+                Assert.AreEqual(value, getValue());
+                AssertModuleValues(viewModel, expectedProperties, 17);
+                AssertModuleMessages(messages, expectedProperties, 17);
+                Assert.IsTrue(generalSettings.Enabled.PowerRename);
+
+                messages.Clear();
+                setValue(value);
+                Assert.AreEqual(value, getValue());
+                Assert.AreEqual(0, messages.Count, "Assigning the current value must not send IPC.");
+            }
+        }
+
+        [TestMethod]
+        [DataRow(false, false, false)]
+        [DataRow(false, true, false)]
+        [DataRow(true, false, false)]
+        [DataRow(true, true, false)]
+        [DataRow(false, false, true)]
+        [DataRow(false, true, true)]
+        [DataRow(true, false, true)]
+        [DataRow(true, true, true)]
+        public void ContextMenuSettingsShouldRemainIndependentOfEachOtherAndEnabledState(bool showIcon, bool extendedMenu, bool enabled)
+        {
+            var messages = new List<string>();
+            var localSettings = new PowerRenameLocalProperties
+            {
+                ShowIcon = !showIcon,
+                ExtendedContextMenuOnly = !extendedMenu,
+                MRUEnabled = true,
+                PersistState = true,
+                UseBoostLib = true,
+                MaxMRUSize = 17,
+            };
+            var generalSettings = new GeneralSettings
+            {
+                Startup = true,
+                Theme = "dark",
+            };
+            generalSettings.Enabled.PowerRename = !enabled;
+            PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, generalSettings, messages);
+            if (viewModel.IsEnabledGpoConfigured)
+            {
+                Assert.Inconclusive("An enforced PowerRename policy prevents testing user-controlled enabled transitions.");
+            }
+
+            viewModel.IsEnabled = enabled;
+
+            Assert.AreEqual(enabled, viewModel.IsEnabled);
+            var generalMessages = new List<string>();
+            var moduleMessages = new List<string>();
+            foreach (string message in messages)
+            {
+                using JsonDocument document = JsonDocument.Parse(message);
+                string[] destinations = document.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
+                Assert.AreEqual(1, destinations.Length);
+                if (destinations[0] == "general")
+                {
+                    generalMessages.Add(message);
+                    JsonElement general = document.RootElement.GetProperty("general");
+                    Assert.AreEqual(enabled, general.GetProperty("enabled").GetProperty("PowerRename").GetBoolean());
+                    Assert.IsTrue(general.GetProperty("enabled").GetProperty("FancyZones").GetBoolean());
+                    Assert.IsTrue(general.GetProperty("startup").GetBoolean());
+                    Assert.AreEqual("dark", general.GetProperty("theme").GetString());
+                }
+                else
+                {
+                    Assert.AreEqual("powertoys", destinations[0]);
+                    moduleMessages.Add(message);
+                }
+            }
+
+            Assert.IsTrue(generalMessages.Count > 0, "An enabled transition must send general settings.");
+            var expectedProperties = new Dictionary<string, bool>
+            {
+                ["bool_show_icon_on_menu"] = !showIcon,
+                ["bool_show_extended_menu"] = !extendedMenu,
+                ["bool_mru_enabled"] = true,
+                ["bool_persist_input"] = true,
+                ["bool_use_boost_lib"] = true,
+            };
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(moduleMessages, expectedProperties, 17);
+
+            messages.Clear();
+            viewModel.EnabledOnContextMenu = showIcon;
+            expectedProperties["bool_show_icon_on_menu"] = showIcon;
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(messages, expectedProperties, 17);
+
+            messages.Clear();
+            viewModel.EnabledOnContextExtendedMenu = extendedMenu;
+            expectedProperties["bool_show_extended_menu"] = extendedMenu;
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(messages, expectedProperties, 17);
+            Assert.AreEqual(enabled, viewModel.IsEnabled);
+            Assert.AreEqual(enabled, generalSettings.Enabled.PowerRename);
+
+            messages.Clear();
+            viewModel.IsEnabled = enabled;
+            viewModel.EnabledOnContextMenu = showIcon;
+            viewModel.EnabledOnContextExtendedMenu = extendedMenu;
+            Assert.AreEqual(0, messages.Count, "Assigning the current enabled/menu values must not send IPC.");
         }
 
         [TestMethod]
@@ -222,6 +371,69 @@ namespace ViewModelTests
 
             // act
             viewModel.MaxDispListNum = 20;
+        }
+
+        private PowerRenameViewModel CreateCapturingViewModel(PowerRenameLocalProperties localSettings, GeneralSettings generalSettings, List<string> messages)
+        {
+            mockPowerRenamePropertiesUtils
+                .Setup(settings => settings.GetSettingsOrDefault<PowerRenameLocalProperties>(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(localSettings);
+            mockGeneralSettingsUtils
+                .Setup(settings => settings.GetSettingsOrDefault<GeneralSettings>(It.IsAny<string>(), It.IsAny<string>()))
+                .Returns(generalSettings);
+            var repository = new BackCompatTestProperties.MockSettingsRepository<GeneralSettings>(mockGeneralSettingsUtils.Object);
+            return new PowerRenameViewModel(
+                mockPowerRenamePropertiesUtils.Object,
+                repository,
+                message =>
+                {
+                    messages.Add(message);
+                    return 0;
+                },
+                GeneralSettingsFileName);
+        }
+
+        private static (Action<bool> SetValue, Func<bool> GetValue) GetModuleBooleanAccessors(PowerRenameViewModel viewModel, string propertyName)
+        {
+            return propertyName switch
+            {
+                nameof(PowerRenameViewModel.EnabledOnContextMenu) => (value => viewModel.EnabledOnContextMenu = value, () => viewModel.EnabledOnContextMenu),
+                nameof(PowerRenameViewModel.EnabledOnContextExtendedMenu) => (value => viewModel.EnabledOnContextExtendedMenu = value, () => viewModel.EnabledOnContextExtendedMenu),
+                nameof(PowerRenameViewModel.MRUEnabled) => (value => viewModel.MRUEnabled = value, () => viewModel.MRUEnabled),
+                nameof(PowerRenameViewModel.RestoreFlagsOnLaunch) => (value => viewModel.RestoreFlagsOnLaunch = value, () => viewModel.RestoreFlagsOnLaunch),
+                nameof(PowerRenameViewModel.UseBoostLib) => (value => viewModel.UseBoostLib = value, () => viewModel.UseBoostLib),
+                _ => throw new ArgumentOutOfRangeException(nameof(propertyName)),
+            };
+        }
+
+        private static void AssertModuleValues(PowerRenameViewModel viewModel, Dictionary<string, bool> expectedProperties, int maxMruSize)
+        {
+            Assert.AreEqual(expectedProperties["bool_show_icon_on_menu"], viewModel.EnabledOnContextMenu);
+            Assert.AreEqual(expectedProperties["bool_show_extended_menu"], viewModel.EnabledOnContextExtendedMenu);
+            Assert.AreEqual(expectedProperties["bool_mru_enabled"], viewModel.MRUEnabled);
+            Assert.AreEqual(expectedProperties["bool_persist_input"], viewModel.RestoreFlagsOnLaunch);
+            Assert.AreEqual(expectedProperties["bool_use_boost_lib"], viewModel.UseBoostLib);
+            Assert.AreEqual(maxMruSize, viewModel.MaxDispListNum);
+        }
+
+        private static void AssertModuleMessages(List<string> messages, Dictionary<string, bool> expectedProperties, int maxMruSize)
+        {
+            Assert.IsTrue(messages.Count > 0, "A changed module setting must send IPC.");
+            foreach (string message in messages)
+            {
+                using JsonDocument document = JsonDocument.Parse(message);
+                CollectionAssert.AreEqual(ExpectedModuleMessageRootKeys, document.RootElement.EnumerateObject().Select(property => property.Name).ToArray());
+                JsonElement modules = document.RootElement.GetProperty("powertoys");
+                CollectionAssert.AreEqual(ExpectedPowerRenameModuleKeys, modules.EnumerateObject().Select(property => property.Name).ToArray());
+                JsonElement properties = modules.GetProperty("PowerRename").GetProperty("properties");
+                CollectionAssert.AreEquivalent(expectedProperties.Keys.Append("int_max_mru_size").ToArray(), properties.EnumerateObject().Select(property => property.Name).ToArray());
+                foreach (KeyValuePair<string, bool> expected in expectedProperties)
+                {
+                    Assert.AreEqual(expected.Value, properties.GetProperty(expected.Key).GetProperty("value").GetBoolean(), expected.Key);
+                }
+
+                Assert.AreEqual(maxMruSize, properties.GetProperty("int_max_mru_size").GetProperty("value").GetInt32());
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include "..\PowerRenameSelectionCommands.h"
 #if __has_include("MainWindow.g.cpp")
 #include "MainWindow.g.cpp"
 #endif
@@ -883,14 +884,7 @@ namespace winrt::PowerRenameUI::implementation
         UINT itemCount = 0;
         m_prManager->GetItemCount(&itemCount);
         bool selected = checkBox_selectAll().IsChecked().GetBoolean();
-        for (UINT i = 0; i < itemCount; i++)
-        {
-            CComPtr<IPowerRenameItem> spItem;
-            if (SUCCEEDED(m_prManager->GetItemByIndex(i, &spItem)))
-            {
-                spItem->PutSelected(selected);
-            }
-        }
+        PowerRenameSelectionCommands::SelectAll(*m_prManager, itemCount, selected);
         UpdateCounts();
     }
 

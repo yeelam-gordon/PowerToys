@@ -402,14 +402,33 @@ HRESULT CPowerRenameRegEx::s_CreateInstance(_Outptr_ IPowerRenameRegEx** renameR
     return hr;
 }
 
+HRESULT CPowerRenameRegEx::s_CreateInstance(bool useBoostLib, _Outptr_ IPowerRenameRegEx** renameRegEx)
+{
+    *renameRegEx = nullptr;
+
+    CPowerRenameRegEx* newRenameRegEx = new CPowerRenameRegEx(useBoostLib);
+    HRESULT hr = E_OUTOFMEMORY;
+    if (newRenameRegEx)
+    {
+        hr = newRenameRegEx->QueryInterface(IID_PPV_ARGS(renameRegEx));
+        newRenameRegEx->Release();
+    }
+    return hr;
+}
+
 CPowerRenameRegEx::CPowerRenameRegEx() :
+    CPowerRenameRegEx(false)
+{
+    _useBoostLib = CSettingsInstance().GetUseBoostLib();
+}
+
+CPowerRenameRegEx::CPowerRenameRegEx(bool useBoostLib) :
+    _useBoostLib(useBoostLib),
     m_refCount(1)
 {
     // Init to empty strings
     SHStrDup(L"", &m_searchTerm);
     SHStrDup(L"", &m_replaceTerm);
-
-    _useBoostLib = CSettingsInstance().GetUseBoostLib();
 }
 
 CPowerRenameRegEx::~CPowerRenameRegEx()

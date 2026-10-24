@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Enumerating.h"
 #include "Helpers.h"
 #include "MetadataPatternExtractor.h"
 #include "MetadataTypes.h"
@@ -7,6 +8,28 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace HelpersTests
 {
+    TEST_CLASS(EnumeratingTests)
+    {
+    public:
+        TEST_METHOD(FormatsFiveValuesUsingConfiguredStartIncrementAndPadding)
+        {
+            EnumOptions options{};
+            options.start = 10;
+            options.increment = 2;
+            options.padding = 4;
+            const Enumerator enumerator(options);
+            const wchar_t* expected[] = { L"0010", L"0012", L"0014", L"0016", L"0018" };
+
+            for (unsigned long index = 0; index < _countof(expected); ++index)
+            {
+                wchar_t result[64]{};
+                const size_t written = enumerator.printTo(result, _countof(result), index);
+                Assert::AreEqual<size_t>(4, written);
+                Assert::AreEqual(expected[index], result);
+            }
+        }
+    };
+
     TEST_CLASS(GetMetadataFileNameTests)
     {
     public:
@@ -671,6 +694,14 @@ namespace HelpersTests
 
             Assert::IsTrue(FAILED(hr));  // Empty string should fail
             Assert::AreEqual(E_INVALIDARG, hr);
+        }
+
+        TEST_METHOD (PreservesEscapedAndUnrelatedPatternsWhileExpandingSuppliedTime)
+        {
+            const SYSTEMTIME testTime{ 2026, 7, 0, 2, 11, 54, 54, 123 };
+            wchar_t result[MAX_PATH] = {};
+            Assert::AreEqual(S_OK, GetDatedFileName(result, MAX_PATH, L"$YYYY_$$YYYY_$DATE_TAKEN_YYYY_$HEIGHT_$DD_$hh-$mm-$ss-$fff", testTime));
+            Assert::AreEqual(L"2026_$$YYYY_$DATE_TAKEN_YYYY_$HEIGHT_02_11-54-54-123", result);
         }
 
         // Category 4: Tests to explicitly verify execution order

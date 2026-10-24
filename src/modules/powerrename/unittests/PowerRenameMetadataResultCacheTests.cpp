@@ -135,6 +135,52 @@ namespace PowerRenameMetadataResultCacheTests
             Assert::AreEqual(1, xmpRecoveries);
         }
 
+        TEST_METHOD (NestedSameKeyLoad_ReturnsStoredStatusAndPayload_OverConflictingOuterResult)
+        {
+            for (const bool storedStatus : { false, true })
+            {
+                MetadataResultCache cache;
+                EXIFMetadata exif;
+                int outerCalls = 0;
+                int innerCalls = 0;
+                int replacementCalls = 0;
+                const auto innerLoader = [&](EXIFMetadata& metadata) {
+                    ++innerCalls;
+                    metadata.cameraMake = L"Stored winner";
+                    metadata.iso = 200;
+                    return storedStatus;
+                };
+                const auto outerLoader = [&](EXIFMetadata& metadata) {
+                    ++outerCalls;
+                    EXIFMetadata innerOutput;
+                    Assert::AreEqual(storedStatus, cache.GetOrLoadEXIF(L"nested-key", innerOutput, innerLoader));
+                    Assert::IsTrue(innerOutput.cameraMake == L"Stored winner");
+                    Assert::IsTrue(innerOutput.iso == 200);
+                    metadata.cameraMake = L"Discarded outer load";
+                    metadata.iso = 640;
+                    return !storedStatus;
+                };
+                const auto replacementLoader = [&](EXIFMetadata& metadata) {
+                    ++replacementCalls;
+                    metadata.cameraMake = L"Replacement camera";
+                    metadata.iso = 800;
+                    return !storedStatus;
+                };
+
+                Assert::AreEqual(storedStatus, cache.GetOrLoadEXIF(L"nested-key", exif, outerLoader));
+                Assert::IsTrue(exif.cameraMake == L"Stored winner");
+                Assert::IsTrue(exif.iso == 200);
+                exif.cameraMake = L"Caller mutation";
+                exif.iso = 1600;
+                Assert::AreEqual(storedStatus, cache.GetOrLoadEXIF(L"nested-key", exif, replacementLoader));
+                Assert::IsTrue(exif.cameraMake == L"Stored winner");
+                Assert::IsTrue(exif.iso == 200);
+                Assert::AreEqual(1, outerCalls);
+                Assert::AreEqual(1, innerCalls);
+                Assert::AreEqual(0, replacementCalls);
+            }
+        }
+
         TEST_METHOD (EmptyLoaders_OnMissPreserveOutputAndDoNotCache_OnHitReturnCachedData)
         {
             MetadataResultCache cache;

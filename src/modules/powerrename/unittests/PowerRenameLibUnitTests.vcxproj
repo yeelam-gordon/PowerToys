@@ -57,6 +57,7 @@
     <ClCompile Include="MockPowerRenameRegExEvents.cpp" />
     <ClCompile Include="PowerRenameRegExBoostTests.cpp" />
     <ClCompile Include="PowerRenameManagerTests.cpp" />
+    <ClCompile Include="PowerRenameMetadataAndCaseTests.cpp" />
     <ClCompile Include="PowerRenamePlanningTests.cpp" />
     <ClCompile Include="PowerRenameSelectionCommandsTests.cpp" />
     <ClCompile Include="MetadataFormatHelperTests.cpp" />

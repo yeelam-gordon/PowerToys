@@ -1,9 +1,11 @@
 #include "pch.h"
+#include <PowerRenameItem.h>
 #include <PowerRenameRegEx.h>
 #include <Renaming.h>
 #include "MockPowerRenameItem.h"
 #include <initializer_list>
 #include <string>
+#include <vector>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -62,6 +64,170 @@ namespace PowerRenamePlanningTests
             Assert::AreEqual(eligible, actualEligible, context);
         }
     }
+
+    TEST_CLASS (RealItemTests)
+    {
+        CComPtr<IPowerRenameItem> MakeRealItem(PCWSTR original)
+        {
+            CComPtr<IPowerRenameItem> item;
+            Assert::AreEqual(S_OK, CPowerRenameItem::s_CreateInstance(nullptr, IID_PPV_ARGS(&item)));
+            Assert::AreEqual(S_OK, item->PutOriginalName(original));
+            return item;
+        }
+
+        void AssertDecision(IPowerRenameItem * item, DWORD flags, bool eligible, bool applicable, bool selected, PCWSTR id)
+        {
+            bool actual = !eligible;
+            Assert::AreEqual(S_OK, item->ShouldRenameItem(flags, &actual), id);
+            Assert::AreEqual(eligible, actual, id);
+            struct FilterCase
+            {
+                DWORD filter;
+                bool expected;
+            };
+            const FilterCase filters[] = {
+                { PowerRenameFilters::None, true },
+                { PowerRenameFilters::Selected, selected },
+                { PowerRenameFilters::FlagsApplicable, applicable },
+                { PowerRenameFilters::ShouldRename, eligible },
+            };
+            for (const auto& test : filters)
+            {
+                actual = !test.expected;
+                Assert::AreEqual(S_OK, item->IsItemVisible(test.filter, flags, &actual), id);
+                Assert::AreEqual(test.expected, actual, id);
+            }
+        }
+
+    public:
+        TEST_METHOD (RealItemCandidateStatusAndSelectionTransitions)
+        {
+            struct Transition
+            {
+                PCWSTR id;
+                PCWSTR candidate;
+                Status status;
+                bool selected;
+                bool eligible;
+            };
+            const Transition transitions[] = {
+                { L"ITEM-V1-01/init-stale", L"done.txt", Status::Init, true, false },
+                { L"ITEM-V1-02/ready", L"done.txt", Status::ShouldRename, true, true },
+                { L"ITEM-V1-03/deselected", L"done.txt", Status::ShouldRename, false, false },
+                { L"ITEM-V1-04/reselected", L"done.txt", Status::ShouldRename, true, true },
+                { L"ITEM-V1-05/too-long", L"done.txt", Status::ItemNameTooLong, true, false },
+                { L"ITEM-V1-06/invalid", L"done.txt", Status::ItemNameInvalidChar, true, false },
+                { L"ITEM-V1-07/collision", L"done.txt", Status::ItemNameAlreadyExists, true, false },
+                { L"ITEM-V1-08/recovered", L"done.txt", Status::ShouldRename, true, true },
+                { L"ITEM-V1-09/identity", L"report.txt", Status::ShouldRename, true, false },
+                { L"ITEM-V1-10/empty", L"", Status::ShouldRename, true, false },
+                { L"ITEM-V1-11/no-candidate", nullptr, Status::ShouldRename, true, false },
+                { L"ITEM-V1-12/unmatched-unselected", nullptr, Status::ShouldRename, false, false },
+            };
+            auto item = MakeRealItem(L"report.txt");
+            for (const auto& test : transitions)
+            {
+                Assert::AreEqual(S_OK, item->PutNewName(test.candidate), test.id);
+                Assert::AreEqual(S_OK, item->PutStatus(test.status), test.id);
+                Assert::AreEqual(S_OK, item->PutSelected(test.selected), test.id);
+                AssertDecision(item, 0, test.eligible, true, test.selected, test.id);
+            }
+        }
+
+        TEST_METHOD (RealItemFileExclusionAndDepthFilters)
+        {
+            struct Gate
+            {
+                PCWSTR id;
+                int depth;
+                DWORD flags;
+                bool allowed;
+            };
+            const Gate gates[] = {
+                { L"ITEM-V1-13/root", 0, 0, true },
+                { L"ITEM-V1-14/exclude-files", 0, ExcludeFiles, false },
+                { L"ITEM-V1-15/exclude-folders", 0, ExcludeFolders, true },
+                { L"ITEM-V1-16/root-not-subfolder", 0, ExcludeSubfolders, true },
+                { L"ITEM-V1-17/file-and-folder", 0, ExcludeFiles | ExcludeFolders, false },
+                { L"ITEM-V1-18/file-and-subfolder", 0, ExcludeFiles | ExcludeSubfolders, false },
+                { L"ITEM-V1-19/folder-and-subfolder-root", 0, ExcludeFolders | ExcludeSubfolders, true },
+                { L"ITEM-V1-20/all-excludes", 0, ExcludeFiles | ExcludeFolders | ExcludeSubfolders, false },
+                { L"ITEM-V1-21/nested-allowed", 1, 0, true },
+                { L"ITEM-V1-22/nested-excluded", 1, ExcludeSubfolders, false },
+                { L"ITEM-V1-23/deep-excluded", 3, ExcludeFolders | ExcludeSubfolders, false },
+                { L"ITEM-V1-24/nested-file-unaffected-by-folder", 1, ExcludeFolders, true },
+                { L"ITEM-V1-25/depth-restored", 0, ExcludeSubfolders, true },
+            };
+            auto item = MakeRealItem(L"report.txt");
+            Assert::AreEqual(S_OK, item->PutNewName(L"done.txt"));
+            Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename));
+            for (const auto& test : gates)
+            {
+                Assert::AreEqual(S_OK, item->PutDepth(test.depth), test.id);
+                AssertDecision(item, test.flags, test.allowed, test.allowed, true, test.id);
+            }
+        }
+
+        TEST_METHOD (RealItemThreeRowVisibilityPreservesIdentityAndOrder)
+        {
+            const PCWSTR originals[] = { L"match1.txt", L"match2.txt", L"keepme.txt" };
+            const PCWSTR candidates[] = { L"renamed1.txt", L"renamed2.txt", nullptr };
+            std::vector<CComPtr<IPowerRenameItem>> items;
+            for (size_t i = 0; i < ARRAYSIZE(originals); ++i)
+            {
+                auto item = MakeRealItem(originals[i]);
+                Assert::AreEqual(S_OK, item->PutNewName(candidates[i]));
+                Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename));
+                items.push_back(item);
+            }
+            struct View
+            {
+                PCWSTR id;
+                DWORD filter;
+                std::vector<std::wstring> expected;
+            };
+            const View views[] = {
+                { L"ITEM-V1-26/show-all", PowerRenameFilters::None, { L"match1.txt", L"match2.txt", L"keepme.txt" } },
+                { L"ITEM-V1-27/rename-only", PowerRenameFilters::ShouldRename, { L"match1.txt", L"match2.txt" } },
+                { L"ITEM-V1-28/show-all-again", PowerRenameFilters::None, { L"match1.txt", L"match2.txt", L"keepme.txt" } },
+            };
+            for (const auto& view : views)
+            {
+                std::vector<std::wstring> visible;
+                for (const auto& item : items)
+                {
+                    bool show = false;
+                    Assert::AreEqual(S_OK, item->IsItemVisible(view.filter, 0, &show), view.id);
+                    if (show)
+                    {
+                        PWSTR original = nullptr;
+                        Assert::AreEqual(S_OK, item->GetOriginalName(&original), view.id);
+                        const std::wstring identity = original ? original : L"";
+                        CoTaskMemFree(original);
+                        visible.push_back(identity);
+                    }
+                }
+                Assert::IsTrue(view.expected == visible, view.id);
+            }
+        }
+
+        TEST_METHOD (RealItemResetClearsCandidateAndRestoresEligibilityAfterReplan)
+        {
+            auto item = MakeRealItem(L"report.txt");
+            Assert::AreEqual(S_OK, item->PutNewName(L"done.txt"));
+            Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename));
+            AssertDecision(item, 0, true, true, true, L"ITEM-V1-29/before-reset");
+            Assert::AreEqual(S_OK, item->Reset());
+            PWSTR candidate = nullptr;
+            Assert::AreEqual(S_OK, item->GetNewName(&candidate));
+            const bool cleared = candidate == nullptr;
+            CoTaskMemFree(candidate);
+            Assert::IsTrue(cleared, L"ITEM-V1-30/reset-clears-candidate");
+            AssertDecision(item, 0, false, true, true, L"ITEM-V1-30/after-reset");
+            Assert::AreEqual(S_OK, item->PutNewName(L"replanned.txt"));
+            AssertDecision(item, 0, true, true, true, L"ITEM-V1-31/replanned");
+        }
+    };
 
     TEST_CLASS (PlanningTests)
     {

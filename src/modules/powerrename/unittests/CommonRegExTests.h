@@ -392,6 +392,37 @@ TEST_METHOD (VerifyChecklistCounterSequenceAndNonConsumingNoMatch)
     }
 }
 
+TEST_METHOD (VerifyCombinedEnumerationAndRandomization)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(EnumerateItems | RandomizeItems));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"item_${start=10,increment=2,padding=4}_${rstringdigit=2}"));
+    const struct
+    {
+        PCWSTR prefix;
+        unsigned long expectedIndex;
+    } cases[] = {
+        { L"item_0010_", 1 },
+        { L"item_0012_", 2 },
+    };
+    unsigned long index = 0;
+    for (const auto& testCase : cases)
+    {
+        CComHeapPtr<wchar_t> result;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig", &result, index));
+        Assert::IsNotNull(static_cast<PCWSTR>(result));
+        const std::wstring output(static_cast<PCWSTR>(result));
+        Assert::AreEqual(size_t{ 12 }, output.length());
+        Assert::IsTrue(output.compare(0, 10, testCase.prefix) == 0);
+        Assert::IsTrue(output[10] >= L'0' && output[10] <= L'9');
+        Assert::IsTrue(output[11] >= L'0' && output[11] <= L'9');
+        Assert::IsTrue(output.find(L"${") == std::wstring::npos);
+        Assert::AreEqual(testCase.expectedIndex, index);
+    }
+}
+
 TEST_METHOD (VerifySuppliedTimeTokensResetBetweenItems)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

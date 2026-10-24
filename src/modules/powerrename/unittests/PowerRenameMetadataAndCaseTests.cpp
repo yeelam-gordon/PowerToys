@@ -113,6 +113,74 @@ namespace PowerRenameMetadataAndCaseTests
             }
         }
 
+        TEST_METHOD (MetadataFormatterSubstitutesSuppliedExifAuthorGpsAndAdditionalFields)
+        {
+            const PowerRenameLib::MetadataPatternMap patterns = {
+                { L"AUTHOR", L"Ada" },
+                { L"COPYRIGHT", L"ACME" },
+                { L"LATITUDE", L"47N" },
+                { L"LONGITUDE", L"122W" },
+                { L"EXPOSURE_BIAS", L"-0.33" },
+                { L"ORIENTATION", L"1" },
+                { L"COLOR_SPACE", L"sRGB" },
+                { L"ALTITUDE", L"12m" },
+            };
+            wchar_t result[MAX_PATH]{};
+
+            const HRESULT hr = GetMetadataFileName(result, ARRAYSIZE(result), L"$AUTHOR|$COPYRIGHT|$LATITUDE|$LONGITUDE|$EXPOSURE_BIAS|$ORIENTATION|$COLOR_SPACE|$ALTITUDE", patterns);
+
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual(L"Ada|ACME|47N|122W|-0.33|1|sRGB|12m", result);
+        }
+
+        TEST_METHOD (MetadataFormatterSubstitutesSuppliedXmpDescriptionRightsAndProvenance)
+        {
+            const PowerRenameLib::MetadataPatternMap patterns = {
+                { L"DESCRIPTION", L"Lake" },
+                { L"SUBJECT", L"sky; lake" },
+                { L"RIGHTS", L"CC" },
+                { L"CREATOR_TOOL", L"Editor" },
+                { L"DOCUMENT_ID", L"doc" },
+                { L"INSTANCE_ID", L"instance" },
+                { L"ORIGINAL_DOCUMENT_ID", L"original" },
+                { L"VERSION_ID", L"v2" },
+            };
+            wchar_t result[MAX_PATH]{};
+
+            const HRESULT hr = GetMetadataFileName(result, ARRAYSIZE(result), L"$DESCRIPTION|$SUBJECT|$RIGHTS|$CREATOR_TOOL|$DOCUMENT_ID|$INSTANCE_ID|$ORIGINAL_DOCUMENT_ID|$VERSION_ID", patterns);
+
+            Assert::AreEqual(S_OK, hr);
+            Assert::AreEqual(L"Lake|sky; lake|CC|Editor|doc|instance|original|v2", result);
+        }
+
+        TEST_METHOD (MetadataFormatterDistinguishesSuppliedCreateDateMonthAndMissingMinute)
+        {
+            PowerRenameLib::MetadataPatternMap patterns = {
+                { L"CREATE_DATE_YYYY", L"2026" },
+                { L"CREATE_DATE_YY", L"26" },
+                { L"CREATE_DATE_MM", L"07" },
+                { L"CREATE_DATE_DD", L"02" },
+                { L"CREATE_DATE_HH", L"11" },
+                { L"CREATE_DATE_mm", L"54" },
+                { L"CREATE_DATE_SS", L"09" },
+            };
+            const wchar_t* source = L"$CREATE_DATE_YYYY-$CREATE_DATE_YY-$CREATE_DATE_MM-$CREATE_DATE_DD__$CREATE_DATE_HH-$CREATE_DATE_mm-$CREATE_DATE_SS";
+            wchar_t completeResult[MAX_PATH]{};
+
+            const HRESULT completeHr = GetMetadataFileName(completeResult, ARRAYSIZE(completeResult), source, patterns);
+
+            Assert::AreEqual(S_OK, completeHr);
+            Assert::AreEqual(L"2026-26-07-02__11-54-09", completeResult);
+
+            patterns.erase(L"CREATE_DATE_mm");
+            wchar_t missingMinuteResult[MAX_PATH]{};
+
+            const HRESULT missingMinuteHr = GetMetadataFileName(missingMinuteResult, ARRAYSIZE(missingMinuteResult), source, patterns);
+
+            Assert::AreEqual(S_OK, missingMinuteHr);
+            Assert::AreEqual(L"2026-26-07-02__11-$CREATE_DATE_mm-09", missingMinuteResult);
+        }
+
         TEST_METHOD (CaseModesDistinguishSmallWordsAndPreserveExtension)
         {
             // GetTransformedFileName changes the process-global C++ locale.

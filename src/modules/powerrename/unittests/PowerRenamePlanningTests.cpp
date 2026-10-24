@@ -16,6 +16,15 @@ namespace PowerRenamePlanningTests
     {
         using Status = PowerRenameItemRenameStatus;
 
+        class RenamePermissionItem : public CPowerRenameItem
+        {
+        public:
+            explicit RenamePermissionItem(bool canRename)
+            {
+                m_canRename = canRename;
+            }
+        };
+
         struct PlanningCase
         {
             PCWSTR id;
@@ -101,6 +110,32 @@ namespace PowerRenamePlanningTests
         }
 
     public:
+        TEST_METHOD (RealItemRenamePermissionControlsEligibilityAndRenameVisibility)
+        {
+            struct PermissionCase
+            {
+                PCWSTR id;
+                bool canRename;
+                bool eligible;
+            };
+            const PermissionCase cases[] = {
+                { L"ITEM-CP1.13/permission-allowed", true, true },
+                { L"ITEM-CP1.13/permission-denied", false, false },
+            };
+            for (const auto& test : cases)
+            {
+                CComPtr<IPowerRenameItem> item;
+                item.Attach(new RenamePermissionItem(test.canRename));
+                Assert::AreEqual(S_OK, item->PutOriginalName(L"report.txt"), test.id);
+                Assert::AreEqual(S_OK, item->PutNewName(L"done.txt"), test.id);
+                Assert::AreEqual(S_OK, item->PutSelected(true), test.id);
+                Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename), test.id);
+
+                AssertDecision(item, 0, test.eligible, true, true, test.id);
+                AssertItem(item, 0, L"done.txt", Status::ShouldRename, test.eligible, test.id);
+            }
+        }
+
         TEST_METHOD (RealItemCandidateStatusAndSelectionTransitions)
         {
             struct Transition

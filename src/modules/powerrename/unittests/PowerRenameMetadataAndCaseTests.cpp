@@ -26,7 +26,10 @@ namespace PowerRenameMetadataAndCaseTests
                 { L"uppercase suffix", L"photo.JPG", false, true },
                 { L"alternative JPEG suffix", L"photo.jpeg", false, true },
                 { L"PNG", L"photo.png", false, true },
+                { L"short TIFF suffix", L"photo.tif", false, true },
+                { L"long TIFF suffix", L"photo.tiff", false, true },
                 { L"codec-independent suffix eligibility", L"photo.HEIC", false, true },
+                { L"alternative HEIF suffix", L"photo.heif", false, true },
                 { L"AVIF eligibility", L"photo.avif", false, true },
                 { L"unsupported file", L"photo.txt", false, false },
                 { L"suffix in stem only", L"photo.jpg.txt", false, false },
@@ -34,6 +37,7 @@ namespace PowerRenameMetadataAndCaseTests
                 { L"empty supplied path", L"", false, false },
                 { L"folder resembling image", L"album.jpg", true, false },
                 { L"optional path omitted", nullptr, false, true },
+                { L"omitted path skips folder gate", nullptr, true, true },
             };
 
             for (const auto& test : cases)
@@ -53,12 +57,16 @@ namespace PowerRenameMetadataAndCaseTests
                 const wchar_t* source;
                 MetadataType type;
                 bool expected;
+                const wchar_t* path = L"photo.jpg";
+                bool isFolder = false;
             };
             const TestCase cases[] = {
                 { L"EXIF camera", L"$CAMERA_MAKE", MetadataType::EXIF, true },
                 { L"XMP excludes camera", L"$CAMERA_MAKE", MetadataType::XMP, false },
                 { L"EXIF excludes title", L"$TITLE", MetadataType::EXIF, false },
                 { L"XMP title", L"$TITLE", MetadataType::XMP, true },
+                { L"XMP title in unsupported file", L"$TITLE", MetadataType::XMP, false, L"photo.txt", false },
+                { L"XMP title in image-named folder", L"$TITLE", MetadataType::XMP, false, L"album.jpg", true },
                 { L"EXIF author", L"$AUTHOR", MetadataType::EXIF, true },
                 { L"XMP author", L"$AUTHOR", MetadataType::XMP, true },
                 { L"EXIF date taken", L"$DATE_TAKEN_YYYY", MetadataType::EXIF, true },
@@ -74,9 +82,34 @@ namespace PowerRenameMetadataAndCaseTests
 
             for (const auto& test : cases)
             {
-                const bool actual = isMetadataUsed(test.source, test.type, L"photo.jpg", false);
+                const bool actual = isMetadataUsed(test.source, test.type, test.path, test.isFolder);
 
                 Assert::AreEqual(test.expected, actual, test.label);
+            }
+        }
+
+        TEST_METHOD (MetadataFormatterRejectsNullAndEmptySource)
+        {
+            PowerRenameLib::MetadataPatternMap patterns;
+            patterns[L"CAMERA_MAKE"] = L"Canon";
+
+            struct TestCase
+            {
+                const wchar_t* label;
+                const wchar_t* source;
+            };
+            const TestCase cases[] = {
+                { L"null source", nullptr },
+                { L"empty source", L"" },
+            };
+
+            for (const auto& test : cases)
+            {
+                wchar_t result[MAX_PATH]{};
+
+                const HRESULT hr = GetMetadataFileName(result, ARRAYSIZE(result), test.source, patterns);
+
+                Assert::AreEqual(E_INVALIDARG, hr, test.label);
             }
         }
 

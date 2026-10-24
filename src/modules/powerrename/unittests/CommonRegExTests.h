@@ -432,6 +432,44 @@ TEST_METHOD (VerifySuppliedTimeTokensResetBetweenItems)
     }
 }
 
+TEST_METHOD (VerifySuppliedMetadataResetAndReactivation)
+{
+    const PowerRenameLib::MetadataPatternMap patterns{ { L"CAMERA_MAKE", L"Canon" } };
+    for (const DWORD flags : { DWORD{ 0 }, DWORD{ UseRegularExpressions } })
+    {
+        CComPtr<IPowerRenameRegEx> renameRegEx;
+        Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+        Assert::AreEqual(S_OK, renameRegEx->PutFlags(flags));
+        Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig.txt"));
+        Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"$CAMERA_MAKE.txt"));
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns(patterns));
+
+        unsigned long index = 0;
+        CComHeapPtr<wchar_t> result;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &result, index));
+        Assert::AreEqual(L"Canon.txt", static_cast<PCWSTR>(result));
+        Assert::AreEqual(1UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->ResetMetadata());
+        CComHeapPtr<wchar_t> resetResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &resetResult, index));
+        Assert::AreEqual(L"$CAMERA_MAKE.txt", static_cast<PCWSTR>(resetResult));
+        Assert::AreEqual(2UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns(patterns));
+        CComHeapPtr<wchar_t> reappliedResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &reappliedResult, index));
+        Assert::AreEqual(L"Canon.txt", static_cast<PCWSTR>(reappliedResult));
+        Assert::AreEqual(3UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns({}));
+        CComHeapPtr<wchar_t> emptyMapResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &emptyMapResult, index));
+        Assert::AreEqual(L"$CAMERA_MAKE.txt", static_cast<PCWSTR>(emptyMapResult));
+        Assert::AreEqual(4UL, index);
+    }
+}
+
 TEST_METHOD (VerifyReplaceFirstWildCardUseRegex)
 {
     SearchReplaceExpected sreTable[] = {

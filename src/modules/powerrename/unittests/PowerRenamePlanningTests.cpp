@@ -4,6 +4,7 @@
 #include <Renaming.h>
 #include "MockPowerRenameItem.h"
 #include <initializer_list>
+#include <locale>
 #include <string>
 #include <vector>
 
@@ -265,6 +266,102 @@ namespace PowerRenamePlanningTests
                     Assert::AreEqual(test.index, index, context.c_str());
                     AssertItem(item, test.flags, test.candidate, test.status, test.eligible, context.c_str());
                 }
+            }
+        }
+
+        TEST_METHOD (EmptySearchCaseFallbackReplacesStaleCandidateWithoutConsumingIndex)
+        {
+            // GetTransformedFileName changes the process-global C++ locale.
+            struct RestoreLocale
+            {
+                std::locale saved;
+                ~RestoreLocale()
+                {
+                    std::locale::global(saved);
+                }
+            } restoreLocale;
+
+            const PlanningCase cases[] = {
+                { L"PLAN-S1/capitalized", L"wAR aND pEACE.TxT", false, Capitalized, L"", L"", L"War And Peace.TxT", Status::ShouldRename, true, true, 0 },
+                { L"PLAN-S1/titlecase", L"wAR aND pEACE.TxT", false, Titlecase, L"", L"", L"War and Peace.TxT", Status::ShouldRename, true, true, 0 },
+                { L"PLAN-S1/capitalized-name", L"wAR aND pEACE.TxT", false, Capitalized | NameOnly, L"", L"", L"War And Peace.TxT", Status::ShouldRename, true, true, 0 },
+                { L"PLAN-S1/capitalized-extension-identity", L"wAR aND pEACE.TxT", false, Capitalized | ExtensionOnly, L"", L"", nullptr, Status::ShouldRename, false, false, 0 },
+            };
+            for (const bool useBoost : { false, true })
+            {
+                for (const auto& test : cases)
+                {
+                    const std::wstring context = std::wstring(test.id) + (useBoost ? L"/Boost" : L"/std");
+                    auto engine = MakeEngine(useBoost, test.flags, test.search, test.replacement);
+                    auto item = MakeItem(test.original, test.folder);
+                    Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate"), context.c_str());
+                    unsigned long index = 0;
+                    Assert::AreEqual(test.planned, DoRename(engine, index, item), context.c_str());
+                    Assert::AreEqual(test.index, index, context.c_str());
+                    AssertItem(item, test.flags, test.candidate, test.status, test.eligible, context.c_str());
+                }
+            }
+        }
+
+        TEST_METHOD (FolderPathLengthBoundaryRetainsRejectedCandidate)
+        {
+            struct FolderPathCase
+            {
+                PCWSTR id;
+                size_t originalPathLength;
+                Status status;
+                bool planned;
+                bool eligible;
+            };
+            const FolderPathCase cases[] = {
+                { L"PLAN-S5/folder-result-247", 246, Status::ShouldRename, true, true },
+                { L"PLAN-S5/folder-result-248", 247, Status::ItemNameTooLong, false, false },
+            };
+            for (const bool useBoost : { false, true })
+            {
+                for (const auto& test : cases)
+                {
+                    const std::wstring context = std::wstring(test.id) + (useBoost ? L"/Boost" : L"/std");
+                    // Lengths exclude the terminator, matching DoRename's lstrlen comparison.
+                    const std::wstring path = std::wstring(L"C:\\") +
+                                              std::wstring(test.originalPathLength - 7, L'd') + L"\\aaa";
+                    auto engine = MakeEngine(useBoost, 0, L"aaa", L"bbbb");
+                    auto item = MakeItem(L"aaa", true, 0, path.c_str());
+                    unsigned long index = 0;
+                    Assert::AreEqual(test.planned, DoRename(engine, index, item), context.c_str());
+                    Assert::AreEqual(1UL, index, context.c_str());
+                    AssertItem(item, 0, L"bbbb", test.status, test.eligible, context.c_str());
+                }
+            }
+        }
+
+        TEST_METHOD (FolderFlagsApplicableUsesFolderAndDepthExclusions)
+        {
+            struct FolderGate
+            {
+                PCWSTR id;
+                UINT depth;
+                DWORD flags;
+                bool applicable;
+                bool eligible;
+            };
+            const FolderGate cases[] = {
+                { L"PLAN-S5/root", 0, 0, true, true },
+                { L"PLAN-S5/root-exclude-folders", 0, ExcludeFolders, false, false },
+                { L"PLAN-S5/root-exclude-files", 0, ExcludeFiles, true, true },
+                { L"PLAN-S5/root-exclude-subfolders", 0, ExcludeSubfolders, true, true },
+                { L"PLAN-S5/nested-allowed", 1, 0, true, true },
+                { L"PLAN-S5/nested-excluded", 1, ExcludeSubfolders, false, false },
+            };
+            for (const auto& test : cases)
+            {
+                auto item = MakeItem(L"aaa", true, test.depth);
+                Assert::AreEqual(S_OK, item->PutNewName(L"bbbb"), test.id);
+                Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename), test.id);
+                bool visible = !test.applicable;
+                Assert::AreEqual(S_OK, item->IsItemVisible(PowerRenameFilters::FlagsApplicable, test.flags, &visible), test.id);
+                Assert::AreEqual(test.applicable, visible, test.id);
+                AssertItem(item, test.flags, L"bbbb", Status::ShouldRename, test.eligible, test.id);
             }
         }
 

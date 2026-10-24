@@ -44,8 +44,8 @@ namespace interop_auth
         // Runner's own file version; caller must match exactly (anti-downgrade). 0 disables the check.
         unsigned long long expectedVersion = 0;
 
-        // Require a machine-root-anchored Microsoft Authenticode signature. Compiled out in Debug builds
-        // (local binaries are unsigned) while directory/basename/version stay enforced.
+        // Require a machine-root-anchored Microsoft Authenticode signature when the loaded server image
+        // declares signature material. Unsigned hosts retain directory/basename/version checks in every build.
         bool requireMicrosoftSignature = true;
 
         // Optional sink invoked once per rejected process instance (deduped via the per-process cache).
@@ -147,4 +147,15 @@ namespace interop_auth
 
     // Version of the current process's own module (e.g. the Runner). Returns 0 on failure.
     unsigned long long GetOwnModuleVersion();
+
+    // The caller retains a loaded or SEC_IMAGE-mapped PE image.
+    // This inspects signature presence, not trust; any declared material retains peer verification.
+    HRESULT GetMappedImageSignaturePresence(void* image, bool& hasSignature);
+    HRESULT GetOwnModuleSignaturePresence(bool& hasSignature);
+
+    // The caller must pin path resolution and retain a write/delete-denying file handle
+    // through process creation. This helper always verifies signatures; callers gate unsigned hosts.
+    AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
+                                               const std::wstring& path,
+                                               unsigned long long expectedVersion);
 }

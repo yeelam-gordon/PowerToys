@@ -2,6 +2,7 @@
 #include "PowerRenameRegEx.h"
 #include "Enumerating.h"
 #include "Settings.h"
+#include <new>
 #include <regex>
 #include <string>
 #include <algorithm>
@@ -406,7 +407,7 @@ HRESULT CPowerRenameRegEx::s_CreateInstance(bool useBoostLib, _Outptr_ IPowerRen
 {
     *renameRegEx = nullptr;
 
-    CPowerRenameRegEx* newRenameRegEx = new CPowerRenameRegEx(useBoostLib);
+    CPowerRenameRegEx* newRenameRegEx = new (std::nothrow) CPowerRenameRegEx(useBoostLib);
     HRESULT hr = E_OUTOFMEMORY;
     if (newRenameRegEx)
     {

@@ -21,6 +21,22 @@ struct SearchReplaceExpected
     PCWSTR expected;
 };
 
+TEST_METHOD (VerifyExplicitFactoryRejectsNullOutput)
+{
+    HRESULT hr = E_UNEXPECTED;
+    DWORD exceptionCode = 0;
+    __try
+    {
+        hr = CPowerRenameRegEx::s_CreateInstance(UseBoostLib, nullptr);
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    {
+        exceptionCode = GetExceptionCode();
+    }
+    Assert::AreEqual(DWORD{ 0 }, exceptionCode, L"The explicit factory must reject null output without an access violation.");
+    Assert::AreEqual(E_POINTER, hr);
+}
+
 TEST_METHOD (GeneralReplaceTest)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

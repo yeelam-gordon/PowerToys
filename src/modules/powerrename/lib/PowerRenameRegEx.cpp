@@ -405,6 +405,11 @@ HRESULT CPowerRenameRegEx::s_CreateInstance(_Outptr_ IPowerRenameRegEx** renameR
 
 HRESULT CPowerRenameRegEx::s_CreateInstance(bool useBoostLib, _Outptr_ IPowerRenameRegEx** renameRegEx)
 {
+    if (!renameRegEx)
+    {
+        return E_POINTER;
+    }
+
     *renameRegEx = nullptr;
 
     CPowerRenameRegEx* newRenameRegEx = new (std::nothrow) CPowerRenameRegEx(useBoostLib);

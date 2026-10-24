@@ -180,21 +180,30 @@ namespace ViewModelTests
         public void EnabledOnContextExtendedMenuShouldSetValue2TrueWhenSuccessful()
         {
             var messages = new List<string>();
-            var localSettings = new PowerRenameLocalProperties();
+            var localSettings = new PowerRenameLocalProperties
+            {
+                ShowIcon = false,
+                ExtendedContextMenuOnly = false,
+                MRUEnabled = true,
+                PersistState = true,
+                UseBoostLib = true,
+                MaxMRUSize = 17,
+            };
+            var expectedProperties = new Dictionary<string, bool>
+            {
+                ["bool_show_icon_on_menu"] = false,
+                ["bool_show_extended_menu"] = true,
+                ["bool_mru_enabled"] = true,
+                ["bool_persist_input"] = true,
+                ["bool_use_boost_lib"] = true,
+            };
             PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, new GeneralSettings(), messages);
 
             viewModel.EnabledOnContextExtendedMenu = true;
 
             Assert.IsTrue(viewModel.EnabledOnContextExtendedMenu);
             Assert.IsFalse(viewModel.EnabledOnContextMenu);
-            Assert.IsTrue(messages.Count > 0);
-            foreach (string message in messages)
-            {
-                PowerRenameSettingsIPCMessage sent = JsonSerializer.Deserialize<PowerRenameSettingsIPCMessage>(message);
-                Assert.IsNotNull(sent, "A changed PowerRename setting must send a non-null module IPC payload.");
-                Assert.IsTrue(sent.Powertoys.PowerRename.Properties.ExtendedContextMenuOnly.Value);
-                Assert.IsFalse(sent.Powertoys.PowerRename.Properties.ShowIcon.Value);
-            }
+            AssertModuleMessages(messages, expectedProperties, 17);
         }
 
         [TestMethod]

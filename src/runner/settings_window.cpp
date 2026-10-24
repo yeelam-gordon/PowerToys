@@ -441,9 +441,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
 {
     PROCESS_INFORMATION process_info = { 0 };
     HANDLE hToken = nullptr;
-#ifndef _DEBUG
     SettingsLaunchImage launch_image;
-#endif
 
     // Arguments for calling the settings executable:
     // "C:\powertoys_path\PowerToysSettings.exe" powertoys_pipe settings_pipe powertoys_pid settings_theme
@@ -566,7 +564,6 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         goto LExit;
     }
 
-#ifndef _DEBUG
     {
         TOKEN_ELEVATION elevation{};
         DWORD size = 0;
@@ -577,24 +574,33 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         }
         if (elevation.TokenIsElevated)
         {
-            const HRESULT opened = launch_image.Open(executable_path);
-            if (FAILED(opened))
+            bool runnerIsSigned = true;
+            const HRESULT signatureStatus = interop_auth::GetOwnModuleSignatureStatus(runnerIsSigned);
+            if (FAILED(signatureStatus))
             {
-                Logger::error(L"Failed to open Settings image for launch: {:#010x}", static_cast<unsigned long>(opened));
+                Logger::error(L"Failed to check Runner signature before launching Settings: {:#010x}", static_cast<unsigned long>(signatureStatus));
                 goto LExit;
             }
-            const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(launch_image.File(),
-                                                                               launch_image.Path(),
-                                                                               interop_auth::GetOwnModuleVersion());
-            if (!verified.accepted)
+            if (runnerIsSigned)
             {
-                Logger::error(L"Settings image could not be verified before launch: {}", verified.reasonCode);
-                goto LExit;
+                const HRESULT opened = launch_image.Open(executable_path);
+                if (FAILED(opened))
+                {
+                    Logger::error(L"Failed to open Settings image for launch: {:#010x}", static_cast<unsigned long>(opened));
+                    goto LExit;
+                }
+                const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(launch_image.File(),
+                                                                                   launch_image.Path(),
+                                                                                   interop_auth::GetOwnModuleVersion());
+                if (!verified.accepted)
+                {
+                    Logger::error(L"Settings image could not be verified before launch: {}", verified.reasonCode);
+                    goto LExit;
+                }
+                executable_path = launch_image.Path();
             }
-            executable_path = launch_image.Path();
         }
     }
-#endif
 
     if (FALSE == process_created)
     {
@@ -627,9 +633,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         }
     }
 
-#ifndef _DEBUG
     launch_image = {};
-#endif
 
     {
         std::unique_lock lock{ ipc_mutex };
@@ -638,7 +642,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         // Authenticate the connecting client (Settings) before dispatching any privileged command.
         // The expected image directory is derived from the Runner's own module folder so it adapts to
         // both installed and dev-build layouts; only Microsoft-signed PowerToys.Settings.exe at the
-        // Runner's own version is accepted (signature check is compiled out in Debug).
+        // Runner's own version is accepted; unsigned Runner builds do not require a signature.
         interop_auth::CallerPolicy settings_caller_policy;
         settings_caller_policy.enabled = true;
         settings_caller_policy.expectedDirectory = get_module_folderpath() + L"\\WinUI3Apps";

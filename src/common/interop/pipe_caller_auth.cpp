@@ -3,6 +3,7 @@
 #include <wincrypt.h>
 #include <wintrust.h>
 #include <softpub.h>
+#include <imagehlp.h>
 
 #include <cwctype>
 #include <cstring>
@@ -11,6 +12,7 @@
 
 #pragma comment(lib, "wintrust.lib")
 #pragma comment(lib, "crypt32.lib")
+#pragma comment(lib, "imagehlp.lib")
 
 namespace interop_auth
 {
@@ -155,7 +157,7 @@ namespace interop_auth
             return ok;
         }
 
-        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path, HANDLE file = nullptr)
+        bool VerifyMicrosoftSignedMachineRoot(const std::wstring& path, HANDLE file = nullptr, LONG* signatureStatus = nullptr)
         {
             WINTRUST_FILE_INFO fileInfo = {};
             fileInfo.cbStruct = sizeof(fileInfo);
@@ -174,6 +176,10 @@ namespace interop_auth
             GUID action = WINTRUST_ACTION_GENERIC_VERIFY_V2;
             HWND noWindow = static_cast<HWND>(INVALID_HANDLE_VALUE);
             const LONG status = WinVerifyTrust(noWindow, &action, &wd);
+            if (signatureStatus)
+            {
+                *signatureStatus = status;
+            }
 
             bool result = false;
             if (status == ERROR_SUCCESS)
@@ -192,6 +198,39 @@ namespace interop_auth
             wd.dwStateAction = WTD_STATEACTION_CLOSE;
             WinVerifyTrust(noWindow, &action, &wd);
 
+            return result;
+        }
+
+        HRESULT GetEmbeddedSignaturePresence(HANDLE file, bool& hasSignature)
+        {
+            HANDLE mapping = CreateFileMappingW(file, nullptr, PAGE_READONLY | SEC_IMAGE_NO_EXECUTE, 0, 0, nullptr);
+            if (!mapping)
+            {
+                return HRESULT_FROM_WIN32(GetLastError());
+            }
+            void* image = MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+            if (!image)
+            {
+                const HRESULT error = HRESULT_FROM_WIN32(GetLastError());
+                CloseHandle(mapping);
+                return error;
+            }
+
+            HRESULT result = TRUST_E_SUBJECT_FORM_UNKNOWN;
+            {
+                static std::mutex imageMutex;
+                std::scoped_lock lock(imageMutex);
+                const auto* headers = ImageNtHeader(image);
+                if (headers && headers->OptionalHeader.Magic == IMAGE_NT_OPTIONAL_HDR_MAGIC &&
+                    headers->OptionalHeader.NumberOfRvaAndSizes > IMAGE_DIRECTORY_ENTRY_SECURITY)
+                {
+                    const auto& certificate = headers->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY];
+                    hasSignature = certificate.VirtualAddress != 0 || certificate.Size != 0;
+                    result = S_OK;
+                }
+            }
+            UnmapViewOfFile(image);
+            CloseHandle(mapping);
             return result;
         }
 
@@ -254,12 +293,61 @@ namespace interop_auth
     unsigned long long GetOwnModuleVersion()
     {
         wchar_t self[MAX_PATH * 2] = {};
-        const DWORD n = GetModuleFileNameW(nullptr, self, ARRAYSIZE(self));
-        if (n == 0 || n >= ARRAYSIZE(self))
+        DWORD length = ARRAYSIZE(self);
+        if (!QueryFullProcessImageNameW(GetCurrentProcess(), 0, self, &length))
         {
             return 0;
         }
-        return GetModuleVersion(self);
+        return GetModuleVersion(std::wstring(self, length));
+    }
+
+    HRESULT GetModuleSignatureStatus(const std::wstring& path, bool& isSigned)
+    {
+        HANDLE file = CreateFileW(path.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (file == INVALID_HANDLE_VALUE)
+        {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+
+        LONG status = TRUST_E_FAIL;
+        VerifyMicrosoftSignedMachineRoot(path, file, &status);
+        bool signatureAbsent = false;
+        if (status == TRUST_E_NOSIGNATURE)
+        {
+            bool hasSignature = true;
+            const HRESULT presence = GetEmbeddedSignaturePresence(file, hasSignature);
+            if (FAILED(presence))
+            {
+                status = presence;
+            }
+            else
+            {
+                signatureAbsent = !hasSignature;
+            }
+        }
+        CloseHandle(file);
+        if (signatureAbsent)
+        {
+            isSigned = false;
+            return S_OK;
+        }
+        if (status != ERROR_SUCCESS)
+        {
+            return static_cast<HRESULT>(status);
+        }
+        isSigned = true;
+        return S_OK;
+    }
+
+    HRESULT GetOwnModuleSignatureStatus(bool& isSigned)
+    {
+        wchar_t self[MAX_PATH * 2]{};
+        DWORD length = ARRAYSIZE(self);
+        if (!QueryFullProcessImageNameW(GetCurrentProcess(), 0, self, &length))
+        {
+            return HRESULT_FROM_WIN32(GetLastError());
+        }
+        return GetModuleSignatureStatus(std::wstring(self, length), isSigned);
     }
 
     AuthResult VerifyMicrosoftSignedLaunchImage(HANDLE file,
@@ -372,17 +460,23 @@ namespace interop_auth
             bool signatureOk = true;
             if (policy.requireMicrosoftSignature)
             {
-#ifdef _DEBUG
-                // DEV-ONLY: local builds are not Microsoft-signed. Directory, basename and version are
-                // still enforced above. This relaxation is physically compiled out of Release.
-                signatureOk = true;
-#else
-                signatureOk = VerifyMicrosoftSignedMachineRoot(canonical);
-#endif
+                bool serverIsSigned = true;
+                if (FAILED(GetOwnModuleSignatureStatus(serverIsSigned)))
+                {
+                    signatureOk = false;
+                    reason = L"server-signature-check-failed";
+                }
+                else if (serverIsSigned)
+                {
+                    signatureOk = VerifyMicrosoftSignedMachineRoot(canonical);
+                }
             }
             if (!signatureOk)
             {
-                reason = L"not-microsoft-signed";
+                if (*reason == L'\0')
+                {
+                    reason = L"not-microsoft-signed";
+                }
             }
             else
             {

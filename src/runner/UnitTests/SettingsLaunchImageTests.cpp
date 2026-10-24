@@ -6,12 +6,16 @@
 #include "CppUnitTest.h"
 #include "../settings_launch_image.h"
 #include <common/interop/pipe_caller_auth.h>
+#include <imagehlp.h>
 #include <winioctl.h>
 
+#include <cstddef>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <vector>
+
+#pragma comment(lib, "imagehlp.lib")
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -163,6 +167,9 @@ namespace RunnerUnitTests
             Assert::IsTrue(SUCCEEDED(image.Open(MicrosoftRuntimeImagePath())));
             const auto version = interop_auth::GetModuleVersion(image.Path());
             Assert::IsTrue(version != 0);
+            bool isSigned = false;
+            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(image.Path(), isSigned)));
+            Assert::IsTrue(isSigned);
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsTrue(verified.accepted, verified.reasonCode);
             Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version + 1).accepted);
@@ -202,6 +209,88 @@ namespace RunnerUnitTests
             const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), version);
             Assert::IsFalse(verified.accepted);
             Assert::AreEqual(L"not-microsoft-signed", verified.reasonCode);
+            bool isSigned = true;
+            Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(image.Path(), isSigned)));
+        }
+
+        TEST_METHOD (UnsignedImageIsDistinguishedFromSignatureVerificationFailure)
+        {
+            LaunchFixture fixture;
+            const std::wstring copy = fixture.first + L"\\sample.dat";
+            Assert::IsTrue(CopyFileW(MicrosoftRuntimeImagePath().c_str(), copy.c_str(), FALSE) != FALSE);
+            {
+                wil::unique_hfile file(CreateFileW(copy.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr));
+                Assert::IsTrue(static_cast<bool>(file));
+                DWORD certificates = 0;
+                Assert::IsTrue(ImageEnumerateCertificates(file.get(), CERT_SECTION_TYPE_ANY, &certificates, nullptr, 0) != FALSE);
+                Assert::IsTrue(certificates != 0);
+                for (DWORD remaining = certificates; remaining != 0; --remaining)
+                {
+                    DWORD available = 0;
+                    DWORD index = 0;
+                    Assert::IsTrue(ImageEnumerateCertificates(file.get(), CERT_SECTION_TYPE_ANY, &available, &index, 1) != FALSE);
+                    Assert::AreEqual(remaining, available);
+                    Assert::IsTrue(ImageRemoveCertificate(file.get(), index) != FALSE);
+                }
+            }
+
+            bool isSigned = true;
+            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(copy, isSigned)));
+            Assert::IsFalse(isSigned);
+
+            SettingsLaunchImage image;
+            Assert::IsTrue(SUCCEEDED(image.Open(copy)));
+            Assert::IsFalse(interop_auth::VerifyMicrosoftSignedLaunchImage(image.File(), image.Path(), interop_auth::GetModuleVersion(image.Path())).accepted);
+            Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(fixture.root + L"\\missing.exe", isSigned)));
+        }
+
+        TEST_METHOD (MalformedSignatureMaterialDoesNotCountAsUnsigned)
+        {
+            LaunchFixture fixture;
+            const auto source = MicrosoftRuntimeImagePath();
+            bool isSigned = false;
+            Assert::IsTrue(SUCCEEDED(interop_auth::GetModuleSignatureStatus(source, isSigned)));
+            Assert::IsTrue(isSigned);
+
+            std::ifstream original(std::filesystem::path(source), std::ios::binary);
+            IMAGE_DOS_HEADER dos{};
+            original.read(reinterpret_cast<char*>(&dos), sizeof(dos));
+            Assert::IsTrue(original.good());
+            Assert::IsTrue(dos.e_magic == IMAGE_DOS_SIGNATURE && dos.e_lfanew > 0);
+            original.seekg(dos.e_lfanew);
+            IMAGE_NT_HEADERS headers{};
+            original.read(reinterpret_cast<char*>(&headers), sizeof(headers));
+            Assert::IsTrue(original.good());
+            Assert::IsTrue(headers.Signature == IMAGE_NT_SIGNATURE);
+            const DWORD certificateOffset = headers.OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_SECURITY].VirtualAddress;
+            Assert::IsTrue(certificateOffset != 0);
+            const auto directoryOffset = static_cast<std::streamoff>(
+                dos.e_lfanew + offsetof(IMAGE_NT_HEADERS, OptionalHeader) +
+                offsetof(IMAGE_OPTIONAL_HEADER, DataDirectory) + IMAGE_DIRECTORY_ENTRY_SECURITY * sizeof(IMAGE_DATA_DIRECTORY));
+            struct CertificateMutation
+            {
+                std::streamoff offset;
+                DWORD value;
+                std::streamsize length;
+            };
+            const CertificateMutation mutations[] = {
+                { certificateOffset, 0, sizeof(DWORD) },
+                { static_cast<std::streamoff>(certificateOffset + offsetof(WIN_CERTIFICATE, wCertificateType)), 0xffff, sizeof(WORD) },
+                { directoryOffset, MAXDWORD, sizeof(DWORD) },
+                { directoryOffset + static_cast<std::streamoff>(offsetof(IMAGE_DATA_DIRECTORY, Size)), 1, sizeof(DWORD) },
+            };
+            for (const auto& mutation : mutations)
+            {
+                const auto copy = fixture.first + L"\\sample.dat";
+                Assert::IsTrue(CopyFileW(source.c_str(), copy.c_str(), FALSE) != FALSE);
+                {
+                    std::fstream bytes(std::filesystem::path(copy), std::ios::in | std::ios::out | std::ios::binary);
+                    bytes.seekp(mutation.offset);
+                    bytes.write(reinterpret_cast<const char*>(&mutation.value), mutation.length);
+                    Assert::IsTrue(bytes.good());
+                }
+                Assert::IsTrue(FAILED(interop_auth::GetModuleSignatureStatus(copy, isSigned)));
+            }
         }
 
         TEST_METHOD (ResolvedImageCanBeCreatedWhileGuardIsHeld)

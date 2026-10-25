@@ -392,6 +392,35 @@ TEST_METHOD (VerifyChecklistCounterSequenceAndNonConsumingNoMatch)
     }
 }
 
+TEST_METHOD (VerifyEnumerationFlagChangesRefreshExistingReplacement)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"item_${start=10}"));
+    const struct
+    {
+        DWORD flags;
+        PCWSTR expected;
+    } cases[] = {
+        { 0, L"item_${start=10}" },
+        { EnumerateItems, L"item_10" },
+        { 0, L"item_${start=10}" },
+        { EnumerateItems, L"item_10" },
+    };
+    for (const auto& testCase : cases)
+    {
+        Assert::AreEqual(S_OK, renameRegEx->PutFlags(testCase.flags));
+        CComHeapPtr<wchar_t> result;
+        unsigned long index = 0;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig", &result, index));
+        Assert::IsNotNull(static_cast<PCWSTR>(result));
+        Assert::AreEqual(testCase.expected, static_cast<PCWSTR>(result));
+        Assert::AreEqual(1UL, index);
+    }
+}
+
 TEST_METHOD (VerifyCombinedEnumerationAndRandomization)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

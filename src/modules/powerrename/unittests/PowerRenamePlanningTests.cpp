@@ -91,7 +91,12 @@ namespace PowerRenamePlanningTests
                     return E_POINTER;
                 }
                 *result = nullptr;
-                return name == SIGDN_FILESYSPATH ? SHStrDup(L"C:\\fixtures\\archive.zip", result) : E_INVALIDARG;
+                if (FAILED(displayNameResult))
+                {
+                    return displayNameResult;
+                }
+                const HRESULT hr = name == SIGDN_FILESYSPATH ? SHStrDup(L"C:\\fixtures\\archive.zip", result) : E_INVALIDARG;
+                return FAILED(hr) ? hr : displayNameResult;
             }
 
             IFACEMETHODIMP GetAttributes(SFGAOF mask, SFGAOF* result) override
@@ -102,8 +107,13 @@ namespace PowerRenamePlanningTests
                 {
                     return E_POINTER;
                 }
+                *result = 0;
+                if (FAILED(attributesResult))
+                {
+                    return attributesResult;
+                }
                 *result = m_attributes;
-                return S_OK;
+                return attributesResult;
             }
 
             IFACEMETHODIMP Compare(IShellItem*, SICHINTF, int* result) override
@@ -121,6 +131,8 @@ namespace PowerRenamePlanningTests
             int unexpectedCalls = 0;
             SIGDN requestedName{};
             SFGAOF requestedMask = 0;
+            HRESULT displayNameResult = S_OK;
+            HRESULT attributesResult = S_OK;
 
         private:
             LONG m_refCount = 1;
@@ -234,6 +246,39 @@ namespace PowerRenamePlanningTests
         }
 
     public:
+        TEST_METHOD (SuppliedShellInitializationFailuresPreserveErrorAndReturnNoItem)
+        {
+            struct ShellCase
+            {
+                PCWSTR id;
+                HRESULT displayNameResult;
+                HRESULT attributesResult;
+                HRESULT expectedResult;
+                int attributeCalls;
+            };
+            const ShellCase cases[] = {
+                { L"display-name-failure", E_ABORT, S_OK, E_ABORT, 0 },
+                { L"attributes-failure", S_OK, E_ACCESSDENIED, E_ACCESSDENIED, 1 },
+            };
+            for (const auto& test : cases)
+            {
+                CComPtr<RecordingShellItem> shell;
+                shell.Attach(new RecordingShellItem(SFGAO_CANRENAME));
+                auto recording = shell.p;
+                recording->displayNameResult = test.displayNameResult;
+                recording->attributesResult = test.attributesResult;
+                CComPtr<IPowerRenameItem> item;
+                Assert::AreEqual(test.expectedResult, CPowerRenameItem::s_CreateInstance(shell, IID_PPV_ARGS(&item)), test.id);
+                Assert::IsNull(item.p, test.id);
+                Assert::AreEqual(1, recording->displayNameCalls, test.id);
+                Assert::AreEqual(static_cast<int>(SIGDN_FILESYSPATH), static_cast<int>(recording->requestedName), test.id);
+                Assert::AreEqual(test.attributeCalls, recording->attributeCalls, test.id);
+                const SFGAOF expectedMask = test.attributeCalls ? SFGAO_STREAM | SFGAO_FOLDER | SFGAO_CANRENAME : 0;
+                Assert::AreEqual(expectedMask, recording->requestedMask, test.id);
+                Assert::AreEqual(0, recording->unexpectedCalls, test.id);
+            }
+        }
+
         TEST_METHOD (SuppliedShellRenamePermissionControlsEligibility)
         {
             struct ShellCase

@@ -633,6 +633,57 @@ TEST_METHOD (VerifyUnsubscribedObserverStaysUnchangedAndCanSubscribeAgain)
     Assert::AreEqual(combinedFlags, mockEvents->m_flags);
 }
 
+TEST_METHOD (VerifyObserverCookiesOnlyRemoveTheirOwnActiveSubscription)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    const HRESULT createHr = CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx);
+    Assert::AreEqual(S_OK, createHr);
+    const HRESULT flagsHr = renameRegEx->PutFlags(0);
+    Assert::AreEqual(S_OK, flagsHr);
+    CComPtr<CMockPowerRenameRegExEvents> firstObserver;
+    firstObserver.Attach(new CMockPowerRenameRegExEvents());
+    CComPtr<CMockPowerRenameRegExEvents> secondObserver;
+    secondObserver.Attach(new CMockPowerRenameRegExEvents());
+    DWORD firstCookie = 0;
+    DWORD secondCookie = 0;
+    DWORD renewedCookie = 0;
+    const HRESULT firstAdviseHr = renameRegEx->Advise(firstObserver, &firstCookie);
+    const HRESULT secondAdviseHr = renameRegEx->Advise(secondObserver, &secondCookie);
+    const HRESULT initialSearchHr = renameRegEx->PutSearchTerm(L"initial");
+    const DWORD initialFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD initialSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT firstUnadviseHr = renameRegEx->UnAdvise(firstCookie);
+    const HRESULT remainingSearchHr = renameRegEx->PutSearchTerm(L"remaining");
+    const DWORD remainingFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD remainingSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT renewedAdviseHr = renameRegEx->Advise(firstObserver, &renewedCookie);
+    const HRESULT staleUnadviseHr = renameRegEx->UnAdvise(firstCookie);
+    const HRESULT restoredSearchHr = renameRegEx->PutSearchTerm(L"restored");
+    const DWORD restoredFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD restoredSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT renewedUnadviseHr = renameRegEx->UnAdvise(renewedCookie);
+    const HRESULT secondUnadviseHr = renameRegEx->UnAdvise(secondCookie);
+
+    Assert::AreEqual(S_OK, firstAdviseHr);
+    Assert::AreEqual(S_OK, secondAdviseHr);
+    Assert::AreEqual(S_OK, initialSearchHr);
+    Assert::AreEqual(S_OK, firstUnadviseHr);
+    Assert::AreEqual(S_OK, remainingSearchHr);
+    Assert::AreEqual(S_OK, renewedAdviseHr);
+    Assert::AreEqual(E_FAIL, staleUnadviseHr);
+    Assert::AreEqual(S_OK, restoredSearchHr);
+    Assert::AreEqual(S_OK, renewedUnadviseHr);
+    Assert::AreEqual(S_OK, secondUnadviseHr);
+    Assert::AreEqual(DWORD{ 1 }, initialFirstCount);
+    Assert::AreEqual(DWORD{ 1 }, initialSecondCount);
+    Assert::AreEqual(DWORD{ 1 }, remainingFirstCount);
+    Assert::AreEqual(DWORD{ 2 }, remainingSecondCount);
+    Assert::AreEqual(DWORD{ 2 }, restoredFirstCount);
+    Assert::AreEqual(DWORD{ 3 }, restoredSecondCount);
+    Assert::AreEqual(L"restored", firstObserver->m_searchTerm);
+    Assert::AreEqual(L"restored", secondObserver->m_searchTerm);
+}
+
 TEST_METHOD (VerifyUnchangedTermsNotifyOnlyWhenRenamingIsForced)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

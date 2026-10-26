@@ -234,6 +234,67 @@ namespace PowerRenamePlanningTests
         }
 
     public:
+        TEST_METHOD (SuppliedShellRenamePermissionControlsEligibility)
+        {
+            struct ShellCase
+            {
+                PCWSTR id;
+                SFGAOF attributes;
+                bool allowed;
+            };
+            const ShellCase cases[] = {
+                { L"shell-allows-rename", SFGAO_CANRENAME, true },
+                { L"shell-denies-rename", 0, false },
+            };
+            for (const auto& test : cases)
+            {
+                CComPtr<RecordingShellItem> shell;
+                shell.Attach(new RecordingShellItem(test.attributes));
+                auto recording = shell.p;
+                CComPtr<IPowerRenameItem> item;
+                Assert::AreEqual(S_OK, CPowerRenameItem::s_CreateInstance(shell, IID_PPV_ARGS(&item)), test.id);
+                Assert::IsNotNull(item.p, test.id);
+                const auto assertRequests = [&]() {
+                    Assert::AreEqual(1, recording->displayNameCalls, test.id);
+                    Assert::AreEqual(static_cast<int>(SIGDN_FILESYSPATH), static_cast<int>(recording->requestedName), test.id);
+                    Assert::AreEqual(1, recording->attributeCalls, test.id);
+                    Assert::AreEqual(static_cast<SFGAOF>(SFGAO_STREAM | SFGAO_FOLDER | SFGAO_CANRENAME), recording->requestedMask, test.id);
+                    Assert::AreEqual(0, recording->unexpectedCalls, test.id);
+                };
+                assertRequests();
+
+                CComHeapPtr<WCHAR> original;
+                Assert::AreEqual(S_OK, item->GetOriginalName(&original), test.id);
+                Assert::AreEqual(L"archive.zip", static_cast<PCWSTR>(original), test.id);
+                CComHeapPtr<WCHAR> path;
+                Assert::AreEqual(S_OK, item->GetPath(&path), test.id);
+                Assert::AreEqual(L"C:\\fixtures\\archive.zip", static_cast<PCWSTR>(path), test.id);
+                bool folder = true;
+                Assert::AreEqual(S_OK, item->GetIsFolder(&folder), test.id);
+                Assert::IsFalse(folder, test.id);
+                Assert::AreEqual(S_OK, item->PutNewName(L"done.zip"), test.id);
+                Assert::AreEqual(S_OK, item->PutSelected(true), test.id);
+                Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename), test.id);
+                Assert::AreEqual(S_OK, item->PutDepth(0), test.id);
+
+                AssertDecision(item, 0, test.allowed, true, true, test.id);
+
+                CComHeapPtr<WCHAR> candidate;
+                Assert::AreEqual(S_OK, item->GetNewName(&candidate), test.id);
+                Assert::AreEqual(L"done.zip", static_cast<PCWSTR>(candidate), test.id);
+                Status status = Status::Init;
+                Assert::AreEqual(S_OK, item->GetStatus(&status), test.id);
+                Assert::AreEqual(static_cast<int>(Status::ShouldRename), static_cast<int>(status), test.id);
+                bool selected = false;
+                Assert::AreEqual(S_OK, item->GetSelected(&selected), test.id);
+                Assert::IsTrue(selected, test.id);
+                folder = true;
+                Assert::AreEqual(S_OK, item->GetIsFolder(&folder), test.id);
+                Assert::IsFalse(folder, test.id);
+                assertRequests();
+            }
+        }
+
         TEST_METHOD (SuppliedShellAttributesClassifyFoldersAndStreamsForExclusion)
         {
             struct ShellCase

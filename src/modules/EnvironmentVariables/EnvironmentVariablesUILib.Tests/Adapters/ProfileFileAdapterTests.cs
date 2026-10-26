@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -12,6 +14,7 @@ using System.Threading.Tasks;
 using EnvironmentVariablesUILib.Helpers;
 using EnvironmentVariablesUILib.Models;
 using EnvironmentVariablesUILib.UnitTests.TestSupport;
+using EnvironmentVariablesUILib.ViewModels;
 
 namespace EnvironmentVariablesUILib.UnitTests.Adapters
 {
@@ -22,6 +25,219 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
         private static readonly string[] ActiveProfileDeleteOrder = { "TMP", "TMP_PowerToys_Test_profile_1", "PATH", "PATH_PowerToys_Test_profile_1" };
 
         public TestContext TestContext { get; set; } = null!;
+
+        [TestMethod]
+        [TestCategory("Adapter")]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task CapturedTaskRun_DisabledRemovalsJoinOwnersAndPublishOwnedFile(bool olderPublishesLast)
+        {
+            Assert.IsFalse(string.IsNullOrWhiteSpace(TestContext.ResultsDirectory));
+            Assert.IsTrue(Path.IsPathFullyQualified(TestContext.ResultsDirectory));
+            var resultsDirectory = Path.GetFullPath(TestContext.ResultsDirectory);
+            var ownedDirectory = Path.Combine(resultsDirectory, $"EV-A-TASKRUN-{Guid.NewGuid():N}");
+            var ownedFile = Path.Combine(ownedDirectory, "profiles.json");
+            Assert.AreEqual(resultsDirectory.TrimEnd(Path.DirectorySeparatorChar), Path.GetDirectoryName(ownedDirectory)!.TrimEnd(Path.DirectorySeparatorChar));
+            var files = new EnvironmentVariablesFixture.ScriptedProfileFileSystem();
+            using var service = new EnvironmentVariablesService(files);
+            var canonicalPath = service.ProfilesJsonFilePath;
+            string MapCanonicalRequest(string? path) => string.Equals(path, canonicalPath, StringComparison.Ordinal)
+                ? ownedFile : throw new InvalidOperationException("Rejected noncanonical physical IO.");
+            files.ExistsCallback = path => File.Exists(MapCanonicalRequest(path));
+            files.ReadAllTextCallback = path => File.ReadAllText(MapCanonicalRequest(path));
+            files.WriteAllTextAsyncCallback = (path, text, token) => File.WriteAllTextAsync(MapCanonicalRequest(path), text, token);
+            var asyncOwners = new ConcurrentQueue<Task>();
+            var actionOwners = new ConcurrentQueue<Task>();
+            var publicationTasks = new ConcurrentQueue<Task>();
+            var refreshes = new ConcurrentQueue<Action>();
+            var entered = new[]
+            {
+                new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously),
+                new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously),
+            };
+            var release = new[]
+            {
+                new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+                new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+            };
+            var first = new ProfileVariablesSet(Guid.NewGuid(), "First removed");
+            var second = new ProfileVariablesSet(Guid.NewGuid(), "Second removed");
+            const string rawPath = @"%ROOT%;;C:\Tools;";
+            second.Variables.Add(new Variable("PATH", rawPath, VariablesSetType.Profile));
+            var ownsDirectory = false;
+            var fixture = new EnvironmentVariablesFixture();
+            try
+            {
+                Assert.IsFalse(string.Equals(canonicalPath, ownedFile, StringComparison.OrdinalIgnoreCase));
+                Assert.IsFalse(Directory.Exists(ownedDirectory));
+                Directory.CreateDirectory(ownedDirectory);
+                ownsDirectory = true;
+                await service.WriteAsync(new[] { first, second });
+                var initialJson = File.ReadAllText(ownedFile);
+                var callbackCount = 0;
+                files.WriteAllTextAsyncCallback = (path, text, token) =>
+                {
+                    var index = Interlocked.Increment(ref callbackCount) - 1;
+                    var publication = PublishAsync(index, path, text!, token);
+                    publicationTasks.Enqueue(publication);
+                    return publication;
+                };
+
+                async Task PublishAsync(int index, string path, string text, CancellationToken token)
+                {
+                    var physicalPath = MapCanonicalRequest(path);
+                    entered[index].SetResult(text);
+                    await release[index].Task.ConfigureAwait(false);
+                    await File.WriteAllTextAsync(physicalPath, text, token).ConfigureAwait(false);
+                }
+
+                var vm = new MainViewModel(
+                    new EnvironmentVariablesFixture.FixedElevation(false),
+                    service,
+                    fixture.Logger,
+                    fixture.Telemetry,
+                    refresh =>
+                    {
+                        refreshes.Enqueue(refresh);
+                        return false;
+                    },
+                    new DefaultVariablesSet(VariablesSet.UserGuid, "User", VariablesSetType.User),
+                    new DefaultVariablesSet(VariablesSet.SystemGuid, "System", VariablesSetType.System),
+                    new DefaultVariablesSet(Guid.NewGuid(), "Defaults", VariablesSetType.User),
+                    fixture.Environment,
+                    action =>
+                    {
+                        var owner = Task.Run(action);
+                        actionOwners.Enqueue(owner);
+                        return owner;
+                    },
+                    work =>
+                    {
+                        var owner = Task.Run(work);
+                        asyncOwners.Enqueue(owner);
+                        return owner;
+                    })
+                {
+                    Profiles = new ObservableCollection<ProfileVariablesSet> { first, second },
+                };
+                Assert.IsTrue(vm.Profiles.All(profile => !profile.IsEnabled));
+                Assert.IsNull(vm.AppliedProfile);
+
+                vm.RemoveProfile(first);
+                var olderJson = await entered[0].Task.WaitAsync(TimeSpan.FromSeconds(5));
+                vm.RemoveProfile(second);
+                var newerJson = await entered[1].Task.WaitAsync(TimeSpan.FromSeconds(5));
+                var owners = asyncOwners.ToArray();
+                Assert.AreEqual(2, owners.Length);
+                Assert.AreEqual(0, actionOwners.Count);
+                Assert.IsTrue(owners.All(owner => !owner.IsCompleted));
+                Assert.AreEqual(initialJson, File.ReadAllText(ownedFile));
+                Assert.AreEqual(0, vm.Profiles.Count);
+                using (var older = JsonDocument.Parse(olderJson))
+                using (var newer = JsonDocument.Parse(newerJson))
+                {
+                    Assert.AreEqual(1, older.RootElement.GetArrayLength());
+                    Assert.AreEqual(second.Id, older.RootElement[0].GetProperty("Id").GetGuid());
+                    Assert.AreEqual(rawPath, older.RootElement[0].GetProperty("Variables")[0].GetProperty("Values").GetString());
+                    Assert.AreEqual(0, newer.RootElement.GetArrayLength());
+                }
+
+                var firstPublication = olderPublishesLast ? 1 : 0;
+                var lastPublication = 1 - firstPublication;
+                release[firstPublication].SetResult(true);
+                await owners[firstPublication];
+                var intermediateJson = File.ReadAllText(ownedFile);
+                using (var intermediate = JsonDocument.Parse(intermediateJson))
+                {
+                    TestContext.WriteLine($"Task.Run intermediate: olderPublishesLast={olderPublishesLast}; count={intermediate.RootElement.GetArrayLength()}; JSON={intermediateJson}");
+                    Assert.AreEqual(olderPublishesLast ? 0 : 1, intermediate.RootElement.GetArrayLength());
+                }
+
+                Assert.IsFalse(owners[lastPublication].IsCompleted);
+                release[lastPublication].SetResult(true);
+                await Task.WhenAll(owners.Concat(actionOwners.ToArray()));
+                var completedPublications = publicationTasks.ToArray();
+                await Task.WhenAll(completedPublications);
+                var finalJson = File.ReadAllText(ownedFile);
+                using (var final = JsonDocument.Parse(finalJson))
+                {
+                    TestContext.WriteLine($"Task.Run final: olderPublishesLast={olderPublishesLast}; count={final.RootElement.GetArrayLength()}; JSON={finalJson}");
+                    Assert.AreEqual(olderPublishesLast ? 1 : 0, final.RootElement.GetArrayLength(), "Controlled publication characterization, not required-result acceptance.");
+                    if (olderPublishesLast)
+                    {
+                        var restored = final.RootElement[0];
+                        Assert.AreEqual(second.Id, restored.GetProperty("Id").GetGuid());
+                        Assert.AreEqual(second.Name, restored.GetProperty("Name").GetString());
+                        Assert.IsFalse(restored.GetProperty("IsEnabled").GetBoolean());
+                        Assert.AreEqual(1, restored.GetProperty("Variables").GetArrayLength());
+                        Assert.AreEqual("PATH", restored.GetProperty("Variables")[0].GetProperty("Name").GetString());
+                        Assert.AreEqual(rawPath, restored.GetProperty("Variables")[0].GetProperty("Values").GetString());
+                        Assert.IsFalse(restored.GetProperty("Variables")[0].GetProperty("ApplyToSystem").GetBoolean());
+                    }
+                }
+
+                Assert.AreEqual(2, callbackCount);
+                Assert.AreEqual(2, completedPublications.Length);
+                Assert.IsTrue(owners.All(owner => owner.IsCompletedSuccessfully));
+                Assert.IsTrue(completedPublications.All(publication => publication.IsCompletedSuccessfully));
+                Assert.AreEqual(0, refreshes.Count);
+                Assert.AreEqual(0, fixture.Environment.Operations.Count);
+                Assert.AreEqual(0, fixture.Environment.Keys.Count);
+                Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+                Assert.AreEqual(0, fixture.Environment.User.Count);
+                Assert.AreEqual(0, fixture.Environment.Machine.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Enabled.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Changed.Count);
+                Assert.AreEqual(0, fixture.Logger.Entries.Count);
+                Assert.AreEqual(0, files.Files.Count);
+                Assert.AreEqual(3, files.Writes.Count);
+                Assert.AreEqual(olderJson, files.Writes[1].Contents);
+                Assert.AreEqual(newerJson, files.Writes[2].Contents);
+                Assert.IsTrue(files.Writes.All(write => write.Path == canonicalPath && write.CancellationToken == CancellationToken.None));
+            }
+            finally
+            {
+                release[0].TrySetResult(true);
+                release[1].TrySetResult(true);
+                var owners = asyncOwners.Concat(actionOwners).ToArray();
+                try
+                {
+                    await Task.WhenAll(owners);
+                }
+                finally
+                {
+                    var publications = publicationTasks.ToArray();
+                    try
+                    {
+                        await Task.WhenAll(publications);
+                    }
+                    finally
+                    {
+                        var fullyJoined = owners.All(owner => owner.IsCompleted)
+                            && publications.All(publication => publication.IsCompleted)
+                            && owners.Length == asyncOwners.Count + actionOwners.Count
+                            && publications.Length == publicationTasks.Count;
+                        Assert.IsTrue(fullyJoined, "Unjoined work: retain physical artifacts and do not restore static holders.");
+                        if (fullyJoined)
+                        {
+                            try
+                            {
+                                if (ownsDirectory)
+                                {
+                                    File.Delete(ownedFile);
+                                    Directory.Delete(ownedDirectory, recursive: false);
+                                    TestContext.WriteLine($"Task.Run cleanup completed after owner/IO joins: {ownedDirectory}");
+                                }
+                            }
+                            finally
+                            {
+                                fixture.Dispose();
+                            }
+                        }
+                    }
+                }
+            }
+        }
 
         [TestMethod]
         [TestCategory("Adapter")]

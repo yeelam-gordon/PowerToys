@@ -1210,6 +1210,95 @@ namespace EnvironmentVariablesUILib.UnitTests.ViewModels
             Assert.AreEqual(failDelete ? VariablesSetType.Duplicate : VariablesSetType.System, vm.AppliedVariables.Single().ParentType);
         }
 
+        [DataTestMethod]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task EditVariable_NotificationFaultPreservesCommittedStateAndAttemptsRefresh(bool acceptRefresh)
+        {
+            using var fixture = new EnvironmentVariablesFixture();
+            fixture.Environment.User["TMP"] = "old";
+            fixture.Environment.User["KEEP"] = "user-sentinel";
+            fixture.Environment.Machine["MACHINE_ONLY"] = "machine-sentinel";
+            var machineBefore = fixture.Environment.Machine.ToArray();
+            var vm = fixture.CreateViewModel();
+            vm.LoadEnvironmentVariables();
+            var original = vm.UserDefaultSet.Variables.Single(variable => variable.Name == "TMP");
+            var previousProjection = vm.AppliedVariables;
+            var previousProjectedVariable = previousProjection.Single(variable => variable.Name == "TMP");
+            const string raw = "%ROOT%;tail";
+            const string expanded = @"C:\Expanded;tail";
+            fixture.Environment.Expand = value => value == raw ? expanded : value;
+            fixture.Work.AcceptRefresh = acceptRefresh;
+            var failure = new InvalidOperationException("Edit notification failed after committed write");
+            var notifyAttempts = 0;
+            fixture.Environment.BeforeNotify = () =>
+            {
+                notifyAttempts++;
+                Assert.AreEqual(raw, fixture.Environment.User["TMP"]);
+                Assert.IsTrue(fixture.Environment.Keys.All(key => key.IsDisposed));
+                throw failure;
+            };
+            fixture.Environment.Operations.Clear();
+
+            vm.EditVariable(original, new Variable("TMP", raw, VariablesSetType.User), null!);
+
+            Assert.AreEqual(("TMP", raw), (original.Name, original.Values));
+            CollectionAssert.AreEqual(EditedListEntries, original.ValuesList.Select(item => item.Text).ToArray());
+            Assert.AreEqual("old", fixture.Environment.User["TMP"]);
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            Assert.AreSame(previousProjection, vm.AppliedVariables);
+            Assert.AreEqual(1, fixture.Work.ActionCount);
+            Assert.AreEqual(1, fixture.Work.SaveCount);
+            Assert.AreEqual(0, fixture.Work.RefreshReceiptCount);
+
+            var observed = await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => fixture.Work.CompleteActionAsync(0));
+
+            Assert.AreSame(failure, observed);
+            Assert.AreEqual(1, notifyAttempts);
+            Assert.AreEqual(raw, fixture.Environment.User["TMP"]);
+            var write = fixture.Environment.Operations.Single(operation => operation.Operation == "Write");
+            Assert.AreEqual((RegistryHive.CurrentUser, "TMP"), (write.Hive, write.Name));
+            Assert.AreEqual(((object)raw, RegistryValueKind.ExpandString), write.Value);
+            Assert.IsFalse(fixture.Environment.Operations.Any(operation => operation.Operation == "Delete"));
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+            Assert.IsTrue(fixture.Environment.Keys.All(key => key.IsDisposed));
+            Assert.AreEqual(0, fixture.Logger.Entries.Count);
+            Assert.AreEqual(1, fixture.Work.RefreshReceiptCount, "Faulted Edit must still attempt the original unconditional refresh.");
+            Assert.AreSame(previousProjection, vm.AppliedVariables);
+            Assert.AreEqual("old", previousProjectedVariable.Values);
+
+            fixture.Work.DrainRefreshes();
+            await fixture.Work.CompleteSaveAsync(0);
+
+            if (acceptRefresh)
+            {
+                Assert.AreNotSame(previousProjection, vm.AppliedVariables);
+                Assert.AreEqual(expanded, vm.AppliedVariables.Single(variable => variable.Name == "TMP").Values);
+            }
+            else
+            {
+                Assert.AreSame(previousProjection, vm.AppliedVariables);
+                Assert.AreSame(previousProjectedVariable, vm.AppliedVariables.Single(variable => variable.Name == "TMP"));
+                Assert.AreEqual("old", previousProjectedVariable.Values);
+            }
+
+            Assert.AreEqual(raw, original.Values);
+            Assert.AreEqual(raw, vm.UserDefaultSet.Variables.Single(variable => variable.Name == "TMP").Values);
+            Assert.AreEqual(raw, fixture.Environment.User["TMP"]);
+            Assert.AreEqual("user-sentinel", fixture.Environment.User["KEEP"]);
+            CollectionAssert.AreEquivalent(machineBefore, fixture.Environment.Machine.ToArray());
+            Assert.AreEqual(1, fixture.Environment.Operations.Count(operation => operation.Operation == "Write"));
+            Assert.AreEqual(1, notifyAttempts);
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+            Assert.AreEqual(0, fixture.Service.Writes.Single().Length);
+            Assert.AreEqual(VariablesSetType.User, fixture.Telemetry.Changed.Single());
+            Assert.AreEqual(0, fixture.Telemetry.Enabled.Count);
+            Assert.AreEqual(1, fixture.Work.ActionCount);
+            Assert.AreEqual(1, fixture.Work.SaveCount);
+            Assert.AreEqual(1, fixture.Work.RefreshReceiptCount);
+            Assert.IsTrue(fixture.Work.IsQuiescent);
+        }
+
         [TestMethod]
         public async Task FaultedApply_StillAttemptsRejectedRefreshEnqueue()
         {

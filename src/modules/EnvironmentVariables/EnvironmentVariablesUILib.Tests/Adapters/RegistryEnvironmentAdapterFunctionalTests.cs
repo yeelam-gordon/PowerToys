@@ -14,7 +14,7 @@ using Microsoft.Win32;
 namespace EnvironmentVariablesUILib.UnitTests.Adapters
 {
     [TestClass]
-    [TestCategory("RequiresDisposableWindows")]
+    [TestCategory("Adapter")]
     [DoNotParallelize]
     public class RegistryEnvironmentAdapterFunctionalTests
     {
@@ -22,6 +22,7 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
         private const string GuestMarker = "POWERTOYS_EV_FUNCTIONAL_GUEST_MACHINE";
 
         [TestMethod]
+        [TestCategory("RequiresDisposableWindows")]
         [DataRow(false, RegistryValueKind.String)]
         [DataRow(false, RegistryValueKind.ExpandString)]
         [DataRow(true, RegistryValueKind.String)]
@@ -75,6 +76,7 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
         }
 
         [TestMethod]
+        [TestCategory("RequiresDisposableWindows")]
         [DataRow(false)]
         [DataRow(true)]
         public void ReadOnlyHandle_RejectsWriteWithoutCreatingValue(bool machine)
@@ -101,11 +103,11 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
         }
 
         [TestMethod]
+        [TestCategory("HostSafeReadOnly")]
         [DataRow(false)]
         [DataRow(true)]
         public void MissingSubKey_ReturnsNullWithoutCreatingIt(bool machine)
         {
-            RequireDisposableGuest(machine);
             var path = $@"Software\PowerToys_EV_{Guid.NewGuid():N}";
             using var adapter = WindowsEnvironmentVariablesEnvironment.Instance.OpenKey(
                 machine ? RegistryHive.LocalMachine : RegistryHive.CurrentUser,

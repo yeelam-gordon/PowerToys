@@ -27,6 +27,303 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
         [TestCategory("Adapter")]
         [DataRow(false)]
         [DataRow(true)]
+        public async Task PhysicalProfiles_FreshServiceReconstructsOwnershipAndEditability(bool elevated)
+        {
+            using var fixture = new EnvironmentVariablesFixture();
+            var files = new EnvironmentVariablesFixture.ScriptedProfileFileSystem();
+            using var service = new EnvironmentVariablesService(files);
+            var canonicalPath = service.ProfilesJsonFilePath;
+            Assert.IsFalse(string.IsNullOrWhiteSpace(TestContext.ResultsDirectory));
+            Assert.IsTrue(Path.IsPathFullyQualified(TestContext.ResultsDirectory));
+            var ownedDirectory = Path.Combine(TestContext.ResultsDirectory, $"EV-A-FRESH-{Guid.NewGuid():N}");
+            var ownedFile = Path.Combine(ownedDirectory, "profiles.json");
+            string MapCanonicalRequest(string? path) => string.Equals(path, canonicalPath, StringComparison.Ordinal)
+                ? ownedFile : throw new InvalidOperationException("Rejected noncanonical physical IO.");
+            files.ExistsCallback = path => File.Exists(MapCanonicalRequest(path));
+            files.ReadAllTextCallback = path => File.ReadAllText(MapCanonicalRequest(path));
+            files.WriteAllTextAsyncCallback = (path, text, token) => File.WriteAllTextAsync(MapCanonicalRequest(path), text, token);
+            var authored = new ProfileVariablesSet(Guid.NewGuid(), "Persisted") { IsEnabled = true };
+            const string rawPath = @"%ROOT%\bin;;C:\Tools;C:\Tools;";
+            authored.Variables.Add(new Variable("PATH", rawPath, VariablesSetType.Profile));
+            authored.Variables.Add(new Variable("TMP", "%OVERRIDE%;;", VariablesSetType.Profile));
+            var expectedUser = new[]
+            {
+                ("PATH", rawPath),
+                ("PATH_PowerToys_Persisted", "%ORIGINAL_PATH%;"),
+                ("TMP", "%OVERRIDE%;;"),
+                ("TMP_PowerToys_Persisted", "%ORIGINAL%;;"),
+                ("TMP_PowerToys_Other", "%LOOKALIKE%;"),
+                ("UNRELATED", "%USER%;"),
+            };
+            foreach (var (name, value) in expectedUser)
+            {
+                fixture.Environment.User[name] = value;
+            }
+
+            fixture.Environment.Machine["MACHINE_ONLY"] = "%MACHINE%;";
+            var ownsDirectory = false;
+            try
+            {
+                Assert.IsFalse(Directory.Exists(ownedDirectory));
+                Directory.CreateDirectory(ownedDirectory);
+                ownsDirectory = true;
+                await service.WriteAsync(new[] { authored });
+                var originalBytes = File.ReadAllBytes(ownedFile);
+                var previous = fixture.CreateViewModel(elevated, service);
+                previous.LoadEnvironmentVariables();
+                var previousProfile = previous.Profiles.Single();
+                service.Dispose();
+                var freshFiles = new EnvironmentVariablesFixture.ScriptedProfileFileSystem();
+                using var freshService = new EnvironmentVariablesService(freshFiles);
+                Assert.AreEqual(canonicalPath, freshService.ProfilesJsonFilePath);
+                freshFiles.ExistsCallback = path => File.Exists(MapCanonicalRequest(path));
+                freshFiles.ReadAllTextCallback = path => File.ReadAllText(MapCanonicalRequest(path));
+                freshFiles.WriteAllTextAsyncCallback = (path, text, token) => File.WriteAllTextAsync(MapCanonicalRequest(path), text, token);
+                var operationsBeforeLoad = fixture.Environment.Operations.Count;
+                var fresh = fixture.CreateViewModel(elevated, freshService);
+
+                fresh.LoadEnvironmentVariables();
+
+                Assert.IsNotNull(fresh.AppliedProfile, "The physical saved active profile must be reconstructed.");
+                Assert.AreEqual(1, fresh.Profiles.Count);
+                var restored = fresh.Profiles.Single();
+                Assert.AreSame(restored, fresh.AppliedProfile);
+                Assert.AreEqual((authored.Id, authored.Name, true), (restored.Id, restored.Name, restored.IsEnabled));
+                Assert.AreNotSame(previousProfile, restored);
+                Assert.AreNotSame(previous.Profiles, fresh.Profiles);
+                Assert.AreNotSame(previousProfile.Variables, restored.Variables);
+                CollectionAssert.AreEqual(authored.Variables.Select(item => item.Name).ToArray(), restored.Variables.Select(item => item.Name).ToArray());
+                CollectionAssert.AreEqual(new[] { rawPath, "%OVERRIDE%;;" }, restored.Variables.Select(item => item.Values).ToArray());
+                for (var index = 0; index < restored.Variables.Count; index++)
+                {
+                    var child = restored.Variables[index];
+                    Assert.AreNotSame(previousProfile.Variables[index], child);
+                    Assert.AreNotSame(previousProfile.Variables[index].ValuesList, child.ValuesList);
+                    Assert.AreNotSame(previousProfile.Variables[index].ValuesList[0], child.ValuesList[0]);
+                    Assert.AreEqual(VariablesSetType.Profile, child.ParentType);
+                    Assert.IsFalse(child.IsAppliedFromProfile);
+                    Assert.IsTrue(child.IsEditable);
+                }
+
+                CollectionAssert.AreEqual(new[] { @"%ROOT%\bin", string.Empty, @"C:\Tools", @"C:\Tools", string.Empty }, restored.Variables[0].ValuesList.Select(item => item.Text).ToArray());
+                CollectionAssert.AreEqual(new[] { "%OVERRIDE%", string.Empty, string.Empty }, restored.Variables[1].ValuesList.Select(item => item.Text).ToArray());
+                CollectionAssert.AreEquivalent(expectedUser, fresh.UserDefaultSet.Variables.Select(item => (item.Name, item.Values)).ToArray());
+                foreach (var variable in fresh.UserDefaultSet.Variables)
+                {
+                    var owned = variable.Name is "PATH" or "TMP" or "PATH_PowerToys_Persisted" or "TMP_PowerToys_Persisted";
+                    Assert.AreEqual(owned, variable.IsAppliedFromProfile, variable.Name);
+                    Assert.AreEqual(!owned, variable.IsEditable, variable.Name);
+                    Assert.AreEqual(VariablesSetType.User, variable.ParentType);
+                }
+
+                var machine = fresh.SystemDefaultSet.Variables.Single();
+                Assert.AreEqual(("MACHINE_ONLY", "%MACHINE%;", VariablesSetType.System), (machine.Name, machine.Values, machine.ParentType));
+                Assert.IsFalse(machine.IsAppliedFromProfile);
+                Assert.AreEqual(elevated, machine.IsEditable);
+                Assert.AreEqual(elevated, fresh.IsElevated);
+                Assert.AreEqual(EnvironmentState.Unchanged, fresh.EnvironmentState);
+                CollectionAssert.AreEqual(
+                    previous.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile, item.IsEditable)).ToArray(),
+                    fresh.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile, item.IsEditable)).ToArray());
+                Assert.AreEqual(rawPath, fresh.AppliedVariables.Single(item => item.Name == "PATH" && item.ParentType == VariablesSetType.Profile).Values);
+                Assert.AreEqual("%OVERRIDE%;;", fresh.AppliedVariables.Single(item => item.Name == "TMP").Values);
+                CollectionAssert.AreEqual(originalBytes, File.ReadAllBytes(ownedFile));
+                CollectionAssert.AreEqual(new[] { ("Exists", (string?)canonicalPath), ("ReadAllText", canonicalPath) }, freshFiles.Calls.ToArray());
+                Assert.AreEqual(1, files.Writes.Count);
+                Assert.AreEqual(0, freshFiles.Writes.Count);
+                Assert.AreEqual(0, files.Files.Count);
+                Assert.AreEqual(0, freshFiles.Files.Count);
+                CollectionAssert.AreEquivalent(expectedUser, fixture.Environment.User.Select(item => (item.Key, (string)item.Value!)).ToArray());
+                Assert.AreEqual(1, fixture.Environment.Machine.Count);
+                Assert.AreEqual("%MACHINE%;", fixture.Environment.Machine["MACHINE_ONLY"]);
+                Assert.IsFalse(fixture.Environment.Operations.Skip(operationsBeforeLoad).Any(item => item.Operation is "Write" or "Delete"));
+                Assert.IsFalse(fixture.Environment.Operations.Any(item => item.Operation is "Write" or "Delete"));
+                Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+                Assert.AreEqual(0, fixture.Work.ActionCount);
+                Assert.AreEqual(0, fixture.Work.SaveCount);
+                Assert.AreEqual(0, fixture.Work.RefreshReceiptCount);
+                Assert.AreEqual(0, fixture.Service.Writes.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Enabled.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Changed.Count);
+                Assert.IsTrue(fixture.Work.IsQuiescent);
+                TestContext.WriteLine($"Fresh physical reconstruction: elevated={elevated}; count={fresh.Profiles.Count}; JSON={File.ReadAllText(ownedFile)}");
+            }
+            finally
+            {
+                await fixture.Work.SettleAsync();
+                Assert.IsTrue(fixture.Work.IsQuiescent, "Owned work is still pending; physical artifacts are retained.");
+
+                if (ownsDirectory)
+                {
+                    File.Delete(ownedFile);
+                    Directory.Delete(ownedDirectory, recursive: false);
+                    TestContext.WriteLine($"Cleanup completed: {ownedDirectory}");
+                }
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("Adapter")]
+        public async Task ControlledStalePublication_PhysicalFileRestoresRemovedProfileAfterBothSaves()
+        {
+            using var fixture = new EnvironmentVariablesFixture();
+            var files = new EnvironmentVariablesFixture.ScriptedProfileFileSystem();
+            using var service = new EnvironmentVariablesService(files);
+            var canonicalPath = service.ProfilesJsonFilePath;
+            Assert.IsFalse(string.IsNullOrWhiteSpace(TestContext.ResultsDirectory));
+            Assert.IsTrue(Path.IsPathFullyQualified(TestContext.ResultsDirectory));
+            var ownedDirectory = Path.Combine(TestContext.ResultsDirectory, $"EV-A-STALE-{Guid.NewGuid():N}");
+            var ownedFile = Path.Combine(ownedDirectory, "profiles.json");
+            string MapCanonicalRequest(string? path) => string.Equals(path, canonicalPath, StringComparison.Ordinal)
+                ? ownedFile : throw new InvalidOperationException("Rejected noncanonical physical IO.");
+            files.ExistsCallback = path => File.Exists(MapCanonicalRequest(path));
+            files.ReadAllTextCallback = path => File.ReadAllText(MapCanonicalRequest(path));
+            files.WriteAllTextAsyncCallback = (path, text, token) => File.WriteAllTextAsync(MapCanonicalRequest(path), text, token);
+            var first = new ProfileVariablesSet(Guid.NewGuid(), "First removed");
+            var second = new ProfileVariablesSet(Guid.NewGuid(), "Second removed");
+            const string rawPath = @"%ROOT%;;C:\Tools;";
+            second.Variables.Add(new Variable("PATH", rawPath, VariablesSetType.Profile));
+            var entered = new[]
+            {
+                new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously),
+                new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously),
+            };
+            var release = new[]
+            {
+                new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+                new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+            };
+            var publicationTasks = new System.Collections.Generic.List<Task>();
+            Task? olderSave = null;
+            Task? newerSave = null;
+            var ownsDirectory = false;
+            try
+            {
+                Assert.IsFalse(Directory.Exists(ownedDirectory));
+                Directory.CreateDirectory(ownedDirectory);
+                ownsDirectory = true;
+                await service.WriteAsync(new[] { first, second });
+                var initialJson = File.ReadAllText(ownedFile);
+                var vm = fixture.CreateViewModel(service: service);
+                vm.LoadEnvironmentVariables();
+                var removedSecond = vm.Profiles[1];
+                var callbackCount = 0;
+                files.WriteAllTextAsyncCallback = (path, text, token) =>
+                {
+                    var index = callbackCount++;
+                    var task = PublishAsync(index, path, text!, token);
+                    publicationTasks.Add(task);
+                    return task;
+                };
+
+                async Task PublishAsync(int index, string path, string text, CancellationToken token)
+                {
+                    var physicalPath = MapCanonicalRequest(path);
+                    entered[index].SetResult(text);
+                    await release[index].Task.ConfigureAwait(false);
+                    await File.WriteAllTextAsync(physicalPath, text, token).ConfigureAwait(false);
+                }
+
+                vm.RemoveProfile(vm.Profiles[0]);
+                olderSave = fixture.Work.CompleteSaveAsync(0);
+                var olderJson = await entered[0].Task.WaitAsync(TimeSpan.FromSeconds(5));
+                vm.RemoveProfile(vm.Profiles.Single());
+                newerSave = fixture.Work.CompleteSaveAsync(1);
+                var newerJson = await entered[1].Task.WaitAsync(TimeSpan.FromSeconds(5));
+                Assert.AreEqual(initialJson, File.ReadAllText(ownedFile));
+                Assert.IsFalse(olderSave.IsCompleted);
+                Assert.IsFalse(newerSave.IsCompleted);
+                using (var older = JsonDocument.Parse(olderJson))
+                using (var newer = JsonDocument.Parse(newerJson))
+                {
+                    Assert.AreEqual(1, older.RootElement.GetArrayLength());
+                    Assert.AreEqual(second.Id, older.RootElement[0].GetProperty("Id").GetGuid());
+                    Assert.AreEqual(0, newer.RootElement.GetArrayLength());
+                }
+
+                release[1].SetResult(true);
+                await newerSave;
+                var newerPhysicalJson = File.ReadAllText(ownedFile);
+                using (var newerPhysical = JsonDocument.Parse(newerPhysicalJson))
+                {
+                    Assert.AreEqual(0, newerPhysical.RootElement.GetArrayLength());
+                    TestContext.WriteLine($"Newer publication: count={newerPhysical.RootElement.GetArrayLength()}; JSON={newerPhysicalJson}");
+                }
+
+                Assert.IsFalse(olderSave.IsCompleted);
+                release[0].SetResult(true);
+                await Task.WhenAll(olderSave, newerSave);
+                var finalJson = File.ReadAllText(ownedFile);
+                using (var final = JsonDocument.Parse(finalJson))
+                {
+                    TestContext.WriteLine($"Both saves completed: count={final.RootElement.GetArrayLength()}; JSON={finalJson}");
+                    Assert.AreEqual(1, final.RootElement.GetArrayLength(), "Characterization: the older publication restores the removed second profile.");
+                    Assert.AreEqual(second.Id, final.RootElement[0].GetProperty("Id").GetGuid());
+                    Assert.AreEqual(second.Name, final.RootElement[0].GetProperty("Name").GetString());
+                    Assert.IsFalse(final.RootElement[0].GetProperty("IsEnabled").GetBoolean());
+                    Assert.AreEqual(rawPath, final.RootElement[0].GetProperty("Variables")[0].GetProperty("Values").GetString());
+                }
+
+                Assert.AreEqual(0, vm.Profiles.Count);
+                using var freshService = new EnvironmentVariablesService(files);
+                var fresh = fixture.CreateViewModel(service: freshService);
+                fresh.LoadEnvironmentVariables();
+                Assert.AreEqual(1, fresh.Profiles.Count, "Characterization expects one restored removed profile, not required-result zero.");
+                var restored = fresh.Profiles.Single();
+                Assert.AreEqual((second.Id, second.Name, false), (restored.Id, restored.Name, restored.IsEnabled));
+                Assert.AreNotSame(removedSecond, restored);
+                Assert.AreEqual(("PATH", rawPath, VariablesSetType.Profile), (restored.Variables.Single().Name, restored.Variables.Single().Values, restored.Variables.Single().ParentType));
+                CollectionAssert.AreEqual(new[] { "%ROOT%", string.Empty, @"C:\Tools", string.Empty }, restored.Variables.Single().ValuesList.Select(item => item.Text).ToArray());
+                Assert.IsNull(fresh.AppliedProfile);
+                Assert.AreEqual(EnvironmentState.Unchanged, fresh.EnvironmentState);
+                Assert.AreEqual(finalJson, File.ReadAllText(ownedFile));
+                Assert.AreEqual(3, files.Writes.Count);
+                Assert.AreEqual(olderJson, files.Writes[1].Contents);
+                Assert.AreEqual(newerJson, files.Writes[2].Contents);
+                Assert.IsTrue(files.Writes.All(item => item.CancellationToken == CancellationToken.None));
+                Assert.AreEqual(0, files.Files.Count);
+                Assert.AreEqual(2, fixture.Work.SaveCount);
+                Assert.AreEqual(0, fixture.Work.ActionCount);
+                Assert.AreEqual(0, fixture.Work.RefreshReceiptCount);
+                Assert.AreEqual(0, fixture.Service.Writes.Count);
+                Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Enabled.Count);
+                Assert.AreEqual(0, fixture.Telemetry.Changed.Count);
+                Assert.IsTrue(fixture.Work.IsQuiescent);
+            }
+            finally
+            {
+                release[0].TrySetResult(true);
+                release[1].TrySetResult(true);
+                try
+                {
+                    try
+                    {
+                        await Task.WhenAll(publicationTasks.Concat(new[] { olderSave, newerSave }.OfType<Task>()));
+                    }
+                    finally
+                    {
+                        await fixture.Work.SettleAsync();
+                    }
+                }
+                finally
+                {
+                    Assert.IsTrue(fixture.Work.IsQuiescent && publicationTasks.All(task => task.IsCompleted), "Publication work is still pending; physical artifacts are retained.");
+
+                    if (ownsDirectory)
+                    {
+                        File.Delete(ownedFile);
+                        Directory.Delete(ownedDirectory, recursive: false);
+                        TestContext.WriteLine($"Cleanup completed: {ownedDirectory}");
+                    }
+                }
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("Adapter")]
+        [DataRow(false)]
+        [DataRow(true)]
         public async Task LockedProfileFile_PropagatesRealIoFailureAndFreshServiceRecovers(bool write)
         {
             using var fixture = new EnvironmentVariablesFixture();

@@ -633,6 +633,66 @@ TEST_METHOD (VerifyUnsubscribedObserverStaysUnchangedAndCanSubscribeAgain)
     Assert::AreEqual(combinedFlags, mockEvents->m_flags);
 }
 
+TEST_METHOD (VerifyUnchangedTermsNotifyOnlyWhenRenamingIsForced)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    DWORD cookie = 0;
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+
+    HRESULT setterResults[8] = {};
+    DWORD searchCounts[8] = {};
+    DWORD replaceCounts[8] = {};
+    setterResults[0] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[0] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[0] = mockEvents->m_replaceTermChangedCount;
+    setterResults[1] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[1] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[1] = mockEvents->m_replaceTermChangedCount;
+    setterResults[2] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[2] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[2] = mockEvents->m_replaceTermChangedCount;
+    setterResults[3] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[3] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[3] = mockEvents->m_replaceTermChangedCount;
+    setterResults[4] = renameRegEx->PutSearchTerm(L"search", true);
+    searchCounts[4] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[4] = mockEvents->m_replaceTermChangedCount;
+    setterResults[5] = renameRegEx->PutReplaceTerm(L"replace", true);
+    searchCounts[5] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[5] = mockEvents->m_replaceTermChangedCount;
+    setterResults[6] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[6] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[6] = mockEvents->m_replaceTermChangedCount;
+    setterResults[7] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[7] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[7] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT unadviseHr = renameRegEx->UnAdvise(cookie);
+
+    Assert::AreEqual(S_OK, unadviseHr);
+    const DWORD expectedCounts[8][2] = {
+        { 1, 0 },
+        { 1, 1 },
+        { 1, 1 },
+        { 1, 1 },
+        { 2, 1 },
+        { 2, 2 },
+        { 2, 2 },
+        { 2, 2 }
+    };
+    for (size_t index = 0; index < ARRAYSIZE(setterResults); ++index)
+    {
+        Assert::AreEqual(S_OK, setterResults[index]);
+        Assert::AreEqual(expectedCounts[index][0], searchCounts[index]);
+        Assert::AreEqual(expectedCounts[index][1], replaceCounts[index]);
+    }
+    Assert::AreEqual(L"search", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"replace", mockEvents->m_replaceTerm);
+}
+
 TEST_METHOD (VerifySimpleCounterNoRegex)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

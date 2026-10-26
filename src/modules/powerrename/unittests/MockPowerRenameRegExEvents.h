@@ -36,6 +36,8 @@ public:
 
     PWSTR m_searchTerm = nullptr;
     PWSTR m_replaceTerm = nullptr;
+    DWORD m_searchTermChangedCount = 0;
+    DWORD m_replaceTermChangedCount = 0;
     DWORD m_flags = 0;
     SYSTEMTIME m_fileTime = { 0 };
     long m_refCount;

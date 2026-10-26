@@ -385,6 +385,66 @@ namespace ViewModelTests
             viewModel.MaxDispListNum = 20;
         }
 
+        [TestMethod]
+        public void DefaultContextMenuThenShowIconShouldSerializeReplayableModulePayloads()
+        {
+            var messages = new List<string>();
+            var localSettings = new PowerRenameLocalProperties
+            {
+                ShowIcon = false,
+                ExtendedContextMenuOnly = true,
+                MRUEnabled = true,
+                PersistState = true,
+                UseBoostLib = true,
+                MaxMRUSize = 17,
+            };
+            var generalSettings = new GeneralSettings();
+            generalSettings.Enabled.PowerRename = true;
+            PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, generalSettings, messages);
+            var expectedProperties = new Dictionary<string, bool>
+            {
+                ["bool_show_icon_on_menu"] = false,
+                ["bool_show_extended_menu"] = true,
+                ["bool_mru_enabled"] = true,
+                ["bool_persist_input"] = true,
+                ["bool_use_boost_lib"] = true,
+            };
+            Assert.AreEqual(0, messages.Count, "Constructing the view model must not send IPC.");
+            AssertModuleValues(viewModel, expectedProperties, 17);
+
+            viewModel.EnabledOnContextExtendedMenu = false;
+
+            expectedProperties["bool_show_extended_menu"] = false;
+            Assert.AreEqual(1, messages.Count);
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(messages, expectedProperties, 17);
+            Assert.IsTrue(generalSettings.Enabled.PowerRename);
+            using (JsonDocument hidden = JsonDocument.Parse(messages[0]))
+            {
+                JsonElement module = hidden.RootElement.GetProperty("powertoys").GetProperty("PowerRename");
+                Assert.AreEqual(3, module.EnumerateObject().Count());
+                Assert.AreEqual("PowerRename", module.GetProperty("name").GetString());
+                Assert.AreEqual("1", module.GetProperty("version").GetString());
+                Console.WriteLine("POWERRENAME_NATIVE_REPLAY_HIDDEN=" + module.GetRawText());
+            }
+
+            viewModel.EnabledOnContextMenu = true;
+
+            expectedProperties["bool_show_icon_on_menu"] = true;
+            Assert.AreEqual(2, messages.Count);
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(messages.GetRange(1, 1), expectedProperties, 17);
+            Assert.IsTrue(generalSettings.Enabled.PowerRename);
+            using (JsonDocument shown = JsonDocument.Parse(messages[1]))
+            {
+                JsonElement module = shown.RootElement.GetProperty("powertoys").GetProperty("PowerRename");
+                Assert.AreEqual(3, module.EnumerateObject().Count());
+                Assert.AreEqual("PowerRename", module.GetProperty("name").GetString());
+                Assert.AreEqual("1", module.GetProperty("version").GetString());
+                Console.WriteLine("POWERRENAME_NATIVE_REPLAY_SHOWN=" + module.GetRawText());
+            }
+        }
+
         private PowerRenameViewModel CreateCapturingViewModel(PowerRenameLocalProperties localSettings, GeneralSettings generalSettings, List<string> messages)
         {
             mockPowerRenamePropertiesUtils

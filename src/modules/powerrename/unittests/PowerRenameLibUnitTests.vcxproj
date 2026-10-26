@@ -60,6 +60,7 @@
     <ClCompile Include="PowerRenameMetadataAndCaseTests.cpp" />
     <ClCompile Include="PowerRenameMetadataResultCacheTests.cpp" />
     <ClCompile Include="PowerRenamePlanningTests.cpp" />
+    <ClCompile Include="PowerRenameRealShellExclusionsTests.cpp" />
     <ClCompile Include="PowerRenameSelectionCommandsTests.cpp" />
     <ClCompile Include="MetadataFormatHelperTests.cpp" />
     <ClCompile Include="WICMetadataExtractorTests.cpp" />

@@ -21,6 +21,112 @@ namespace PowerRenamePlanningTests
     {
         using Status = PowerRenameItemRenameStatus;
 
+        class RecordingShellItem final : public IShellItem
+        {
+        public:
+            explicit RecordingShellItem(SFGAOF attributes) :
+                m_attributes(attributes)
+            {
+            }
+
+            IFACEMETHODIMP QueryInterface(REFIID iid, void** result) override
+            {
+                if (!result)
+                {
+                    return E_POINTER;
+                }
+                *result = nullptr;
+                if (iid == IID_IUnknown || iid == IID_IShellItem)
+                {
+                    *result = static_cast<IShellItem*>(this);
+                    AddRef();
+                    return S_OK;
+                }
+                return E_NOINTERFACE;
+            }
+
+            IFACEMETHODIMP_(ULONG)
+            AddRef() override
+            {
+                return InterlockedIncrement(&m_refCount);
+            }
+
+            IFACEMETHODIMP_(ULONG)
+            Release() override
+            {
+                const ULONG count = InterlockedDecrement(&m_refCount);
+                if (count == 0)
+                {
+                    delete this;
+                }
+                return count;
+            }
+
+            IFACEMETHODIMP BindToHandler(IBindCtx*, REFGUID, REFIID, void** result) override
+            {
+                ++unexpectedCalls;
+                if (result)
+                {
+                    *result = nullptr;
+                }
+                return E_NOTIMPL;
+            }
+
+            IFACEMETHODIMP GetParent(IShellItem** result) override
+            {
+                ++unexpectedCalls;
+                if (result)
+                {
+                    *result = nullptr;
+                }
+                return E_NOTIMPL;
+            }
+
+            IFACEMETHODIMP GetDisplayName(SIGDN name, PWSTR* result) override
+            {
+                ++displayNameCalls;
+                requestedName = name;
+                if (!result)
+                {
+                    return E_POINTER;
+                }
+                *result = nullptr;
+                return name == SIGDN_FILESYSPATH ? SHStrDup(L"C:\\fixtures\\archive.zip", result) : E_INVALIDARG;
+            }
+
+            IFACEMETHODIMP GetAttributes(SFGAOF mask, SFGAOF* result) override
+            {
+                ++attributeCalls;
+                requestedMask = mask;
+                if (!result)
+                {
+                    return E_POINTER;
+                }
+                *result = m_attributes;
+                return S_OK;
+            }
+
+            IFACEMETHODIMP Compare(IShellItem*, SICHINTF, int* result) override
+            {
+                ++unexpectedCalls;
+                if (result)
+                {
+                    *result = 0;
+                }
+                return E_NOTIMPL;
+            }
+
+            int displayNameCalls = 0;
+            int attributeCalls = 0;
+            int unexpectedCalls = 0;
+            SIGDN requestedName{};
+            SFGAOF requestedMask = 0;
+
+        private:
+            LONG m_refCount = 1;
+            const SFGAOF m_attributes;
+        };
+
         class RenamePermissionItem : public CPowerRenameItem
         {
         public:
@@ -128,6 +234,64 @@ namespace PowerRenamePlanningTests
         }
 
     public:
+        TEST_METHOD (SuppliedShellAttributesClassifyFoldersAndStreamsForExclusion)
+        {
+            struct ShellCase
+            {
+                PCWSTR id;
+                SFGAOF attributes;
+                bool folder;
+                bool eligible[3];
+                bool visible[3];
+            };
+            const ShellCase cases[] = {
+                { L"folder-control", SFGAO_FOLDER | SFGAO_CANRENAME, true, { true, false, true }, { true, false, true } },
+                { L"stream-overrides-folder", SFGAO_FOLDER | SFGAO_STREAM | SFGAO_CANRENAME, false, { true, true, false }, { true, true, false } },
+            };
+            const DWORD flags[] = { 0, ExcludeFolders, ExcludeFiles };
+            for (const auto& test : cases)
+            {
+                CComPtr<RecordingShellItem> shell;
+                shell.Attach(new RecordingShellItem(test.attributes));
+                auto recording = shell.p;
+                CComPtr<IPowerRenameItem> item;
+                Assert::AreEqual(S_OK, CPowerRenameItem::s_CreateInstance(shell, IID_PPV_ARGS(&item)), test.id);
+                Assert::IsNotNull(item.p, test.id);
+                const auto assertRequests = [&]() {
+                    Assert::AreEqual(1, recording->displayNameCalls, test.id);
+                    Assert::AreEqual(static_cast<int>(SIGDN_FILESYSPATH), static_cast<int>(recording->requestedName), test.id);
+                    Assert::AreEqual(1, recording->attributeCalls, test.id);
+                    Assert::AreEqual(static_cast<SFGAOF>(SFGAO_STREAM | SFGAO_FOLDER | SFGAO_CANRENAME), recording->requestedMask, test.id);
+                    Assert::AreEqual(0, recording->unexpectedCalls, test.id);
+                };
+                assertRequests();
+
+                CComHeapPtr<WCHAR> original;
+                Assert::AreEqual(S_OK, item->GetOriginalName(&original), test.id);
+                Assert::AreEqual(L"archive.zip", static_cast<PCWSTR>(original), test.id);
+                CComHeapPtr<WCHAR> path;
+                Assert::AreEqual(S_OK, item->GetPath(&path), test.id);
+                Assert::AreEqual(L"C:\\fixtures\\archive.zip", static_cast<PCWSTR>(path), test.id);
+                bool folder = !test.folder;
+                Assert::AreEqual(S_OK, item->GetIsFolder(&folder), test.id);
+                Assert::AreEqual(test.folder, folder, test.id);
+                Assert::AreEqual(S_OK, item->PutNewName(L"done.zip"), test.id);
+                Assert::AreEqual(S_OK, item->PutSelected(true), test.id);
+                Assert::AreEqual(S_OK, item->PutStatus(Status::ShouldRename), test.id);
+                Assert::AreEqual(S_OK, item->PutDepth(0), test.id);
+                for (size_t i = 0; i < ARRAYSIZE(flags); ++i)
+                {
+                    bool eligible = !test.eligible[i];
+                    Assert::AreEqual(S_OK, item->ShouldRenameItem(flags[i], &eligible), test.id);
+                    Assert::AreEqual(test.eligible[i], eligible, test.id);
+                    bool visible = !test.visible[i];
+                    Assert::AreEqual(S_OK, item->IsItemVisible(PowerRenameFilters::FlagsApplicable, flags[i], &visible), test.id);
+                    Assert::AreEqual(test.visible[i], visible, test.id);
+                }
+                assertRequests();
+            }
+        }
+
         TEST_METHOD (GetTimeReturnsCachedTimestampForCreationDefaultAndSourcePrecedence)
         {
             struct CachedTimeCase

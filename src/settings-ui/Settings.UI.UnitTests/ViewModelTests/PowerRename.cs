@@ -428,7 +428,9 @@ namespace ViewModelTests
                 Console.WriteLine("POWERRENAME_NATIVE_REPLAY_HIDDEN=" + module.GetRawText());
             }
 
-            viewModel.EnabledOnContextMenu = true;
+            bool showIcon = (bool)new CommunityToolkit.WinUI.Converters.BoolNegationConverter().ConvertBack(false, typeof(bool), null, string.Empty);
+            Assert.IsTrue(showIcon);
+            viewModel.EnabledOnContextMenu = showIcon;
 
             expectedProperties["bool_show_icon_on_menu"] = true;
             Assert.AreEqual(2, messages.Count);

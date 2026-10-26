@@ -844,6 +844,48 @@ TEST_METHOD (VerifyRepeatedClearsNotifyForSearchButNotForReplacement)
     Assert::IsTrue(repeatedReplacePayloadIsEmpty);
 }
 
+TEST_METHOD (VerifyTermGetterCopiesAreIndependentOfStoredTerms)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"search"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"replace"));
+
+    CComHeapPtr<wchar_t> firstSearch;
+    CComHeapPtr<wchar_t> firstReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&firstSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&firstReplace));
+    Assert::IsTrue(firstSearch != nullptr);
+    Assert::IsTrue(firstReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(firstSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(firstReplace));
+    firstSearch[0] = L'X';
+    firstReplace[0] = L'Y';
+
+    CComHeapPtr<wchar_t> secondSearch;
+    CComHeapPtr<wchar_t> secondReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&secondSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&secondReplace));
+    Assert::IsTrue(secondSearch != nullptr);
+    Assert::IsTrue(secondReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(secondSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(secondReplace));
+
+    firstSearch.Free();
+    firstReplace.Free();
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(secondSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(secondReplace));
+    CComHeapPtr<wchar_t> thirdSearch;
+    CComHeapPtr<wchar_t> thirdReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&thirdSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&thirdReplace));
+    Assert::IsTrue(thirdSearch != nullptr);
+    Assert::IsTrue(thirdReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(thirdSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(thirdReplace));
+}
+
 TEST_METHOD (VerifySimpleCounterNoRegex)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

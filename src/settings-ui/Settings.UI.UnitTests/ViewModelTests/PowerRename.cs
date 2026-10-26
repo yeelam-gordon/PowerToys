@@ -445,6 +445,24 @@ namespace ViewModelTests
                 Assert.AreEqual("1", module.GetProperty("version").GetString());
                 Console.WriteLine("POWERRENAME_NATIVE_REPLAY_SHOWN=" + module.GetRawText());
             }
+
+            showIcon = (bool)new CommunityToolkit.WinUI.Converters.BoolNegationConverter().ConvertBack(true, typeof(bool), null, string.Empty);
+            Assert.IsFalse(showIcon);
+            viewModel.EnabledOnContextMenu = showIcon;
+
+            expectedProperties["bool_show_icon_on_menu"] = false;
+            Assert.AreEqual(3, messages.Count);
+            AssertModuleValues(viewModel, expectedProperties, 17);
+            AssertModuleMessages(messages.GetRange(2, 1), expectedProperties, 17);
+            Assert.IsTrue(generalSettings.Enabled.PowerRename);
+            using (JsonDocument returnedHidden = JsonDocument.Parse(messages[2]))
+            {
+                JsonElement module = returnedHidden.RootElement.GetProperty("powertoys").GetProperty("PowerRename");
+                Assert.AreEqual(3, module.EnumerateObject().Count());
+                Assert.AreEqual("PowerRename", module.GetProperty("name").GetString());
+                Assert.AreEqual("1", module.GetProperty("version").GetString());
+                Console.WriteLine("POWERRENAME_NATIVE_REPLAY_RETURNED_HIDDEN=" + module.GetRawText());
+            }
         }
 
         private PowerRenameViewModel CreateCapturingViewModel(PowerRenameLocalProperties localSettings, GeneralSettings generalSettings, List<string> messages)

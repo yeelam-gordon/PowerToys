@@ -25,6 +25,122 @@ namespace EnvironmentVariablesUILib.UnitTests.Adapters
 
         [TestMethod]
         [TestCategory("Adapter")]
+        [DataRow(false)]
+        [DataRow(true)]
+        public async Task LockedProfileFile_PropagatesRealIoFailureAndFreshServiceRecovers(bool write)
+        {
+            using var fixture = new EnvironmentVariablesFixture();
+            var files = new EnvironmentVariablesFixture.ScriptedProfileFileSystem();
+            using var service = new EnvironmentVariablesService(files);
+            var canonicalPath = service.ProfilesJsonFilePath;
+            Assert.IsFalse(string.IsNullOrWhiteSpace(TestContext.ResultsDirectory));
+            Assert.IsTrue(Path.IsPathFullyQualified(TestContext.ResultsDirectory));
+            var resultsDirectory = Path.GetFullPath(TestContext.ResultsDirectory);
+            var ownedDirectory = Path.Combine(resultsDirectory, $"EV-A-FILE-LOCK-{Guid.NewGuid():N}");
+            var ownedFile = Path.Combine(ownedDirectory, "profiles.json");
+            Assert.AreEqual(resultsDirectory.TrimEnd(Path.DirectorySeparatorChar), Path.GetDirectoryName(ownedDirectory)!.TrimEnd(Path.DirectorySeparatorChar));
+            Assert.IsFalse(string.Equals(canonicalPath, ownedFile, StringComparison.OrdinalIgnoreCase));
+            IOException? physicalFailure = null;
+            var physicalReads = 0;
+            var physicalWrites = 0;
+
+            string MapCanonicalRequest(string? requestedPath)
+            {
+                if (!string.Equals(canonicalPath, requestedPath, StringComparison.Ordinal))
+                {
+                    throw new InvalidOperationException("Rejected a noncanonical request before physical IO.");
+                }
+
+                return ownedFile;
+            }
+
+            files.ExistsCallback = path => File.Exists(MapCanonicalRequest(path));
+            files.ReadAllTextCallback = path =>
+            {
+                physicalReads++;
+                try
+                {
+                    return File.ReadAllText(MapCanonicalRequest(path));
+                }
+                catch (IOException exception)
+                {
+                    physicalFailure = exception;
+                    throw;
+                }
+            };
+            files.WriteAllTextAsyncCallback = async (path, contents, token) =>
+            {
+                physicalWrites++;
+                try
+                {
+                    await File.WriteAllTextAsync(MapCanonicalRequest(path), contents, token);
+                }
+                catch (IOException exception)
+                {
+                    physicalFailure = exception;
+                    throw;
+                }
+            };
+
+            var original = new ProfileVariablesSet(Guid.NewGuid(), "Owned original") { IsEnabled = true };
+            const string rawPath = @"%ROOT%\bin;;C:\Tools;";
+            original.Variables.Add(new Variable("PATH", rawPath, VariablesSetType.Profile));
+            var replacement = new ProfileVariablesSet(Guid.NewGuid(), "Rejected replacement");
+            var ownsDirectory = false;
+            try
+            {
+                Assert.IsFalse(Directory.Exists(ownedDirectory));
+                Directory.CreateDirectory(ownedDirectory);
+                ownsDirectory = true;
+                await service.WriteAsync(new[] { original });
+                var originalJson = File.ReadAllText(ownedFile);
+
+                using (var heldFile = new FileStream(ownedFile, FileMode.Open, FileAccess.Read, write ? FileShare.Read : FileShare.None))
+                {
+                    IOException failure;
+                    if (write)
+                    {
+                        failure = await Assert.ThrowsExactlyAsync<IOException>(() =>
+                            service.WriteAsync(new[] { replacement }));
+                    }
+                    else
+                    {
+                        failure = Assert.ThrowsExactly<IOException>(() => service.ReadProfiles());
+                    }
+
+                    Assert.AreSame(physicalFailure, failure, "The service must propagate the actual backend exception.");
+                    Assert.AreEqual(write ? 2 : 1, physicalWrites);
+                    Assert.AreEqual(write ? 0 : 1, physicalReads);
+                    TestContext.WriteLine($"Real sharing failure: write={write}; HResult={failure.HResult}; owned file={ownedFile}");
+                }
+
+                Assert.AreEqual(originalJson, File.ReadAllText(ownedFile));
+                using var freshService = new EnvironmentVariablesService(files);
+                var restored = freshService.ReadProfiles().Single();
+                Assert.AreNotSame(original, restored);
+                Assert.AreEqual(original.Id, restored.Id);
+                Assert.AreEqual(original.Name, restored.Name);
+                Assert.IsTrue(restored.IsEnabled);
+                Assert.AreEqual("PATH", restored.Variables.Single().Name);
+                Assert.AreEqual(rawPath, restored.Variables.Single().Values);
+                Assert.AreEqual(write ? 2 : 1, physicalWrites, "Recovery must not retry the failed operation.");
+                Assert.AreEqual(write ? 1 : 2, physicalReads);
+                Assert.AreEqual(0, files.Files.Count, "Neither failure nor recovery may use in-memory data.");
+                Assert.IsTrue(fixture.Work.IsQuiescent);
+            }
+            finally
+            {
+                if (ownsDirectory)
+                {
+                    File.Delete(ownedFile);
+                    Directory.Delete(ownedDirectory, recursive: false);
+                    TestContext.WriteLine($"Cleanup completed: {ownedDirectory}");
+                }
+            }
+        }
+
+        [TestMethod]
+        [TestCategory("Adapter")]
         public async Task WriteReadAndRemoveProfiles_UsesOnlyOwnedArtifact()
         {
             using var fixture = new EnvironmentVariablesFixture();

@@ -582,6 +582,57 @@ TEST_METHOD (VerifyEventsFire)
     mockEvents->Release();
 }
 
+TEST_METHOD (VerifyUnsubscribedObserverStaysUnchangedAndCanSubscribeAgain)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    DWORD cookie = 0;
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+    const HRESULT firstSearchHr = renameRegEx->PutSearchTerm(L"first");
+    const HRESULT firstReplaceHr = renameRegEx->PutReplaceTerm(L"one");
+    const HRESULT firstFlagsHr = renameRegEx->PutFlags(CaseSensitive);
+    const HRESULT firstUnadviseHr = renameRegEx->UnAdvise(cookie);
+    Assert::AreEqual(S_OK, firstUnadviseHr);
+    Assert::AreEqual(S_OK, firstSearchHr);
+    Assert::AreEqual(S_OK, firstReplaceHr);
+    Assert::AreEqual(S_OK, firstFlagsHr);
+    Assert::AreEqual(L"first", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"one", mockEvents->m_replaceTerm);
+    Assert::AreEqual(DWORD{ CaseSensitive }, mockEvents->m_flags);
+
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"second"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"two"));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(MatchAllOccurrences));
+    CComHeapPtr<wchar_t> searchTerm;
+    CComHeapPtr<wchar_t> replaceTerm;
+    DWORD flags = 0;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&searchTerm));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&replaceTerm));
+    Assert::AreEqual(S_OK, renameRegEx->GetFlags(&flags));
+    Assert::AreEqual(L"second", static_cast<PCWSTR>(searchTerm));
+    Assert::AreEqual(L"two", static_cast<PCWSTR>(replaceTerm));
+    Assert::AreEqual(DWORD{ MatchAllOccurrences }, flags);
+    Assert::AreEqual(L"first", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"one", mockEvents->m_replaceTerm);
+    Assert::AreEqual(DWORD{ CaseSensitive }, mockEvents->m_flags);
+
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+    const DWORD combinedFlags = CaseSensitive | MatchAllOccurrences;
+    const HRESULT thirdSearchHr = renameRegEx->PutSearchTerm(L"third");
+    const HRESULT thirdReplaceHr = renameRegEx->PutReplaceTerm(L"three");
+    const HRESULT thirdFlagsHr = renameRegEx->PutFlags(combinedFlags);
+    const HRESULT thirdUnadviseHr = renameRegEx->UnAdvise(cookie);
+    Assert::AreEqual(S_OK, thirdUnadviseHr);
+    Assert::AreEqual(S_OK, thirdSearchHr);
+    Assert::AreEqual(S_OK, thirdReplaceHr);
+    Assert::AreEqual(S_OK, thirdFlagsHr);
+    Assert::AreEqual(L"third", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"three", mockEvents->m_replaceTerm);
+    Assert::AreEqual(combinedFlags, mockEvents->m_flags);
+}
+
 TEST_METHOD (VerifySimpleCounterNoRegex)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

@@ -8,6 +8,7 @@
 #include <PowerRenameRegEx.h>
 #include <Renaming.h>
 #include "MockPowerRenameItem.h"
+#include <clocale>
 #include <initializer_list>
 #include <locale>
 #include <string>
@@ -665,6 +666,114 @@ namespace PowerRenamePlanningTests
     TEST_CLASS (PlanningTests)
     {
     public:
+#if defined(POWERRENAME_EN_US_CREATION_PREVIEW_TESTS)
+        TEST_METHOD (CachedCreationTimePreviewReplacesStaleCandidatesOnBothEngines)
+        {
+            wchar_t userLocale[LOCALE_NAME_MAX_LENGTH]{};
+            Assert::IsTrue(GetUserDefaultLocaleName(userLocale, ARRAYSIZE(userLocale)) > 0);
+            Assert::AreEqual(L"en-US", static_cast<PCWSTR>(userLocale), L"This opt-in English preview test requires an existing en-US user locale.");
+
+            const std::locale originalLocale;
+            const char* cLocale = std::setlocale(LC_ALL, nullptr);
+            Assert::IsNotNull(cLocale);
+            const std::string originalCLocale(cLocale);
+            {
+                struct RestoreLocale
+                {
+                    std::locale saved;
+                    ~RestoreLocale()
+                    {
+                        std::locale::global(saved);
+                    }
+                } restoreLocale;
+
+                struct CreationPreviewCase
+                {
+                    PCWSTR id;
+                    SYSTEMTIME creationTime;
+                    PCWSTR expected;
+                };
+                const CreationPreviewCase cases[] = {
+                    { L"L408.02/July", { 2026, 7, 4, 2, 11, 54, 54, 123 }, L"2026_July_02__11-54-54.txt" },
+                    { L"L408.02/supplemental-March", { 2025, 3, 2, 4, 5, 6, 7, 456 }, L"2025_March_04__05-06-07.txt" },
+                };
+                for (const bool useBoost : { false, true })
+                {
+                    auto engine = MakeEngine(useBoost, UseRegularExpressions, L".*\\.txt$", L"$YYYY_$MMMM_$DD__$hh-$mm-$ss.txt");
+                    for (const auto& test : cases)
+                    {
+                        const std::wstring context = std::wstring(test.id) + (useBoost ? L"/Boost" : L"/std");
+                        CComPtr<IPowerRenameItem> item;
+                        Assert::AreEqual(S_OK, CMockPowerRenameItem::CreateInstance(L"C:\\fixtures\\orig.txt", L"orig.txt", 0, false, test.creationTime, &item), context.c_str());
+                        Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate.txt"), context.c_str());
+                        unsigned long index = 0;
+                        Assert::IsTrue(DoRename(engine, index, item), context.c_str());
+                        Assert::AreEqual(1UL, index, context.c_str());
+                        AssertItem(item, UseRegularExpressions, test.expected, Status::ShouldRename, true, context.c_str());
+                        const std::wstring verified = context + L": verified preview=" + test.expected + L"; planned=true; status=ShouldRename; eligible=true; index=1";
+                        Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(verified.c_str());
+                    }
+                }
+            }
+            Assert::IsTrue(std::locale() == originalLocale, L"Restore the worker's C++ locale.");
+            Assert::AreEqual(originalCLocale.c_str(), std::setlocale(LC_ALL, nullptr), L"Restore the worker's C locale.");
+        }
+
+        TEST_METHOD (DoRenameClearsFileTimeBeforeNextLiteralReplace)
+        {
+            wchar_t userLocale[LOCALE_NAME_MAX_LENGTH]{};
+            Assert::IsTrue(GetUserDefaultLocaleName(userLocale, ARRAYSIZE(userLocale)) > 0);
+            Assert::AreEqual(L"en-US", static_cast<PCWSTR>(userLocale), L"This opt-in English preview test requires an existing en-US user locale.");
+
+            const std::locale originalLocale;
+            const char* cLocale = std::setlocale(LC_ALL, nullptr);
+            Assert::IsNotNull(cLocale);
+            const std::string originalCLocale(cLocale);
+            {
+                struct RestoreLocale
+                {
+                    std::locale saved;
+                    ~RestoreLocale()
+                    {
+                        std::locale::global(saved);
+                    }
+                } restoreLocale;
+
+                const SYSTEMTIME julyCreationTime{ 2026, 7, 4, 2, 11, 54, 54, 123 };
+                for (const bool useBoost : { false, true })
+                {
+                    const PCWSTR context = useBoost ? L"L408.02/reset/Boost" : L"L408.02/reset/std";
+                    auto engine = MakeEngine(useBoost, 0, L"orig.txt", L"$YYYY_$MMMM_$DD__$hh-$mm-$ss.txt");
+                    Assert::AreEqual(S_OK, engine->PutFileTime(julyCreationTime), context);
+                    CComHeapPtr<wchar_t> activeName;
+                    unsigned long activeIndex = 0;
+                    Assert::AreEqual(S_OK, engine->Replace(L"orig.txt", &activeName, activeIndex), context);
+                    Assert::AreEqual(L"2026_July_02__11-54-54.txt", static_cast<PCWSTR>(activeName), context);
+                    Assert::AreEqual(1UL, activeIndex, context);
+
+                    CComPtr<IPowerRenameItem> item;
+                    Assert::AreEqual(S_OK, CMockPowerRenameItem::CreateInstance(L"C:\\fixtures\\orig.txt", L"orig.txt", 0, false, julyCreationTime, &item), context);
+                    unsigned long callerIndex = 0;
+                    const bool planned = DoRename(engine, callerIndex, item);
+                    CComHeapPtr<wchar_t> postCallerName;
+                    unsigned long postCallerIndex = 0;
+                    const HRESULT postCallerResult = engine->Replace(L"orig.txt", &postCallerName, postCallerIndex);
+
+                    Assert::IsTrue(planned, context);
+                    Assert::AreEqual(1UL, callerIndex, context);
+                    AssertItem(item, 0, L"2026_July_02__11-54-54.txt", Status::ShouldRename, true, context);
+                    Assert::AreEqual(S_OK, postCallerResult, context);
+                    Assert::AreEqual(L"$YYYY_$MMMM_$DD__$hh-$mm-$ss.txt", static_cast<PCWSTR>(postCallerName), context);
+                    Assert::AreEqual(1UL, postCallerIndex, context);
+                    const std::wstring verified = std::wstring(context) + L": active=" + static_cast<PCWSTR>(activeName) + L"; caller=July/planned/ShouldRename/eligible/index1; next=" + static_cast<PCWSTR>(postCallerName) + L"; hr=S_OK; index=1";
+                    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(verified.c_str());
+                }
+            }
+            Assert::IsTrue(std::locale() == originalLocale, L"Restore the worker's C++ locale.");
+            Assert::AreEqual(originalCLocale.c_str(), std::setlocale(LC_ALL, nullptr), L"Restore the worker's C locale.");
+        }
+#endif
+
         TEST_METHOD (TrimmedFileNameRemovesWhitespaceAndTrailingDotsButKeepsLeadingDot)
         {
             struct TrimCase

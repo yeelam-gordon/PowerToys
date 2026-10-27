@@ -9,6 +9,7 @@ extern alias SettingsApp;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO.Abstractions;
 using System.IO.Abstractions.TestingHelpers;
 using System.Text.Json;
 using Microsoft.PowerToys.Settings.UI.Library;
@@ -23,6 +24,8 @@ namespace ViewModelTests
     [TestClass]
     public class EnvironmentVariables
     {
+        public TestContext TestContext { get; set; } = null!;
+
         [TestMethod]
         [DataRow(false, false, false)]
         [DataRow(false, true, true)]
@@ -145,6 +148,140 @@ namespace ViewModelTests
             Assert.AreEqual(0, fixture.Messages.Count);
             Assert.AreEqual(1, fixture.PolicyReads);
             fixture.VerifySaveCount(2);
+        }
+
+        [TestMethod]
+        public void PreferencePersistsToOwnedFileAndFreshReaderRecreatesLaunchIntent()
+        {
+            var file = new Mock<IFile>(MockBehavior.Strict);
+            var directory = new Mock<IDirectory>(MockBehavior.Strict);
+            var fileSystem = new FileSystem();
+            var settingPath = new SettingPath(directory.Object, fileSystem.Path);
+            var canonicalFile = settingPath.GetSettingsPath(EnvironmentVariablesSettings.ModuleName);
+            var canonicalDirectory = System.IO.Path.GetDirectoryName(canonicalFile)!;
+            Assert.IsNotNull(TestContext);
+            var resultsDirectory = TestContext.ResultsDirectory;
+            Assert.IsFalse(string.IsNullOrWhiteSpace(resultsDirectory), "The runner must supply an owned results directory.");
+            Assert.IsTrue(System.IO.Path.IsPathFullyQualified(resultsDirectory!), "The results directory must be absolute.");
+            resultsDirectory = System.IO.Path.GetFullPath(resultsDirectory!);
+            Assert.IsTrue(System.IO.Directory.Exists(resultsDirectory), "The runner must create the results directory.");
+            var ownedRoot = System.IO.Path.Combine(resultsDirectory, "settings-preference-results-" + Guid.NewGuid().ToString("N"));
+            var ownedDirectory = System.IO.Path.Combine(ownedRoot, EnvironmentVariablesSettings.ModuleName);
+            var ownedFile = System.IO.Path.Combine(ownedDirectory, SettingsUtils.DefaultFileName);
+            var rejected = new List<string>();
+            var ipc = new List<string>();
+            var repositories = new List<Mock>();
+
+            string Map(string actual, string expected, string mapped)
+            {
+                if (!string.Equals(actual, expected, StringComparison.Ordinal))
+                {
+                    rejected.Add(actual);
+                    throw new InvalidOperationException("Rejected settings path.");
+                }
+
+                return mapped;
+            }
+
+            EnvironmentVariablesViewModel CreateViewModel(SettingsUtils utils, EnvironmentVariablesSettings module, List<bool> launches)
+            {
+                var generalRepository = new Mock<ISettingsRepository<GeneralSettings>>(MockBehavior.Strict);
+                var moduleRepository = new Mock<ISettingsRepository<EnvironmentVariablesSettings>>(MockBehavior.Strict);
+                repositories.Add(generalRepository);
+                repositories.Add(moduleRepository);
+                generalRepository.SetupGet(repository => repository.SettingsConfig).Returns(new GeneralSettings());
+                moduleRepository.SetupGet(repository => repository.SettingsConfig).Returns(module);
+                var viewModel = new EnvironmentVariablesViewModel(
+                    utils,
+                    generalRepository.Object,
+                    moduleRepository.Object,
+                    json =>
+                    {
+                        ipc.Add(json);
+                        return 0;
+                    },
+                    false,
+                    () => GpoRuleConfigured.NotConfigured,
+                    launches.Add);
+                generalRepository.VerifyGet(repository => repository.SettingsConfig, Times.Once);
+                moduleRepository.VerifyGet(repository => repository.SettingsConfig, Times.Once);
+                generalRepository.VerifyNoOtherCalls();
+                moduleRepository.VerifyNoOtherCalls();
+                return viewModel;
+            }
+
+            void AssertFreshPreference(bool expected)
+            {
+                AssertPreferenceJson(System.IO.File.ReadAllText(ownedFile), expected);
+                var reader = new SettingsUtils(file.Object, new SettingPath(directory.Object, fileSystem.Path));
+                var restored = reader.GetSettings<EnvironmentVariablesSettings>(EnvironmentVariablesSettings.ModuleName);
+                Assert.AreEqual(expected, restored.Properties.LaunchAdministrator);
+                var launches = new List<bool>();
+                var reopened = CreateViewModel(reader, restored, launches);
+                reopened.LaunchEventHandler.Execute(null);
+                CollectionAssert.AreEqual(new[] { expected }, launches);
+            }
+
+            file.Setup(value => value.Exists(It.IsAny<string>()))
+                .Returns((string path) => System.IO.File.Exists(Map(path, canonicalFile, ownedFile)));
+            file.Setup(value => value.ReadAllText(It.IsAny<string>()))
+                .Returns((string path) => System.IO.File.ReadAllText(Map(path, canonicalFile, ownedFile)));
+            file.Setup(value => value.WriteAllText(It.IsAny<string>(), It.IsAny<string>()))
+                .Callback<string, string>((path, json) => System.IO.File.WriteAllText(Map(path, canonicalFile, ownedFile), json));
+            directory.Setup(value => value.Exists(It.IsAny<string>()))
+                .Returns((string path) => System.IO.Directory.Exists(Map(path, canonicalDirectory, ownedDirectory)));
+            directory.Setup(value => value.CreateDirectory(It.IsAny<string>()))
+                .Returns((string path) => fileSystem.Directory.CreateDirectory(Map(path, canonicalDirectory, ownedDirectory)));
+            try
+            {
+                System.IO.Directory.CreateDirectory(ownedRoot);
+                var module = new EnvironmentVariablesSettings();
+                var launches = new List<bool>();
+                var viewModel = CreateViewModel(new SettingsUtils(file.Object, settingPath), module, launches);
+                Assert.IsTrue(viewModel.LaunchAdministrator);
+                viewModel.LaunchAdministrator = false;
+                AssertFreshPreference(false);
+                var calls = file.Invocations.Count + directory.Invocations.Count;
+                viewModel.LaunchAdministrator = false;
+                Assert.AreEqual(calls, file.Invocations.Count + directory.Invocations.Count);
+                viewModel.LaunchAdministrator = true;
+                AssertFreshPreference(true);
+                Assert.AreEqual(0, launches.Count);
+                Assert.AreEqual(0, ipc.Count);
+                Assert.AreEqual(0, rejected.Count);
+
+                var generalFile = settingPath.GetSettingsPath(string.Empty);
+                Assert.ThrowsException<InvalidOperationException>(() => file.Object.Exists(generalFile));
+                CollectionAssert.AreEqual(new[] { generalFile }, rejected);
+                file.Verify(value => value.Exists(canonicalFile), Times.Exactly(2));
+                file.Verify(value => value.Exists(generalFile), Times.Once);
+                file.Verify(value => value.ReadAllText(canonicalFile), Times.Exactly(2));
+                file.Verify(value => value.WriteAllText(canonicalFile, It.IsAny<string>()), Times.Exactly(2));
+                directory.Verify(value => value.Exists(canonicalDirectory), Times.Exactly(2));
+                directory.Verify(value => value.CreateDirectory(canonicalDirectory), Times.Once);
+                file.VerifyNoOtherCalls();
+                directory.VerifyNoOtherCalls();
+            }
+            finally
+            {
+                foreach (var repository in repositories)
+                {
+                    repository.Reset();
+                }
+
+                file.Reset();
+                directory.Reset();
+                System.IO.File.Delete(ownedFile);
+                if (System.IO.Directory.Exists(ownedDirectory))
+                {
+                    System.IO.Directory.Delete(ownedDirectory);
+                }
+
+                if (System.IO.Directory.Exists(ownedRoot))
+                {
+                    System.IO.Directory.Delete(ownedRoot);
+                }
+            }
         }
 
         [TestMethod]

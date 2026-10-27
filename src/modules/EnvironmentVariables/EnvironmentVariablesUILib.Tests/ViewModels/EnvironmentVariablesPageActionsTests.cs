@@ -817,6 +817,161 @@ public class EnvironmentVariablesPageActionsTests
         Assert.IsTrue(fixture.Work.IsQuiescent);
     }
 
+    [DataTestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task Confirmation_UserDeleteOnlyPrimaryMutatesBeforePresenterCompletes(bool firePrimary)
+    {
+        using var fixture = new EnvironmentVariablesFixture();
+        fixture.Environment.User["TMP"] = "user";
+        fixture.Environment.User["KEEP"] = "sentinel";
+        fixture.Environment.Machine["TMP"] = "machine";
+        var vm = fixture.CreateViewModel();
+        vm.LoadEnvironmentVariables();
+        var variable = vm.UserDefaultSet.Variables.Single(item => item.Name == "TMP");
+        var userRaw = fixture.Environment.User.ToArray();
+        var machineRaw = fixture.Environment.Machine.ToArray();
+        var userVariables = vm.UserDefaultSet.Variables;
+        var userMembers = userVariables.ToArray();
+        var systemVariables = vm.SystemDefaultSet.Variables;
+        var systemMembers = systemVariables.ToArray();
+        var defaults = vm.DefaultVariables.Variables;
+        var defaultMembers = defaults.ToArray();
+        var profiles = vm.Profiles;
+        var profileMembers = profiles.ToArray();
+        var projection = vm.AppliedVariables;
+        var projectedMembers = projection.ToArray();
+        var projectedValues = projection.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile)).ToArray();
+        var reads = 0;
+        var presentations = 0;
+        Action? primary = null;
+        Func<string>? title = null;
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        fixture.Environment.Operations.Clear();
+
+        MainViewModel ReadVm()
+        {
+            reads++;
+            return vm;
+        }
+
+        Task Present(Func<string> readTitle, Action callback)
+        {
+            presentations++;
+            title = readTitle;
+            primary = callback;
+            return completion.Task;
+        }
+
+        var showing = EnvironmentVariablesPageActions.ConfirmDeleteVariableAsync(ReadVm, variable, null!, Present);
+        try
+        {
+            Assert.AreEqual(1, presentations);
+            Assert.AreEqual("TMP", title!());
+            Assert.IsNotNull(primary);
+            Assert.IsFalse(showing.IsCompleted);
+            Assert.AreEqual(0, reads);
+            Assert.AreEqual(0, fixture.Work.ActionCount);
+            Assert.AreEqual(0, fixture.Work.SaveCount);
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            CollectionAssert.AreEqual(userMembers, userVariables.ToArray());
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+
+            if (firePrimary)
+            {
+                primary!();
+            }
+
+            Assert.IsFalse(showing.IsCompleted);
+            Assert.AreEqual(firePrimary ? 1 : 0, reads);
+            Assert.AreEqual(firePrimary ? 1 : 0, fixture.Work.ActionCount);
+            Assert.AreEqual(0, fixture.Work.SaveCount);
+            Assert.AreEqual(0, fixture.Work.RefreshReceiptCount);
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+            CollectionAssert.AreEquivalent(userRaw, fixture.Environment.User.ToArray());
+            CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+            CollectionAssert.AreEqual(
+                firePrimary ? userMembers.Where(item => !ReferenceEquals(item, variable)).ToArray() : userMembers,
+                vm.UserDefaultSet.Variables.ToArray());
+            CollectionAssert.AreEqual(defaultMembers, vm.DefaultVariables.Variables.ToArray());
+            Assert.AreSame(projection, vm.AppliedVariables);
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+
+            if (firePrimary)
+            {
+                await fixture.Work.CompleteActionAsync(0);
+
+                Assert.IsFalse(showing.IsCompleted);
+                Assert.AreEqual(1, fixture.Work.RefreshReceiptCount);
+                Assert.IsFalse(fixture.Environment.User.ContainsKey("TMP"));
+                Assert.AreEqual("sentinel", fixture.Environment.User["KEEP"]);
+                CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+                Assert.AreSame(projection, vm.AppliedVariables);
+                CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+                fixture.Work.DrainRefreshes();
+                CollectionAssert.AreEqual(
+                    new[] { ("KEEP", "sentinel", VariablesSetType.User), ("TMP", "machine", VariablesSetType.System) },
+                    vm.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType)).ToArray());
+                CollectionAssert.AreEqual(
+                    new[] { ("KEEP", "sentinel", VariablesSetType.User), ("TMP", "machine", VariablesSetType.System) },
+                    vm.DefaultVariables.Variables.Select(item => (item.Name, item.Values, item.ParentType)).ToArray());
+                var remainingUser = vm.UserDefaultSet.Variables.Single();
+                Assert.AreEqual(("KEEP", "sentinel", VariablesSetType.User), (remainingUser.Name, remainingUser.Values, remainingUser.ParentType));
+                var remainingSystem = vm.SystemDefaultSet.Variables.Single();
+                Assert.AreEqual(("TMP", "machine", VariablesSetType.System), (remainingSystem.Name, remainingSystem.Values, remainingSystem.ParentType));
+                Assert.AreEqual(1, fixture.Environment.User.Count);
+                var mutations = fixture.Environment.Operations.Where(item => item.Operation is "Delete" or "Write").ToArray();
+                Assert.AreEqual(1, mutations.Length);
+                Assert.AreEqual((RegistryHive.CurrentUser, "Delete", "TMP"), (mutations[0].Hive, mutations[0].Operation, mutations[0].Name));
+                Assert.AreEqual(1, fixture.Environment.Notifications.Count);
+                Assert.IsTrue(fixture.Environment.Keys.All(key => key.IsDisposed));
+            }
+        }
+        finally
+        {
+            try
+            {
+                completion.TrySetResult(true);
+                await showing.WaitAsync(Timeout);
+            }
+            finally
+            {
+                await fixture.Work.SettleAsync();
+            }
+        }
+
+        Assert.IsTrue(showing.IsCompletedSuccessfully);
+        Assert.AreEqual(firePrimary ? 1 : 0, reads);
+        Assert.AreEqual(firePrimary ? 1 : 0, fixture.Work.ActionCount);
+        Assert.AreEqual(firePrimary ? 1 : 0, fixture.Work.RefreshReceiptCount);
+        Assert.AreEqual(0, fixture.Work.SaveCount);
+        Assert.AreEqual(0, fixture.Service.Writes.Count);
+        Assert.AreSame(profiles, vm.Profiles);
+        CollectionAssert.AreEqual(profileMembers, vm.Profiles.ToArray());
+        Assert.IsNull(vm.AppliedProfile);
+        if (!firePrimary)
+        {
+            CollectionAssert.AreEquivalent(userRaw, fixture.Environment.User.ToArray());
+            CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+            Assert.AreSame(userVariables, vm.UserDefaultSet.Variables);
+            CollectionAssert.AreEqual(userMembers, vm.UserDefaultSet.Variables.ToArray());
+            Assert.AreSame(systemVariables, vm.SystemDefaultSet.Variables);
+            CollectionAssert.AreEqual(systemMembers, vm.SystemDefaultSet.Variables.ToArray());
+            Assert.AreSame(defaults, vm.DefaultVariables.Variables);
+            CollectionAssert.AreEqual(defaultMembers, vm.DefaultVariables.Variables.ToArray());
+            Assert.AreSame(projection, vm.AppliedVariables);
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+            CollectionAssert.AreEqual(
+                projectedValues,
+                vm.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile)).ToArray());
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+        }
+
+        Assert.IsTrue(fixture.Work.IsQuiescent);
+    }
+
     [TestMethod]
     public async Task Confirmation_NullTargetsSkipPresenterAndRepeatedPrimaryKeepsDuplicateDispatch()
     {

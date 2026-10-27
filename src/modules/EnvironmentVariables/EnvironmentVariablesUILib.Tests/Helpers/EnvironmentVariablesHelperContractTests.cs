@@ -159,6 +159,38 @@ namespace EnvironmentVariablesUILib.UnitTests.Helpers
         }
 
         [TestMethod]
+        [DataRow(VariablesSetType.User, RegistryHive.CurrentUser, "Environment")]
+        [DataRow(VariablesSetType.System, RegistryHive.LocalMachine, @"System\CurrentControlSet\Control\Session Manager\Environment")]
+        public void SetVariable_WriteAccessDeniedPreservesValueAndLogsOriginalException(VariablesSetType type, RegistryHive hive, string subKey)
+        {
+            using var fixture = new EnvironmentVariablesFixture();
+            var environment = fixture.Environment;
+            environment.User["Pilot"] = "user original";
+            environment.Machine["Pilot"] = "machine original";
+            var failure = new UnauthorizedAccessException("scripted read-only registry write");
+            environment.BeforeOperation = (operation, _, _) =>
+            {
+                if (operation == "Write")
+                {
+                    throw failure;
+                }
+            };
+
+            var success = EnvironmentVariablesHelper.SetVariable(new Variable("Pilot", "replacement", type), environment);
+
+            Assert.IsFalse(success);
+            CollectionAssert.AreEqual(new[] { (hive, subKey, true) }, environment.Opens.ToArray());
+            Assert.AreEqual("user original", environment.User["Pilot"]);
+            Assert.AreEqual("machine original", environment.Machine["Pilot"]);
+            Assert.IsTrue(environment.Keys.Single().IsDisposed);
+            Assert.AreEqual(0, environment.Notifications.Count);
+            var entry = fixture.Logger.Entries.Single();
+            Assert.AreEqual("Error", entry.Level);
+            Assert.AreEqual("Failed to write environment variable 'Pilot'.", entry.Message);
+            Assert.AreSame(failure, entry.Exception);
+        }
+
+        [TestMethod]
         public void GetVariables_MissingKeyReturnsEmptyButReadExceptionPropagatesAndDisposes()
         {
             using var fixture = new EnvironmentVariablesFixture();

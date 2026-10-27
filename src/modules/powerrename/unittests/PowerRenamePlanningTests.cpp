@@ -774,6 +774,54 @@ namespace PowerRenamePlanningTests
         }
 #endif
 
+        TEST_METHOD (BoostLookbehindPreviewClearsStaleCandidateWhenUnchanged)
+        {
+            struct LookbehindPreviewCase
+            {
+                PCWSTR id;
+                PCWSTR original;
+                PCWSTR candidate;
+                bool planned;
+                bool eligible;
+                unsigned long index;
+            };
+            const LookbehindPreviewCase cases[] = {
+                { L"L409.02/caller/test.txt", L"test.txt", L"tX.txt", true, true, 1 },
+                { L"L409.03/caller/nest.txt", L"nest.txt", nullptr, false, false, 0 },
+            };
+            auto engine = MakeEngine(true, UseRegularExpressions, L"(?<=t)est", L"X");
+            for (const auto& test : cases)
+            {
+                auto item = MakeItem(test.original);
+                Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate"), test.id);
+                unsigned long index = 0;
+                Assert::AreEqual(test.planned, DoRename(engine, index, item), test.id);
+                Assert::AreEqual(test.index, index, test.id);
+                AssertItem(item, UseRegularExpressions, test.candidate, Status::ShouldRename, test.eligible, test.id);
+                const std::wstring verified = std::wstring(test.id) + L": candidate=" + (test.candidate ? test.candidate : L"<null>") +
+                                              L"; planned=" + (test.planned ? L"true" : L"false") + L"; index=" + std::to_wstring(index) +
+                                              L"; status=ShouldRename; eligible=" + (test.eligible ? L"true" : L"false");
+                Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(verified.c_str());
+            }
+        }
+
+        TEST_METHOD (RegexDisabledLiteralDollarReplacesStaleCandidate)
+        {
+            for (const bool useBoost : { false, true })
+            {
+                const PCWSTR context = useBoost ? L"L407.04/caller/Boost" : L"L407.04/caller/std";
+                auto engine = MakeEngine(useBoost, 0, L"IMG_001", L"$1");
+                auto item = MakeItem(L"IMG_001.png");
+                Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate"), context);
+                unsigned long index = 0;
+                Assert::IsTrue(DoRename(engine, index, item), context);
+                Assert::AreEqual(1UL, index, context);
+                AssertItem(item, 0, L"$1.png", Status::ShouldRename, true, context);
+                const std::wstring verified = std::wstring(context) + L": candidate=$1.png; planned=true; index=1; status=ShouldRename; eligible=true";
+                Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(verified.c_str());
+            }
+        }
+
         TEST_METHOD (TrimmedFileNameRemovesWhitespaceAndTrailingDotsButKeepsLeadingDot)
         {
             struct TrimCase

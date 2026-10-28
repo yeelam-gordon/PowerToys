@@ -465,6 +465,84 @@ namespace ViewModelTests
             }
         }
 
+        // Invoked by PowerRename.Settings.XamlTestHost on its initialized primary XAML thread.
+        public void VerifyConfiguredContextMenuModeConversion()
+        {
+            RunInInitializedXamlContext(() =>
+            {
+                var converter = new CommunityToolkit.WinUI.Converters.BoolToObjectConverter
+                {
+                    FalseValue = "0",
+                    TrueValue = "1",
+                };
+                Assert.IsInstanceOfType<string>(converter.FalseValue);
+                Assert.IsInstanceOfType<string>(converter.TrueValue);
+                object defaultIndex = converter.Convert(false, typeof(int), null, string.Empty);
+                object extendedIndex = converter.Convert(true, typeof(int), null, string.Empty);
+                Assert.IsInstanceOfType<int>(defaultIndex);
+                Assert.IsInstanceOfType<int>(extendedIndex);
+                Assert.AreEqual(0, (int)defaultIndex);
+                Assert.AreEqual(1, (int)extendedIndex);
+
+                var messages = new List<string>();
+                var localSettings = new PowerRenameLocalProperties
+                {
+                    ShowIcon = true,
+                    ExtendedContextMenuOnly = false,
+                    MRUEnabled = true,
+                    PersistState = true,
+                    UseBoostLib = true,
+                    MaxMRUSize = 17,
+                };
+                var generalSettings = new GeneralSettings();
+                generalSettings.Enabled.PowerRename = true;
+                PowerRenameViewModel viewModel = CreateCapturingViewModel(localSettings, generalSettings, messages);
+                var expectedProperties = new Dictionary<string, bool>
+                {
+                    ["bool_show_icon_on_menu"] = true,
+                    ["bool_show_extended_menu"] = false,
+                    ["bool_mru_enabled"] = true,
+                    ["bool_persist_input"] = true,
+                    ["bool_use_boost_lib"] = true,
+                };
+                Assert.AreEqual(0, messages.Count);
+                AssertModuleValues(viewModel, expectedProperties, 17);
+
+                object extendedMode = converter.ConvertBack(1, typeof(bool), null, string.Empty);
+                Assert.IsInstanceOfType<bool>(extendedMode);
+                Assert.IsTrue((bool)extendedMode);
+                viewModel.EnabledOnContextExtendedMenu = (bool)extendedMode;
+                expectedProperties["bool_show_extended_menu"] = true;
+                Assert.AreEqual(1, messages.Count);
+                AssertModuleValues(viewModel, expectedProperties, 17);
+                AssertModuleMessages(messages, expectedProperties, 17);
+                Assert.IsTrue(generalSettings.Enabled.PowerRename);
+
+                object defaultMode = converter.ConvertBack(0, typeof(bool), null, string.Empty);
+                Assert.IsInstanceOfType<bool>(defaultMode);
+                Assert.IsFalse((bool)defaultMode);
+                viewModel.EnabledOnContextExtendedMenu = (bool)defaultMode;
+                expectedProperties["bool_show_extended_menu"] = false;
+                Assert.AreEqual(2, messages.Count);
+                AssertModuleValues(viewModel, expectedProperties, 17);
+                AssertModuleMessages(messages.GetRange(1, 1), expectedProperties, 17);
+                Assert.IsTrue(generalSettings.Enabled.PowerRename);
+                using JsonDocument result = JsonDocument.Parse(messages[1]);
+                Console.WriteLine("POWERRENAME_MODE0_NATIVE_REPLAY_SHOWN=" + result.RootElement.GetProperty("powertoys").GetProperty("PowerRename").GetRawText());
+            });
+        }
+
+        private static void RunInInitializedXamlContext(Action action)
+        {
+            var dispatcher = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+            Assert.IsNotNull(dispatcher, "The explicit WinUI unit host must initialize its dispatcher.");
+            Assert.IsTrue(dispatcher.HasThreadAccess);
+            Assert.IsNotNull(Microsoft.UI.Xaml.Application.Current);
+            Console.WriteLine("POWERRENAME_XAML_UNIT_THREAD=" + Environment.CurrentManagedThreadId);
+            action();
+            Console.WriteLine("POWERRENAME_XAML_UNIT_BODY_COMPLETED=True");
+        }
+
         private PowerRenameViewModel CreateCapturingViewModel(PowerRenameLocalProperties localSettings, GeneralSettings generalSettings, List<string> messages)
         {
             mockPowerRenamePropertiesUtils

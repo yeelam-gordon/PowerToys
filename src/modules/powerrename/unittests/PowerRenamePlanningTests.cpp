@@ -774,6 +774,46 @@ namespace PowerRenamePlanningTests
         }
 #endif
 
+        TEST_METHOD (AdvancedEnumerationPreviewRetainsIndexAcrossNoMatch)
+        {
+            struct EnumerationPreviewCase
+            {
+                PCWSTR id;
+                PCWSTR original;
+                PCWSTR candidate;
+                bool planned;
+                bool eligible;
+                unsigned long expectedIndex;
+            };
+            const EnumerationPreviewCase cases[] = {
+                { L"L402.01/caller", L"file1", L"item_0010", true, true, 1 },
+                { L"L402.02/caller", L"file2", L"item_0012", true, true, 2 },
+                { L"L402/control/keepme", L"keepme", nullptr, false, false, 2 },
+                { L"L402.03/caller", L"file3", L"item_0014", true, true, 3 },
+                { L"L402.04/caller", L"file4", L"item_0016", true, true, 4 },
+                { L"L402.05/caller", L"file5", L"item_0018", true, true, 5 },
+            };
+            const DWORD flags = UseRegularExpressions | EnumerateItems;
+            for (const bool useBoost : { false, true })
+            {
+                auto engine = MakeEngine(useBoost, flags, L"^file[1-5]$", L"item_${start=10,increment=2,padding=4}");
+                unsigned long index = 0;
+                for (const auto& test : cases)
+                {
+                    const std::wstring context = std::wstring(test.id) + (useBoost ? L"/Boost" : L"/std");
+                    auto item = MakeItem(test.original);
+                    Assert::AreEqual(S_OK, item->PutNewName(L"stale-candidate"), context.c_str());
+                    Assert::AreEqual(test.planned, DoRename(engine, index, item), context.c_str());
+                    Assert::AreEqual(test.expectedIndex, index, context.c_str());
+                    AssertItem(item, flags, test.candidate, Status::ShouldRename, test.eligible, context.c_str());
+                    const std::wstring verified = context + L": original=" + test.original + L"; candidate=" + (test.candidate ? test.candidate : L"<null>") +
+                                                  L"; planned=" + (test.planned ? L"true" : L"false") + L"; index=" + std::to_wstring(index) +
+                                                  L"; status=ShouldRename; eligible=" + (test.eligible ? L"true" : L"false");
+                    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage(verified.c_str());
+                }
+            }
+        }
+
         TEST_METHOD (BoostLookbehindPreviewClearsStaleCandidateWhenUnchanged)
         {
             struct LookbehindPreviewCase

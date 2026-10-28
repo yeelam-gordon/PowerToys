@@ -26,6 +26,7 @@ namespace EnvironmentVariablesUILib.UnitTests.ViewModels;
 public class EnvironmentVariablesPageActionsTests
 {
     private static readonly TimeSpan Timeout = TimeSpan.FromSeconds(5);
+    private static readonly string[] UserEditDialogShowOrder = { "configure", "draft", "gate", "show" };
 
     [DataTestMethod]
     [DataRow("edit", false)]
@@ -495,6 +496,198 @@ public class EnvironmentVariablesPageActionsTests
             completion.TrySetResult(true);
             await show.WaitAsync(Timeout);
         }
+    }
+
+    [DataTestMethod]
+    [DataRow(false)]
+    [DataRow(true)]
+    public async Task UserVariableDialog_SaveAndNoCommitComposeActualUserEdit(bool save)
+    {
+        using var fixture = new EnvironmentVariablesFixture();
+        fixture.Environment.User["TMP"] = "old";
+        fixture.Environment.User["KEEP"] = "sentinel";
+        fixture.Environment.Machine["TMP"] = "machine";
+        var vm = fixture.CreateViewModel();
+        vm.LoadEnvironmentVariables();
+        var original = vm.UserDefaultSet.Variables.Single(item => item.Name == "TMP");
+        var originalState = (original.Name, original.Values, original.ParentType, original.IsAppliedFromProfile, original.IsEditable);
+        var originalRows = original.ValuesList;
+        var originalMembers = originalRows.ToArray();
+        var originalTexts = originalRows.Select(item => item.Text).ToArray();
+        var userRaw = fixture.Environment.User.ToArray();
+        var machineRaw = fixture.Environment.Machine.ToArray();
+        var userVariables = vm.UserDefaultSet.Variables;
+        var userMembers = userVariables.ToArray();
+        var systemVariables = vm.SystemDefaultSet.Variables;
+        var systemMembers = systemVariables.ToArray();
+        var defaults = vm.DefaultVariables.Variables;
+        var defaultMembers = defaults.ToArray();
+        var profiles = vm.Profiles;
+        var profileMembers = profiles.ToArray();
+        var projection = vm.AppliedVariables;
+        var projectedMembers = projection.ToArray();
+        var projectedValues = projection.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile)).ToArray();
+        Variable? draft = null;
+        var effects = new List<string>();
+        var completion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var actions = new EnvironmentVariablesPageActions(
+            () => vm,
+            () => draft!,
+            () => throw new InvalidOperationException("Unexpected profile draft."),
+            () => throw new InvalidOperationException("Unexpected default draft."),
+            () => throw new InvalidOperationException("Unexpected new profile."),
+            () => throw new InvalidOperationException("Unexpected Add."),
+            () => throw new InvalidOperationException("Unexpected Cancel."));
+        var command = actions.EditCommand;
+        var target = new EnvironmentVariablesPageActions.EditTarget(original, null!);
+        fixture.Environment.Operations.Clear();
+        var showing = Task.CompletedTask;
+
+        try
+        {
+            showing = EnvironmentVariablesPageActions.ShowVariableEditAsync(
+                original,
+                () => effects.Add("configure"),
+                value =>
+                {
+                    draft = value;
+                    effects.Add("draft");
+                },
+                () => effects.Add("gate"),
+                () =>
+                {
+                    effects.Add("show");
+                    return completion.Task;
+                });
+            CollectionAssert.AreEqual(UserEditDialogShowOrder, effects);
+            Assert.IsFalse(showing.IsCompleted);
+            Assert.IsNotNull(draft);
+            Assert.AreNotSame(original, draft);
+            Assert.AreNotSame(originalRows, draft.ValuesList);
+            Assert.AreNotSame(originalMembers[0], draft.ValuesList[0]);
+            Assert.AreEqual(originalState, (draft.Name, draft.Values, draft.ParentType, draft.IsAppliedFromProfile, draft.IsEditable));
+            draft.Name = "RENAMED_TMP";
+            draft.Values = "changed;;tail;";
+            draft.ValuesList = Variable.ValuesStringToValuesListItemCollection(draft.Values);
+
+            Assert.AreEqual(originalState, (original.Name, original.Values, original.ParentType, original.IsAppliedFromProfile, original.IsEditable));
+            Assert.AreSame(originalRows, original.ValuesList);
+            CollectionAssert.AreEqual(originalMembers, original.ValuesList.ToArray());
+            CollectionAssert.AreEqual(originalTexts, original.ValuesList.Select(item => item.Text).ToArray());
+            CollectionAssert.AreEquivalent(userRaw, fixture.Environment.User.ToArray());
+            CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+            Assert.AreSame(projection, vm.AppliedVariables);
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+            Assert.AreEqual(0, fixture.Work.ActionCount);
+            Assert.AreEqual(0, fixture.Work.SaveCount);
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+
+            if (save)
+            {
+                command.Execute(target);
+            }
+
+            Assert.IsFalse(showing.IsCompleted);
+            Assert.AreEqual(save ? "RENAMED_TMP" : "TMP", original.Name);
+            Assert.AreEqual(save ? "changed;;tail;" : "old", original.Values);
+            Assert.AreEqual(save ? 1 : 0, fixture.Work.ActionCount);
+            Assert.AreEqual(save ? 1 : 0, fixture.Work.SaveCount);
+            Assert.AreEqual(0, fixture.Work.RefreshReceiptCount);
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+            Assert.AreEqual(0, fixture.Service.Writes.Count);
+            CollectionAssert.AreEquivalent(userRaw, fixture.Environment.User.ToArray());
+            CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+            Assert.AreSame(projection, vm.AppliedVariables);
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+
+            if (save)
+            {
+                Assert.AreNotSame(draft.ValuesList, original.ValuesList);
+                CollectionAssert.AreEqual(new[] { "changed", string.Empty, "tail", string.Empty }, original.ValuesList.Select(item => item.Text).ToArray());
+                await fixture.Work.CompleteActionAsync(0);
+                Assert.IsFalse(showing.IsCompleted);
+                Assert.IsFalse(fixture.Environment.User.ContainsKey("TMP"));
+                Assert.AreEqual("changed;;tail;", fixture.Environment.User["RENAMED_TMP"]);
+                Assert.AreEqual("sentinel", fixture.Environment.User["KEEP"]);
+                Assert.AreEqual(2, fixture.Environment.User.Count);
+                CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+                Assert.AreSame(projection, vm.AppliedVariables);
+                CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+                fixture.Work.DrainRefreshes();
+                Assert.AreNotSame(projection, vm.AppliedVariables);
+                CollectionAssert.AreEqual(
+                    new[]
+                    {
+                        ("KEEP", "sentinel", VariablesSetType.User),
+                        ("RENAMED_TMP", "changed;;tail;", VariablesSetType.User),
+                        ("TMP", "machine", VariablesSetType.System),
+                    },
+                    vm.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType)).ToArray());
+                var refreshed = vm.UserDefaultSet.Variables.Single(item => item.Name == "RENAMED_TMP");
+                Assert.AreNotSame(original, refreshed);
+                Assert.AreEqual(("changed;;tail;", VariablesSetType.User, false, true), (refreshed.Values, refreshed.ParentType, refreshed.IsAppliedFromProfile, refreshed.IsEditable));
+                Assert.IsFalse(vm.UserDefaultSet.Variables.Any(item => item.Name == "TMP"));
+                var mutations = fixture.Environment.Operations.Where(item => item.Operation is "Delete" or "Write").ToArray();
+                CollectionAssert.AreEqual(
+                    new[] { (RegistryHive.CurrentUser, "Delete", "TMP"), (RegistryHive.CurrentUser, "Write", "RENAMED_TMP") },
+                    mutations.Select(item => (item.Hive, item.Operation, item.Name)).ToArray());
+                var (writtenValue, writtenKind) = ((object, RegistryValueKind))mutations[1].Value!;
+                Assert.AreEqual("changed;;tail;", writtenValue);
+                Assert.AreEqual(RegistryValueKind.String, writtenKind);
+                Assert.AreEqual(2, fixture.Environment.Notifications.Count);
+                Assert.IsTrue(fixture.Environment.Keys.All(key => key.IsDisposed));
+                await fixture.Work.CompleteSaveAsync(0);
+                Assert.AreEqual(0, fixture.Service.Writes.Single().Length);
+                Assert.IsFalse(showing.IsCompleted);
+            }
+        }
+        finally
+        {
+            try
+            {
+                completion.TrySetResult(true);
+                await showing.WaitAsync(Timeout);
+            }
+            finally
+            {
+                await fixture.Work.SettleAsync();
+            }
+        }
+
+        Assert.IsTrue(showing.IsCompletedSuccessfully);
+        Assert.AreSame(profiles, vm.Profiles);
+        CollectionAssert.AreEqual(profileMembers, vm.Profiles.ToArray());
+        Assert.IsNull(vm.AppliedProfile);
+        Assert.AreEqual(save ? 1 : 0, fixture.Work.ActionCount);
+        Assert.AreEqual(save ? 1 : 0, fixture.Work.SaveCount);
+        Assert.AreEqual(save ? 1 : 0, fixture.Work.RefreshReceiptCount);
+        Assert.AreEqual(save ? 1 : 0, fixture.Service.Writes.Count);
+        CollectionAssert.AreEqual(save ? new[] { VariablesSetType.User } : Array.Empty<VariablesSetType>(), fixture.Telemetry.Changed.ToArray());
+        Assert.AreEqual(0, fixture.Telemetry.Enabled.Count);
+        Assert.AreEqual(0, fixture.Logger.Entries.Count);
+        if (!save)
+        {
+            Assert.AreEqual(originalState, (original.Name, original.Values, original.ParentType, original.IsAppliedFromProfile, original.IsEditable));
+            Assert.AreSame(originalRows, original.ValuesList);
+            CollectionAssert.AreEqual(originalMembers, original.ValuesList.ToArray());
+            CollectionAssert.AreEqual(originalTexts, original.ValuesList.Select(item => item.Text).ToArray());
+            CollectionAssert.AreEquivalent(userRaw, fixture.Environment.User.ToArray());
+            CollectionAssert.AreEquivalent(machineRaw, fixture.Environment.Machine.ToArray());
+            Assert.AreSame(userVariables, vm.UserDefaultSet.Variables);
+            CollectionAssert.AreEqual(userMembers, vm.UserDefaultSet.Variables.ToArray());
+            Assert.AreSame(systemVariables, vm.SystemDefaultSet.Variables);
+            CollectionAssert.AreEqual(systemMembers, vm.SystemDefaultSet.Variables.ToArray());
+            Assert.AreSame(defaults, vm.DefaultVariables.Variables);
+            CollectionAssert.AreEqual(defaultMembers, vm.DefaultVariables.Variables.ToArray());
+            Assert.AreSame(projection, vm.AppliedVariables);
+            CollectionAssert.AreEqual(projectedMembers, vm.AppliedVariables.ToArray());
+            CollectionAssert.AreEqual(projectedValues, vm.AppliedVariables.Select(item => (item.Name, item.Values, item.ParentType, item.IsAppliedFromProfile)).ToArray());
+            Assert.AreEqual(0, fixture.Environment.Operations.Count);
+            Assert.AreEqual(0, fixture.Environment.Notifications.Count);
+        }
+
+        Assert.IsTrue(fixture.Work.IsQuiescent);
     }
 
     [DataTestMethod]

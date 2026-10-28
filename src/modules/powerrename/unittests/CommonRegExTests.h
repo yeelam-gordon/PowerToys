@@ -1,7 +1,6 @@
 //#undef TESTS_PARTIAL // Uncomment temporarily to make intellisense work in this file.
 #ifndef TESTS_PARTIAL
 #include "CppUnitTestInclude.h"
-#include "powerrename/lib/Settings.h"
 #include <PowerRenameInterfaces.h>
 #include <PowerRenameRegEx.h>
 
@@ -11,6 +10,7 @@ namespace PowerRenameRegExTests
 TEST_CLASS (SimpleTests)
 {
 public:
+    static constexpr bool UseBoostLib = false;
 #endif
 
 struct SearchReplaceExpected
@@ -21,10 +21,26 @@ struct SearchReplaceExpected
     PCWSTR expected;
 };
 
+TEST_METHOD (VerifyExplicitFactoryRejectsNullOutput)
+{
+    HRESULT hr = E_UNEXPECTED;
+    DWORD exceptionCode = 0;
+    __try
+    {
+        hr = CPowerRenameRegEx::s_CreateInstance(UseBoostLib, nullptr);
+    }
+    __except (GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION ? EXCEPTION_EXECUTE_HANDLER : EXCEPTION_CONTINUE_SEARCH)
+    {
+        exceptionCode = GetExceptionCode();
+    }
+    Assert::AreEqual(DWORD{ 0 }, exceptionCode, L"The explicit factory must reject null output without an access violation.");
+    Assert::AreEqual(E_POINTER, hr);
+}
+
 TEST_METHOD (GeneralReplaceTest)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     PWSTR result = nullptr;
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"foo") == S_OK);
     Assert::IsTrue(renameRegEx->PutReplaceTerm(L"big") == S_OK);
@@ -37,7 +53,7 @@ TEST_METHOD (GeneralReplaceTest)
 TEST_METHOD (ReplaceNoMatch)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     PWSTR result = nullptr;
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"notfound") == S_OK);
     Assert::IsTrue(renameRegEx->PutReplaceTerm(L"big") == S_OK);
@@ -50,7 +66,7 @@ TEST_METHOD (ReplaceNoMatch)
 TEST_METHOD (ReplaceNoSearchOrReplaceTerm)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     PWSTR result = nullptr;
     unsigned long index = {};
     Assert::IsTrue(renameRegEx->Replace(L"foobar", &result, index) == S_OK);
@@ -61,7 +77,7 @@ TEST_METHOD (ReplaceNoSearchOrReplaceTerm)
 TEST_METHOD (ReplaceNoReplaceTerm)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     PWSTR result = nullptr;
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"foo") == S_OK);
     unsigned long index = {};
@@ -73,7 +89,7 @@ TEST_METHOD (ReplaceNoReplaceTerm)
 TEST_METHOD (ReplaceEmptyStringReplaceTerm)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     PWSTR result = nullptr;
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"foo") == S_OK);
     Assert::IsTrue(renameRegEx->PutReplaceTerm(L"") == S_OK);
@@ -86,7 +102,7 @@ TEST_METHOD (ReplaceEmptyStringReplaceTerm)
 TEST_METHOD (VerifyDefaultFlags)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = 0;
     Assert::IsTrue(renameRegEx->GetFlags(&flags) == S_OK);
     Assert::IsTrue(flags == 0);
@@ -95,7 +111,7 @@ TEST_METHOD (VerifyDefaultFlags)
 TEST_METHOD (VerifyCaseSensitiveSearch)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = CaseSensitive;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -104,6 +120,7 @@ TEST_METHOD (VerifyCaseSensitiveSearch)
         { L"Foo", L"boo", L"FooBar", L"booBar" },
         { L"Foo", L"boo", L"foobar", L"foobar" },
         { L"123", L"654", L"123456", L"654456" },
+        { L"mixed", L"XXX", L"MixedCase.txt", L"MixedCase.txt" },
     };
 
     for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -121,7 +138,7 @@ TEST_METHOD (VerifyCaseSensitiveSearch)
 TEST_METHOD (VerifyReplaceFirstOnly)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = 0;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -129,6 +146,8 @@ TEST_METHOD (VerifyReplaceFirstOnly)
         { L"B", L"BB", L"ABA", L"ABBA" },
         { L"B", L"A", L"ABBBA", L"AABBA" },
         { L"B", L"BBB", L"ABABAB", L"ABBBABAB" },
+        { L"A", L"B", L"Foo_A_A_A.txt", L"Foo_B_A_A.txt" },
+        { L"mixed", L"XXX", L"MixedCase.txt", L"XXXCase.txt" },
     };
 
     for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -146,7 +165,7 @@ TEST_METHOD (VerifyReplaceFirstOnly)
 TEST_METHOD (VerifyReplaceAll)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -154,6 +173,7 @@ TEST_METHOD (VerifyReplaceAll)
         { L"B", L"BB", L"ABA", L"ABBA" },
         { L"B", L"A", L"ABBBA", L"AAAAA" },
         { L"B", L"BBB", L"ABABAB", L"ABBBABBBABBB" },
+        { L"A", L"B", L"Foo_A_A_A.txt", L"Foo_B_B_B.txt" },
     };
 
     for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -171,7 +191,7 @@ TEST_METHOD (VerifyReplaceAll)
 TEST_METHOD (VerifyReplaceAllCaseInsensitive)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | CaseSensitive;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -197,7 +217,7 @@ TEST_METHOD (VerifyReplaceAllCaseInsensitive)
 TEST_METHOD (VerifyReplaceFirstOnlyUseRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -222,7 +242,7 @@ TEST_METHOD (VerifyReplaceFirstOnlyUseRegEx)
 TEST_METHOD (VerifyReplaceAllUseRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -247,7 +267,7 @@ TEST_METHOD (VerifyReplaceAllUseRegEx)
 TEST_METHOD (VerifyReplaceAllUseRegExCaseSensitive)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions | CaseSensitive;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -272,7 +292,7 @@ TEST_METHOD (VerifyReplaceAllUseRegExCaseSensitive)
 void VerifyReplaceFirstWildcard(SearchReplaceExpected sreTable[], int tableSize, DWORD flags)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
     for (int i = 0; i < tableSize; i++)
@@ -284,6 +304,229 @@ void VerifyReplaceFirstWildcard(SearchReplaceExpected sreTable[], int tableSize,
         Assert::IsTrue(renameRegEx->Replace(sreTable[i].test, &result, index) == S_OK);
         Assert::AreEqual(sreTable[i].expected, result);
         CoTaskMemFree(result);
+    }
+}
+
+TEST_METHOD (VerifyChecklistCapturesAndLiteralDollar)
+{
+    SearchReplaceExpected captures[] = {
+        { L"(.*).png", L"foo_$1.png", L"IMG_001.png", L"foo_IMG_001.png" },
+        { L"(.*).png", L"foo_$1.png", L"IMG_002.png", L"foo_IMG_002.png" },
+        { L"(.*).png", L"foo_$1.png", L"IMG_003.png", L"foo_IMG_003.png" },
+    };
+    VerifyReplaceFirstWildcard(captures, ARRAYSIZE(captures), UseRegularExpressions);
+
+    SearchReplaceExpected literal[] = {
+        { L"IMG_001", L"$1", L"IMG_001.png", L"$1.png" },
+    };
+    VerifyReplaceFirstWildcard(literal, ARRAYSIZE(literal), 0);
+}
+
+TEST_METHOD (VerifyChecklistLookbehindAndRegexRecovery)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(UseRegularExpressions));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"(?<=t)est"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"X"));
+    const SearchReplaceExpected cases[] = {
+        { nullptr, nullptr, L"test.txt", L"tX.txt" },
+        { nullptr, nullptr, L"nest.txt", L"nest.txt" },
+    };
+    for (const auto& testCase : cases)
+    {
+        CComHeapPtr<wchar_t> result;
+        unsigned long index = 0;
+        const HRESULT hr = renameRegEx->Replace(testCase.test, &result, index);
+        Assert::AreEqual(UseBoostLib ? S_OK : E_FAIL, hr);
+        if (SUCCEEDED(hr))
+        {
+            Assert::AreEqual(testCase.expected, static_cast<PCWSTR>(result));
+        }
+        else
+        {
+            Assert::IsNull(static_cast<PCWSTR>(result));
+            Assert::AreEqual(0UL, index);
+        }
+    }
+
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"test"));
+    CComHeapPtr<wchar_t> recovered;
+    unsigned long index = 0;
+    Assert::AreEqual(S_OK, renameRegEx->Replace(L"test.txt", &recovered, index));
+    Assert::AreEqual(L"X.txt", static_cast<PCWSTR>(recovered));
+    Assert::AreEqual(1UL, index);
+}
+
+TEST_METHOD (VerifyChecklistCounterSequenceAndNonConsumingNoMatch)
+{
+    const struct
+    {
+        PCWSTR replacement;
+        PCWSTR expected[5];
+        unsigned long count;
+    } cases[] = {
+        { L"item_${start=10,increment=2,padding=4}", { L"item_0010", L"item_0012", L"item_0014", L"item_0016", L"item_0018" }, 5 },
+        { L"item_${start=10,increment=0,padding=4}", { L"item_0010", L"item_0010", L"item_0010" }, 3 },
+        { L"item_${start=10,increment=-2,padding=4}", { L"item_0010", L"item_0008", L"item_0006" }, 3 },
+    };
+    for (const auto& testCase : cases)
+    {
+        CComPtr<IPowerRenameRegEx> renameRegEx;
+        Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+        Assert::AreEqual(S_OK, renameRegEx->PutFlags(EnumerateItems));
+        Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"file"));
+        Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(testCase.replacement));
+        unsigned long index = 0;
+        for (unsigned long i = 0; i < testCase.count; ++i)
+        {
+            CComHeapPtr<wchar_t> result;
+            Assert::AreEqual(S_OK, renameRegEx->Replace(L"file", &result, index));
+            Assert::AreEqual(testCase.expected[i], static_cast<PCWSTR>(result));
+            Assert::AreEqual(i + 1, index);
+        }
+        CComHeapPtr<wchar_t> unchanged;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"keep", &unchanged, index));
+        Assert::AreEqual(L"keep", static_cast<PCWSTR>(unchanged));
+        Assert::AreEqual(testCase.count, index);
+    }
+}
+
+TEST_METHOD (VerifyEnumerationFlagChangesRefreshExistingReplacement)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"item_${start=10}"));
+    const struct
+    {
+        DWORD flags;
+        PCWSTR expected;
+    } cases[] = {
+        { 0, L"item_${start=10}" },
+        { EnumerateItems, L"item_10" },
+        { 0, L"item_${start=10}" },
+        { EnumerateItems, L"item_10" },
+    };
+    for (const auto& testCase : cases)
+    {
+        Assert::AreEqual(S_OK, renameRegEx->PutFlags(testCase.flags));
+        CComHeapPtr<wchar_t> result;
+        unsigned long index = 0;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig", &result, index));
+        Assert::IsNotNull(static_cast<PCWSTR>(result));
+        Assert::AreEqual(testCase.expected, static_cast<PCWSTR>(result));
+        Assert::AreEqual(1UL, index);
+    }
+}
+
+TEST_METHOD (VerifyCombinedEnumerationAndRandomization)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(EnumerateItems | RandomizeItems));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"item_${start=10,increment=2,padding=4}_${rstringdigit=2}"));
+    const struct
+    {
+        PCWSTR prefix;
+        unsigned long expectedIndex;
+    } cases[] = {
+        { L"item_0010_", 1 },
+        { L"item_0012_", 2 },
+    };
+    unsigned long index = 0;
+    for (const auto& testCase : cases)
+    {
+        CComHeapPtr<wchar_t> result;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig", &result, index));
+        Assert::IsNotNull(static_cast<PCWSTR>(result));
+        const std::wstring output(static_cast<PCWSTR>(result));
+        Assert::AreEqual(size_t{ 12 }, output.length());
+        Assert::IsTrue(output.compare(0, 10, testCase.prefix) == 0);
+        Assert::IsTrue(output[10] >= L'0' && output[10] <= L'9');
+        Assert::IsTrue(output[11] >= L'0' && output[11] <= L'9');
+        Assert::IsTrue(output.find(L"${") == std::wstring::npos);
+        Assert::AreEqual(testCase.expectedIndex, index);
+    }
+}
+
+TEST_METHOD (VerifySuppliedTimeTokensResetBetweenItems)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig.txt"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"$YYYY_$MM_$DD__$hh-$mm-$ss_$fff.txt"));
+    const struct
+    {
+        SYSTEMTIME time;
+        PCWSTR expected;
+    } cases[] = {
+        { { 2026, 7, 0, 2, 11, 54, 54, 123 }, L"2026_07_02__11-54-54_123.txt" },
+        { { 2025, 12, 0, 3, 9, 8, 7, 6 }, L"2025_12_03__09-08-07_006.txt" },
+    };
+    for (const auto& testCase : cases)
+    {
+        Assert::AreEqual(S_OK, renameRegEx->PutFileTime(testCase.time));
+        CComHeapPtr<wchar_t> result;
+        unsigned long index = 0;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &result, index));
+        Assert::AreEqual(testCase.expected, static_cast<PCWSTR>(result));
+        Assert::AreEqual(1UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->ResetFileTime());
+        CComHeapPtr<wchar_t> resetResult;
+        index = 0;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &resetResult, index));
+        Assert::AreEqual(L"$YYYY_$MM_$DD__$hh-$mm-$ss_$fff.txt", static_cast<PCWSTR>(resetResult));
+        Assert::AreEqual(1UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->PutFileTime(testCase.time));
+        CComHeapPtr<wchar_t> reappliedResult;
+        index = 0;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &reappliedResult, index));
+        Assert::AreEqual(testCase.expected, static_cast<PCWSTR>(reappliedResult));
+        Assert::AreEqual(1UL, index);
+    }
+}
+
+TEST_METHOD (VerifySuppliedMetadataResetAndReactivation)
+{
+    const PowerRenameLib::MetadataPatternMap patterns{ { L"CAMERA_MAKE", L"Canon" } };
+    for (const DWORD flags : { DWORD{ 0 }, DWORD{ UseRegularExpressions } })
+    {
+        CComPtr<IPowerRenameRegEx> renameRegEx;
+        Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+        Assert::AreEqual(S_OK, renameRegEx->PutFlags(flags));
+        Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig.txt"));
+        Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"$CAMERA_MAKE.txt"));
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns(patterns));
+
+        unsigned long index = 0;
+        CComHeapPtr<wchar_t> result;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &result, index));
+        Assert::AreEqual(L"Canon.txt", static_cast<PCWSTR>(result));
+        Assert::AreEqual(1UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->ResetMetadata());
+        CComHeapPtr<wchar_t> resetResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &resetResult, index));
+        Assert::AreEqual(L"$CAMERA_MAKE.txt", static_cast<PCWSTR>(resetResult));
+        Assert::AreEqual(2UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns(patterns));
+        CComHeapPtr<wchar_t> reappliedResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &reappliedResult, index));
+        Assert::AreEqual(L"Canon.txt", static_cast<PCWSTR>(reappliedResult));
+        Assert::AreEqual(3UL, index);
+
+        Assert::AreEqual(S_OK, renameRegEx->PutMetadataPatterns({}));
+        CComHeapPtr<wchar_t> emptyMapResult;
+        Assert::AreEqual(S_OK, renameRegEx->Replace(L"orig.txt", &emptyMapResult, index));
+        Assert::AreEqual(L"$CAMERA_MAKE.txt", static_cast<PCWSTR>(emptyMapResult));
+        Assert::AreEqual(4UL, index);
     }
 }
 
@@ -320,7 +563,7 @@ TEST_METHOD (VerifyReplaceFirstWildNoFlags)
 TEST_METHOD (VerifyEventsFire)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     CMockPowerRenameRegExEvents* mockEvents = new CMockPowerRenameRegExEvents();
     CComPtr<IPowerRenameRegExEvents> regExEvents;
     Assert::IsTrue(mockEvents->QueryInterface(IID_PPV_ARGS(&regExEvents)) == S_OK);
@@ -339,10 +582,314 @@ TEST_METHOD (VerifyEventsFire)
     mockEvents->Release();
 }
 
+TEST_METHOD (VerifyUnsubscribedObserverStaysUnchangedAndCanSubscribeAgain)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    DWORD cookie = 0;
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+    const HRESULT firstSearchHr = renameRegEx->PutSearchTerm(L"first");
+    const HRESULT firstReplaceHr = renameRegEx->PutReplaceTerm(L"one");
+    const HRESULT firstFlagsHr = renameRegEx->PutFlags(CaseSensitive);
+    const HRESULT firstUnadviseHr = renameRegEx->UnAdvise(cookie);
+    Assert::AreEqual(S_OK, firstUnadviseHr);
+    Assert::AreEqual(S_OK, firstSearchHr);
+    Assert::AreEqual(S_OK, firstReplaceHr);
+    Assert::AreEqual(S_OK, firstFlagsHr);
+    Assert::AreEqual(L"first", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"one", mockEvents->m_replaceTerm);
+    Assert::AreEqual(DWORD{ CaseSensitive }, mockEvents->m_flags);
+
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"second"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"two"));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(MatchAllOccurrences));
+    CComHeapPtr<wchar_t> searchTerm;
+    CComHeapPtr<wchar_t> replaceTerm;
+    DWORD flags = 0;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&searchTerm));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&replaceTerm));
+    Assert::AreEqual(S_OK, renameRegEx->GetFlags(&flags));
+    Assert::AreEqual(L"second", static_cast<PCWSTR>(searchTerm));
+    Assert::AreEqual(L"two", static_cast<PCWSTR>(replaceTerm));
+    Assert::AreEqual(DWORD{ MatchAllOccurrences }, flags);
+    Assert::AreEqual(L"first", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"one", mockEvents->m_replaceTerm);
+    Assert::AreEqual(DWORD{ CaseSensitive }, mockEvents->m_flags);
+
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+    const DWORD combinedFlags = CaseSensitive | MatchAllOccurrences;
+    const HRESULT thirdSearchHr = renameRegEx->PutSearchTerm(L"third");
+    const HRESULT thirdReplaceHr = renameRegEx->PutReplaceTerm(L"three");
+    const HRESULT thirdFlagsHr = renameRegEx->PutFlags(combinedFlags);
+    const HRESULT thirdUnadviseHr = renameRegEx->UnAdvise(cookie);
+    Assert::AreEqual(S_OK, thirdUnadviseHr);
+    Assert::AreEqual(S_OK, thirdSearchHr);
+    Assert::AreEqual(S_OK, thirdReplaceHr);
+    Assert::AreEqual(S_OK, thirdFlagsHr);
+    Assert::AreEqual(L"third", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"three", mockEvents->m_replaceTerm);
+    Assert::AreEqual(combinedFlags, mockEvents->m_flags);
+}
+
+TEST_METHOD (VerifyObserverCookiesOnlyRemoveTheirOwnActiveSubscription)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    const HRESULT createHr = CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx);
+    Assert::AreEqual(S_OK, createHr);
+    const HRESULT flagsHr = renameRegEx->PutFlags(0);
+    Assert::AreEqual(S_OK, flagsHr);
+    CComPtr<CMockPowerRenameRegExEvents> firstObserver;
+    firstObserver.Attach(new CMockPowerRenameRegExEvents());
+    CComPtr<CMockPowerRenameRegExEvents> secondObserver;
+    secondObserver.Attach(new CMockPowerRenameRegExEvents());
+    DWORD firstCookie = 0;
+    DWORD secondCookie = 0;
+    DWORD renewedCookie = 0;
+    const HRESULT firstAdviseHr = renameRegEx->Advise(firstObserver, &firstCookie);
+    const HRESULT secondAdviseHr = renameRegEx->Advise(secondObserver, &secondCookie);
+    const HRESULT initialSearchHr = renameRegEx->PutSearchTerm(L"initial");
+    const DWORD initialFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD initialSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT firstUnadviseHr = renameRegEx->UnAdvise(firstCookie);
+    const HRESULT remainingSearchHr = renameRegEx->PutSearchTerm(L"remaining");
+    const DWORD remainingFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD remainingSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT renewedAdviseHr = renameRegEx->Advise(firstObserver, &renewedCookie);
+    const HRESULT staleUnadviseHr = renameRegEx->UnAdvise(firstCookie);
+    const HRESULT restoredSearchHr = renameRegEx->PutSearchTerm(L"restored");
+    const DWORD restoredFirstCount = firstObserver->m_searchTermChangedCount;
+    const DWORD restoredSecondCount = secondObserver->m_searchTermChangedCount;
+    const HRESULT renewedUnadviseHr = renameRegEx->UnAdvise(renewedCookie);
+    const HRESULT secondUnadviseHr = renameRegEx->UnAdvise(secondCookie);
+
+    Assert::AreEqual(S_OK, firstAdviseHr);
+    Assert::AreEqual(S_OK, secondAdviseHr);
+    Assert::AreEqual(S_OK, initialSearchHr);
+    Assert::AreEqual(S_OK, firstUnadviseHr);
+    Assert::AreEqual(S_OK, remainingSearchHr);
+    Assert::AreEqual(S_OK, renewedAdviseHr);
+    Assert::AreEqual(E_FAIL, staleUnadviseHr);
+    Assert::AreEqual(S_OK, restoredSearchHr);
+    Assert::AreEqual(S_OK, renewedUnadviseHr);
+    Assert::AreEqual(S_OK, secondUnadviseHr);
+    Assert::AreEqual(DWORD{ 1 }, initialFirstCount);
+    Assert::AreEqual(DWORD{ 1 }, initialSecondCount);
+    Assert::AreEqual(DWORD{ 1 }, remainingFirstCount);
+    Assert::AreEqual(DWORD{ 2 }, remainingSecondCount);
+    Assert::AreEqual(DWORD{ 2 }, restoredFirstCount);
+    Assert::AreEqual(DWORD{ 3 }, restoredSecondCount);
+    Assert::AreEqual(L"restored", firstObserver->m_searchTerm);
+    Assert::AreEqual(L"restored", secondObserver->m_searchTerm);
+}
+
+TEST_METHOD (VerifyUnchangedTermsNotifyOnlyWhenRenamingIsForced)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    DWORD cookie = 0;
+    Assert::AreEqual(S_OK, renameRegEx->Advise(mockEvents, &cookie));
+
+    HRESULT setterResults[8] = {};
+    DWORD searchCounts[8] = {};
+    DWORD replaceCounts[8] = {};
+    setterResults[0] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[0] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[0] = mockEvents->m_replaceTermChangedCount;
+    setterResults[1] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[1] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[1] = mockEvents->m_replaceTermChangedCount;
+    setterResults[2] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[2] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[2] = mockEvents->m_replaceTermChangedCount;
+    setterResults[3] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[3] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[3] = mockEvents->m_replaceTermChangedCount;
+    setterResults[4] = renameRegEx->PutSearchTerm(L"search", true);
+    searchCounts[4] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[4] = mockEvents->m_replaceTermChangedCount;
+    setterResults[5] = renameRegEx->PutReplaceTerm(L"replace", true);
+    searchCounts[5] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[5] = mockEvents->m_replaceTermChangedCount;
+    setterResults[6] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[6] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[6] = mockEvents->m_replaceTermChangedCount;
+    setterResults[7] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[7] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[7] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT unadviseHr = renameRegEx->UnAdvise(cookie);
+
+    Assert::AreEqual(S_OK, unadviseHr);
+    const DWORD expectedCounts[8][2] = {
+        { 1, 0 },
+        { 1, 1 },
+        { 1, 1 },
+        { 1, 1 },
+        { 2, 1 },
+        { 2, 2 },
+        { 2, 2 },
+        { 2, 2 }
+    };
+    for (size_t index = 0; index < ARRAYSIZE(setterResults); ++index)
+    {
+        Assert::AreEqual(S_OK, setterResults[index]);
+        Assert::AreEqual(expectedCounts[index][0], searchCounts[index]);
+        Assert::AreEqual(expectedCounts[index][1], replaceCounts[index]);
+    }
+    Assert::AreEqual(L"search", mockEvents->m_searchTerm);
+    Assert::AreEqual(L"replace", mockEvents->m_replaceTerm);
+}
+
+TEST_METHOD (VerifyRepeatedClearsNotifyForSearchButNotForReplacement)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    CComHeapPtr<wchar_t> firstSearch;
+    CComHeapPtr<wchar_t> repeatedSearch;
+    CComHeapPtr<wchar_t> firstReplace;
+    CComHeapPtr<wchar_t> repeatedReplace;
+    DWORD cookie = 0;
+    const HRESULT adviseHr = renameRegEx->Advise(mockEvents, &cookie);
+
+    HRESULT setterResults[6] = {};
+    DWORD searchCounts[6] = {};
+    DWORD replaceCounts[6] = {};
+    HRESULT getterResults[4] = {};
+    DWORD getterSearchCounts[4] = {};
+    DWORD getterReplaceCounts[4] = {};
+    setterResults[0] = renameRegEx->PutSearchTerm(L"search", false);
+    searchCounts[0] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[0] = mockEvents->m_replaceTermChangedCount;
+    setterResults[1] = renameRegEx->PutReplaceTerm(L"replace", false);
+    searchCounts[1] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[1] = mockEvents->m_replaceTermChangedCount;
+    setterResults[2] = renameRegEx->PutSearchTerm(L"", false);
+    searchCounts[2] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[2] = mockEvents->m_replaceTermChangedCount;
+    const bool firstSearchPayloadIsNull = mockEvents->m_searchTerm == nullptr;
+    getterResults[0] = renameRegEx->GetSearchTerm(&firstSearch);
+    getterSearchCounts[0] = mockEvents->m_searchTermChangedCount;
+    getterReplaceCounts[0] = mockEvents->m_replaceTermChangedCount;
+    setterResults[3] = renameRegEx->PutSearchTerm(L"", false);
+    searchCounts[3] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[3] = mockEvents->m_replaceTermChangedCount;
+    const bool repeatedSearchPayloadIsNull = mockEvents->m_searchTerm == nullptr;
+    getterResults[1] = renameRegEx->GetSearchTerm(&repeatedSearch);
+    getterSearchCounts[1] = mockEvents->m_searchTermChangedCount;
+    getterReplaceCounts[1] = mockEvents->m_replaceTermChangedCount;
+    setterResults[4] = renameRegEx->PutReplaceTerm(L"", false);
+    searchCounts[4] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[4] = mockEvents->m_replaceTermChangedCount;
+    const bool firstReplacePayloadIsEmpty = mockEvents->m_replaceTerm != nullptr && mockEvents->m_replaceTerm[0] == L'\0';
+    getterResults[2] = renameRegEx->GetReplaceTerm(&firstReplace);
+    getterSearchCounts[2] = mockEvents->m_searchTermChangedCount;
+    getterReplaceCounts[2] = mockEvents->m_replaceTermChangedCount;
+    setterResults[5] = renameRegEx->PutReplaceTerm(L"", false);
+    searchCounts[5] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[5] = mockEvents->m_replaceTermChangedCount;
+    const bool repeatedReplacePayloadIsEmpty = mockEvents->m_replaceTerm != nullptr && mockEvents->m_replaceTerm[0] == L'\0';
+    getterResults[3] = renameRegEx->GetReplaceTerm(&repeatedReplace);
+    getterSearchCounts[3] = mockEvents->m_searchTermChangedCount;
+    getterReplaceCounts[3] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT unadviseHr = renameRegEx->UnAdvise(cookie);
+    const DWORD finalSearchCount = mockEvents->m_searchTermChangedCount;
+    const DWORD finalReplaceCount = mockEvents->m_replaceTermChangedCount;
+
+    Assert::AreEqual(S_OK, adviseHr);
+    Assert::AreEqual(S_OK, unadviseHr);
+    const DWORD expectedSetterCounts[6][2] = {
+        { 1, 0 },
+        { 1, 1 },
+        { 2, 1 },
+        { 3, 1 },
+        { 3, 2 },
+        { 3, 2 }
+    };
+    for (size_t index = 0; index < ARRAYSIZE(setterResults); ++index)
+    {
+        Assert::AreEqual(S_OK, setterResults[index]);
+        Assert::AreEqual(expectedSetterCounts[index][0], searchCounts[index]);
+        Assert::AreEqual(expectedSetterCounts[index][1], replaceCounts[index]);
+    }
+    const DWORD expectedGetterCounts[4][2] = {
+        { 2, 1 },
+        { 3, 1 },
+        { 3, 2 },
+        { 3, 2 }
+    };
+    for (size_t index = 0; index < ARRAYSIZE(getterResults); ++index)
+    {
+        Assert::AreEqual(S_OK, getterResults[index]);
+        Assert::AreEqual(expectedGetterCounts[index][0], getterSearchCounts[index]);
+        Assert::AreEqual(expectedGetterCounts[index][1], getterReplaceCounts[index]);
+    }
+    Assert::AreEqual(DWORD{ 3 }, finalSearchCount);
+    Assert::AreEqual(DWORD{ 2 }, finalReplaceCount);
+    Assert::IsTrue(firstSearch == nullptr);
+    Assert::IsTrue(repeatedSearch == nullptr);
+    Assert::IsTrue(firstReplace != nullptr);
+    Assert::IsTrue(repeatedReplace != nullptr);
+    Assert::AreEqual(L"", static_cast<PCWSTR>(firstReplace));
+    Assert::AreEqual(L"", static_cast<PCWSTR>(repeatedReplace));
+    Assert::IsTrue(firstSearchPayloadIsNull);
+    Assert::IsTrue(repeatedSearchPayloadIsNull);
+    Assert::IsTrue(firstReplacePayloadIsEmpty);
+    Assert::IsTrue(repeatedReplacePayloadIsEmpty);
+}
+
+TEST_METHOD (VerifyTermGetterCopiesAreIndependentOfStoredTerms)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(0));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"search"));
+    Assert::AreEqual(S_OK, renameRegEx->PutReplaceTerm(L"replace"));
+
+    CComHeapPtr<wchar_t> firstSearch;
+    CComHeapPtr<wchar_t> firstReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&firstSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&firstReplace));
+    Assert::IsTrue(firstSearch != nullptr);
+    Assert::IsTrue(firstReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(firstSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(firstReplace));
+    firstSearch[0] = L'X';
+    firstReplace[0] = L'Y';
+
+    CComHeapPtr<wchar_t> secondSearch;
+    CComHeapPtr<wchar_t> secondReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&secondSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&secondReplace));
+    Assert::IsTrue(secondSearch != nullptr);
+    Assert::IsTrue(secondReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(secondSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(secondReplace));
+
+    firstSearch.Free();
+    firstReplace.Free();
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(secondSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(secondReplace));
+    CComHeapPtr<wchar_t> thirdSearch;
+    CComHeapPtr<wchar_t> thirdReplace;
+    Assert::AreEqual(S_OK, renameRegEx->GetSearchTerm(&thirdSearch));
+    Assert::AreEqual(S_OK, renameRegEx->GetReplaceTerm(&thirdReplace));
+    Assert::IsTrue(thirdSearch != nullptr);
+    Assert::IsTrue(thirdReplace != nullptr);
+    Assert::AreEqual(L"search", static_cast<PCWSTR>(thirdSearch));
+    Assert::AreEqual(L"replace", static_cast<PCWSTR>(thirdReplace));
+}
+
 TEST_METHOD (VerifySimpleCounterNoRegex)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -358,7 +905,7 @@ TEST_METHOD (VerifySimpleCounterNoRegex)
 TEST_METHOD (VerifySimpleCounterNoEnum)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -374,7 +921,7 @@ TEST_METHOD (VerifySimpleCounterNoEnum)
 TEST_METHOD (VerifySimpleCounter)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -390,7 +937,7 @@ TEST_METHOD (VerifySimpleCounter)
 TEST_METHOD (VerifyMultipleCounters)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"bar") == S_OK);
@@ -405,7 +952,7 @@ TEST_METHOD (VerifyMultipleCounters)
 TEST_METHOD (VerifyCounterIncrementCustomization)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"bar") == S_OK);
@@ -424,7 +971,7 @@ TEST_METHOD (VerifyCounterIncrementCustomization)
 TEST_METHOD (VerifyCounterStartCustomization)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"bar") == S_OK);
@@ -439,7 +986,7 @@ TEST_METHOD (VerifyCounterStartCustomization)
 TEST_METHOD (VerifyCounterPaddingCustomization)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"bar") == S_OK);
@@ -454,7 +1001,7 @@ TEST_METHOD (VerifyCounterPaddingCustomization)
 TEST_METHOD (VerifyCounterAllCustomizations)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     Assert::IsTrue(renameRegEx->PutSearchTerm(L"bar") == S_OK);
@@ -469,7 +1016,7 @@ TEST_METHOD (VerifyCounterAllCustomizations)
 TEST_METHOD (VerifyRandomizerDefaultFlags)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = 0;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -484,7 +1031,7 @@ TEST_METHOD (VerifyRandomizerDefaultFlags)
 TEST_METHOD (VerifyRandomizerNoRegex)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -499,7 +1046,7 @@ TEST_METHOD (VerifyRandomizerNoRegex)
 TEST_METHOD (VerifyRandomizerNoRandomizerRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -514,7 +1061,7 @@ TEST_METHOD (VerifyRandomizerNoRandomizerRegEx)
 TEST_METHOD (VerifyRandomizerRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -531,7 +1078,7 @@ TEST_METHOD (VerifyRandomizerRegEx)
 TEST_METHOD (VerifyRandomizerRegExZeroValue)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -546,7 +1093,7 @@ TEST_METHOD (VerifyRandomizerRegExZeroValue)
 TEST_METHOD (VerifyRandomizerRegExChar)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -563,7 +1110,7 @@ TEST_METHOD (VerifyRandomizerRegExChar)
 TEST_METHOD (VerifyRandomizerRegExNum)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -580,7 +1127,7 @@ TEST_METHOD (VerifyRandomizerRegExNum)
 TEST_METHOD (VerifyRandomizerRegExUuid)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -597,7 +1144,7 @@ TEST_METHOD (VerifyRandomizerRegExUuid)
 TEST_METHOD (VerifyRandomizerRegExAllBackToBack)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = RandomizeItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
     PWSTR result = nullptr;
@@ -614,7 +1161,7 @@ TEST_METHOD (VerifyRandomizerRegExAllBackToBack)
 TEST_METHOD(VerifyCounterIncrementsWhenResultIsUnchanged)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = EnumerateItems | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -651,7 +1198,7 @@ TEST_METHOD(VerifyCounterIncrementsWhenResultIsUnchanged)
 void VerifyNormalizationHelper(DWORD flags)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
     // 1. Unicode Normalization: NFD source with NFC search term.
@@ -698,7 +1245,7 @@ TEST_METHOD(VerifyUnicodeAndWhitespaceNormalizationRegex)
 TEST_METHOD(VerifyRegexMetacharacterDollarSign)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -714,7 +1261,7 @@ TEST_METHOD(VerifyRegexMetacharacterDollarSign)
 TEST_METHOD(VerifyRegexMetacharacterCaret)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 

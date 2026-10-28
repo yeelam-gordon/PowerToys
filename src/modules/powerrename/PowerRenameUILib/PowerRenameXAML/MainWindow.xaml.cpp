@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "MainWindow.xaml.h"
+#include "..\PowerRenameSelectionCommands.h"
 #if __has_include("MainWindow.g.cpp")
 #include "MainWindow.g.cpp"
 #endif
@@ -40,8 +41,10 @@ HINSTANCE g_hostHInst;
 extern std::vector<std::wstring> g_files;
 
 // Theming
-ThemeListener theme_listener{};
 HWND CurrentWindow;
+
+#ifndef POWERRENAME_SCOPE_COMPONENT_TESTS
+ThemeListener theme_listener{};
 
 void handleTheme()
 {
@@ -50,6 +53,7 @@ void handleTheme()
     Logger::info(L"Theme is now {}", isDark ? L"Dark" : L"Light");
     ThemeHelpers::SetImmersiveDarkMode(CurrentWindow, isDark);
 }
+#endif
 
 // Disabled for now, because it causes indentation and icons to appear "asynchronously"
 // #define ENABLE_RECYCLING_VIRTUALIZATION_MODE
@@ -115,8 +119,10 @@ namespace winrt::PowerRenameUI::implementation
         CurrentWindow = m_window;
 
         // Attach theme handling
+#ifndef POWERRENAME_SCOPE_COMPONENT_TESTS
         theme_listener.AddChangedHandler(handleTheme);
         handleTheme();
+#endif
 
         Microsoft::UI::WindowId windowId =
             Microsoft::UI::GetWindowIdFromWindow(m_window);
@@ -883,14 +889,7 @@ namespace winrt::PowerRenameUI::implementation
         UINT itemCount = 0;
         m_prManager->GetItemCount(&itemCount);
         bool selected = checkBox_selectAll().IsChecked().GetBoolean();
-        for (UINT i = 0; i < itemCount; i++)
-        {
-            CComPtr<IPowerRenameItem> spItem;
-            if (SUCCEEDED(m_prManager->GetItemByIndex(i, &spItem)))
-            {
-                spItem->PutSelected(selected);
-            }
-        }
+        PowerRenameSelectionCommands::SelectAll(*m_prManager, itemCount, selected);
         UpdateCounts();
     }
 
@@ -1388,6 +1387,5 @@ namespace winrt::PowerRenameUI::implementation
         return S_OK;
     }
 }
-
 
 

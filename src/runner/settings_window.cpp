@@ -1,4 +1,10 @@
 #include "pch.h"
+#include "settings_window.h"
+#include <common/interop/pipe_caller_auth.h>
+#include <common/logger/logger.h>
+
+// Unit tests compile the launch flow without initializing Runner UI and its shared IPC events.
+#ifndef UNIT_TEST
 #include <WinSafer.h>
 #include <Sddl.h>
 #include <sstream>
@@ -19,7 +25,6 @@
 #include <common/SettingsAPI/settings_helpers.cpp>
 #include <common/version/version.h>
 #include <common/version/helper.h>
-#include <common/logger/logger.h>
 #include <common/utils/resources.h>
 #include <common/utils/elevation.h>
 #include <common/utils/process_path.h>
@@ -27,9 +32,7 @@
 #include <common/utils/winapi_error.h>
 #include <common/updating/updateState.h>
 #include <common/themes/windows_colors.h>
-#include "settings_window.h"
 #include "settings_window_startup.h"
-#include "settings_launch_image.h"
 #include "bug_report.h"
 
 #define BUFSIZE 1024
@@ -441,7 +444,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
 {
     PROCESS_INFORMATION process_info = { 0 };
     HANDLE hToken = nullptr;
-    SettingsLaunchImage launch_image;
+    bool verifyBeforeLaunch = false;
 
     // Arguments for calling the settings executable:
     // "C:\powertoys_path\PowerToysSettings.exe" powertoys_pipe settings_pipe powertoys_pid settings_theme
@@ -581,24 +584,7 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
                 Logger::error(L"Failed to read Runner signing metadata before launching Settings: {:#010x}", static_cast<unsigned long>(metadataStatus));
                 goto LExit;
             }
-            if (runnerHasSignature)
-            {
-                const HRESULT opened = launch_image.Open(executable_path);
-                if (FAILED(opened))
-                {
-                    Logger::error(L"Failed to open Settings image for launch: {:#010x}", static_cast<unsigned long>(opened));
-                    goto LExit;
-                }
-                const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(launch_image.File(),
-                                                                                   launch_image.Path(),
-                                                                                   interop_auth::GetOwnModuleVersion());
-                if (!verified.accepted)
-                {
-                    Logger::error(L"Settings image could not be verified before launch: {}", verified.reasonCode);
-                    goto LExit;
-                }
-                executable_path = launch_image.Path();
-            }
+            verifyBeforeLaunch = runnerHasSignature;
         }
     }
 
@@ -608,32 +594,33 @@ void run_settings_window(bool show_oobe_window, bool show_scoobe_window, std::op
         // attribute list from Windows Explorer (this happens when PowerToys is executed
         // as Administrator from a non-Administrator user or an error occur trying).
         // In the second case the Settings process will run elevated.
-        if (!settings_window_startup.TryLaunch([&]() {
-                STARTUPINFO startup_info = { sizeof(startup_info) };
-                if (!CreateProcessW(executable_path.c_str(),
-                                    executable_args.data(),
-                                    nullptr,
-                                    nullptr,
-                                    FALSE,
-                                    0,
-                                    nullptr,
-                                    nullptr,
-                                    &startup_info,
-                                    &process_info))
-                {
-                    Logger::error(L"Failed to launch Settings: {}", GetLastError());
-                    return false;
-                }
+        const auto expectedVersion = verifyBeforeLaunch ? interop_auth::GetOwnModuleVersion() : 0;
+        if (!VerifyAndLaunch(executable_path, verifyBeforeLaunch, expectedVersion, [&](const std::wstring& launchPath) {
+                return settings_window_startup.TryLaunch([&]() {
+                    STARTUPINFO startup_info = { sizeof(startup_info) };
+                    if (!CreateProcessW(launchPath.c_str(),
+                                        executable_args.data(),
+                                        nullptr,
+                                        nullptr,
+                                        FALSE,
+                                        0,
+                                        nullptr,
+                                        nullptr,
+                                        &startup_info,
+                                        &process_info))
+                    {
+                        Logger::error(L"Failed to launch Settings: {}", GetLastError());
+                        return false;
+                    }
 
-                g_settings_process_id = process_info.dwProcessId;
-                return true;
+                    g_settings_process_id = process_info.dwProcessId;
+                    return true;
+                });
             }))
         {
             goto LExit;
         }
     }
-
-    launch_image = {};
 
     {
         std::unique_lock lock{ ipc_mutex };
@@ -1065,4 +1052,53 @@ ESettingsWindowNames ESettingsWindowNames_from_string(std::string value)
     }
 
     return ESettingsWindowNames::Dashboard;
+}
+#endif
+
+bool VerifyAndLaunch(const std::wstring& requestedPath,
+                     bool verifyBeforeLaunch,
+                     unsigned long long expectedVersion,
+                     const std::function<bool(const std::wstring&)>& launch)
+{
+    wil::unique_hfile file;
+    std::wstring launchPath = requestedPath;
+    if (verifyBeforeLaunch)
+    {
+        file.reset(CreateFileW(requestedPath.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+        if (!file)
+        {
+            Logger::error(L"Failed to open Settings launch file: {}", GetLastError());
+            return false;
+        }
+
+        constexpr DWORD flags = FILE_NAME_NORMALIZED | VOLUME_NAME_DOS;
+        const DWORD length = GetFinalPathNameByHandleW(file.get(), nullptr, 0, flags);
+        if (length == 0)
+        {
+            Logger::error(L"Failed to resolve Settings launch path: {}", GetLastError());
+            return false;
+        }
+        launchPath.resize(length);
+        const DWORD written = GetFinalPathNameByHandleW(file.get(), launchPath.data(), length, flags);
+        if (written == 0)
+        {
+            Logger::error(L"Failed to resolve Settings launch path: {}", GetLastError());
+            return false;
+        }
+        if (written >= length)
+        {
+            Logger::error(L"Settings launch path exceeded the resolved buffer: required={}, capacity={}", written, length);
+            return false;
+        }
+        launchPath.resize(written);
+
+        const auto verified = interop_auth::VerifyMicrosoftSignedLaunchImage(file.get(), launchPath, expectedVersion);
+        if (!verified.accepted)
+        {
+            Logger::error(L"Settings launch file verification failed: {}", verified.reasonCode);
+            return false;
+        }
+    }
+
+    return launch(launchPath);
 }

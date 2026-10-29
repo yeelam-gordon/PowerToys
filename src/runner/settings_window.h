@@ -1,7 +1,14 @@
 #pragma once
+#include <functional>
 #include <optional>
 #include <string>
 #include "settings_window_startup.h"
+
+// The launch action runs while the checked file remains open. The caller owns startup coordination.
+bool VerifyAndLaunch(const std::wstring& requestedPath,
+                     bool verifyBeforeLaunch,
+                     unsigned long long expectedVersion,
+                     const std::function<bool(const std::wstring&)>& launch);
 
 enum class ESettingsWindowNames
 {

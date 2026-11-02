@@ -744,6 +744,77 @@ TEST_METHOD (VerifyUnchangedTermsNotifyOnlyWhenRenamingIsForced)
     Assert::AreEqual(L"replace", mockEvents->m_replaceTerm);
 }
 
+TEST_METHOD (VerifyEnumerationTemplateChangesNotifyOnlyWhenChangedOrForced)
+{
+    CComPtr<IPowerRenameRegEx> renameRegEx;
+    Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx));
+    Assert::AreEqual(S_OK, renameRegEx->PutFlags(EnumerateItems));
+    Assert::AreEqual(S_OK, renameRegEx->PutSearchTerm(L"orig"));
+    CComPtr<CMockPowerRenameRegExEvents> mockEvents;
+    mockEvents.Attach(new CMockPowerRenameRegExEvents());
+    CComHeapPtr<wchar_t> firstOutput;
+    CComHeapPtr<wchar_t> changedOutput;
+    unsigned long firstIndex = 0;
+    unsigned long changedIndex = 0;
+    DWORD cookie = 0;
+    const HRESULT adviseHr = renameRegEx->Advise(mockEvents, &cookie);
+
+    HRESULT setterResults[6] = {};
+    DWORD searchCounts[6] = {};
+    DWORD replaceCounts[6] = {};
+    setterResults[0] = renameRegEx->PutReplaceTerm(L"item_${start=10}", false);
+    searchCounts[0] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[0] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT firstReplaceHr = renameRegEx->Replace(L"orig", &firstOutput, firstIndex);
+    const DWORD firstOutputSearchCount = mockEvents->m_searchTermChangedCount;
+    const DWORD firstOutputReplaceCount = mockEvents->m_replaceTermChangedCount;
+    setterResults[1] = renameRegEx->PutReplaceTerm(L"item_${start=10}", false);
+    searchCounts[1] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[1] = mockEvents->m_replaceTermChangedCount;
+    setterResults[2] = renameRegEx->PutReplaceTerm(L"item_${start=10}", true);
+    searchCounts[2] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[2] = mockEvents->m_replaceTermChangedCount;
+    setterResults[3] = renameRegEx->PutReplaceTerm(L"item_${start=10}", false);
+    searchCounts[3] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[3] = mockEvents->m_replaceTermChangedCount;
+    setterResults[4] = renameRegEx->PutReplaceTerm(L"item_${start=20}", false);
+    searchCounts[4] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[4] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT changedReplaceHr = renameRegEx->Replace(L"orig", &changedOutput, changedIndex);
+    const DWORD changedOutputSearchCount = mockEvents->m_searchTermChangedCount;
+    const DWORD changedOutputReplaceCount = mockEvents->m_replaceTermChangedCount;
+    setterResults[5] = renameRegEx->PutReplaceTerm(L"item_${start=20}", false);
+    searchCounts[5] = mockEvents->m_searchTermChangedCount;
+    replaceCounts[5] = mockEvents->m_replaceTermChangedCount;
+    const HRESULT unadviseHr = renameRegEx->UnAdvise(cookie);
+    const DWORD finalSearchCount = mockEvents->m_searchTermChangedCount;
+    const DWORD finalReplaceCount = mockEvents->m_replaceTermChangedCount;
+
+    Assert::AreEqual(S_OK, adviseHr);
+    Assert::AreEqual(S_OK, unadviseHr);
+    const DWORD expectedReplaceCounts[6] = { 1, 1, 2, 2, 3, 3 };
+    for (size_t index = 0; index < ARRAYSIZE(setterResults); ++index)
+    {
+        Assert::AreEqual(S_OK, setterResults[index]);
+        Assert::AreEqual(DWORD{ 0 }, searchCounts[index]);
+        Assert::AreEqual(expectedReplaceCounts[index], replaceCounts[index]);
+    }
+    Assert::AreEqual(S_OK, firstReplaceHr);
+    Assert::IsNotNull(static_cast<PCWSTR>(firstOutput));
+    Assert::AreEqual(L"item_10", static_cast<PCWSTR>(firstOutput));
+    Assert::AreEqual(1UL, firstIndex);
+    Assert::AreEqual(DWORD{ 0 }, firstOutputSearchCount);
+    Assert::AreEqual(DWORD{ 1 }, firstOutputReplaceCount);
+    Assert::AreEqual(S_OK, changedReplaceHr);
+    Assert::IsNotNull(static_cast<PCWSTR>(changedOutput));
+    Assert::AreEqual(L"item_20", static_cast<PCWSTR>(changedOutput));
+    Assert::AreEqual(1UL, changedIndex);
+    Assert::AreEqual(DWORD{ 0 }, changedOutputSearchCount);
+    Assert::AreEqual(DWORD{ 3 }, changedOutputReplaceCount);
+    Assert::AreEqual(DWORD{ 0 }, finalSearchCount);
+    Assert::AreEqual(DWORD{ 3 }, finalReplaceCount);
+}
+
 TEST_METHOD (VerifyRepeatedClearsNotifyForSearchButNotForReplacement)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;

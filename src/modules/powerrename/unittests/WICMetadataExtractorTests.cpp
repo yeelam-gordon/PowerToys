@@ -354,6 +354,29 @@ namespace WICMetadataExtractorTests
             Assert::IsTrue(patterns.find(MetadataPatterns::CREATOR) == patterns.end());
         }
 
+        TEST_METHOD (ExtractXMPPatterns_RightsCreatesBothAliases)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test.jpg", MetadataType::XMP);
+
+            const auto rights = patterns.find(MetadataPatterns::RIGHTS);
+            const auto copyright = patterns.find(MetadataPatterns::COPYRIGHT);
+            Assert::IsTrue(rights != patterns.end(), L"RIGHTS should be extracted from acquired XMP rights");
+            Assert::IsTrue(copyright != patterns.end(), L"COPYRIGHT should alias acquired XMP rights");
+            Assert::AreEqual(L"metadatamatters.blog", rights->second.c_str());
+            Assert::AreEqual(L"metadatamatters.blog", copyright->second.c_str());
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_MissingRightsOmitsBothAliases)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test_2.jpg", MetadataType::XMP);
+
+            Assert::IsFalse(patterns.empty(), L"The fixture without rights should retain its other acquired XMP fields");
+            Assert::IsTrue(patterns.find(MetadataPatterns::RIGHTS) == patterns.end());
+            Assert::IsTrue(patterns.find(MetadataPatterns::COPYRIGHT) == patterns.end());
+        }
+
         TEST_METHOD(ExtractXMP_CreatorSequence_PreservesOrderAndUnicode)
         {
             CTestFileHelper testFiles;

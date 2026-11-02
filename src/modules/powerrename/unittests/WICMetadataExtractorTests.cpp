@@ -377,6 +377,19 @@ namespace WICMetadataExtractorTests
             Assert::IsTrue(patterns.find(MetadataPatterns::COPYRIGHT) == patterns.end());
         }
 
+        TEST_METHOD (ExtractXMPPatterns_JoinsAndSanitizesOrderedSubjects)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test.jpg", MetadataType::XMP);
+
+            const auto subject = patterns.find(MetadataPatterns::SUBJECT);
+            Assert::IsTrue(subject != patterns.end(), L"SUBJECT should be extracted from the ordered XMP subject entries");
+            Assert::AreEqual(
+                L"keywords go here; keywords_ test image metadata; Users; carl; Documents; Websites; aa; carlsite; "
+                L"content; blog; sample; templates; metadata; all; fields; w; ps; hist.jpg",
+                subject->second.c_str());
+        }
+
         TEST_METHOD(ExtractXMP_CreatorSequence_PreservesOrderAndUnicode)
         {
             CTestFileHelper testFiles;

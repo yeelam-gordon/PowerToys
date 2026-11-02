@@ -390,6 +390,15 @@ namespace WICMetadataExtractorTests
                 subject->second.c_str());
         }
 
+        TEST_METHOD (ExtractXMPPatterns_MissingSubjectOmitsPattern)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test_2.jpg", MetadataType::XMP);
+
+            Assert::IsFalse(patterns.empty(), L"The fixture without subjects should retain its other acquired XMP fields");
+            Assert::IsTrue(patterns.find(MetadataPatterns::SUBJECT) == patterns.end(), L"Absent subjects must not create SUBJECT");
+        }
+
         TEST_METHOD(ExtractXMP_CreatorSequence_PreservesOrderAndUnicode)
         {
             CTestFileHelper testFiles;

@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Helpers.h"
 #include "MetadataPatternExtractor.h"
+#include "MockPowerRenameItem.h"
+#include "PowerRenameRegEx.h"
+#include "Renaming.h"
 #include "TestFileHelper.h"
 #include "WICMetadataExtractor.h"
 #include <array>
@@ -243,6 +246,73 @@ namespace WICMetadataExtractorTests
     TEST_CLASS(ExtractXMPMetadataTests)
     {
     public:
+        TEST_METHOD (DoRenameClearsAcquiredMetadataBeforeNextLiteralReplace)
+        {
+            struct ComInitializationScope
+            {
+                HRESULT initializationResult;
+                ~ComInitializationScope()
+                {
+                    if (SUCCEEDED(initializationResult))
+                    {
+                        CoUninitialize();
+                    }
+                }
+            } comInitialization{ CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
+            if (comInitialization.initializationResult == RPC_E_CHANGED_MODE)
+            {
+                comInitialization.initializationResult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+            }
+            Assert::IsTrue(SUCCEEDED(comInitialization.initializationResult), L"Caller metadata reset requires successful COM initialization");
+
+            const std::wstring testFile = GetTestDataPath() + L"\\xmp_test.jpg";
+            for (const bool useBoost : std::array<bool, 2>{ false, true })
+            {
+                const PCWSTR context = useBoost ? L"caller-metadata-reset/config-true" : L"caller-metadata-reset/config-false";
+                CComPtr<IPowerRenameRegEx> engine;
+                Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(useBoost, &engine), context);
+                Assert::AreEqual(S_OK, engine->PutFlags(MetadataSourceXMP), context);
+                Assert::AreEqual(S_OK, engine->PutSearchTerm(L"xmp_test.jpg"), context);
+                Assert::AreEqual(S_OK, engine->PutReplaceTerm(L"$RIGHTS.jpg"), context);
+                DWORD flags = 0;
+                Assert::AreEqual(S_OK, engine->GetFlags(&flags), context);
+                Assert::AreEqual(static_cast<DWORD>(MetadataSourceXMP), flags, context);
+                MetadataType metadataType = MetadataType::EXIF;
+                Assert::AreEqual(S_OK, engine->GetMetadataType(&metadataType), context);
+                Assert::AreEqual(static_cast<int>(MetadataType::XMP), static_cast<int>(metadataType), context);
+
+                CComPtr<IPowerRenameItem> item;
+                const SYSTEMTIME zeroTime{};
+                Assert::AreEqual(S_OK, CMockPowerRenameItem::CreateInstance(testFile.c_str(), L"xmp_test.jpg", 0, false, zeroTime, &item), context);
+                CComHeapPtr<wchar_t> initialName;
+                Assert::AreEqual(S_OK, item->GetNewName(&initialName), context);
+                Assert::IsNull(static_cast<PCWSTR>(initialName), context);
+
+                unsigned long callerIndex = 0;
+                CComHeapPtr<wchar_t> postCallerName;
+                unsigned long postCallerIndex = 0;
+                const bool planned = DoRename(engine, callerIndex, item);
+                const HRESULT postCallerResult = engine->Replace(L"xmp_test.jpg", &postCallerName, postCallerIndex);
+
+                Assert::IsTrue(planned, context);
+                Assert::AreEqual(1UL, callerIndex, context);
+                CComHeapPtr<wchar_t> callerName;
+                Assert::AreEqual(S_OK, item->GetNewName(&callerName), context);
+                Assert::IsNotNull(static_cast<PCWSTR>(callerName), context);
+                Assert::AreEqual(L"metadatamatters.blog.jpg", static_cast<PCWSTR>(callerName), context);
+                PowerRenameItemRenameStatus status = PowerRenameItemRenameStatus::Init;
+                Assert::AreEqual(S_OK, item->GetStatus(&status), context);
+                Assert::AreEqual(static_cast<int>(PowerRenameItemRenameStatus::ShouldRename), static_cast<int>(status), context);
+                bool eligible = false;
+                Assert::AreEqual(S_OK, item->ShouldRenameItem(MetadataSourceXMP, &eligible), context);
+                Assert::IsTrue(eligible, context);
+                Assert::AreEqual(S_OK, postCallerResult, context);
+                Assert::IsNotNull(static_cast<PCWSTR>(postCallerName), context);
+                Assert::AreEqual(L"$RIGHTS.jpg", static_cast<PCWSTR>(postCallerName), context);
+                Assert::AreEqual(1UL, postCallerIndex, context);
+            }
+        }
+
         TEST_METHOD(ExtractXMP_InvalidFile_ReturnsFalse)
         {
             // Test that XMP extraction fails for nonexistent file

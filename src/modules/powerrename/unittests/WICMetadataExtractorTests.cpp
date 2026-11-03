@@ -1,9 +1,16 @@
 #include "pch.h"
 #include "Helpers.h"
 #include "MetadataPatternExtractor.h"
+#include "MockPowerRenameItem.h"
+#include "PowerRenameRegEx.h"
+#include "Renaming.h"
 #include "TestFileHelper.h"
 #include "WICMetadataExtractor.h"
+#include <array>
+#include <chrono>
 #include <filesystem>
+#include <iomanip>
+#include <locale>
 #include <sstream>
 #include <vector>
 #include <wincodecsdk.h>
@@ -239,6 +246,73 @@ namespace WICMetadataExtractorTests
     TEST_CLASS(ExtractXMPMetadataTests)
     {
     public:
+        TEST_METHOD (DoRenameClearsAcquiredMetadataBeforeNextLiteralReplace)
+        {
+            struct ComInitializationScope
+            {
+                HRESULT initializationResult;
+                ~ComInitializationScope()
+                {
+                    if (SUCCEEDED(initializationResult))
+                    {
+                        CoUninitialize();
+                    }
+                }
+            } comInitialization{ CoInitializeEx(nullptr, COINIT_MULTITHREADED) };
+            if (comInitialization.initializationResult == RPC_E_CHANGED_MODE)
+            {
+                comInitialization.initializationResult = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+            }
+            Assert::IsTrue(SUCCEEDED(comInitialization.initializationResult), L"Caller metadata reset requires successful COM initialization");
+
+            const std::wstring testFile = GetTestDataPath() + L"\\xmp_test.jpg";
+            for (const bool useBoost : std::array<bool, 2>{ false, true })
+            {
+                const PCWSTR context = useBoost ? L"caller-metadata-reset/config-true" : L"caller-metadata-reset/config-false";
+                CComPtr<IPowerRenameRegEx> engine;
+                Assert::AreEqual(S_OK, CPowerRenameRegEx::s_CreateInstance(useBoost, &engine), context);
+                Assert::AreEqual(S_OK, engine->PutFlags(MetadataSourceXMP), context);
+                Assert::AreEqual(S_OK, engine->PutSearchTerm(L"xmp_test.jpg"), context);
+                Assert::AreEqual(S_OK, engine->PutReplaceTerm(L"$RIGHTS.jpg"), context);
+                DWORD flags = 0;
+                Assert::AreEqual(S_OK, engine->GetFlags(&flags), context);
+                Assert::AreEqual(static_cast<DWORD>(MetadataSourceXMP), flags, context);
+                MetadataType metadataType = MetadataType::EXIF;
+                Assert::AreEqual(S_OK, engine->GetMetadataType(&metadataType), context);
+                Assert::AreEqual(static_cast<int>(MetadataType::XMP), static_cast<int>(metadataType), context);
+
+                CComPtr<IPowerRenameItem> item;
+                const SYSTEMTIME zeroTime{};
+                Assert::AreEqual(S_OK, CMockPowerRenameItem::CreateInstance(testFile.c_str(), L"xmp_test.jpg", 0, false, zeroTime, &item), context);
+                CComHeapPtr<wchar_t> initialName;
+                Assert::AreEqual(S_OK, item->GetNewName(&initialName), context);
+                Assert::IsNull(static_cast<PCWSTR>(initialName), context);
+
+                unsigned long callerIndex = 0;
+                CComHeapPtr<wchar_t> postCallerName;
+                unsigned long postCallerIndex = 0;
+                const bool planned = DoRename(engine, callerIndex, item);
+                const HRESULT postCallerResult = engine->Replace(L"xmp_test.jpg", &postCallerName, postCallerIndex);
+
+                Assert::IsTrue(planned, context);
+                Assert::AreEqual(1UL, callerIndex, context);
+                CComHeapPtr<wchar_t> callerName;
+                Assert::AreEqual(S_OK, item->GetNewName(&callerName), context);
+                Assert::IsNotNull(static_cast<PCWSTR>(callerName), context);
+                Assert::AreEqual(L"metadatamatters.blog.jpg", static_cast<PCWSTR>(callerName), context);
+                PowerRenameItemRenameStatus status = PowerRenameItemRenameStatus::Init;
+                Assert::AreEqual(S_OK, item->GetStatus(&status), context);
+                Assert::AreEqual(static_cast<int>(PowerRenameItemRenameStatus::ShouldRename), static_cast<int>(status), context);
+                bool eligible = false;
+                Assert::AreEqual(S_OK, item->ShouldRenameItem(MetadataSourceXMP, &eligible), context);
+                Assert::IsTrue(eligible, context);
+                Assert::AreEqual(S_OK, postCallerResult, context);
+                Assert::IsNotNull(static_cast<PCWSTR>(postCallerName), context);
+                Assert::AreEqual(L"$RIGHTS.jpg", static_cast<PCWSTR>(postCallerName), context);
+                Assert::AreEqual(1UL, postCallerIndex, context);
+            }
+        }
+
         TEST_METHOD(ExtractXMP_InvalidFile_ReturnsFalse)
         {
             // Test that XMP extraction fails for nonexistent file
@@ -352,6 +426,126 @@ namespace WICMetadataExtractorTests
 
             Assert::IsTrue(patterns.find(MetadataPatterns::AUTHOR) == patterns.end());
             Assert::IsTrue(patterns.find(MetadataPatterns::CREATOR) == patterns.end());
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_RightsCreatesBothAliases)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test.jpg", MetadataType::XMP);
+
+            const auto rights = patterns.find(MetadataPatterns::RIGHTS);
+            const auto copyright = patterns.find(MetadataPatterns::COPYRIGHT);
+            Assert::IsTrue(rights != patterns.end(), L"RIGHTS should be extracted from acquired XMP rights");
+            Assert::IsTrue(copyright != patterns.end(), L"COPYRIGHT should alias acquired XMP rights");
+            Assert::AreEqual(L"metadatamatters.blog", rights->second.c_str());
+            Assert::AreEqual(L"metadatamatters.blog", copyright->second.c_str());
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_MissingRightsOmitsBothAliases)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test_2.jpg", MetadataType::XMP);
+
+            Assert::IsFalse(patterns.empty(), L"The fixture without rights should retain its other acquired XMP fields");
+            Assert::IsTrue(patterns.find(MetadataPatterns::RIGHTS) == patterns.end());
+            Assert::IsTrue(patterns.find(MetadataPatterns::COPYRIGHT) == patterns.end());
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_JoinsAndSanitizesOrderedSubjects)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test.jpg", MetadataType::XMP);
+
+            const auto subject = patterns.find(MetadataPatterns::SUBJECT);
+            Assert::IsTrue(subject != patterns.end(), L"SUBJECT should be extracted from the ordered XMP subject entries");
+            Assert::AreEqual(
+                L"keywords go here; keywords_ test image metadata; Users; carl; Documents; Websites; aa; carlsite; "
+                L"content; blog; sample; templates; metadata; all; fields; w; ps; hist.jpg",
+                subject->second.c_str());
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_MissingSubjectOmitsPattern)
+        {
+            MetadataPatternExtractor extractor;
+            const auto patterns = extractor.ExtractPatterns(GetTestDataPath() + L"\\xmp_test_2.jpg", MetadataType::XMP);
+
+            Assert::IsFalse(patterns.empty(), L"The fixture without subjects should retain its other acquired XMP fields");
+            Assert::IsTrue(patterns.find(MetadataPatterns::SUBJECT) == patterns.end(), L"Absent subjects must not create SUBJECT");
+        }
+
+        TEST_METHOD (ExtractXMPPatterns_OffsetCreateDatesUseCurrentLocalFields)
+        {
+            using namespace std::chrono;
+            const auto effectiveBias = [](DWORD state, const DYNAMIC_TIME_ZONE_INFORMATION& zone) {
+                Assert::IsTrue(state == TIME_ZONE_ID_UNKNOWN || state == TIME_ZONE_ID_STANDARD || state == TIME_ZONE_ID_DAYLIGHT,
+                               L"Environment prerequisite: current native timezone state must be valid");
+                return minutes{ static_cast<long long>(zone.Bias) +
+                                (state == TIME_ZONE_ID_STANDARD ? static_cast<long long>(zone.StandardBias) :
+                                 state == TIME_ZONE_ID_DAYLIGHT ? static_cast<long long>(zone.DaylightBias) :
+                                                                  0LL) };
+            };
+            const auto sameTransition = [](const SYSTEMTIME& left, const SYSTEMTIME& right) {
+                return left.wYear == right.wYear && left.wMonth == right.wMonth &&
+                       left.wDayOfWeek == right.wDayOfWeek && left.wDay == right.wDay &&
+                       left.wHour == right.wHour && left.wMinute == right.wMinute &&
+                       left.wSecond == right.wSecond && left.wMilliseconds == right.wMilliseconds;
+            };
+            const auto acquire = [](const wchar_t* fixture) {
+                MetadataPatternExtractor extractor;
+                return extractor.ExtractPatterns(GetTestDataPath() + fixture, MetadataType::XMP);
+            };
+
+            DYNAMIC_TIME_ZONE_INFORMATION before{};
+            const DWORD beforeState = GetDynamicTimeZoneInformation(&before);
+            const auto bias = effectiveBias(beforeState, before);
+            const std::array<MetadataPatternMap, 2> actual{
+                acquire(L"\\xmp_test.jpg"),
+                acquire(L"\\xmp_test_2.jpg")
+            };
+            DYNAMIC_TIME_ZONE_INFORMATION after{};
+            const DWORD afterState = GetDynamicTimeZoneInformation(&after);
+            const auto afterBias = effectiveBias(afterState, after);
+            Assert::IsTrue(
+                beforeState == afterState && bias == afterBias &&
+                    before.Bias == after.Bias && before.StandardBias == after.StandardBias &&
+                    before.DaylightBias == after.DaylightBias &&
+                    before.DynamicDaylightTimeDisabled == after.DynamicDaylightTimeDisabled &&
+                    std::wstring(before.TimeZoneKeyName) == after.TimeZoneKeyName &&
+                    std::wstring(before.StandardName) == after.StandardName &&
+                    std::wstring(before.DaylightName) == after.DaylightName &&
+                    sameTransition(before.StandardDate, after.StandardDate) &&
+                    sameTransition(before.DaylightDate, after.DaylightDate),
+                L"Environment prerequisite: timezone identity, state and bias must remain stable across both acquisitions");
+
+            // Independent UTC literals from the fixtures' authored offsets; use CURRENT bias, not historical DST.
+            const std::array<sys_seconds, 2> utc{
+                sys_days{ year{ 2017 } / May / 29 } + hours{ 21 } + minutes{ 19 } + seconds{ 21 },
+                sys_days{ year{ 2017 } / December / 20 } + hours{ 2 } + minutes{ 27 } + seconds{ 28 }
+            };
+            const std::array<const wchar_t*, 7> keys{
+                L"CREATE_DATE_YYYY", L"CREATE_DATE_YY", L"CREATE_DATE_MM", L"CREATE_DATE_DD", L"CREATE_DATE_HH", L"CREATE_DATE_mm", L"CREATE_DATE_SS"
+            };
+            for (size_t row = 0; row < actual.size(); ++row)
+            {
+                const auto local = utc[row] - bias;
+                const auto day = floor<days>(local);
+                const year_month_day date{ day };
+                const hh_mm_ss time{ local - day };
+                const std::array<int, 7> fields{
+                    static_cast<int>(date.year()), static_cast<int>(date.year()) % 100, static_cast<int>(static_cast<unsigned int>(date.month())), static_cast<int>(static_cast<unsigned int>(date.day())), static_cast<int>(time.hours().count()), static_cast<int>(time.minutes().count()), static_cast<int>(time.seconds().count())
+                };
+                for (const auto key : keys)
+                {
+                    Assert::IsTrue(actual[row].find(key) != actual[row].end(), key);
+                }
+                for (size_t component = 0; component < keys.size(); ++component)
+                {
+                    std::wostringstream expected;
+                    expected.imbue(std::locale::classic());
+                    expected << std::setfill(L'0') << std::setw(component == 0 ? 4 : 2) << fields[component];
+                    Assert::AreEqual(expected.str().c_str(), actual[row].at(keys[component]).c_str(), keys[component]);
+                }
+            }
         }
 
         TEST_METHOD(ExtractXMP_CreatorSequence_PreservesOrderAndUnicode)

@@ -37,6 +37,7 @@
     <ProjectPriFileName>PowerToys.PowerRename.pri</ProjectPriFileName>
     <RuntimeIdentifier>win10-x64;win10-arm64</RuntimeIdentifier>
     <WindowsAppSDKVerifyTransitiveDependencies>false</WindowsAppSDKVerifyTransitiveDependencies>
+    <PowerRenameScopeComponentTestBuild Condition="'$(PowerRenameScopeComponentTestBuild)' == ''">false</PowerRenameScopeComponentTestBuild>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.WindowsAppSDK" GeneratePathProperty="true" />
@@ -71,6 +72,15 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <OutDir>$(RepoRoot)$(Platform)\$(Configuration)\WinUI3Apps\</OutDir>
+    <PowerRenameXamlHeaderDirectory>$(ProjectDir)\Generated Files\PowerRenameXAML</PowerRenameXamlHeaderDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(PowerRenameScopeComponentTestBuild)' == 'true'">
+    <PowerRenameScopeComponentBuildRoot>$(RepoRoot)Generated Files\unit-test-pilot\evidence\ui02-component-host\build\$(Platform)\$(Configuration)\</PowerRenameScopeComponentBuildRoot>
+    <OutDir>$(PowerRenameScopeComponentBuildRoot)bin\</OutDir>
+    <IntDir>$(PowerRenameScopeComponentBuildRoot)obj\</IntDir>
+    <GeneratedFilesDir>$(PowerRenameScopeComponentBuildRoot)generated\</GeneratedFilesDir>
+    <PowerRenameXamlHeaderDirectory>$(GeneratedFilesDir)PowerRenameXAML</PowerRenameXamlHeaderDirectory>
+    <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
@@ -78,9 +88,26 @@
       <WarningLevel>Level4</WarningLevel>
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <!-- Need to add $(ProjectDir)\Generated Files\PowerRenameXAML files directly because of https://github.com/microsoft/microsoft-ui-xaml/issues/7652 -->
-      <AdditionalIncludeDirectories>$(ProjectDir)\Generated Files\PowerRenameXAML;$(RepoRoot)src\common\Telemetry;$(RepoRoot)src\;$(ProjectDir)..\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(PowerRenameXamlHeaderDirectory);$(RepoRoot)src\common\Telemetry;$(RepoRoot)src\;$(ProjectDir)..\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(PowerRenameScopeComponentTestBuild)' == 'true'">
+    <ClCompile>
+      <PreprocessorDefinitions>POWERRENAME_SCOPE_COMPONENT_TESTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>%(AdditionalOptions) /sourceDependencies "$(IntDir)%(Filename).dependencies.json"</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>$(OutDir)PowerToys.PowerRename.map</MapFileName>
+      <AdditionalOptions>%(AdditionalOptions) /VERBOSE:LIB</AdditionalOptions>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup Condition="'$(PowerRenameScopeComponentTestBuild)' == 'true'">
+    <ClCompile Include="..\unittests\PowerRenameScopeComponentTests.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>

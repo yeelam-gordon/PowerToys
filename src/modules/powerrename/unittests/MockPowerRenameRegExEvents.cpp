@@ -30,6 +30,7 @@ IFACEMETHODIMP CMockPowerRenameRegExEvents::QueryInterface(_In_ REFIID riid, _Ou
 
 IFACEMETHODIMP CMockPowerRenameRegExEvents::OnSearchTermChanged(_In_ PCWSTR searchTerm)
 {
+    ++m_searchTermChangedCount;
     CoTaskMemFree(m_searchTerm);
     m_searchTerm = nullptr;
     if (searchTerm != nullptr)
@@ -41,6 +42,7 @@ IFACEMETHODIMP CMockPowerRenameRegExEvents::OnSearchTermChanged(_In_ PCWSTR sear
 
 IFACEMETHODIMP CMockPowerRenameRegExEvents::OnReplaceTermChanged(_In_ PCWSTR replaceTerm)
 {
+    ++m_replaceTermChangedCount;
     CoTaskMemFree(m_replaceTerm);
     m_replaceTerm = nullptr;
     if (replaceTerm != nullptr)

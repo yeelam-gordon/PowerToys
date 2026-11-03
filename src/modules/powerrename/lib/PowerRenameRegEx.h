@@ -40,9 +40,11 @@ public:
     PowerRenameLib::MetadataType GetMetadataType() const;
 
     static HRESULT s_CreateInstance(_Outptr_ IPowerRenameRegEx** renameRegEx);
+    static HRESULT s_CreateInstance(bool useBoostLib, _Outptr_ IPowerRenameRegEx** renameRegEx);
 
 protected:
     CPowerRenameRegEx();
+    explicit CPowerRenameRegEx(bool useBoostLib);
     virtual ~CPowerRenameRegEx();
 
     void _OnSearchTermChanged();

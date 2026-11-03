@@ -1,5 +1,4 @@
 #include "pch.h"
-#include "powerrename/lib/Settings.h"
 #include <PowerRenameInterfaces.h>
 #include <PowerRenameRegEx.h>
 #include "MockPowerRenameRegExEvents.h"
@@ -11,15 +10,7 @@ namespace PowerRenameRegExBoostTests
     TEST_CLASS(SimpleTests)
     {
     public:
-TEST_CLASS_INITIALIZE(ClassInitialize)
-{
-    CSettingsInstance().SetUseBoostLib(true);
-}
-
-TEST_CLASS_CLEANUP(ClassCleanup)
-{
-    CSettingsInstance().SetUseBoostLib(false);
-}
+        static constexpr bool UseBoostLib = true;
 
 #define TESTS_PARTIAL
 #include "CommonRegExTests.h"
@@ -27,7 +18,7 @@ TEST_CLASS_CLEANUP(ClassCleanup)
 TEST_METHOD(VerifyMatchAllWildcardUseRegEx)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -66,7 +57,7 @@ TEST_METHOD(VerifyHandleCapturingGroups)
     // This differs from the Standard Library: Boost does not recognize $123 as $1 and "23".
     // To use a capturing group followed by numbers as replacement curly braces are needed.
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions | CaseSensitive;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 
@@ -113,7 +104,7 @@ TEST_METHOD(VerifyLookbehind)
     };
 
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     Assert::IsTrue(renameRegEx->PutFlags(UseRegularExpressions) == S_OK);
 
     for (int i = 0; i < ARRAYSIZE(sreTable); i++)
@@ -131,7 +122,7 @@ TEST_METHOD(VerifyLookbehind)
 TEST_METHOD (Verify12and24HourTimeFormats)
 {
     CComPtr<IPowerRenameRegEx> renameRegEx;
-    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(&renameRegEx) == S_OK);
+    Assert::IsTrue(CPowerRenameRegEx::s_CreateInstance(UseBoostLib, &renameRegEx) == S_OK);
     DWORD flags = MatchAllOccurrences | UseRegularExpressions;
     Assert::IsTrue(renameRegEx->PutFlags(flags) == S_OK);
 

@@ -30,6 +30,10 @@ std::vector<std::wstring> g_files;
 
 const std::wstring moduleName = L"PowerRename";
 
+#ifdef POWERRENAME_SCOPE_COMPONENT_TESTS
+void StartScopeSelectionComponentTests();
+#endif
+
 // Helper function to parse command line arguments for file paths
 std::vector<std::wstring> ParseCommandLineArgs(const std::wstring& commandLine)
 {
@@ -128,6 +132,10 @@ void App::OnLaunched(LaunchActivatedEventArgs const&)
         ExitProcess(0);
     }
 
+#ifdef POWERRENAME_SCOPE_COMPONENT_TESTS
+    StartScopeSelectionComponentTests();
+    return;
+#else
     auto args = std::wstring{ GetCommandLine() };
     size_t pipePos{ args.rfind(L"\\\\.\\pipe\\") };
 
@@ -271,4 +279,5 @@ void App::OnLaunched(LaunchActivatedEventArgs const&)
 
     window = make<MainWindow>();
     window.Activate();
+#endif
 }

@@ -12,6 +12,42 @@ namespace SvgPreviewHandlerUnitTests
     [STATestClass]
     public class SvgPreviewHandlerHelperTests
     {
+        [DataTestMethod]
+        [DataRow("<svg?>")]
+        [DataRow("<svg?>?>")]
+        [DataRow("<svg")]
+        [Timeout(5000)]
+        public void AddStyleSvgWithoutClosingTagShouldReturnOriginalInput(string svgData)
+        {
+            Assert.AreEqual(svgData, SvgPreviewHandlerHelper.AddStyleSVG(svgData));
+        }
+
+        [DataTestMethod]
+        [DataRow("")]
+        [DataRow(" \r\n")]
+        [DataRow("\uFEFF<?xml version=\"1.0\"?>\r\n<!-- illustration -->\r\n")]
+        public void AddStyleSvgShouldPreserveSupportedPrefixes(string prefix)
+        {
+            const string svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 50\" width=\"100\" height=\"50\"><path d=\"M0 0 L100 50\"/><rect x=\"10\" y=\"10\" width=\"40\" height=\"20\" fill=\"blue\"/></svg>";
+            var actual = SvgPreviewHandlerHelper.AddStyleSVG(prefix + svg);
+            var expectedPrefix = prefix.Replace("<?xml version=\"1.0\"?>", string.Empty);
+            var expected = expectedPrefix + SvgPreviewHandlerHelper.AddStyleSVG(svg);
+
+            Assert.AreEqual(expected, actual);
+        }
+
+        [TestMethod]
+        [Timeout(5000)]
+        public void AddStyleSvgShouldAdvancePastProcessingInstructionTerminatorInsideAttribute()
+        {
+            const string svg = "<svg data-note=\"?>\" viewBox=\"0 0 100 50\"><path d=\"M0 0 L100 50\"/></svg>";
+
+            var actual = SvgPreviewHandlerHelper.AddStyleSVG(svg);
+            var expected = SvgPreviewHandlerHelper.AddStyleSVG(svg.Replace("?>", "note")).Replace("data-note=\"note\"", "data-note=\"?>\"");
+
+            Assert.AreEqual(expected, actual);
+        }
+
         [TestMethod]
         public void CheckBlockedElementsShouldReturnTrueIfABlockedElementIsPresent()
         {

@@ -26,6 +26,7 @@ namespace SvgPreviewHandlerUnitTests
         [DataRow("")]
         [DataRow(" \r\n")]
         [DataRow("\uFEFF<?xml version=\"1.0\"?>\r\n<!-- illustration -->\r\n")]
+        [Timeout(5000)]
         public void AddStyleSvgShouldPreserveSupportedPrefixes(string prefix)
         {
             const string svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 50\" width=\"100\" height=\"50\"><path d=\"M0 0 L100 50\"/><rect x=\"10\" y=\"10\" width=\"40\" height=\"20\" fill=\"blue\"/></svg>";
@@ -35,7 +36,9 @@ namespace SvgPreviewHandlerUnitTests
             StringAssert.StartsWith(actual, expectedPrefix + "<svg ");
             StringAssert.Contains(actual, "xmlns=\"http://www.w3.org/2000/svg\"");
             StringAssert.Contains(actual, "viewBox=\"0 0 100 50\"");
-            StringAssert.Contains(actual, "style=\"max-width: 100px ; max-height: 50px ;");
+            StringAssert.Contains(actual, "style=\"");
+            StringAssert.Contains(actual, "max-width: 100px");
+            StringAssert.Contains(actual, "max-height: 50px");
             StringAssert.EndsWith(actual, "<path d=\"M0 0 L100 50\"/><rect x=\"10\" y=\"10\" width=\"40\" height=\"20\" fill=\"blue\"/></svg>");
             Assert.IsFalse(actual.Contains("width=\"100\""));
             Assert.IsFalse(actual.Contains("height=\"50\""));

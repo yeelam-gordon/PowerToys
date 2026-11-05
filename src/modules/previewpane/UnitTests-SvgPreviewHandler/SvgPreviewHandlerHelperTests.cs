@@ -31,9 +31,15 @@ namespace SvgPreviewHandlerUnitTests
             const string svg = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 100 50\" width=\"100\" height=\"50\"><path d=\"M0 0 L100 50\"/><rect x=\"10\" y=\"10\" width=\"40\" height=\"20\" fill=\"blue\"/></svg>";
             var actual = SvgPreviewHandlerHelper.AddStyleSVG(prefix + svg);
             var expectedPrefix = prefix.Replace("<?xml version=\"1.0\"?>", string.Empty);
-            var expected = expectedPrefix + SvgPreviewHandlerHelper.AddStyleSVG(svg);
 
-            Assert.AreEqual(expected, actual);
+            StringAssert.StartsWith(actual, expectedPrefix + "<svg ");
+            StringAssert.Contains(actual, "xmlns=\"http://www.w3.org/2000/svg\"");
+            StringAssert.Contains(actual, "viewBox=\"0 0 100 50\"");
+            StringAssert.Contains(actual, "style=\"max-width: 100px ; max-height: 50px ;");
+            StringAssert.EndsWith(actual, "<path d=\"M0 0 L100 50\"/><rect x=\"10\" y=\"10\" width=\"40\" height=\"20\" fill=\"blue\"/></svg>");
+            Assert.IsFalse(actual.Contains("width=\"100\""));
+            Assert.IsFalse(actual.Contains("height=\"50\""));
+            Assert.IsFalse(actual.Contains("<?xml"));
         }
 
         [TestMethod]
@@ -43,9 +49,10 @@ namespace SvgPreviewHandlerUnitTests
             const string svg = "<svg data-note=\"?>\" viewBox=\"0 0 100 50\"><path d=\"M0 0 L100 50\"/></svg>";
 
             var actual = SvgPreviewHandlerHelper.AddStyleSVG(svg);
-            var expected = SvgPreviewHandlerHelper.AddStyleSVG(svg.Replace("?>", "note")).Replace("data-note=\"note\"", "data-note=\"?>\"");
 
-            Assert.AreEqual(expected, actual);
+            StringAssert.StartsWith(actual, "<svg data-note=\"?>\" viewBox=\"0 0 100 50\" style=\"");
+            StringAssert.Contains(actual, "position: absolute; top: 50%; left: 50%;");
+            StringAssert.EndsWith(actual, "<path d=\"M0 0 L100 50\"/></svg>");
         }
 
         [TestMethod]

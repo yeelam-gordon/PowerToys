@@ -21,6 +21,7 @@
 #include "EventViewer.h"
 #include "InstallationFolder.h"
 #include "ReportGPOValues.h"
+#include "ReportPrivacy.h"
 
 using namespace std;
 using namespace std::filesystem;
@@ -399,6 +400,17 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
     ReportInstallerLogs(tempDir, reportDir);
 
     ReportInstalledContextMenuPackages(reportDir);
+
+    try
+    {
+        ReportPrivacy::RedactReportSecurityKeys(reportDir);
+    }
+    catch (const std::exception& error)
+    {
+        printf("Failed to redact report data: %s\n", error.what());
+        DeleteFolder(reportDir);
+        return 1;
+    }
 
     // Zip folder
     auto zipPath = path::path(saveZipPath);

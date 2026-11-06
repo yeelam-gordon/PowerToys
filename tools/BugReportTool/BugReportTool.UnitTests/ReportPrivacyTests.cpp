@@ -104,6 +104,24 @@ namespace BugReportToolUnitTests
             AssertTextEquals(std::string("diagnostic\r\n"), Read(report / L"unrelated.txt"));
         }
 
+        TEST_METHOD (RedactsCollectedFilesRegardlessOfExtensionCase)
+        {
+            TemporaryDirectory temporary;
+            for (const auto& extension : { L".JSON", L".Log", L".tXt" })
+            {
+                Write(temporary.path / (std::wstring(L"settings") + extension), R"({"SecurityKey":"fixture-key"})");
+            }
+
+            ReportPrivacy::RedactReportSecurityKeys(temporary.path);
+
+            for (const auto& extension : { L".JSON", L".Log", L".tXt" })
+            {
+                AssertTextEquals(
+                    R"({"SecurityKey":"<private_data>"})",
+                    Read(temporary.path / (std::wstring(L"settings") + extension)));
+            }
+        }
+
         TEST_METHOD (PropagatesFileAccessFailures)
         {
             TemporaryDirectory temporary;

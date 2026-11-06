@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <cwchar>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -33,7 +34,7 @@ namespace ReportPrivacy
         for (const auto& entry : std::filesystem::recursive_directory_iterator(reportDirectory))
         {
             const auto extension = entry.path().extension();
-            if (!entry.is_regular_file() || (extension != L".json" && extension != L".log" && extension != L".txt"))
+            if (!entry.is_regular_file() || (_wcsicmp(extension.c_str(), L".json") != 0 && _wcsicmp(extension.c_str(), L".log") != 0 && _wcsicmp(extension.c_str(), L".txt") != 0))
             {
                 continue;
             }

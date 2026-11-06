@@ -146,6 +146,22 @@ namespace BugReportToolUnitTests
             }
         }
 
+        TEST_METHOD (TemporaryDirectoryPreservesExistingDirectories)
+        {
+            TemporaryDirectory existing;
+            const auto retained = existing.path / L"retained.txt";
+            Write(retained, "retained fixture");
+            std::filesystem::path created;
+            {
+                TemporaryDirectory temporary(existing.path);
+                created = temporary.path;
+            }
+
+            Assert::IsTrue(std::filesystem::exists(retained), L"An existing fixture directory was removed.");
+            Assert::IsTrue(created != existing.path, L"An existing fixture directory was reused.");
+            AssertTextEquals("retained fixture", Read(retained));
+        }
+
     private:
         static void AssertTextEquals(const std::string& expected, const std::string& actual)
         {
@@ -154,11 +170,20 @@ namespace BugReportToolUnitTests
 
         struct TemporaryDirectory
         {
-            std::filesystem::path path = std::filesystem::temp_directory_path() / ("BugReportPrivacyTests-" + std::to_string(std::random_device{}()));
-
-            TemporaryDirectory()
+            static std::filesystem::path GenerateCandidatePath()
             {
-                std::filesystem::create_directory(path);
+                return std::filesystem::temp_directory_path() / ("BugReportPrivacyTests-" + std::to_string(std::random_device{}()));
+            }
+
+            std::filesystem::path path;
+
+            explicit TemporaryDirectory(const std::filesystem::path& candidatePath = GenerateCandidatePath()) :
+                path(candidatePath)
+            {
+                while (!std::filesystem::create_directory(path))
+                {
+                    path = GenerateCandidatePath();
+                }
             }
 
             ~TemporaryDirectory()

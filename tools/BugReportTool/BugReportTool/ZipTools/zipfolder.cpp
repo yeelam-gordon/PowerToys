@@ -5,10 +5,11 @@
 #include <Windows.h>
 
 #include <format>
+#include <stdexcept>
 #include <wil/stl.h>
 #include <wil/win32_helpers.h>
 
-void ZipFolder(std::filesystem::path zipPath, std::filesystem::path folderPath)
+void ZipFolder(std::filesystem::path zipPath, std::filesystem::path folderPath, const std::vector<std::filesystem::path>& excludedFiles)
 {
     const auto reportFilename{
         std::format("PowerToysReport_{0}.zip",
@@ -21,7 +22,22 @@ void ZipFolder(std::filesystem::path zipPath, std::filesystem::path folderPath)
 
     // tar -c --format=zip -f "ReportFile.zip" *
     const auto executable{ wil::ExpandEnvironmentStringsW<std::wstring>(LR"(%WINDIR%\System32\tar.exe)") };
-    auto commandline{ std::format(LR"("{0}" -c --format=zip -f "{1}" *)", executable, tempReportFullPath.wstring()) };
+    auto commandline{ std::format(LR"("{0}" -c --format=zip -f "{1}")", executable, tempReportFullPath.wstring()) };
+    for (const auto& file : excludedFiles)
+    {
+        std::wstring pattern;
+        // tar exclusions are patterns; preserve literal characters in report filenames.
+        for (const auto character : file.lexically_relative(folderPath).generic_wstring())
+        {
+            if (character == L'*' || character == L'?' || character == L'[' || character == L']' || character == L'\\')
+            {
+                pattern += L'\\';
+            }
+            pattern += character;
+        }
+        commandline += std::format(LR"( --exclude="{0}")", pattern);
+    }
+    commandline += L" *";
 
     const auto folderPathAsString{ folderPath.lexically_normal().wstring() };
 
@@ -42,12 +58,12 @@ void ZipFolder(std::filesystem::path zipPath, std::filesystem::path folderPath)
         throw -1;
     }
 
-    WaitForSingleObject(pi.hProcess, INFINITE);
-
-    std::error_code err{};
-    std::filesystem::rename(tempReportFullPath, finalReportFullPath, err);
-    if (err.value() != 0)
+    DWORD exitCode = 0;
+    if (WaitForSingleObject(pi.hProcess, INFINITE) != WAIT_OBJECT_0 ||
+        !GetExitCodeProcess(pi.hProcess, &exitCode) || exitCode != 0)
     {
-        wprintf_s(L"Failed to rename %s. Error code: %d\n", tempReportFullPath.native().c_str(), err.value());
+        throw std::runtime_error("Failed to create report archive");
     }
+
+    std::filesystem::rename(tempReportFullPath, finalReportFullPath);
 }

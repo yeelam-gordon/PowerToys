@@ -5,12 +5,12 @@
 #pragma once
 
 #include <cwchar>
+#include <exception>
 #include <filesystem>
 #include <fstream>
-#include <iterator>
 #include <regex>
-#include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace ReportPrivacy
 {
@@ -18,41 +18,64 @@ namespace ReportPrivacy
     {
         // Settings use a value wrapper; older reports can also contain a direct string.
         static const std::regex keyValue(R"re(("SecurityKey"\s*:\s*)(?:"(?:[^"\\]|\\.)*"|\{\s*"value"\s*:\s*"(?:[^"\\]|\\.)*"\s*\}))re");
-        static const std::regex keyName(R"("SecurityKey"\s*:)");
-        auto redacted = std::regex_replace(text, keyValue, "$1\"<private_data>\"");
+        static const std::regex keyName(R"("SecurityKey"\s*:\s*)");
+        static const std::string privateValue = "\"<private_data>\"";
+        auto redacted = std::regex_replace(text, keyValue, "$1" + privateValue);
 
-        if (std::regex_search(std::regex_replace(redacted, keyValue, ""), keyName))
+        for (auto property = std::sregex_iterator(redacted.begin(), redacted.end(), keyName); property != std::sregex_iterator(); ++property)
         {
-            throw std::runtime_error("Unable to redact a SecurityKey property");
+            const auto valueOffset = property->position() + property->length();
+            if (redacted.compare(valueOffset, privateValue.size(), privateValue) != 0)
+            {
+                // An unknown value has no reliable end; discard the rest of this staging copy.
+                redacted.replace(valueOffset, std::string::npos, privateValue);
+                break;
+            }
         }
 
         return redacted;
     }
 
-    inline void RedactReportSecurityKeys(const std::filesystem::path& reportDirectory)
+    inline std::vector<std::filesystem::path> RedactReportSecurityKeysAndGetExcludedFiles(const std::filesystem::path& reportDirectory)
     {
+        std::vector<std::filesystem::path> excludedFiles;
         for (const auto& entry : std::filesystem::recursive_directory_iterator(reportDirectory))
         {
             const auto extension = entry.path().extension();
-            if (!entry.is_regular_file() || (_wcsicmp(extension.c_str(), L".json") != 0 && _wcsicmp(extension.c_str(), L".log") != 0 && _wcsicmp(extension.c_str(), L".txt") != 0))
+            if (_wcsicmp(extension.c_str(), L".json") != 0 && _wcsicmp(extension.c_str(), L".log") != 0 && _wcsicmp(extension.c_str(), L".txt") != 0)
             {
                 continue;
             }
 
-            std::ifstream input;
-            input.exceptions(std::ios::failbit | std::ios::badbit);
-            input.open(entry.path(), std::ios::binary);
-            const std::string text{ std::istreambuf_iterator<char>{ input }, std::istreambuf_iterator<char>{} };
-            input.close();
-            const auto redacted = RedactSecurityKeys(text);
-            if (redacted != text)
+            try
             {
-                std::ofstream output;
-                output.exceptions(std::ios::failbit | std::ios::badbit);
-                output.open(entry.path(), std::ios::binary | std::ios::trunc);
-                output << redacted;
-                output.close();
+                if (!entry.is_regular_file())
+                {
+                    continue;
+                }
+
+                std::ifstream input;
+                input.exceptions(std::ios::failbit | std::ios::badbit);
+                input.open(entry.path(), std::ios::binary);
+                std::string text(static_cast<std::size_t>(entry.file_size()), '\0');
+                input.read(text.data(), static_cast<std::streamsize>(text.size()));
+                input.close();
+                const auto redacted = RedactSecurityKeys(text);
+                if (redacted != text)
+                {
+                    std::ofstream output;
+                    output.exceptions(std::ios::failbit | std::ios::badbit);
+                    output.open(entry.path(), std::ios::binary | std::ios::trunc);
+                    output << redacted;
+                    output.close();
+                }
+            }
+            catch (const std::exception&)
+            {
+                excludedFiles.push_back(entry.path());
             }
         }
+
+        return excludedFiles;
     }
 }

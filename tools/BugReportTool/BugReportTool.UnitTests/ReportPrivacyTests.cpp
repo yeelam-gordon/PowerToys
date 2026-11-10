@@ -56,31 +56,35 @@ namespace BugReportToolUnitTests
             AssertTextEquals(diagnostic, ReportPrivacy::RedactSecurityKeys(diagnostic));
         }
 
-        TEST_METHOD (RejectsUnrecognizedOrTruncatedValues)
+        TEST_METHOD (RedactsRemainderForUnrecognizedOrTruncatedValues)
         {
             for (const auto& text : {
                      R"({"SecurityKey":{"unexpected":"unrecognized-key"}})",
                      R"({"SecurityKey":{"value":"truncated-key)",
-                     R"([info] dispatch_received_json: {"SecurityKey":{"value":{"nested":"nested-fixture"}}})",
+                     R"({"SecurityKey":{"value":{"nested":"nested-fixture"}}})",
                      R"({"SecurityKey":["array-fixture"]})",
                      R"({"SecurityKey":null})" })
             {
-                Assert::ExpectException<std::runtime_error>([&]() {
-                    ReportPrivacy::RedactSecurityKeys(text);
-                });
+                AssertTextEquals(R"({"SecurityKey":"<private_data>")", ReportPrivacy::RedactSecurityKeys(text));
             }
         }
 
-        TEST_METHOD (RejectsAdditionalContentInsideKeyWrapper)
+        TEST_METHOD (RedactsRemainderForAdditionalWrapperContent)
         {
-            for (const auto& text : {
-                     R"({"SecurityKey":{"value":"<private_data>","other":"sibling-fixture"}})",
-                     R"([info] dispatch_received_json: {"SecurityKey":{"value":"first-fixture","other":{"nested":"sibling-fixture"}}})" })
-            {
-                Assert::ExpectException<std::runtime_error>([&]() {
-                    ReportPrivacy::RedactSecurityKeys(text);
-                });
-            }
+            AssertTextEquals(
+                R"({"SecurityKey":"<private_data>")",
+                ReportPrivacy::RedactSecurityKeys(R"({"SecurityKey":{"value":"<private_data>","other":"sibling-fixture"}})"));
+            AssertTextEquals(
+                R"([info] dispatch_received_json: {"SecurityKey":"<private_data>")",
+                ReportPrivacy::RedactSecurityKeys(R"([info] dispatch_received_json: {"SecurityKey":{"value":"first-fixture","other":{"nested":"sibling-fixture"}}})"));
+        }
+
+        TEST_METHOD (RedactsKnownValuesBeforeDiscardingUnrecognizedRemainder)
+        {
+            AssertTextEquals(
+                R"({"diagnostic":"retained","entries":[{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>")",
+                ReportPrivacy::RedactSecurityKeys(
+                    R"({"diagnostic":"retained","entries":[{"SecurityKey":"first"},{"SecurityKey":{"value":"second"}},{"SecurityKey":"third"},{"SecurityKey":["fourth"]},{"SecurityKey":{"unexpected":"fifth"}}]})"));
         }
 
         TEST_METHOD (RedactsCopiedBackupsAndLogsWithoutChangingSourceSettings)
@@ -96,7 +100,7 @@ namespace BugReportToolUnitTests
             Write(log, "[info] dispatch_received_json: " + original);
             Write(report / L"unrelated.txt", "diagnostic\r\n");
 
-            ReportPrivacy::RedactReportSecurityKeys(report);
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndGetExcludedFiles(report).empty());
 
             AssertTextEquals(original, Read(source));
             AssertTextEquals(std::string(R"({"properties":{"SecurityKey":"<private_data>"}})"), Read(backup));
@@ -112,7 +116,7 @@ namespace BugReportToolUnitTests
                 Write(temporary.path / (std::wstring(L"settings") + extension), R"({"SecurityKey":"fixture-key"})");
             }
 
-            ReportPrivacy::RedactReportSecurityKeys(temporary.path);
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndGetExcludedFiles(temporary.path).empty());
 
             for (const auto& extension : { L".JSON", L".Log", L".tXt" })
             {
@@ -122,20 +126,24 @@ namespace BugReportToolUnitTests
             }
         }
 
-        TEST_METHOD (PropagatesFileAccessFailures)
+        TEST_METHOD (ExcludesFilesWithReadOrWriteFailuresAndContinues)
         {
             TemporaryDirectory temporary;
             const auto file = temporary.path / L"settings.json";
             Write(file, R"({"SecurityKey":"fixture-key"})");
             for (const DWORD sharing : { DWORD{ 0 }, DWORD{ FILE_SHARE_READ } })
             {
+                Write(temporary.path / L"before.json", R"({"SecurityKey":"before-fixture"})");
+                Write(temporary.path / L"after.log", R"({"SecurityKey":"after-fixture"})");
                 const auto handle = CreateFileW(file.c_str(), GENERIC_READ, sharing, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
                 Assert::IsTrue(handle != INVALID_HANDLE_VALUE);
                 try
                 {
-                    Assert::ExpectException<std::ios_base::failure>([&]() {
-                        ReportPrivacy::RedactReportSecurityKeys(temporary.path);
-                    });
+                    const auto excludedFiles = ReportPrivacy::RedactReportSecurityKeysAndGetExcludedFiles(temporary.path);
+                    Assert::AreEqual(size_t{ 1 }, excludedFiles.size());
+                    Assert::IsTrue(excludedFiles.front() == file);
+                    AssertTextEquals(R"({"SecurityKey":"<private_data>"})", Read(temporary.path / L"before.json"));
+                    AssertTextEquals(R"({"SecurityKey":"<private_data>"})", Read(temporary.path / L"after.log"));
                 }
                 catch (...)
                 {
@@ -143,6 +151,7 @@ namespace BugReportToolUnitTests
                     throw;
                 }
                 CloseHandle(handle);
+                AssertTextEquals(R"({"SecurityKey":"fixture-key"})", Read(file));
             }
         }
 

@@ -413,9 +413,9 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
         return 1;
     }
 
-    for (const auto& path : removedPaths)
+    for (const auto& removedPath : removedPaths)
     {
-        wprintf_s(L"Report file or folder removed because it could not be sanitized: %s\n", path.lexically_relative(reportDir).c_str());
+        wprintf_s(L"Report file or folder removed because it could not be sanitized: %s\n", removedPath.lexically_relative(reportDir).c_str());
     }
 
     // Zip folder

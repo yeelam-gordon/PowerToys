@@ -123,6 +123,7 @@ namespace
     void ReplaceReportTailWithRedactedSecurityKey(const std::filesystem::path& file, std::uintmax_t keyOffset)
     {
         // The same on-disk fallback handles oversized files and values regex could not redact.
+        // Discarding the tail can leave report JSON incomplete.
         std::filesystem::resize_file(file, keyOffset);
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);

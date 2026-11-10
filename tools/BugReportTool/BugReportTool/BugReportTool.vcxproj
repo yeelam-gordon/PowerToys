@@ -44,6 +44,7 @@
     <ClCompile Include="ProcessesList.cpp" />
     <ClCompile Include="ReportGPOValues.cpp" />
     <ClCompile Include="ReportMonitorInfo.cpp" />
+    <ClCompile Include="ReportPrivacy.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="RegistryUtils.cpp" />
     <ClCompile Include="XmlDocumentEx.cpp" />

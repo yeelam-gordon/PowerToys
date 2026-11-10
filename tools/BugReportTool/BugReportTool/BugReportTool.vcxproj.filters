@@ -9,6 +9,7 @@
       <Filter>ZipTools</Filter>
     </ClCompile>
     <ClCompile Include="ReportMonitorInfo.cpp" />
+    <ClCompile Include="ReportPrivacy.cpp" />
     <ClCompile Include="RegistryUtils.cpp" />
     <ClCompile Include="EventViewer.cpp" />
     <ClCompile Include="XmlDocumentEx.cpp" />

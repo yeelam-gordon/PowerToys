@@ -4,6 +4,7 @@
 
 #include <Windows.h>
 #include <CppUnitTest.h>
+#include <fstream>
 #include <random>
 
 #include "..\BugReportTool\ReportPrivacy.h"
@@ -19,10 +20,10 @@ namespace BugReportToolUnitTests
         {
             AssertTextEquals(
                 std::string(R"({"properties":{"SecurityKey":"<private_data>","UseService":{"value":true}}})"),
-                ReportPrivacy::RedactSecurityKeys(R"({"properties":{"SecurityKey":{"value":"current-key"},"UseService":{"value":true}}})"));
+                RedactText(R"({"properties":{"SecurityKey":{"value":"current-key"},"UseService":{"value":true}}})"));
             AssertTextEquals(
                 std::string(R"({"SecurityKey":"<private_data>"})"),
-                ReportPrivacy::RedactSecurityKeys(R"({"SecurityKey":"legacy-key"})"));
+                RedactText(R"({"SecurityKey":"legacy-key"})"));
         }
 
         TEST_METHOD (RedactsSecurityKeysInLogsAndPreservesOtherMessages)
@@ -31,29 +32,31 @@ namespace BugReportToolUnitTests
             const std::string suffix = "\r\n[info] another diagnostic\r\n";
             AssertTextEquals(
                 prefix + R"({"powertoys":{"MouseWithoutBorders":{"properties":{"SecurityKey":"<private_data>"}}}})" + suffix,
-                ReportPrivacy::RedactSecurityKeys(prefix + R"({"powertoys":{"MouseWithoutBorders":{"properties":{"SecurityKey":{"value":"historical-key"}}}}})" + suffix));
+                RedactText(prefix + R"({"powertoys":{"MouseWithoutBorders":{"properties":{"SecurityKey":{"value":"historical-key"}}}}})" + suffix));
         }
 
         TEST_METHOD (RedactsEmptyAndEscapedSecurityKeysWithWhitespace)
         {
             AssertTextEquals(
                 std::string("{\"SecurityKey\" : \"<private_data>\",\"other\":{\"SecurityKey\":\"<private_data>\"}}"),
-                ReportPrivacy::RedactSecurityKeys("{\"SecurityKey\" : {\r\n\"value\" : \"escaped\\\"key\\\\value\"},\"other\":{\"SecurityKey\":\"\"}}"));
+                RedactText("{\"SecurityKey\" : {\r\n\"value\" : \"escaped\\\"key\\\\value\"},\"other\":{\"SecurityKey\":\"\"}}"));
         }
 
         TEST_METHOD (RedactsSecurityKeysInsideNestedObjectsAndArrays)
         {
             AssertTextEquals(
                 R"({"entries":[{"properties":{"SecurityKey":"<private_data>"}},{"SecurityKey":"<private_data>"}],"diagnostic":{"SecurityKeyState":"changed"}})",
-                ReportPrivacy::RedactSecurityKeys(R"({"entries":[{"properties":{"SecurityKey":{"value":"quote\"backslash\\line\nunicode\u263a"}}},{"SecurityKey":"array-fixture"}],"diagnostic":{"SecurityKeyState":"changed"}})"));
+                RedactText(R"({"entries":[{"properties":{"SecurityKey":{"value":"quote\"backslash\\line\nunicode\u263a"}}},{"SecurityKey":"array-fixture"}],"diagnostic":{"SecurityKeyState":"changed"}})"));
         }
 
         TEST_METHOD (PreservesAlreadyRedactedKeysAndUnrelatedText)
         {
-            const std::string text = R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})";
-            AssertTextEquals(text, ReportPrivacy::RedactSecurityKeys(text));
-            const std::string diagnostic = "[info] SecurityKey was changed\r\n";
-            AssertTextEquals(diagnostic, ReportPrivacy::RedactSecurityKeys(diagnostic));
+            std::string text = R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})";
+            Assert::IsFalse(ReportPrivacy::RedactSecurityKeys(text));
+            AssertTextEquals(R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})", text);
+            std::string diagnostic = "[info] \"SecurityKey\" was changed\r\n";
+            Assert::IsFalse(ReportPrivacy::RedactSecurityKeys(diagnostic));
+            AssertTextEquals("[info] \"SecurityKey\" was changed\r\n", diagnostic);
         }
 
         TEST_METHOD (RemovesRemainingTextWhenSecurityKeyValueIsUnexpectedOrIncomplete)
@@ -65,7 +68,7 @@ namespace BugReportToolUnitTests
                      R"({"SecurityKey":["array-fixture"]})",
                      R"({"SecurityKey":null})" })
             {
-                AssertTextEquals(R"({"SecurityKey":"<private_data>")", ReportPrivacy::RedactSecurityKeys(text));
+                AssertTextEquals(R"({"SecurityKey":"<private_data>")", RedactText(text));
             }
         }
 
@@ -73,17 +76,17 @@ namespace BugReportToolUnitTests
         {
             AssertTextEquals(
                 R"({"SecurityKey":"<private_data>")",
-                ReportPrivacy::RedactSecurityKeys(R"({"SecurityKey":{"value":"<private_data>","other":"sibling-fixture"}})"));
+                RedactText(R"({"SecurityKey":{"value":"<private_data>","other":"sibling-fixture"}})"));
             AssertTextEquals(
                 R"([info] dispatch_received_json: {"SecurityKey":"<private_data>")",
-                ReportPrivacy::RedactSecurityKeys(R"([info] dispatch_received_json: {"SecurityKey":{"value":"first-fixture","other":{"nested":"sibling-fixture"}}})"));
+                RedactText(R"([info] dispatch_received_json: {"SecurityKey":{"value":"first-fixture","other":{"nested":"sibling-fixture"}}})"));
         }
 
         TEST_METHOD (RedactsEarlierSecurityKeysAndDiscardsTextFromFirstUnexpectedValue)
         {
             AssertTextEquals(
                 R"({"diagnostic":"retained","entries":[{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>")",
-                ReportPrivacy::RedactSecurityKeys(
+                RedactText(
                     R"({"diagnostic":"retained","entries":[{"SecurityKey":"first"},{"SecurityKey":{"value":"second"}},{"SecurityKey":"third"},{"SecurityKey":["fourth"]},{"SecurityKey":{"unexpected":"fifth"}}]})"));
         }
 
@@ -100,7 +103,7 @@ namespace BugReportToolUnitTests
             Write(log, "[info] dispatch_received_json: " + original);
             Write(report / L"unrelated.txt", "diagnostic\r\n");
 
-            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedFiles(report).empty());
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(report).empty());
 
             AssertTextEquals(original, Read(source));
             AssertTextEquals(std::string(R"({"properties":{"SecurityKey":"<private_data>"}})"), Read(backup));
@@ -116,7 +119,7 @@ namespace BugReportToolUnitTests
                 Write(temporary.path / (std::wstring(L"settings") + extension), R"({"SecurityKey":"fixture-key"})");
             }
 
-            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedFiles(temporary.path).empty());
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
 
             for (const auto& extension : { L".JSON", L".Log", L".tXt" })
             {
@@ -139,7 +142,7 @@ namespace BugReportToolUnitTests
                 Assert::IsTrue(handle != INVALID_HANDLE_VALUE);
                 try
                 {
-                    const auto removedFiles = ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedFiles(temporary.path);
+                    const auto removedFiles = ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path);
                     Assert::AreEqual(size_t{ 1 }, removedFiles.size());
                     Assert::IsTrue(removedFiles.front() == file);
                     AssertTextEquals(R"({"SecurityKey":"<private_data>"})", Read(temporary.path / L"before.json"));
@@ -165,7 +168,7 @@ namespace BugReportToolUnitTests
             try
             {
                 Assert::ExpectException<std::filesystem::filesystem_error>([&] {
-                    ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedFiles(temporary.path);
+                    ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path);
                 });
             }
             catch (...)
@@ -175,6 +178,70 @@ namespace BugReportToolUnitTests
             }
             CloseHandle(handle);
             AssertTextEquals(R"({"SecurityKey":"fixture-key"})", Read(file));
+        }
+
+        TEST_METHOD (RedactsSecurityKeyNamesSplitAcrossReadChunks)
+        {
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"runner.log";
+            const std::string prefix(64 * 1024 - 5, 'x');
+            Write(file, prefix + R"({"SecurityKey":"fixture-key","other":"retained"})");
+
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+
+            AssertTextEquals(prefix + R"({"SecurityKey":"<private_data>","other":"retained"})", Read(file));
+        }
+
+        TEST_METHOD (PreservesContentAtRegexSizeLimitAndTruncatesLargerFiles)
+        {
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"runner.log";
+            const std::string prefix = "[info] diagnostic prefix\r\n{";
+            const std::string originalValue = R"("SecurityKey":"fixture-key","other":"retained"})";
+            const std::string replacement = R"("SecurityKey":"<private_data>")";
+            for (const auto size : { ReportPrivacy::MaxRegexFileSize, ReportPrivacy::MaxRegexFileSize + 1 })
+            {
+                const std::string suffix(size - prefix.size() - originalValue.size(), 'x');
+                const auto original = prefix + originalValue + suffix;
+                const auto expected = size > ReportPrivacy::MaxRegexFileSize ? prefix + replacement : prefix + replacement + R"(,"other":"retained"})" + suffix;
+                Write(file, original);
+
+                Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+
+                AssertTextEquals(expected, Read(file));
+                AssertTextEquals(expected, RedactText(original));
+            }
+            const std::string unrelated(ReportPrivacy::MaxRegexFileSize + 1, 'x');
+            Write(file, unrelated);
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+            AssertTextEquals(unrelated, Read(file));
+        }
+
+        TEST_METHOD (RemovesUnreadableReportFolderAndContinuesWithOtherFiles)
+        {
+            TemporaryDirectory temporary;
+            const auto folder = temporary.path / L"unreadable";
+            std::filesystem::create_directory(folder);
+            Write(temporary.path / L"other.json", R"({"SecurityKey":"fixture-key"})");
+            const auto handle = CreateFileW(folder.c_str(), FILE_LIST_DIRECTORY, FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+            Assert::IsTrue(handle != INVALID_HANDLE_VALUE);
+            try
+            {
+                Assert::ExpectException<std::filesystem::filesystem_error>([&] {
+                    std::filesystem::directory_iterator inaccessible(folder);
+                });
+                const auto removedPaths = ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path);
+                Assert::AreEqual(size_t{ 1 }, removedPaths.size());
+                Assert::IsTrue(removedPaths.front() == folder);
+                AssertTextEquals(R"({"SecurityKey":"<private_data>"})", Read(temporary.path / L"other.json"));
+            }
+            catch (...)
+            {
+                CloseHandle(handle);
+                throw;
+            }
+            CloseHandle(handle);
+            Assert::IsFalse(std::filesystem::exists(folder));
         }
 
         TEST_METHOD (TemporaryTestDirectoryPreservesExistingDirectoriesAndFiles)
@@ -194,6 +261,12 @@ namespace BugReportToolUnitTests
         }
 
     private:
+        static std::string RedactText(std::string text)
+        {
+            ReportPrivacy::RedactSecurityKeys(text);
+            return text;
+        }
+
         static void AssertTextEquals(const std::string& expected, const std::string& actual)
         {
             Assert::IsTrue(expected == actual, L"File content comparison failed.");

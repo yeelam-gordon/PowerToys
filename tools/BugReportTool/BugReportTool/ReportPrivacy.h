@@ -36,6 +36,7 @@ namespace ReportPrivacy
         return redacted;
     }
 
+    // If a failed staging file cannot be deleted, throw to stop report creation.
     inline std::vector<std::filesystem::path> RedactReportSecurityKeysAndRemoveFailedFiles(const std::filesystem::path& reportDirectory)
     {
         std::vector<std::filesystem::path> removedFiles;
@@ -72,8 +73,10 @@ namespace ReportPrivacy
             }
             catch (const std::exception&)
             {
-                std::filesystem::remove(entry.path());
-                removedFiles.push_back(entry.path());
+                if (std::filesystem::remove(entry.path()))
+                {
+                    removedFiles.push_back(entry.path());
+                }
             }
         }
 

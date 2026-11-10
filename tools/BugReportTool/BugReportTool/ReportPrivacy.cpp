@@ -7,49 +7,122 @@
 #include <algorithm>
 #include <array>
 #include <cstdio>
-#include <cstring>
 #include <cwchar>
 #include <exception>
 #include <fstream>
 #include <optional>
 #include <regex>
+#include <string>
 #include <string_view>
 
 namespace
 {
     constexpr std::string_view securityKeyName = "\"SecurityKey\"";
+    constexpr std::string_view propertyWhitespace = " \t\r\n\f\v";
     constexpr std::string_view privateValue = "\"<private_data>\"";
     constexpr std::size_t readBufferSize = 64 * 1024;
 
-    std::optional<std::uintmax_t> FindFirstSecurityKey(std::ifstream& input)
+    struct SecurityKeyProperties
     {
-        std::array<char, readBufferSize + securityKeyName.size()> buffer;
-        std::size_t retained = 0;
+        std::uintmax_t count = 0;
+        std::uintmax_t firstOffset = 0;
+    };
+
+    enum class RegexRedactionResult
+    {
+        Unchanged,
+        Redacted,
+        NeedsFallback,
+    };
+
+    SecurityKeyProperties ScanSecurityKeyProperties(std::ifstream& input)
+    {
+        std::array<char, readBufferSize> buffer;
+        SecurityKeyProperties properties;
+        std::size_t matchedNameLength = 0;
+        std::optional<std::uintmax_t> pendingPropertyOffset;
         std::uintmax_t offset = 0;
         do
         {
-            input.read(buffer.data() + retained, readBufferSize);
-            const auto count = retained + static_cast<std::size_t>(input.gcount());
-            const auto match = std::string_view(buffer.data(), count).find(securityKeyName);
-            if (match != std::string_view::npos)
-            {
-                return offset + match;
-            }
+            input.read(buffer.data(), buffer.size());
             if (input.fail() && !input.eof())
             {
                 throw std::ios::failure("Failed to scan report file");
             }
-            retained = std::min(count, securityKeyName.size() - 1);
-            offset += count - retained;
-            std::memmove(buffer.data(), buffer.data() + count - retained, retained);
+            for (const auto character : std::string_view(buffer.data(), static_cast<std::size_t>(input.gcount())))
+            {
+                const auto characterOffset = offset++;
+                if (pendingPropertyOffset)
+                {
+                    if (propertyWhitespace.find(character) != std::string_view::npos)
+                    {
+                        continue;
+                    }
+                    if (character == ':')
+                    {
+                        if (properties.count == 0)
+                        {
+                            properties.firstOffset = *pendingPropertyOffset;
+                        }
+                        ++properties.count;
+                    }
+                    pendingPropertyOffset.reset();
+                }
+
+                if (character == securityKeyName[matchedNameLength])
+                {
+                    ++matchedNameLength;
+                }
+                else
+                {
+                    matchedNameLength = character == securityKeyName.front() ? 1 : 0;
+                }
+                if (matchedNameLength == securityKeyName.size())
+                {
+                    pendingPropertyOffset = characterOffset + 1 - securityKeyName.size();
+                    matchedNameLength = 0;
+                }
+            }
         } while (!input.eof());
 
-        return std::nullopt;
+        return properties;
     }
 
-    void RedactLargeReportFile(const std::filesystem::path& file, std::uintmax_t keyOffset)
+    RegexRedactionResult RedactRecognizedSecurityKeyValues(std::string& text, std::uintmax_t expectedPropertyCount)
     {
-        // Keep the diagnostic prefix, but never load or run regex over the large remainder.
+        static const std::regex keyProperty(R"("SecurityKey"\s*:\s*)");
+        static const std::regex keyValue(R"re("(?:[^"\\]|\\.)*"|\{\s*"value"\s*:\s*"(?:[^"\\]|\\.)*"\s*\})re");
+        std::size_t offset = 0;
+        std::uintmax_t redactedCount = 0;
+        bool changed = false;
+        std::smatch property;
+        while (std::regex_search(text.cbegin() + offset, text.cend(), property, keyProperty))
+        {
+            const auto valueOffset = offset + property.position() + property.length();
+            std::smatch value;
+            if (!std::regex_search(text.cbegin() + valueOffset, text.cend(), value, keyValue, std::regex_constants::match_continuous))
+            {
+                return RegexRedactionResult::NeedsFallback;
+            }
+            ++redactedCount;
+            const auto valueLength = static_cast<std::size_t>(value.length());
+            if (text.compare(valueOffset, valueLength, privateValue) != 0)
+            {
+                text.replace(valueOffset, valueLength, privateValue);
+                changed = true;
+            }
+            offset = valueOffset + privateValue.size();
+        }
+        if (redactedCount != expectedPropertyCount)
+        {
+            return RegexRedactionResult::NeedsFallback;
+        }
+        return changed ? RegexRedactionResult::Redacted : RegexRedactionResult::Unchanged;
+    }
+
+    void ReplaceReportTailWithRedactedSecurityKey(const std::filesystem::path& file, std::uintmax_t keyOffset)
+    {
+        // The same on-disk fallback handles oversized files and values regex could not redact.
         std::filesystem::resize_file(file, keyOffset);
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);
@@ -64,45 +137,53 @@ namespace
         input.exceptions(std::ios::failbit | std::ios::badbit);
         input.open(entry.path(), std::ios::binary);
         input.exceptions(std::ios::badbit);
-        const auto keyOffset = FindFirstSecurityKey(input);
-        if (!keyOffset)
+        const auto properties = ScanSecurityKeyProperties(input);
+        if (properties.count == 0)
         {
             return;
         }
 
-        if (entry.file_size() > ReportPrivacy::MaxRegexFileSize)
-        {
-            input.close();
-            RedactLargeReportFile(entry.path(), *keyOffset);
-            return;
-        }
-
-        input.clear();
-        input.seekg(0);
-        if (!input)
-        {
-            throw std::ios::failure("Failed to rewind report file");
-        }
+        auto result = RegexRedactionResult::NeedsFallback;
         std::string text;
-        text.reserve(static_cast<std::size_t>(std::min<std::uintmax_t>(entry.file_size(), ReportPrivacy::MaxRegexFileSize + 1)));
-        std::array<char, readBufferSize> buffer;
-        while (input && text.size() <= ReportPrivacy::MaxRegexFileSize)
+        if (entry.file_size() <= ReportPrivacy::MaxRegexFileSize)
         {
-            const auto count = std::min(buffer.size(), ReportPrivacy::MaxRegexFileSize + 1 - text.size());
-            input.read(buffer.data(), static_cast<std::streamsize>(count));
-            text.append(buffer.data(), static_cast<std::size_t>(input.gcount()));
-        }
-        if (input.fail() && !input.eof())
-        {
-            throw std::ios::failure("Failed to read report file");
+            input.clear();
+            input.seekg(0);
+            if (!input)
+            {
+                throw std::ios::failure("Failed to rewind report file");
+            }
+            text.reserve(static_cast<std::size_t>(std::min<std::uintmax_t>(entry.file_size(), ReportPrivacy::MaxRegexFileSize + 1)));
+            std::array<char, readBufferSize> buffer;
+            while (input && text.size() <= ReportPrivacy::MaxRegexFileSize)
+            {
+                const auto count = std::min(buffer.size(), ReportPrivacy::MaxRegexFileSize + 1 - text.size());
+                input.read(buffer.data(), static_cast<std::streamsize>(count));
+                text.append(buffer.data(), static_cast<std::size_t>(input.gcount()));
+            }
+            if (input.fail() && !input.eof())
+            {
+                throw std::ios::failure("Failed to read report file");
+            }
+            if (text.size() <= ReportPrivacy::MaxRegexFileSize)
+            {
+                try
+                {
+                    result = RedactRecognizedSecurityKeyValues(text, properties.count);
+                }
+                catch (const std::regex_error& error)
+                {
+                    wprintf_s(L"Regex could not sanitize report file %ls; using tail replacement: %hs\n", entry.path().c_str(), error.what());
+                }
+            }
         }
         input.close();
 
-        if (text.size() > ReportPrivacy::MaxRegexFileSize)
+        if (result == RegexRedactionResult::NeedsFallback)
         {
-            RedactLargeReportFile(entry.path(), *keyOffset);
+            ReplaceReportTailWithRedactedSecurityKey(entry.path(), properties.firstOffset);
         }
-        else if (ReportPrivacy::RedactSecurityKeys(text))
+        else if (result == RegexRedactionResult::Redacted)
         {
             std::ofstream output;
             output.exceptions(std::ios::failbit | std::ios::badbit);
@@ -190,49 +271,6 @@ namespace
             }
         }
     }
-}
-
-bool ReportPrivacy::RedactSecurityKeys(std::string& text)
-{
-    auto offset = text.find(securityKeyName);
-    if (offset == std::string::npos)
-    {
-        return false;
-    }
-    if (text.size() > MaxRegexFileSize)
-    {
-        text.replace(offset, std::string::npos, std::string(securityKeyName) + ':' + std::string(privateValue));
-        return true;
-    }
-
-    static const std::regex keyProperty(R"("SecurityKey"\s*:\s*)");
-    static const std::regex keyValue(R"re("(?:[^"\\]|\\.)*"|\{\s*"value"\s*:\s*"(?:[^"\\]|\\.)*"\s*\})re");
-    bool changed = false;
-    do
-    {
-        std::smatch property;
-        if (!std::regex_search(text.cbegin() + offset, text.cend(), property, keyProperty, std::regex_constants::match_continuous))
-        {
-            offset += securityKeyName.size();
-            continue;
-        }
-        const auto valueOffset = offset + property.length();
-        std::smatch value;
-        const auto recognized = std::regex_search(text.cbegin() + valueOffset, text.cend(), value, keyValue, std::regex_constants::match_continuous);
-        const auto valueLength = recognized ? static_cast<std::size_t>(value.length()) : text.size() - valueOffset;
-        if (text.compare(valueOffset, valueLength, privateValue) != 0)
-        {
-            text.replace(valueOffset, valueLength, privateValue);
-            changed = true;
-        }
-        if (!recognized)
-        {
-            break;
-        }
-        offset = valueOffset + privateValue.size();
-    } while ((offset = text.find(securityKeyName, offset)) != std::string::npos);
-
-    return changed;
 }
 
 std::vector<std::filesystem::path> ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(const std::filesystem::path& reportDirectory)

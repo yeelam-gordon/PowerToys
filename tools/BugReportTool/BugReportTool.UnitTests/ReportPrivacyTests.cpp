@@ -6,6 +6,7 @@
 #include <CppUnitTest.h>
 #include <fstream>
 #include <random>
+#include <string>
 
 #include "..\BugReportTool\ReportPrivacy.h"
 
@@ -51,12 +52,10 @@ namespace BugReportToolUnitTests
 
         TEST_METHOD (PreservesAlreadyRedactedKeysAndUnrelatedText)
         {
-            std::string text = R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})";
-            Assert::IsFalse(ReportPrivacy::RedactSecurityKeys(text));
-            AssertTextEquals(R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})", text);
-            std::string diagnostic = "[info] \"SecurityKey\" was changed\r\n";
-            Assert::IsFalse(ReportPrivacy::RedactSecurityKeys(diagnostic));
-            AssertTextEquals("[info] \"SecurityKey\" was changed\r\n", diagnostic);
+            const std::string text = R"({"SecurityKey":"<private_data>","Name":"test","Enabled":true})";
+            AssertTextEquals(text, RedactText(text));
+            const std::string diagnostic = "[info] \"SecurityKey\" was changed\r\n";
+            AssertTextEquals(diagnostic, RedactText(diagnostic));
         }
 
         TEST_METHOD (RemovesRemainingTextWhenSecurityKeyValueIsUnexpectedOrIncomplete)
@@ -82,10 +81,10 @@ namespace BugReportToolUnitTests
                 RedactText(R"([info] dispatch_received_json: {"SecurityKey":{"value":"first-fixture","other":{"nested":"sibling-fixture"}}})"));
         }
 
-        TEST_METHOD (RedactsEarlierSecurityKeysAndDiscardsTextFromFirstUnexpectedValue)
+        TEST_METHOD (DiscardsTextFromFirstPropertyWhenAnySecurityKeyValueIsUnexpected)
         {
             AssertTextEquals(
-                R"({"diagnostic":"retained","entries":[{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>"},{"SecurityKey":"<private_data>")",
+                R"({"diagnostic":"retained","entries":[{"SecurityKey":"<private_data>")",
                 RedactText(
                     R"({"diagnostic":"retained","entries":[{"SecurityKey":"first"},{"SecurityKey":{"value":"second"}},{"SecurityKey":"third"},{"SecurityKey":["fourth"]},{"SecurityKey":{"unexpected":"fifth"}}]})"));
         }
@@ -209,12 +208,55 @@ namespace BugReportToolUnitTests
                 Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
 
                 AssertTextEquals(expected, Read(file));
-                AssertTextEquals(expected, RedactText(original));
             }
             const std::string unrelated(ReportPrivacy::MaxRegexFileSize + 1, 'x');
             Write(file, unrelated);
             Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
             AssertTextEquals(unrelated, Read(file));
+        }
+
+        TEST_METHOD (PreservesLargeFilesThatOnlyMentionSecurityKey)
+        {
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"runner.log";
+            const auto original = "[info] \"SecurityKey\" was changed\r\n" +
+                                  std::string(ReportPrivacy::MaxRegexFileSize, 'x') +
+                                  "\r\n\"SecurityKey\"\t\r\n";
+            Write(file, original);
+
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+
+            AssertTextEquals(original, Read(file));
+        }
+
+        TEST_METHOD (RedactsLargeFilesFromFirstPropertyAfterOrdinaryKeyMentions)
+        {
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"runner.log";
+            const auto prefix = "[info] \"SecurityKey\" was changed\r\n" +
+                                std::string(ReportPrivacy::MaxRegexFileSize, 'x') + "\r\n{";
+            const auto original = prefix + "\"SecurityKey\" \t\r\n : \"fixture-key\",\"other\":\"discarded\"}";
+            const auto expected = prefix + R"("SecurityKey":"<private_data>")";
+            Write(file, original);
+
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+
+            AssertTextEquals(expected, Read(file));
+        }
+
+        TEST_METHOD (RedactsPropertiesWithWhitespaceSpanningReadChunks)
+        {
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"runner.log";
+            const std::string prefix(ReportPrivacy::MaxRegexFileSize - std::string("\"SecurityKey\"").size(), 'x');
+            const auto original = prefix + "\"SecurityKey\"" +
+                                  std::string(64 * 1024 + 5, ' ') + "\r\n\t:\"fixture-key\"";
+            const auto expected = prefix + R"("SecurityKey":"<private_data>")";
+            Write(file, original);
+
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+
+            AssertTextEquals(expected, Read(file));
         }
 
         TEST_METHOD (RemovesUnreadableReportFolderAndContinuesWithOtherFiles)
@@ -261,10 +303,13 @@ namespace BugReportToolUnitTests
         }
 
     private:
-        static std::string RedactText(std::string text)
+        static std::string RedactText(const std::string& text)
         {
-            ReportPrivacy::RedactSecurityKeys(text);
-            return text;
+            TemporaryDirectory temporary;
+            const auto file = temporary.path / L"report.log";
+            Write(file, text);
+            Assert::IsTrue(ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(temporary.path).empty());
+            return Read(file);
         }
 
         static void AssertTextEquals(const std::string& expected, const std::string& actual)

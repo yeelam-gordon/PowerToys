@@ -401,10 +401,10 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
 
     ReportInstalledContextMenuPackages(reportDir);
 
-    std::vector<path> excludedFiles;
+    std::vector<path> removedFiles;
     try
     {
-        excludedFiles = ReportPrivacy::RedactReportSecurityKeysAndGetExcludedFiles(reportDir);
+        removedFiles = ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedFiles(reportDir);
     }
     catch (const std::exception& error)
     {
@@ -413,9 +413,9 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
         return 1;
     }
 
-    for (const auto& file : excludedFiles)
+    for (const auto& file : removedFiles)
     {
-        wprintf_s(L"Report file excluded because it could not be sanitized: %s\n", file.lexically_relative(reportDir).c_str());
+        wprintf_s(L"Report file removed because it could not be sanitized: %s\n", file.lexically_relative(reportDir).c_str());
     }
 
     // Zip folder
@@ -423,7 +423,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
 
     try
     {
-        ZipFolder(zipPath, reportDir, excludedFiles);
+        ZipFolder(zipPath, reportDir);
     }
     catch (...)
     {

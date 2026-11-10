@@ -36,9 +36,9 @@ namespace ReportPrivacy
         return redacted;
     }
 
-    inline std::vector<std::filesystem::path> RedactReportSecurityKeysAndGetExcludedFiles(const std::filesystem::path& reportDirectory)
+    inline std::vector<std::filesystem::path> RedactReportSecurityKeysAndRemoveFailedFiles(const std::filesystem::path& reportDirectory)
     {
-        std::vector<std::filesystem::path> excludedFiles;
+        std::vector<std::filesystem::path> removedFiles;
         for (const auto& entry : std::filesystem::recursive_directory_iterator(reportDirectory))
         {
             const auto extension = entry.path().extension();
@@ -72,10 +72,11 @@ namespace ReportPrivacy
             }
             catch (const std::exception&)
             {
-                excludedFiles.push_back(entry.path());
+                std::filesystem::remove(entry.path());
+                removedFiles.push_back(entry.path());
             }
         }
 
-        return excludedFiles;
+        return removedFiles;
     }
 }

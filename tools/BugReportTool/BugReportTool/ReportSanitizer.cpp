@@ -2,7 +2,7 @@
 // The Microsoft Corporation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-#include "ReportPrivacy.h"
+#include "ReportSanitizer.h"
 
 #include <algorithm>
 #include <array>
@@ -17,28 +17,28 @@
 
 namespace
 {
-    constexpr std::string_view securityKeyName = "\"SecurityKey\"";
+    constexpr std::string_view propertyNameToSanitize = "\"SecurityKey\"";
     constexpr std::string_view propertyWhitespace = " \t\r\n\f\v";
     constexpr std::string_view privateValue = "\"<private_data>\"";
     constexpr std::size_t readBufferSize = 64 * 1024;
 
-    struct SecurityKeyProperties
+    struct PropertyScanResult
     {
         std::uintmax_t count = 0;
         std::uintmax_t firstOffset = 0;
     };
 
-    enum class RegexRedactionResult
+    enum class SanitizeResult
     {
         Unchanged,
-        Redacted,
+        Sanitized,
         NeedsFallback,
     };
 
-    SecurityKeyProperties ScanSecurityKeyProperties(std::ifstream& input)
+    PropertyScanResult ScanPropertiesToSanitize(std::ifstream& input)
     {
         std::array<char, readBufferSize> buffer;
-        SecurityKeyProperties properties;
+        PropertyScanResult properties;
         std::size_t matchedNameLength = 0;
         std::optional<std::uintmax_t> pendingPropertyOffset;
         std::uintmax_t offset = 0;
@@ -69,17 +69,17 @@ namespace
                     pendingPropertyOffset.reset();
                 }
 
-                if (character == securityKeyName[matchedNameLength])
+                if (character == propertyNameToSanitize[matchedNameLength])
                 {
                     ++matchedNameLength;
                 }
                 else
                 {
-                    matchedNameLength = character == securityKeyName.front() ? 1 : 0;
+                    matchedNameLength = character == propertyNameToSanitize.front() ? 1 : 0;
                 }
-                if (matchedNameLength == securityKeyName.size())
+                if (matchedNameLength == propertyNameToSanitize.size())
                 {
-                    pendingPropertyOffset = characterOffset + 1 - securityKeyName.size();
+                    pendingPropertyOffset = characterOffset + 1 - propertyNameToSanitize.size();
                     matchedNameLength = 0;
                 }
             }
@@ -88,7 +88,7 @@ namespace
         return properties;
     }
 
-    RegexRedactionResult RedactRecognizedSecurityKeyValues(std::string& text, std::uintmax_t expectedPropertyCount)
+    SanitizeResult SanitizeRecognizedValues(std::string& text, std::uintmax_t expectedPropertyCount)
     {
         static const std::regex keyProperty(R"("SecurityKey"\s*:\s*)");
         static const std::regex keyValue(R"re("(?:[^"\\]|\\.)*"|\{\s*"value"\s*:\s*"(?:[^"\\]|\\.)*"\s*\})re");
@@ -102,7 +102,7 @@ namespace
             std::smatch value;
             if (!std::regex_search(text.cbegin() + valueOffset, text.cend(), value, keyValue, std::regex_constants::match_continuous))
             {
-                return RegexRedactionResult::NeedsFallback;
+                return SanitizeResult::NeedsFallback;
             }
             ++redactedCount;
             const auto valueLength = static_cast<std::size_t>(value.length());
@@ -115,12 +115,12 @@ namespace
         }
         if (redactedCount != expectedPropertyCount)
         {
-            return RegexRedactionResult::NeedsFallback;
+            return SanitizeResult::NeedsFallback;
         }
-        return changed ? RegexRedactionResult::Redacted : RegexRedactionResult::Unchanged;
+        return changed ? SanitizeResult::Sanitized : SanitizeResult::Unchanged;
     }
 
-    void ReplaceReportTailWithRedactedSecurityKey(const std::filesystem::path& file, std::uintmax_t keyOffset)
+    void ReplaceReportTailWithPlaceholder(const std::filesystem::path& file, std::uintmax_t keyOffset)
     {
         // The same on-disk fallback handles oversized files and values regex could not redact.
         // Discarding the tail can leave report JSON incomplete.
@@ -128,25 +128,25 @@ namespace
         std::ofstream output;
         output.exceptions(std::ios::failbit | std::ios::badbit);
         output.open(file, std::ios::binary | std::ios::app);
-        output << securityKeyName << ':' << privateValue;
+        output << propertyNameToSanitize << ':' << privateValue;
         output.close();
     }
 
-    void RedactReportFile(const std::filesystem::directory_entry& entry)
+    void SanitizeFile(const std::filesystem::directory_entry& entry)
     {
         std::ifstream input;
         input.exceptions(std::ios::failbit | std::ios::badbit);
         input.open(entry.path(), std::ios::binary);
         input.exceptions(std::ios::badbit);
-        const auto properties = ScanSecurityKeyProperties(input);
+        const auto properties = ScanPropertiesToSanitize(input);
         if (properties.count == 0)
         {
             return;
         }
 
-        auto result = RegexRedactionResult::NeedsFallback;
+        auto result = SanitizeResult::NeedsFallback;
         std::string text;
-        if (entry.file_size() <= ReportPrivacy::MaxRegexFileSize)
+        if (entry.file_size() <= ReportSanitizer::MaxRegexFileSize)
         {
             input.clear();
             input.seekg(0);
@@ -154,11 +154,11 @@ namespace
             {
                 throw std::ios::failure("Failed to rewind report file");
             }
-            text.reserve(static_cast<std::size_t>(std::min<std::uintmax_t>(entry.file_size(), ReportPrivacy::MaxRegexFileSize + 1)));
+            text.reserve(static_cast<std::size_t>(std::min<std::uintmax_t>(entry.file_size(), ReportSanitizer::MaxRegexFileSize + 1)));
             std::array<char, readBufferSize> buffer;
-            while (input && text.size() <= ReportPrivacy::MaxRegexFileSize)
+            while (input && text.size() <= ReportSanitizer::MaxRegexFileSize)
             {
-                const auto count = std::min(buffer.size(), ReportPrivacy::MaxRegexFileSize + 1 - text.size());
+                const auto count = std::min(buffer.size(), ReportSanitizer::MaxRegexFileSize + 1 - text.size());
                 input.read(buffer.data(), static_cast<std::streamsize>(count));
                 text.append(buffer.data(), static_cast<std::size_t>(input.gcount()));
             }
@@ -166,11 +166,11 @@ namespace
             {
                 throw std::ios::failure("Failed to read report file");
             }
-            if (text.size() <= ReportPrivacy::MaxRegexFileSize)
+            if (text.size() <= ReportSanitizer::MaxRegexFileSize)
             {
                 try
                 {
-                    result = RedactRecognizedSecurityKeyValues(text, properties.count);
+                    result = SanitizeRecognizedValues(text, properties.count);
                 }
                 catch (const std::regex_error& error)
                 {
@@ -180,11 +180,11 @@ namespace
         }
         input.close();
 
-        if (result == RegexRedactionResult::NeedsFallback)
+        if (result == SanitizeResult::NeedsFallback)
         {
-            ReplaceReportTailWithRedactedSecurityKey(entry.path(), properties.firstOffset);
+            ReplaceReportTailWithPlaceholder(entry.path(), properties.firstOffset);
         }
-        else if (result == RegexRedactionResult::Redacted)
+        else if (result == SanitizeResult::Sanitized)
         {
             std::ofstream output;
             output.exceptions(std::ios::failbit | std::ios::badbit);
@@ -213,7 +213,7 @@ namespace
         }
     }
 
-    void RedactReportDirectory(
+    void SanitizeDirectory(
         const std::filesystem::path& directory,
         const std::filesystem::path& reportDirectory,
         std::vector<std::filesystem::path>& removedPaths)
@@ -250,7 +250,7 @@ namespace
             }
             if (isDirectory)
             {
-                RedactReportDirectory(entry.path(), reportDirectory, removedPaths);
+                SanitizeDirectory(entry.path(), reportDirectory, removedPaths);
                 continue;
             }
 
@@ -263,7 +263,7 @@ namespace
             {
                 if (entry.is_regular_file())
                 {
-                    RedactReportFile(entry);
+                    SanitizeFile(entry);
                 }
             }
             catch (const std::exception& error)
@@ -274,9 +274,9 @@ namespace
     }
 }
 
-std::vector<std::filesystem::path> ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(const std::filesystem::path& reportDirectory)
+std::vector<std::filesystem::path> ReportSanitizer::Sanitize(const std::filesystem::path& reportDirectory)
 {
     std::vector<std::filesystem::path> removedPaths;
-    RedactReportDirectory(reportDirectory, reportDirectory, removedPaths);
+    SanitizeDirectory(reportDirectory, reportDirectory, removedPaths);
     return removedPaths;
 }

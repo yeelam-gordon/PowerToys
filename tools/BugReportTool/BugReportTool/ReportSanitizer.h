@@ -8,10 +8,10 @@
 #include <filesystem>
 #include <vector>
 
-namespace ReportPrivacy
+namespace ReportSanitizer
 {
     inline constexpr std::size_t MaxRegexFileSize = 1024 * 1024;
 
     // If a failed staging file or folder cannot be deleted, throw to stop report creation.
-    std::vector<std::filesystem::path> RedactReportSecurityKeysAndRemoveFailedPaths(const std::filesystem::path& reportDirectory);
+    std::vector<std::filesystem::path> Sanitize(const std::filesystem::path& reportDirectory);
 }

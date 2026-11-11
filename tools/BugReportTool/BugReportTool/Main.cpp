@@ -21,7 +21,7 @@
 #include "EventViewer.h"
 #include "InstallationFolder.h"
 #include "ReportGPOValues.h"
-#include "ReportPrivacy.h"
+#include "ReportSanitizer.h"
 
 using namespace std;
 using namespace std::filesystem;
@@ -404,7 +404,7 @@ int wmain(int argc, wchar_t* argv[], wchar_t*)
     std::vector<path> removedPaths;
     try
     {
-        removedPaths = ReportPrivacy::RedactReportSecurityKeysAndRemoveFailedPaths(reportDir);
+        removedPaths = ReportSanitizer::Sanitize(reportDir);
     }
     catch (const std::exception& error)
     {

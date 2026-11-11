@@ -28,9 +28,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ReportPrivacyTests.cpp" />
-    <ClCompile Include="..\BugReportTool\ReportPrivacy.cpp" />
-    <ClInclude Include="..\BugReportTool\ReportPrivacy.h" />
+    <ClCompile Include="ReportSanitizerTests.cpp" />
+    <ClCompile Include="..\BugReportTool\ReportSanitizer.cpp" />
+    <ClInclude Include="..\BugReportTool\ReportSanitizer.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

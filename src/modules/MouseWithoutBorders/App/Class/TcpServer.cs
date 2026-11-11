@@ -83,7 +83,7 @@ namespace MouseWithoutBorders.Class
                     }
                     else
                     {
-                        Logger.TelemetryLogTrace($"Error listening on: {server.LocalEndpoint}: {e.ErrorCode}/{e.Message}", SeverityLevel.Error);
+                        Logger.TelemetryLogTrace($"Error listening on: {Logger.Mask(server.LocalEndpoint.ToString())}: {e.ErrorCode}/{e.SocketErrorCode}", SeverityLevel.Error);
                         throw;
                     }
                 }

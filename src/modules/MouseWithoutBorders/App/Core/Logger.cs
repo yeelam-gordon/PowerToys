@@ -82,7 +82,7 @@ internal static class Logger
     {
         if (e is not KnownException)
         {
-            var exText = e.ToString();
+            var exText = FormatException(e);
 
             Logger.Log($"!Exception!: {exText}", memberName, sourceFilePath, sourceLineNumber);
 
@@ -370,6 +370,76 @@ internal static class Logger
                 _ = Logger.PrivateDump(sb, fieldValue, fieldInfo.Name, level + 1, maxLevel, recurse);
             }
         }
+    }
+
+    internal static string FormatException(Exception exception)
+    {
+        var details = exception.ToString();
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            if (current is SocketException socketException && !string.IsNullOrEmpty(socketException.Message))
+            {
+                details = details.Replace(
+                    socketException.Message,
+                    $"{socketException.SocketErrorCode} ({socketException.NativeErrorCode.ToString(CultureInfo.InvariantCulture)})",
+                    StringComparison.Ordinal);
+            }
+        }
+
+        return details;
+    }
+
+    internal static string Mask(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        if ((value.Contains('.') || value.Contains(':'))
+            && !value.Contains("]:", StringComparison.Ordinal)
+            && IPAddress.TryParse(value, out var address))
+        {
+            if (address.IsIPv4MappedToIPv6)
+            {
+                address = address.MapToIPv4();
+            }
+
+            return address.AddressFamily == AddressFamily.InterNetwork
+                ? $"xxx.xxx.xxx.{address.GetAddressBytes()[^1].ToString(CultureInfo.InvariantCulture)}"
+                : "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
+        }
+
+        if (value.Contains(':') && IPEndPoint.TryParse(value, out var endpoint))
+        {
+            var maskedAddress = Mask(endpoint.Address.ToString());
+            var port = endpoint.Port.ToString(CultureInfo.InvariantCulture);
+            return maskedAddress.Contains(':')
+                ? $"[{maskedAddress}]:{port}"
+                : $"{maskedAddress}:{port}";
+        }
+
+        var characterCount = value.EnumerateRunes().Count();
+        return string.Create(value.Length, (value, characterCount), static (masked, state) =>
+        {
+            masked.Fill('x');
+            if (state.characterCount > 3)
+            {
+                var middle = (state.characterCount - 1) / 2;
+                var index = 0;
+                var offset = 0;
+                foreach (var character in state.value.EnumerateRunes())
+                {
+                    if (index == 0 || index == middle || index == state.characterCount - 1)
+                    {
+                        _ = character.EncodeToUtf16(masked[offset..]);
+                    }
+
+                    offset += character.Utf16SequenceLength;
+                    index++;
+                }
+            }
+        });
     }
 
     /// <summary>

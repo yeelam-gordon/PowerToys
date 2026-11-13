@@ -82,7 +82,7 @@ internal static class Logger
     {
         if (e is not KnownException)
         {
-            var exText = e.ToString();
+            var exText = FormatException(e);
 
             Logger.Log($"!Exception!: {exText}", memberName, sourceFilePath, sourceLineNumber);
 
@@ -370,6 +370,101 @@ internal static class Logger
                 _ = Logger.PrivateDump(sb, fieldValue, fieldInfo.Name, level + 1, maxLevel, recurse);
             }
         }
+    }
+
+    internal static string FormatException(Exception exception)
+    {
+        var details = exception.ToString();
+        for (var current = exception; current != null; current = current.InnerException)
+        {
+            if (current is SocketException socketException && !string.IsNullOrEmpty(socketException.Message))
+            {
+                details = details.Replace(
+                    socketException.Message,
+                    $"{socketException.SocketErrorCode} ({socketException.NativeErrorCode.ToString(CultureInfo.InvariantCulture)})",
+                    StringComparison.Ordinal);
+            }
+        }
+
+        return details;
+    }
+
+    internal static string MaskAddress(IPAddress address)
+    {
+        if (address == null)
+        {
+            return null;
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var octets = address.GetAddressBytes();
+            static string MaskOctet(byte octet) => octet >= 100 ? "xxx" : octet >= 10 ? "xx" : "x";
+            return $"{MaskOctet(octets[0])}.{MaskOctet(octets[1])}.{MaskOctet(octets[2])}.{octets[3].ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        return "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
+    }
+
+    internal static string MaskAddress(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        return IPAddress.TryParse(value, out var address)
+            ? MaskAddress(address)
+            : "<invalid IP address>";
+    }
+
+    internal static string MaskEndpoint(IPEndPoint endpoint)
+    {
+        if (endpoint == null)
+        {
+            return null;
+        }
+
+        var maskedAddress = MaskAddress(endpoint.Address);
+        var port = endpoint.Port.ToString(CultureInfo.InvariantCulture);
+        return maskedAddress.Contains(':')
+            ? $"[{maskedAddress}]:{port}"
+            : $"{maskedAddress}:{port}";
+    }
+
+    internal static string MaskName(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return value;
+        }
+
+        var characterCount = value.EnumerateRunes().Count();
+        return string.Create(value.Length, (value, characterCount), static (masked, state) =>
+        {
+            masked.Fill('x');
+            if (state.characterCount > 3)
+            {
+                var middle = (state.characterCount - 1) / 2;
+                var index = 0;
+                var offset = 0;
+                foreach (var character in state.value.EnumerateRunes())
+                {
+                    if (index == 0 || index == middle || index == state.characterCount - 1)
+                    {
+                        _ = character.EncodeToUtf16(masked[offset..]);
+                    }
+
+                    offset += character.Utf16SequenceLength;
+                    index++;
+                }
+            }
+        });
     }
 
     /// <summary>

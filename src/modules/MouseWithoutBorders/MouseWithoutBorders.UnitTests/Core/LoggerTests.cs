@@ -5,6 +5,8 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -16,6 +18,124 @@ namespace MouseWithoutBorders.UnitTests.Core;
 
 public static class LoggerTests
 {
+    [TestClass]
+    public sealed class MaskTests
+    {
+        [TestMethod]
+        [DataRow("SampleMachineA", "SxxxxxMxxxxxxA")]
+        [DataRow("ExampleMachineA", "ExxxxxxMxxxxxxA")]
+        [DataRow("DEVBOX123", "DxxxOxxx3")]
+        [DataRow("ABCD", "ABxD")]
+        [DataRow("1234", "12x4")]
+        [DataRow("\U0001F600ABCD\U0001F600", "\U0001F600xBxx\U0001F600")]
+        [DataRow("A\U0001F600B\U0001F600C", "AxxBxxC")]
+        public void MasksNamesKeepingFirstMiddleAndLastCharacters(string original, string expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskName(original));
+        }
+
+        [TestMethod]
+        [DataRow("A", "x")]
+        [DataRow("AB", "xx")]
+        [DataRow("ABC", "xxx")]
+        [DataRow("", "")]
+        [DataRow(null, null)]
+        public void DoesNotRevealShortNamesAndPreservesAbsentValues(string? original, string? expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskName(original));
+        }
+
+        [TestMethod]
+        [DataRow("192.16.10.42", "xxx.xx.xx.42")]
+        [DataRow("192.168.0.67", "xxx.xxx.x.67")]
+        [DataRow("10.20.30.255", "xx.xx.xx.255")]
+        [DataRow("0.1.255.0", "x.x.xxx.0")]
+        [DataRow("::ffff:192.16.10.42", "xxx.xx.xx.42")]
+        public void MasksIpv4AddressesKeepingOnlyLastOctet(string original, string expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskAddress(IPAddress.Parse(original)));
+            Assert.AreEqual(expected, Logger.MaskAddress(original));
+        }
+
+        [TestMethod]
+        [DataRow("2001:db8:1234:5678::42")]
+        [DataRow("::1")]
+        public void MasksIpv6AddressesWithoutExposingTheirPrefix(string original)
+        {
+            Assert.AreEqual("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx", Logger.MaskAddress(IPAddress.Parse(original)));
+            Assert.AreEqual("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx", Logger.MaskAddress(original));
+        }
+
+        [TestMethod]
+        [DataRow("192.16.10.42:15100", "xxx.xx.xx.42:15100")]
+        [DataRow("[2001:db8::42]:15100", "[xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]:15100")]
+        [DataRow("[::ffff:192.16.10.42]:15100", "xxx.xx.xx.42:15100")]
+        public void MasksSocketAddressesAndPreservesTheirPorts(string original, string expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskEndpoint(IPEndPoint.Parse(original)));
+        }
+
+        [TestMethod]
+        [DataRow(null, null)]
+        [DataRow("", "")]
+        [DataRow("SampleMachineA", "<invalid IP address>")]
+        public void AddressTextDoesNotFallBackToNameMasking(string? original, string? expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskAddress(original));
+        }
+
+        [TestMethod]
+        public void AbsentSocketValuesStayAbsent()
+        {
+            Assert.IsNull(Logger.MaskAddress((IPAddress?)null));
+            Assert.IsNull(Logger.MaskEndpoint(null));
+        }
+    }
+
+    [TestClass]
+    public sealed class FormatExceptionTests
+    {
+        [TestMethod]
+        public void SocketErrorsKeepTheirCodesWithoutTheirEndpoints()
+        {
+            var actual = Logger.FormatException(new EndpointSocketException());
+
+            Assert.IsTrue(actual.Contains(nameof(SocketError.ConnectionRefused), StringComparison.Ordinal));
+            Assert.IsFalse(actual.Contains("192.0.2.42", StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public void NestedSocketErrorsAreMaskedInBothExceptionMessages()
+        {
+            var inner = new EndpointSocketException();
+            var exception = new IOException($"Connection failed: {inner.Message}", inner);
+
+            var actual = Logger.FormatException(exception);
+
+            Assert.IsTrue(actual.Contains("Connection failed:", StringComparison.Ordinal));
+            Assert.IsTrue(actual.Contains(nameof(SocketError.ConnectionRefused), StringComparison.Ordinal));
+            Assert.IsFalse(actual.Contains("192.0.2.42", StringComparison.Ordinal));
+        }
+
+        [TestMethod]
+        public void OtherExceptionDetailsRemainUnchanged()
+        {
+            var exception = new InvalidOperationException("The selected operation is not available.");
+
+            Assert.AreEqual(exception.ToString(), Logger.FormatException(exception));
+        }
+
+        private sealed class EndpointSocketException : SocketException
+        {
+            public EndpointSocketException()
+                : base((int)SocketError.ConnectionRefused)
+            {
+            }
+
+            public override string Message => "Connection refused by 192.0.2.42:15100";
+        }
+    }
+
     [TestClass]
     public sealed class GetStackTraceTests
     {

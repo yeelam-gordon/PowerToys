@@ -401,9 +401,14 @@ internal static class Logger
             address = address.MapToIPv4();
         }
 
-        return address.AddressFamily == AddressFamily.InterNetwork
-            ? $"xxx.xxx.xxx.{address.GetAddressBytes()[^1].ToString(CultureInfo.InvariantCulture)}"
-            : "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var octets = address.GetAddressBytes();
+            static string MaskOctet(byte octet) => octet >= 100 ? "xxx" : octet >= 10 ? "xx" : "x";
+            return $"{MaskOctet(octets[0])}.{MaskOctet(octets[1])}.{MaskOctet(octets[2])}.{octets[3].ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        return "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
     }
 
     internal static string MaskAddress(string value)

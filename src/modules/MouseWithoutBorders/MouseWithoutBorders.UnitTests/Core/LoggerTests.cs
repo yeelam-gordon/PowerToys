@@ -27,7 +27,6 @@ public static class LoggerTests
         [DataRow("DEVBOX123", "DxxxOxxx3")]
         [DataRow("ABCD", "ABxD")]
         [DataRow("1234", "12x4")]
-        [DataRow("192.16.10.42", "1xxxx6xxxxx2")]
         [DataRow("\U0001F600ABCD\U0001F600", "\U0001F600xBxx\U0001F600")]
         [DataRow("A\U0001F600B\U0001F600C", "AxxBxxC")]
         public void MasksNamesKeepingFirstMiddleAndLastCharacters(string original, string expected)
@@ -47,9 +46,11 @@ public static class LoggerTests
         }
 
         [TestMethod]
-        [DataRow("192.16.10.42", "xxx.xxx.xxx.42")]
-        [DataRow("10.20.30.255", "xxx.xxx.xxx.255")]
-        [DataRow("::ffff:192.16.10.42", "xxx.xxx.xxx.42")]
+        [DataRow("192.16.10.42", "xxx.xx.xx.42")]
+        [DataRow("192.168.0.67", "xxx.xxx.x.67")]
+        [DataRow("10.20.30.255", "xx.xx.xx.255")]
+        [DataRow("0.1.255.0", "x.x.xxx.0")]
+        [DataRow("::ffff:192.16.10.42", "xxx.xx.xx.42")]
         public void MasksIpv4AddressesKeepingOnlyLastOctet(string original, string expected)
         {
             Assert.AreEqual(expected, Logger.MaskAddress(IPAddress.Parse(original)));
@@ -66,9 +67,9 @@ public static class LoggerTests
         }
 
         [TestMethod]
-        [DataRow("192.16.10.42:15100", "xxx.xxx.xxx.42:15100")]
+        [DataRow("192.16.10.42:15100", "xxx.xx.xx.42:15100")]
         [DataRow("[2001:db8::42]:15100", "[xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]:15100")]
-        [DataRow("[::ffff:192.16.10.42]:15100", "xxx.xxx.xxx.42:15100")]
+        [DataRow("[::ffff:192.16.10.42]:15100", "xxx.xx.xx.42:15100")]
         public void MasksSocketAddressesAndPreservesTheirPorts(string original, string expected)
         {
             Assert.AreEqual(expected, Logger.MaskEndpoint(IPEndPoint.Parse(original)));

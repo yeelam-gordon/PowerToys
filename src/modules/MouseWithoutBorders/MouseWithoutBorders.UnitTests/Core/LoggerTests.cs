@@ -5,6 +5,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Globalization;
+using System.Net;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -26,11 +27,12 @@ public static class LoggerTests
         [DataRow("DEVBOX123", "DxxxOxxx3")]
         [DataRow("ABCD", "ABxD")]
         [DataRow("1234", "12x4")]
+        [DataRow("192.16.10.42", "1xxxx6xxxxx2")]
         [DataRow("\U0001F600ABCD\U0001F600", "\U0001F600xBxx\U0001F600")]
         [DataRow("A\U0001F600B\U0001F600C", "AxxBxxC")]
         public void MasksNamesKeepingFirstMiddleAndLastCharacters(string original, string expected)
         {
-            Assert.AreEqual(expected, Logger.Mask(original));
+            Assert.AreEqual(expected, Logger.MaskName(original));
         }
 
         [TestMethod]
@@ -41,7 +43,7 @@ public static class LoggerTests
         [DataRow(null, null)]
         public void DoesNotRevealShortNamesAndPreservesAbsentValues(string? original, string? expected)
         {
-            Assert.AreEqual(expected, Logger.Mask(original));
+            Assert.AreEqual(expected, Logger.MaskName(original));
         }
 
         [TestMethod]
@@ -50,7 +52,8 @@ public static class LoggerTests
         [DataRow("::ffff:192.16.10.42", "xxx.xxx.xxx.42")]
         public void MasksIpv4AddressesKeepingOnlyLastOctet(string original, string expected)
         {
-            Assert.AreEqual(expected, Logger.Mask(original));
+            Assert.AreEqual(expected, Logger.MaskAddress(IPAddress.Parse(original)));
+            Assert.AreEqual(expected, Logger.MaskAddress(original));
         }
 
         [TestMethod]
@@ -58,7 +61,8 @@ public static class LoggerTests
         [DataRow("::1")]
         public void MasksIpv6AddressesWithoutExposingTheirPrefix(string original)
         {
-            Assert.AreEqual("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx", Logger.Mask(original));
+            Assert.AreEqual("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx", Logger.MaskAddress(IPAddress.Parse(original)));
+            Assert.AreEqual("xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx", Logger.MaskAddress(original));
         }
 
         [TestMethod]
@@ -67,7 +71,23 @@ public static class LoggerTests
         [DataRow("[::ffff:192.16.10.42]:15100", "xxx.xxx.xxx.42:15100")]
         public void MasksSocketAddressesAndPreservesTheirPorts(string original, string expected)
         {
-            Assert.AreEqual(expected, Logger.Mask(original));
+            Assert.AreEqual(expected, Logger.MaskEndpoint(IPEndPoint.Parse(original)));
+        }
+
+        [TestMethod]
+        [DataRow(null, null)]
+        [DataRow("", "")]
+        [DataRow("SampleMachineA", "<invalid IP address>")]
+        public void AddressTextDoesNotFallBackToNameMasking(string? original, string? expected)
+        {
+            Assert.AreEqual(expected, Logger.MaskAddress(original));
+        }
+
+        [TestMethod]
+        public void AbsentSocketValuesStayAbsent()
+        {
+            Assert.IsNull(Logger.MaskAddress((IPAddress?)null));
+            Assert.IsNull(Logger.MaskEndpoint(null));
         }
     }
 

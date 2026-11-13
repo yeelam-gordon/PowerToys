@@ -155,7 +155,7 @@ namespace MouseWithoutBorders
 
             if (MachineStuff.MachineMatrix != null && MachineStuff.MachineMatrix.Length == MachineStuff.MAX_MACHINE)
             {
-                Logger.LogDebug("LoadMachines: Machine Matrix: " + string.Join(",", (Setting.Values.MachineMatrixString ?? string.Empty).Split(',').Select(Logger.Mask)));
+                Logger.LogDebug("LoadMachines: Machine Matrix: " + string.Join(",", (Setting.Values.MachineMatrixString ?? string.Empty).Split(',').Select(Logger.MaskName)));
 
                 for (int i = 0; i < MachineStuff.MAX_MACHINE; i++)
                 {

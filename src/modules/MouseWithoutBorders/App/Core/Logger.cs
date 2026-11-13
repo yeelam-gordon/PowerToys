@@ -389,34 +389,54 @@ internal static class Logger
         return details;
     }
 
-    internal static string Mask(string value)
+    internal static string MaskAddress(IPAddress address)
+    {
+        if (address == null)
+        {
+            return null;
+        }
+
+        if (address.IsIPv4MappedToIPv6)
+        {
+            address = address.MapToIPv4();
+        }
+
+        return address.AddressFamily == AddressFamily.InterNetwork
+            ? $"xxx.xxx.xxx.{address.GetAddressBytes()[^1].ToString(CultureInfo.InvariantCulture)}"
+            : "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
+    }
+
+    internal static string MaskAddress(string value)
     {
         if (string.IsNullOrEmpty(value))
         {
             return value;
         }
 
-        if ((value.Contains('.') || value.Contains(':'))
-            && !value.Contains("]:", StringComparison.Ordinal)
-            && IPAddress.TryParse(value, out var address))
-        {
-            if (address.IsIPv4MappedToIPv6)
-            {
-                address = address.MapToIPv4();
-            }
+        return IPAddress.TryParse(value, out var address)
+            ? MaskAddress(address)
+            : "<invalid IP address>";
+    }
 
-            return address.AddressFamily == AddressFamily.InterNetwork
-                ? $"xxx.xxx.xxx.{address.GetAddressBytes()[^1].ToString(CultureInfo.InvariantCulture)}"
-                : "xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx";
+    internal static string MaskEndpoint(IPEndPoint endpoint)
+    {
+        if (endpoint == null)
+        {
+            return null;
         }
 
-        if (value.Contains(':') && IPEndPoint.TryParse(value, out var endpoint))
+        var maskedAddress = MaskAddress(endpoint.Address);
+        var port = endpoint.Port.ToString(CultureInfo.InvariantCulture);
+        return maskedAddress.Contains(':')
+            ? $"[{maskedAddress}]:{port}"
+            : $"{maskedAddress}:{port}";
+    }
+
+    internal static string MaskName(string value)
+    {
+        if (string.IsNullOrEmpty(value))
         {
-            var maskedAddress = Mask(endpoint.Address.ToString());
-            var port = endpoint.Port.ToString(CultureInfo.InvariantCulture);
-            return maskedAddress.Contains(':')
-                ? $"[{maskedAddress}]:{port}"
-                : $"{maskedAddress}:{port}";
+            return value;
         }
 
         var characterCount = value.EnumerateRunes().Count();

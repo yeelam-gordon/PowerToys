@@ -686,7 +686,7 @@ internal static class MachineStuff
                     rv = true;
                 }
 
-                Logger.LogDebug("<><><><><>>><><><<><><><><><><><><><><>><><><><><><><><><><><" + Logger.Mask(inf.Name));
+                Logger.LogDebug("<><><><><>>><><><<><><><><><><><><><><>><><><><><><><><><><><" + Logger.MaskName(inf.Name));
             }
         }
 
@@ -744,7 +744,7 @@ internal static class MachineStuff
             }
             else
             {
-                Logger.LogDebug("AddToMachinePool: could not add a new machine: " + Logger.Mask(name));
+                Logger.LogDebug("AddToMachinePool: could not add a new machine: " + Logger.MaskName(name));
                 return "The 5th machine";
             }
         }
@@ -771,7 +771,7 @@ internal static class MachineStuff
         Common.ReopenSockets(true);
         MachineStuff.SendMachineMatrix();
 
-        Logger.LogDebug("Machine added: " + Logger.Mask(name) + "/" + package.Src.ToString());
+        Logger.LogDebug("Machine added: " + Logger.MaskName(name) + "/" + package.Src.ToString());
         UpdateClientSockets("AddToMachinePool");
         return name;
     }
@@ -940,7 +940,7 @@ internal static class MachineStuff
         {
             bool twoRow = !Setting.Values.MatrixOneRow;
             string[] connectedMachines = twoRow ? MachineMatrix : MachineMatrix.Select(m => Common.IsConnectedTo(IdFromName(m)) ? m : string.Empty).ToArray();
-            Logger.LogDebug($"Matrix: {string.Join(",", MachineMatrix.Select(Logger.Mask))}, Connected: {string.Join(",", connectedMachines.Select(Logger.Mask))}");
+            Logger.LogDebug($"Matrix: {string.Join(",", MachineMatrix.Select(Logger.MaskName))}, Connected: {string.Join(",", connectedMachines.Select(Logger.MaskName))}");
 
             return connectedMachines;
         }
@@ -973,7 +973,7 @@ internal static class MachineStuff
 
             Common.SkSend(package, null, false);
 
-            Logger.LogDebug($"matrixIncludedMachine sent: [{i + 1}]:[{Logger.Mask(MachineMatrix[i])}]");
+            Logger.LogDebug($"matrixIncludedMachine sent: [{i + 1}]:[{Logger.MaskName(MachineMatrix[i])}]");
         }
     }
 
@@ -984,7 +984,7 @@ internal static class MachineStuff
 
         if (i is > 0 and <= MAX_MACHINE)
         {
-            Logger.LogDebug($"matrixIncludedMachine: [{i}]:[{Logger.Mask(matrixIncludedMachine)}]");
+            Logger.LogDebug($"matrixIncludedMachine: [{i}]:[{Logger.MaskName(matrixIncludedMachine)}]");
 
             MachineMatrix[i - 1] = matrixIncludedMachine;
 

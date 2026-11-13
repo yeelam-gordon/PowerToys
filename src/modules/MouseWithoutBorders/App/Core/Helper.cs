@@ -379,14 +379,14 @@ internal static class Helper
         log += "=============================================================================================================================\r\n";
         log += $"{Application.ProductName} version {Application.ProductVersion}\r\n";
 
-        log += $"{Logger.Mask(Setting.Values.Username)}/{Logger.GetChecksum(Encryption.MyKey)}\r\n";
-        log += $"{Logger.Mask(Common.MachineName)}/{Common.MachineID}/{Common.DesMachineID}\r\n";
+        log += $"{Logger.MaskName(Setting.Values.Username)}/{Logger.GetChecksum(Encryption.MyKey)}\r\n";
+        log += $"{Logger.MaskName(Common.MachineName)}/{Common.MachineID}/{Common.DesMachineID}\r\n";
         log += $"Id: {Setting.Values.DeviceId}\r\n";
-        log += $"Matrix: {string.Join(",", MachineStuff.MachineMatrix.Select(Logger.Mask))}\r\n";
+        log += $"Matrix: {string.Join(",", MachineStuff.MachineMatrix.Select(Logger.MaskName))}\r\n";
         log += "McPool: " + string.Join(",", (Setting.Values.MachinePoolString ?? string.Empty).Split(',').Select(machine =>
         {
             var separator = machine.IndexOf(':');
-            return separator < 0 ? Logger.Mask(machine) : Logger.Mask(machine[..separator]) + machine[separator..];
+            return separator < 0 ? Logger.MaskName(machine) : Logger.MaskName(machine[..separator]) + machine[separator..];
         })) + "\r\n";
 
         log += "\r\nOPTIONS:\r\n";
@@ -423,7 +423,7 @@ internal static class Helper
         {
             foreach (TcpSk tcp in sk.TcpSockets)
             {
-                log += $"{Logger.Mask(Common.MachineName)}{(tcp.IsClient ? "=>" : "<=")}{Logger.Mask(tcp.MachineName)}({tcp.MachineId}):{tcp.Status}\r\n";
+                log += $"{Logger.MaskName(Common.MachineName)}{(tcp.IsClient ? "=>" : "<=")}{Logger.MaskName(tcp.MachineName)}({tcp.MachineId}):{tcp.Status}\r\n";
             }
         }
 
@@ -431,7 +431,8 @@ internal static class Helper
 
         log += Setting.Values.LastPersonalizeLogonScr + "\r\n";
         log += "Name2IP =\r\n" + string.Join("\r\n", SocketStuff.GetName2IpMappingLines(string.Empty, Setting.Values.Name2IP)
-            .Select(line => string.Join(" ", line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries).Select(Logger.Mask)))) + "\r\n";
+            .Select(line => string.Join(" ", line.Split((char[])null, StringSplitOptions.RemoveEmptyEntries)
+                .Select((value, index) => index == 1 ? Logger.MaskAddress(value) : Logger.MaskName(value))))) + "\r\n";
 
         // note - this doesn't actually log the last 10 messages - it really concatenates the counts of
         // the first 10 unique messages that were logged, which isn't really very useful so we'll remove it
@@ -485,7 +486,7 @@ internal static class Helper
                 Setting.Values.Username = Program.User;
             }
 
-            Logger.LogDebug("[Username] = " + Logger.Mask(Setting.Values.Username));
+            Logger.LogDebug("[Username] = " + Logger.MaskName(Setting.Values.Username));
         }
 
         return !string.IsNullOrEmpty(Setting.Values.Username);

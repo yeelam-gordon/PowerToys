@@ -466,8 +466,9 @@ namespace EnvironmentVariablesUILib
                 return;
             }
 
+            listItem.Text = (sender as TextBox)?.Text;
             var variable = EditVariableDialog.DataContext as Variable;
-            var newValues = VariableEditorState.CommitEntryText(variable, listItem, (sender as TextBox)?.Text);
+            var newValues = string.Join(";", variable.ValuesList?.Select(x => x.Text).ToArray());
             EnvironmentVariablesPageActions.SetRawTextWithHandlerSuppressed(
                 newValues,
                 () => EditVariableDialogValueTxtBox.TextChanged -= EditVariableDialogValueTxtBox_TextChanged,

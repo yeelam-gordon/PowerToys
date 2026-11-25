@@ -229,6 +229,7 @@
     </Project>
   </Folder>
   <Folder Name="/modules/cmdNotFound/">
+    <Project Path="src/modules/cmdNotFound/CmdNotFound.UnitTests/CmdNotFound.UnitTests.vcxproj" Id="9b2e072a-670f-421e-974b-397e045631d5" />
     <Project Path="src/modules/cmdNotFound/CmdNotFoundModuleInterface/CmdNotFoundModuleInterface.vcxproj" Id="0014d652-901f-4456-8d65-06fc5f997fb0" />
   </Folder>
   <Folder Name="/modules/colorpicker/">

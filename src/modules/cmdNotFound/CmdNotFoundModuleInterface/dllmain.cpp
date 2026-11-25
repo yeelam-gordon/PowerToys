@@ -13,6 +13,7 @@
 #include <common/utils/resources.h>
 #include <interface/powertoy_module_interface.h>
 
+#include "PowerShellScriptRunner.h"
 #include "resource.h"
 #include "trace.h"
 
@@ -50,15 +51,12 @@ private:
     {
         auto module_path = get_module_folderpath();
 
-        std::string command = "pwsh.exe";
-        command += " ";
-        command += "-NoProfile -NonInteractive -NoLogo -WindowStyle Hidden -ExecutionPolicy Unrestricted -File \"" + winrt::to_string(module_path) + "\\WinUI3Apps\\Assets\\Settings\\Scripts\\EnableModule.ps1" + "\"" + " -scriptPath \"" + winrt::to_string(module_path) + "\"";
-
-        int ret = system(command.c_str());
+        const auto arguments = L"-NoProfile -NonInteractive -NoLogo -WindowStyle Hidden -ExecutionPolicy Unrestricted -File \"" + module_path + L"\\WinUI3Apps\\Assets\\Settings\\Scripts\\EnableModule.ps1\" -scriptPath \"" + module_path + L"\"";
+        const DWORD ret = CmdNotFoundScripts::RunPowerShellScript(arguments);
 
         if (ret != 0)
         {
-            Logger::error("Running EnableModule.ps1 script failed.");
+            Logger::error("Running EnableModule.ps1 script failed: {}.", ret);
         }
         else
         {
@@ -71,15 +69,12 @@ private:
     {
         auto module_path = get_module_folderpath();
 
-        std::string command = "pwsh.exe";
-        command += " ";
-        command += "-NoProfile -NonInteractive -NoLogo -WindowStyle Hidden -ExecutionPolicy Unrestricted -File \"" + winrt::to_string(module_path) + "\\WinUI3Apps\\Assets\\Settings\\Scripts\\DisableModule.ps1" + "\"";
-
-        int ret = system(command.c_str());
+        const auto arguments = L"-NoProfile -NonInteractive -NoLogo -WindowStyle Hidden -ExecutionPolicy Unrestricted -File \"" + module_path + L"\\WinUI3Apps\\Assets\\Settings\\Scripts\\DisableModule.ps1\"";
+        const DWORD ret = CmdNotFoundScripts::RunPowerShellScript(arguments);
 
         if (ret != 0)
         {
-            Logger::error("Running EnableModule.ps1 script failed.");
+            Logger::error("Running DisableModule.ps1 script failed: {}.", ret);
         }
         else
         {

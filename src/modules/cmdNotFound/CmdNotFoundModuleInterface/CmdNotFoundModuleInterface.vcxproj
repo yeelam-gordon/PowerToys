@@ -73,6 +73,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="PowerShellScriptRunner.h" />
     <ClInclude Include="trace.h">
       <Filter>Header Files</Filter>
     </ClInclude>

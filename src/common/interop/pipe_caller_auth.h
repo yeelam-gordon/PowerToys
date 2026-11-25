@@ -51,6 +51,9 @@ namespace interop_auth
         // Optional sink invoked once per rejected process instance (deduped via the per-process cache).
         // The Runner supplies a lambda that logs via its own Logger; interop itself has no logger.
         std::function<void(const AuthResult&)> logReject;
+
+        // Opt in to applying the same policy to outbound connections.
+        bool authenticateServer = false;
     };
 
     // Per-policy verification cache. Header-only so transports can embed it without introducing

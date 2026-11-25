@@ -5,10 +5,21 @@
 #include <wil/resource.h>
 #include <filesystem>
 
-IPCHelper::IPCHelper(const std::wstring& currentPipeName, const std::wstring receiverPipeName, std::function<void(const std::wstring&)> messageCallback, const interop_auth::CallerPolicy& peerPolicy) :
+IPCHelper::IPCHelper(const std::wstring& currentPipeName, const std::wstring& receiverPipeName) :
     m_currentPipeName(currentPipeName),
-    m_receiverPipeName(receiverPipeName),
-    callback(messageCallback)
+    m_receiverPipeName(receiverPipeName)
+{
+    ipc = make_unique<TwoWayPipeMessageIPC>(currentPipeName, receiverPipeName, std::bind(&IPCHelper::receive, this, std::placeholders::_1));
+}
+
+IPCHelper::IPCHelper(const std::wstring& currentPipeName, const std::wstring receiverPipeName, std::function<void(const std::wstring&)> messageCallback, const interop_auth::CallerPolicy& peerPolicy) :
+    IPCHelper(currentPipeName, receiverPipeName)
+{
+    callback = std::move(messageCallback);
+    Start(peerPolicy);
+}
+
+void IPCHelper::Start(const interop_auth::CallerPolicy& peerPolicy)
 {
     wil::unique_handle token;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, token.put()))
@@ -18,7 +29,6 @@ IPCHelper::IPCHelper(const std::wstring& currentPipeName, const std::wstring rec
     }
 
     std::unique_lock lock{ ipcMutex };
-    ipc = make_unique<TwoWayPipeMessageIPC>(currentPipeName, receiverPipeName, std::bind(&IPCHelper::receive, this, std::placeholders::_1));
     ipc->start(token.get(), peerPolicy);
 }
 

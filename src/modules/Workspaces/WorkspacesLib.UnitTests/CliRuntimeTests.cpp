@@ -28,14 +28,14 @@ namespace WorkspacesLibUnitTests
                 else if (!staged.empty())
                     DeleteFileW(staged.c_str());
             });
-            if (scenario.starts_with(L"ui-startup") || scenario.starts_with(L"session-"))
+            if (scenario.starts_with(L"ui-startup") || scenario.starts_with(L"session-") || scenario.starts_with(L"ui-peer-"))
             {
                 GUID guid{};
                 Assert::IsTrue(SUCCEEDED(CoCreateGuid(&guid)));
                 wchar_t id[40]{};
                 StringFromGUID2(guid, id, ARRAYSIZE(id));
                 const auto root = executable.parent_path().parent_path().parent_path();
-                if (scenario.starts_with(L"session-"))
+                if (scenario.starts_with(L"session-") || scenario.starts_with(L"ui-startup") || scenario.starts_with(L"ui-peer-"))
                 {
                     stagedDirectory = executable.parent_path() / (std::wstring(L"InlineSession-") + id);
                     Assert::IsTrue(std::filesystem::create_directory(stagedDirectory));
@@ -47,21 +47,30 @@ namespace WorkspacesLibUnitTests
                             std::filesystem::create_hard_link(file.path(), stagedDirectory / file.path().filename());
                     }
                     const auto uiDirectory = root / L"WinUI3Apps";
-                    Assert::IsTrue(std::filesystem::is_directory(uiDirectory));
-                    for (const auto& file : std::filesystem::recursive_directory_iterator(uiDirectory))
+                    if (scenario.starts_with(L"ui-peer-"))
                     {
-                        const auto destination = stagedDirectory / L"WinUI3Apps" / std::filesystem::relative(file.path(), uiDirectory);
-                        if (file.is_directory())
-                            std::filesystem::create_directories(destination);
-                        else if (file.is_regular_file())
+                        std::filesystem::create_directory(stagedDirectory / L"WinUI3Apps");
+                        Assert::IsTrue(CopyFileW(executable.c_str(), (stagedDirectory / L"WinUI3Apps" / L"PowerToys.WorkspacesLauncherUI.exe").c_str(), TRUE) != FALSE);
+                    }
+                    else
+                    {
+                        Assert::IsTrue(std::filesystem::is_directory(uiDirectory));
+                        for (const auto& file : std::filesystem::recursive_directory_iterator(uiDirectory))
                         {
-                            std::filesystem::create_directories(destination.parent_path());
-                            std::filesystem::create_hard_link(file.path(), destination);
+                            const auto destination = stagedDirectory / L"WinUI3Apps" / std::filesystem::relative(file.path(), uiDirectory);
+                            if (file.is_directory())
+                                std::filesystem::create_directories(destination);
+                            else if (file.is_regular_file())
+                            {
+                                std::filesystem::create_directories(destination.parent_path());
+                                std::filesystem::create_hard_link(file.path(), destination);
+                            }
                         }
                     }
                     if (scenario == L"session-timeout")
                         Assert::IsTrue(CopyFileW(executable.c_str(), (stagedDirectory / L"PowerToys.WorkspacesWindowArranger.exe").c_str(), TRUE) != FALSE);
-                    const bool gui = scenario == L"session-gui" || scenario == L"session-draft";
+                    const bool gui = scenario == L"session-gui" || scenario == L"session-draft" || scenario.starts_with(L"ui-startup") ||
+                                     (scenario.starts_with(L"ui-peer-") && scenario != L"ui-peer-cli");
                     staged = stagedDirectory / (gui ? L"PowerToys.WorkspacesLauncher.exe" : L"PowerToys.WorkspacesCLI.exe");
                 }
                 else
@@ -152,6 +161,22 @@ namespace WorkspacesLibUnitTests
         }
 
 #ifdef _DEBUG
+        TEST_METHOD (UiHandoffAcceptsTheLaunchedLauncherAndCliPeer)
+        {
+            Run(L"ui-peer-launcher");
+            Run(L"ui-peer-cli");
+        }
+
+        TEST_METHOD (UiHandoffRejectsResponsesFromAnotherInstanceOfTheSameUi)
+        {
+            Run(L"ui-peer-other");
+        }
+
+        TEST_METHOD (UiHandoffPreservesImmediateCancellation)
+        {
+            Run(L"ui-peer-cancel");
+        }
+
         TEST_METHOD (CancellationJoinsSnapshotCallbackBeforeReleasingItsOwner)
         {
             Run(L"session-teardown-snapshot");

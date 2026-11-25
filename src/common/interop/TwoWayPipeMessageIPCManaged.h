@@ -11,6 +11,7 @@ namespace winrt::PowerToys::Interop::implementation
         TwoWayPipeMessageIPCManaged(hstring const& inputPipeName, hstring const& outputPipeName, winrt::PowerToys::Interop::TwoWayPipeIPCReadCallback const& _callback);
         void Send(hstring const& msg);
         void Start();
+        void StartWithPeer(uint32_t processId, hstring const& directory, array_view<hstring const> executableNames);
         void End();
         void Close();
 
@@ -18,6 +19,8 @@ namespace winrt::PowerToys::Interop::implementation
         TwoWayPipeMessageIPC* _pipe;
         TwoWayPipeIPCReadCallback _callback;
         std::function<void(const std::wstring& msg)> _internalReadCallback;
+        std::wstring _outputPipeName;
+        winrt::handle _peerProcess;
     };
 }
 namespace winrt::PowerToys::Interop::factory_implementation

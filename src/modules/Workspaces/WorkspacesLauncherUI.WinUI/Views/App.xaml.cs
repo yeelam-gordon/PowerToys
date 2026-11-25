@@ -4,6 +4,8 @@
 
 using System;
 using System.Globalization;
+using System.IO;
+using System.Runtime.InteropServices;
 
 using ManagedCommon;
 using Microsoft.UI.Dispatching;
@@ -19,6 +21,7 @@ namespace WorkspacesLauncherUI
     /// </summary>
     public partial class App : Application, IDisposable
     {
+        private static readonly string[] OwnerExecutableNames = { "PowerToys.WorkspacesLauncher.exe", "PowerToys.WorkspacesCLI.exe" };
         private readonly LauncherSession _session;
         private StatusWindow _mainWindow;
         private TwoWayPipeMessageIPCManaged _ipcManager;
@@ -92,7 +95,20 @@ namespace WorkspacesLauncherUI
                         IPCMessageReceivedCallback?.Invoke(message);
                     }
                 });
-            _ipcManager.Start();
+            try
+            {
+                _ipcManager.StartWithPeer(
+                    (uint)_session.OwnerPid,
+                    Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..")),
+                    OwnerExecutableNames);
+            }
+            catch (Exception ex) when (ex is COMException or ArgumentException or UnauthorizedAccessException)
+            {
+                Logger.LogError("Unable to start the Workspaces owner connection.", ex);
+                Environment.ExitCode = 1;
+                Shutdown();
+                return;
+            }
 
             if (!_session.ConfirmationOnly)
             {

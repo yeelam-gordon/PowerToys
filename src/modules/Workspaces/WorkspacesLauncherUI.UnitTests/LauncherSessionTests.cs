@@ -37,11 +37,9 @@ namespace WorkspacesLauncherUI.UnitTests
         }
 
         [TestMethod]
-        public void LegacySessionIsAcceptedButPartialAndExtraArgumentsAreNot()
+        public void MissingPartialAndExtraSessionArgumentsAreRejected()
         {
-            Assert.IsTrue(LauncherSession.TryParse(Array.Empty<string>(), out var session));
-            Assert.AreEqual(string.Empty, session.OperationId);
-            Assert.AreEqual(0, session.OwnerPid);
+            Assert.IsFalse(LauncherSession.TryParse(Array.Empty<string>(), out _));
             Assert.IsFalse(LauncherSession.TryParse(PartialSessionArguments, out _));
             Assert.IsFalse(LauncherSession.TryParse(new[] { "--launch-ui", Guid.NewGuid().ToString(), "1234", "extra" }, out _));
         }

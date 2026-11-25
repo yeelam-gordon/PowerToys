@@ -408,6 +408,12 @@ void TwoWayPipeMessageIPC::TwoWayPipeMessageIPCImpl::send_pipe_message(std::wstr
         return;
     }
 
+    if (caller_policy.authenticateServer &&
+        !interop_auth::AuthenticateServer(output_pipe.get(), caller_policy, caller_cache).accepted)
+    {
+        return;
+    }
+
     const HANDLE output_pipe_handle = output_pipe.get();
     const auto clear_active_output_pipe = [&]() {
         std::scoped_lock lock(output_pipe_mutex);

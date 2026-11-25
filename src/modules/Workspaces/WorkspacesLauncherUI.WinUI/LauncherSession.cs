@@ -12,11 +12,6 @@ namespace WorkspacesLauncherUI
         internal static bool TryParse(string[] args, out LauncherSession session)
         {
             session = new LauncherSession(string.Empty, 0, false);
-            if (args.Length == 0)
-            {
-                return true;
-            }
-
             if (args.Length != 3 || (args[0] != "--confirmation-only" && args[0] != "--launch-ui") ||
                 !Guid.TryParse(args[1], out var id) || id == Guid.Empty ||
                 !int.TryParse(args[2], NumberStyles.None, CultureInfo.InvariantCulture, out var ownerPid) || ownerPid <= 0)

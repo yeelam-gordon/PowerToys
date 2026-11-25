@@ -7,7 +7,7 @@
 class LauncherUIHelper
 {
 public:
-    LauncherUIHelper(std::function<void(const std::wstring&)> ipcCallback, std::wstring operationId = L"", bool confirmationOnly = false);
+    LauncherUIHelper(std::function<void(const std::wstring&)> ipcCallback, std::wstring operationId, bool confirmationOnly = false);
     ~LauncherUIHelper();
 
     void SetCallback(std::function<void(const std::wstring&)> callback);
@@ -26,5 +26,6 @@ private:
     bool m_launchAttempted = false;
     bool m_ready = false;
     wil::unique_handle m_process;
-    IPCHelper m_ipcHelper;
+    std::function<void(const std::wstring&)> m_ipcCallback;
+    std::unique_ptr<IPCHelper> m_ipcHelper;
 };

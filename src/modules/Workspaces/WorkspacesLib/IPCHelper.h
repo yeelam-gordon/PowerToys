@@ -22,9 +22,11 @@ namespace IPCHelperStrings
 class IPCHelper
 {
 public:
+    IPCHelper(const std::wstring& currentPipeName, const std::wstring& receiverPipeName);
     IPCHelper(const std::wstring& currentPipeName, const std::wstring receiverPipeName, std::function<void(const std::wstring&)> messageCallback, const interop_auth::CallerPolicy& peerPolicy = {});
     ~IPCHelper();
 
+    void Start(const interop_auth::CallerPolicy& peerPolicy);
     void Stop();
     void send(const std::wstring& message) const;
     bool WaitForReady(DWORD timeoutMs, const std::function<bool()>& isCanceled = {}) const;

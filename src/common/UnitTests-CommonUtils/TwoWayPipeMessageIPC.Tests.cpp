@@ -8,6 +8,7 @@
 #include <memory>
 #include <system_error>
 #include <thread>
+#include <wil/resource.h>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -547,7 +548,59 @@ namespace UnitTestsCommonUtils
 
     TEST_CLASS(TwoWayPipeMessageIPCTests)
     {
+        static void CheckOutboundPeerPolicy(bool authenticateServer, bool matchingPid, bool expectMessage)
+        {
+            const auto destination = UniquePipeName();
+            wil::unique_hfile receiver(CreateRogueServer(destination));
+            Assert::IsTrue(static_cast<bool>(receiver));
+            wil::unique_handle completed(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+            Assert::IsTrue(static_cast<bool>(completed));
+            bool received = false;
+            std::thread reader([&] {
+                if (ConnectNamedPipe(receiver.get(), nullptr) || GetLastError() == ERROR_PIPE_CONNECTED)
+                {
+                    wchar_t message[32]{};
+                    DWORD bytes{};
+                    received = ReadFile(receiver.get(), message, sizeof(message), &bytes, nullptr) && bytes > 0;
+                }
+                SetEvent(completed.get());
+            });
+            auto joinReader = wil::scope_exit([&] {
+                CancelSynchronousIo(reader.native_handle());
+                if (reader.joinable())
+                {
+                    reader.join();
+                }
+            });
+            auto policy = SelfCallerPolicy();
+            policy.authenticateServer = authenticateServer;
+            policy.expectedClientPid = matchingPid ? GetCurrentProcessId() : 0;
+            TwoWayPipeMessageIPC sender(UniquePipeName(), destination, nullptr);
+            sender.start(nullptr, policy);
+            sender.send(L"decision");
+            Assert::AreEqual(DWORD{ WAIT_OBJECT_0 }, WaitForSingleObject(completed.get(), 5000));
+            sender.end();
+            reader.join();
+            joinReader.release();
+            Assert::AreEqual(expectMessage, received);
+        }
+
     public:
+        TEST_METHOD (OutboundPeerPolicyRejectsUnexpectedServerBeforeWriting)
+        {
+            CheckOutboundPeerPolicy(true, false, false);
+        }
+
+        TEST_METHOD (OutboundPeerPolicyAllowsTheExpectedServer)
+        {
+            CheckOutboundPeerPolicy(true, true, true);
+        }
+
+        TEST_METHOD (LegacyInboundPolicyDoesNotChangeOutboundConnections)
+        {
+            CheckOutboundPeerPolicy(false, false, true);
+        }
+
         TEST_METHOD(ServerDoesNotJoinAnExistingPipeName)
         {
             OccupiedPipe occupiedPipe;

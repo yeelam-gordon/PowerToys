@@ -18,6 +18,7 @@
 #include <WorkspacesLauncher/LaunchSessionHost.h>
 #include <WorkspacesLauncher/LauncherUIHelper.h>
 #include <WorkspacesLib/LauncherUiMessage.h>
+#include <WorkspacesLib/PendingLaunchApproval.h>
 #include <wil/resource.h>
 #include <WorkspacesCLI/JsonOutput.h>
 #include <WorkspacesCLI/Resources.h>
@@ -28,9 +29,27 @@ namespace
 {
     std::atomic<bool> stallShell{};
     std::atomic<bool> shellEntered{};
+    bool inertUi{};
 
     BOOL WINAPI FixtureShellExecute(SHELLEXECUTEINFO* information)
     {
+        if (inertUi)
+        {
+            if (std::filesystem::path(information->lpFile).filename() != L"PowerToys.WorkspacesLauncherUI.exe" ||
+                std::wstring_view(information->lpVerb) != L"open")
+            {
+                SetLastError(ERROR_ACCESS_DENIED);
+                return FALSE;
+            }
+            auto command = L"\"" + std::wstring(information->lpFile) + L"\" " + information->lpParameters;
+            STARTUPINFOW startup{ sizeof(startup) };
+            PROCESS_INFORMATION process{};
+            if (!CreateProcessW(information->lpFile, command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, information->lpDirectory, &startup, &process))
+                return FALSE;
+            CloseHandle(process.hThread);
+            information->hProcess = process.hProcess;
+            return TRUE;
+        }
         if (stallShell)
         {
             shellEntered = true;
@@ -679,6 +698,119 @@ namespace
         if (!displayed)
             throw std::runtime_error("First warning was not displayed by the real LauncherUIHelper. " + diagnostics.str());
     }
+
+    void RunBoundUi(const std::wstring& operation, DWORD owner)
+    {
+        Logger::init(std::vector<spdlog::sink_ptr>{ std::make_shared<spdlog::sinks::null_sink_mt>() });
+        auto policy = IPCHelper::SessionPeer(owner);
+        policy.expectedDirectory = std::filesystem::path(policy.expectedDirectory).parent_path().wstring();
+        const auto id = WorkspacesCli::NormalizeId(operation);
+        IPCHelper ui(IPCHelperStrings::UIPipeName + id, IPCHelperStrings::LauncherUIPipeName + id);
+        ui.SetCallback([&](const std::wstring& text) {
+            const auto message = json::JsonObject::Parse(text);
+            if (message.GetNamedString(L"type", L"") != L"elevation-warning")
+                return;
+            const std::wstring request{ message.GetNamedString(L"requestId") };
+            ui.send(L"{\"type\":\"warning-shown\",\"requestId\":\"" + request + L"\"}");
+            ui.send(L"{\"type\":\"elevation-response\",\"requestId\":\"" + request +
+                    L"\",\"choice\":\"" + (message.GetNamedString(L"appName") == L"run" ? L"run" : L"skip") + L"\"}");
+        });
+        ui.Start(policy);
+        Check(ui.WaitForReady(10000));
+        wchar_t cancel[2]{};
+        if (GetEnvironmentVariableW(L"PT_WORKSPACES_BINDING_CANCEL", cancel, ARRAYSIZE(cancel)) && cancel[0] == L'1')
+            ui.send(L"cancel");
+        wil::unique_handle parent(OpenProcess(SYNCHRONIZE, FALSE, owner));
+        Check(static_cast<bool>(parent));
+        WaitForSingleObject(parent.get(), 15000);
+    }
+
+    void SendOtherUiResponses(const std::wstring& operation, const std::wstring& request)
+    {
+        const auto pipe = IPCHelperStrings::LauncherUIPipeName + WorkspacesCli::NormalizeId(operation);
+        for (const auto& text : {
+                 L"{\"type\":\"warning-shown\",\"requestId\":\"" + request + L"\"}",
+                 L"{\"type\":\"elevation-response\",\"requestId\":\"" + request + L"\",\"choice\":\"run\"}" })
+        {
+            Check(WaitNamedPipeW(pipe.c_str(), 5000) != FALSE);
+            wil::unique_hfile connection(CreateFileW(pipe.c_str(), FILE_READ_DATA | FILE_WRITE_DATA | SYNCHRONIZE, 0, nullptr, OPEN_EXISTING, SECURITY_SQOS_PRESENT | SECURITY_IDENTIFICATION, nullptr));
+            Check(static_cast<bool>(connection));
+            DWORD written{};
+            WriteFile(connection.get(), text.data(), static_cast<DWORD>(text.size() * sizeof(wchar_t)), &written, nullptr);
+            FlushFileBuffers(connection.get());
+        }
+    }
+
+    void CheckUiPeerBinding(bool otherPeer, bool cancelStartup)
+    {
+        Logger::init(std::vector<spdlog::sink_ptr>{ std::make_shared<spdlog::sinks::null_sink_mt>() });
+        inertUi = true;
+        auto restore = wil::scope_exit([] {
+            inertUi = false;
+            SetEnvironmentVariableW(L"PT_WORKSPACES_BINDING_CANCEL", nullptr);
+        });
+        if (cancelStartup)
+            Check(SetEnvironmentVariableW(L"PT_WORKSPACES_BINDING_CANCEL", L"1") != FALSE);
+        GUID operation{}, request{};
+        winrt::check_hresult(CoCreateGuid(&operation));
+        winrt::check_hresult(CoCreateGuid(&request));
+        wchar_t operationText[40]{}, requestText[40]{}, module[32768]{};
+        StringFromGUID2(operation, operationText, ARRAYSIZE(operationText));
+        StringFromGUID2(request, requestText, ARRAYSIZE(requestText));
+        Check(GetModuleFileNameW(nullptr, module, ARRAYSIZE(module)) != 0);
+        const auto id = WorkspacesCli::NormalizeId(operationText);
+        PendingLaunchApproval approval;
+        Check(approval.Begin(requestText));
+        wil::unique_handle decided(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        Check(static_cast<bool>(decided));
+        LauncherUIHelper* published = nullptr;
+        LauncherUIHelper ui([&](const std::wstring& text) {
+            const auto message = LauncherUiMessage::Parse(text);
+            if (!message)
+                return;
+            if (message->type == LauncherUiMessage::Type::Cancel)
+            {
+                approval.Cancel();
+                published->AcknowledgeCancellation();
+                SetEvent(decided.get());
+            }
+            else if (message->type == LauncherUiMessage::Type::WarningShown)
+                approval.Acknowledge(message->requestId);
+            else if (approval.Complete(message->requestId, message->decision))
+                SetEvent(decided.get());
+        },
+                            id,
+                            true);
+        published = &ui;
+        Check(ui.LaunchUI());
+        if (cancelStartup)
+        {
+            Check(WaitForSingleObject(decided.get(), 5000) == WAIT_OBJECT_0);
+            Check(approval.Evaluate() == LaunchDecision::Canceled);
+            return;
+        }
+        if (otherPeer)
+        {
+            const auto peerPath = std::filesystem::path(module).parent_path() / L"WinUI3Apps" / L"PowerToys.WorkspacesLauncherUI.exe";
+            auto command = L"\"" + peerPath.wstring() + L"\" --other-ui " + id + L" " + requestText;
+            STARTUPINFOW startup{ sizeof(startup) };
+            wil::unique_process_information peer;
+            Check(CreateProcessW(peerPath.c_str(), command.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &peer) != FALSE);
+            auto cleanup = wil::scope_exit([&] {
+                if (WaitForSingleObject(peer.hProcess, 0) == WAIT_TIMEOUT)
+                {
+                    TerminateProcess(peer.hProcess, 1);
+                    WaitForSingleObject(peer.hProcess, 2000);
+                }
+            });
+            Check(WaitForSingleObject(peer.hProcess, 10000) == WAIT_OBJECT_0);
+            DWORD code{};
+            Check(GetExitCodeProcess(peer.hProcess, &code) && code == 0);
+        }
+        Check(ui.RequestApproval(requestText, otherPeer ? L"skip" : L"run", L"C:\\Workspaces.Inert.Test.exe", L"", { SignatureVerification::Status::Unsigned, TRUST_E_NOSIGNATURE, {}, {} }));
+        Check(WaitForSingleObject(decided.get(), 5000) == WAIT_OBJECT_0);
+        Check(approval.Evaluate() == (otherPeer ? LaunchDecision::Skipped : LaunchDecision::Approved));
+    }
 }
 
 int wmain(int argc, wchar_t** argv)
@@ -686,6 +818,16 @@ int wmain(int argc, wchar_t** argv)
     try
     {
         winrt::init_apartment();
+        if (argc == 4 && (std::wstring_view(argv[1]) == L"--launch-ui" || std::wstring_view(argv[1]) == L"--confirmation-only"))
+        {
+            RunBoundUi(argv[2], static_cast<DWORD>(std::stoul(argv[3])));
+            return 0;
+        }
+        if (argc == 4 && std::wstring_view(argv[1]) == L"--other-ui")
+        {
+            SendOtherUiResponses(argv[2], argv[3]);
+            return 0;
+        }
         if (argc == 4 && std::wstring_view(argv[1]) == L"console-child")
         {
             RunConsoleChild(std::stoul(argv[2]), argv[3]);
@@ -717,6 +859,12 @@ int wmain(int argc, wchar_t** argv)
             return canceled ? 12 : 9;
         }
         Check(argc == 2);
+        if (std::wstring_view(argv[1]).starts_with(L"ui-peer-"))
+        {
+            CheckUiPeerBinding(std::wstring_view(argv[1]) == L"ui-peer-other", std::wstring_view(argv[1]) == L"ui-peer-cancel");
+            std::cout << "{\"passed\":true}\n";
+            return 0;
+        }
         if (std::wstring_view(argv[1]) == L"persistence-output" || std::wstring_view(argv[1]) == L"console-launch")
         {
             if (std::wstring_view(argv[1]) == L"persistence-output")
